@@ -33,14 +33,14 @@ export function InfoTile({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/80 px-3 py-3 dark:border-zinc-700 dark:bg-zinc-800/50">
-      <div className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-zinc-400">
+    <div className="rounded-card border border-border bg-muted/80 px-3 py-3">
+      <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
         {icon}
         {label}
       </div>
       <p
         className={[
-          'mt-1 break-all text-sm font-semibold text-gray-900 dark:text-zinc-100',
+          'mt-1 break-all text-sm font-semibold text-foreground',
           mono ? 'font-mono text-xs' : '',
         ].join(' ')}
       >
@@ -52,7 +52,7 @@ export function InfoTile({
 
 function EmptyTableState({ message }: { message: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-gray-200 px-4 py-8 text-center text-sm text-gray-500 dark:border-zinc-700 dark:text-zinc-400">
+    <div className="rounded-card border border-dashed border-border px-4 py-8 text-center text-sm text-muted-foreground">
       {message}
     </div>
   );
@@ -66,16 +66,16 @@ function SectionTable({
   children: ReactNode;
 }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800/50">
+    <div className="overflow-hidden rounded-card border border-border bg-card">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200 text-sm dark:divide-zinc-700">
-          <thead className="bg-gray-50 dark:bg-zinc-900/60">
+        <table className="min-w-full divide-y divide-border text-sm">
+          <thead className="bg-muted">
             <tr>
               {columns.map((col) => (
                 <th
                   key={col.label}
                   className={[
-                    'px-4 py-3 font-semibold text-gray-600 dark:text-zinc-300',
+                    'px-4 py-3 font-semibold text-muted-foreground',
                     col.align === 'right' ? 'text-right' : 'text-left',
                   ].join(' ')}
                 >
@@ -112,26 +112,26 @@ export function SocialPostsTable({ posts }: { posts: HubSpotSocialPost[] }) {
       ]}
     >
       {posts.map((post) => (
-        <tr key={post.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40">
+        <tr key={post.id} className="hover:bg-muted/80">
           <td className="px-4 py-3">
-            <p className="font-medium text-gray-900 dark:text-zinc-100">{post.name}</p>
-            <p className="mt-0.5 font-mono text-[11px] text-gray-400 dark:text-zinc-500">
+            <p className="font-medium text-foreground">{post.name}</p>
+            <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
               {post.id}
             </p>
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">
             {post.network ?? '—'}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(post.linkedinClicks)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(post.facebookClicks)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(post.twitterClicks)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-zinc-100">
+          <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
             {formatCount(post.totalClicks)}
           </td>
         </tr>
@@ -160,7 +160,7 @@ export function VideosTable({ videos }: { videos: CampaignVideoStat[] }) {
       ]}
     >
       {videos.map((video) => (
-        <tr key={video.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40">
+        <tr key={video.id} className="hover:bg-muted/80">
           <td className="px-4 py-3">
             {video.url ? (
               <a
@@ -172,25 +172,25 @@ export function VideosTable({ videos }: { videos: CampaignVideoStat[] }) {
                 {video.title}
               </a>
             ) : (
-              <p className="font-medium text-gray-900 dark:text-zinc-100">{video.title}</p>
+              <p className="font-medium text-foreground">{video.title}</p>
             )}
           </td>
-          <td className="px-4 py-3 capitalize text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 capitalize text-muted-foreground">
             {video.platform ?? '—'}
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">
             {formatDate(video.postedAt)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatDuration(video.durationSeconds)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-zinc-100">
+          <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
             {formatCount(video.views)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(video.likes)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(video.comments)}
           </td>
         </tr>
@@ -221,9 +221,9 @@ export function SurveysTable({ campaign }: { campaign: CampaignDashboardRow }) {
           { label: 'Last response' },
         ]}
       >
-        <tr className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40">
+        <tr className="hover:bg-muted/80">
           <td className="px-4 py-3">
-            <p className="font-medium text-gray-900 dark:text-zinc-100">{survey.title}</p>
+            <p className="font-medium text-foreground">{survey.title}</p>
             <div className="mt-1 flex flex-wrap gap-3">
               <Link
                 to={`/admin/surveys/${survey.surveyId}/responses`}
@@ -245,25 +245,25 @@ export function SurveysTable({ campaign }: { campaign: CampaignDashboardRow }) {
               ) : null}
             </div>
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">{survey.type}</td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">{survey.type}</td>
+          <td className="px-4 py-3 text-muted-foreground">
             {survey.programTitle ?? '—'}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums font-semibold text-gray-900 dark:text-zinc-100">
+          <td className="px-4 py-3 text-right tabular-nums font-semibold text-foreground">
             {formatCount(survey.totalResponses)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(survey.uniqueRespondents)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(survey.jotformSubmissionCount)}
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {survey.completionRate != null
               ? `${Math.round(survey.completionRate)}%`
               : '—'}
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">
             {formatDate(survey.lastResponseAt)}
           </td>
         </tr>
@@ -280,15 +280,15 @@ export function SurveysTable({ campaign }: { campaign: CampaignDashboardRow }) {
           {survey.questions.map((question) => (
             <tr
               key={question.prompt}
-              className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40"
+              className="hover:bg-muted/80"
             >
-              <td className="px-4 py-3 font-medium text-gray-900 dark:text-zinc-100">
+              <td className="px-4 py-3 font-medium text-foreground">
                 {question.prompt}
               </td>
-              <td className="px-4 py-3 capitalize text-gray-700 dark:text-zinc-300">
+              <td className="px-4 py-3 capitalize text-muted-foreground">
                 {question.kind}
               </td>
-              <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+              <td className="px-4 py-3 text-muted-foreground">
                 {question.summary}
               </td>
             </tr>
@@ -321,14 +321,14 @@ export function TranscriptsTable({
       ]}
     >
       {transcripts.map((item) => (
-        <tr key={item.id} className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40">
-          <td className="px-4 py-3 font-medium text-gray-900 dark:text-zinc-100">
+        <tr key={item.id} className="hover:bg-muted/80">
+          <td className="px-4 py-3 font-medium text-foreground">
             {item.title}
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">
             {item.shootName ?? item.shootId ?? '—'}
           </td>
-          <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-muted-foreground">
             {item.doctors.length ? item.doctors.join(', ') : '—'}
           </td>
           <td className="px-4 py-3">
@@ -336,14 +336,14 @@ export function TranscriptsTable({
               className={[
                 'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
                 item.available
-                  ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
+                  ? 'bg-green-100 text-success dark:bg-green-950/40 dark:text-green-300'
                   : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400',
               ].join(' ')}
             >
               {item.available ? 'Available' : 'Missing'}
             </span>
           </td>
-          <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+          <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
             {formatCount(item.wordCount)}
           </td>
         </tr>
@@ -379,8 +379,8 @@ export function PlatformsTable({ campaign }: { campaign: CampaignDashboardRow })
         const status = snapshot?.status ?? 'missing';
         const ok = status === 'available';
         return (
-          <tr key={platform} className="hover:bg-gray-50/80 dark:hover:bg-zinc-900/40">
-            <td className="px-4 py-3 font-medium capitalize text-gray-900 dark:text-zinc-100">
+          <tr key={platform} className="hover:bg-muted/80">
+            <td className="px-4 py-3 font-medium capitalize text-foreground">
               {platform}
             </td>
             <td className="px-4 py-3">
@@ -388,17 +388,17 @@ export function PlatformsTable({ campaign }: { campaign: CampaignDashboardRow })
                 className={[
                   'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
                   ok
-                    ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-300'
+                    ? 'bg-green-100 text-success dark:bg-green-950/40 dark:text-green-300'
                     : 'bg-gray-100 text-gray-600 dark:bg-zinc-800 dark:text-zinc-400',
                 ].join(' ')}
               >
                 {status}
               </span>
             </td>
-            <td className="px-4 py-3 text-right tabular-nums text-gray-700 dark:text-zinc-300">
+            <td className="px-4 py-3 text-right tabular-nums text-muted-foreground">
               {snapshot?.rowCount != null ? formatCount(snapshot.rowCount) : '—'}
             </td>
-            <td className="px-4 py-3 text-gray-700 dark:text-zinc-300">
+            <td className="px-4 py-3 text-muted-foreground">
               {snapshot?.syncedAt ? formatDate(snapshot.syncedAt) : '—'}
             </td>
           </tr>

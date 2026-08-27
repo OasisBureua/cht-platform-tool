@@ -24,23 +24,23 @@ interface SurveyAnalyticsViewProps {
 
 function EmptyState() {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center">
+    <div className="flex flex-col items-center gap-2 rounded-card border border-dashed border-border bg-card py-16 text-center">
       <Inbox className="h-8 w-8 text-gray-300" />
-      <p className="text-sm font-medium text-gray-600">No responses yet</p>
-      <p className="text-xs text-gray-400">Analytics will appear once this survey has submissions.</p>
+      <p className="text-sm font-medium text-muted-foreground">No responses yet</p>
+      <p className="text-xs text-muted-foreground">Analytics will appear once this survey has submissions.</p>
     </div>
   );
 }
 
 function JotformNotice() {
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+    <div className="flex items-start gap-3 rounded-card border border-warning/25 bg-warning/10 p-4">
       <Info className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
       <div>
         <p className="text-sm font-semibold text-amber-900">
           Per-question analytics aren&rsquo;t available for this survey
         </p>
-        <p className="mt-0.5 text-sm text-amber-800">
+        <p className="mt-0.5 text-sm text-warning">
           Responses were collected through Jotform, which doesn&rsquo;t expose a native question
           schema. Totals and submission trends are still available above; export the CSV for the
           full answer detail.
@@ -53,7 +53,7 @@ function JotformNotice() {
 function QuestionList({ questions }: { questions: SurveyQuestionAnalytics[] }) {
   if (questions.length === 0) {
     return (
-      <p className="rounded-2xl border border-gray-200 bg-white px-4 py-6 text-center text-sm text-gray-500">
+      <p className="rounded-card border border-border bg-card px-4 py-6 text-center text-sm text-muted-foreground">
         No question-level data for this survey.
       </p>
     );
@@ -92,7 +92,7 @@ export function SurveyAnalyticsView({
         className="flex items-center justify-between gap-3"
         data-print-hide="true"
       >
-        <p className="text-xs text-gray-400">{isFetching ? 'Updating\u2026' : '\u00a0'}</p>
+        <p className="text-xs text-muted-foreground">{isFetching ? 'Updating\u2026' : '\u00a0'}</p>
         <SegmentFilter value={segmentBy} onChange={onSegmentChange} disabled={!hasResponses} />
       </div>
 
@@ -102,8 +102,8 @@ export function SurveyAnalyticsView({
         <>
           <SurveyAnalyticsSummaryCards totals={analytics.totals} />
 
-          <section className="rounded-2xl border border-gray-200 bg-white p-4">
-            <h3 className="text-sm font-semibold text-gray-900">Submissions over time</h3>
+          <section className="rounded-card border border-border bg-card p-4">
+            <h3 className="text-sm font-semibold text-foreground">Submissions over time</h3>
             <div className="mt-3">
               <SubmissionsTrendChart points={analytics.timeSeries} />
             </div>
@@ -116,10 +116,10 @@ export function SurveyAnalyticsView({
               {analytics.segments.groups.map((group) => (
                 <div key={group.key} className="space-y-3">
                   <div className="flex items-baseline gap-2">
-                    <h3 className="text-sm font-semibold text-gray-900">
+                    <h3 className="text-sm font-semibold text-foreground">
                       {segmentGroupLabel(analytics.segments!.dimension, group)}
                     </h3>
-                    <span className="text-xs text-gray-500">
+                    <span className="text-xs text-muted-foreground">
                       {group.totalResponses.toLocaleString()} responses
                     </span>
                   </div>

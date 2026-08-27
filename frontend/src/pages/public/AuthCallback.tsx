@@ -93,13 +93,13 @@ export default function AuthCallback() {
 
   if (error) {
     return (
-      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-white px-4 py-8">
-        <div className="max-w-md rounded-2xl border border-red-200 bg-red-50 px-6 py-8 text-center shadow-sm">
-          <p className="text-lg font-semibold text-red-800">Sign-in didn’t finish</p>
-          <p className="mt-2 text-sm text-red-700">{error}</p>
+      <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-card px-4 py-8">
+        <div className="max-w-md rounded-card border border-destructive/25 bg-destructive/10 px-6 py-8 text-center shadow-card">
+          <p className="text-lg font-semibold text-destructive">Sign-in didn’t finish</p>
+          <p className="mt-2 text-sm text-destructive">{error}</p>
           <Link
             to="/login"
-            className="mt-6 inline-flex rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+            className="mt-6 inline-flex rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-muted"
           >
             Back to Login
           </Link>
@@ -109,10 +109,10 @@ export default function AuthCallback() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-white px-4 py-8">
-      <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900 mb-4" />
-      <p className="text-gray-700 font-medium">Completing sign-in…</p>
-      <p className="mt-1 text-sm text-gray-500">You’ll be redirected in a moment.</p>
+    <div className="min-h-[calc(100vh-64px)] flex flex-col items-center justify-center bg-card px-4 py-8">
+      <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-gray-900 mb-4" />
+      <p className="text-muted-foreground font-medium">Completing sign-in…</p>
+      <p className="mt-1 text-sm text-muted-foreground">You’ll be redirected in a moment.</p>
     </div>
   );
 }

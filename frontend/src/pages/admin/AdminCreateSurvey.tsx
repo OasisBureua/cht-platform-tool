@@ -91,29 +91,29 @@ export default function AdminCreateSurvey() {
   return (
     <div className="mx-auto w-full max-w-[min(100%,100rem)] space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Create Survey</h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <h1 className="text-2xl font-bold text-foreground">Create Survey</h1>
+        <p className="text-sm text-muted-foreground mt-1">
           Design surveys to gather feedback from healthcare professionals.
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+        <div className="bg-card rounded-card border border-border p-6 space-y-6">
           <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-gray-700" />
-            <h2 className="text-lg font-bold text-gray-900">Create New Survey</h2>
+            <Search className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-bold text-foreground">Create New Survey</h2>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-foreground mb-1">
                 Program *
               </label>
               <select
                 required
                 value={programId}
                 onChange={(e) => setProgramId(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               >
                 <option value="">Select program</option>
                 {programOptions.map((p) => (
@@ -123,13 +123,13 @@ export default function AdminCreateSurvey() {
                 ))}
               </select>
               {programOptions.length === 0 && (
-                <p className="mt-1 text-sm text-amber-600">
+                <p className="mt-1 text-sm text-warning">
                   No programs yet. Create a program first via Schedule Webinar.
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-foreground mb-1">
                 Survey Title *
               </label>
               <input
@@ -138,11 +138,11 @@ export default function AdminCreateSurvey() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Patient Experience Survey"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-foreground mb-1">
                 Description
               </label>
               <textarea
@@ -150,21 +150,21 @@ export default function AdminCreateSurvey() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Description of what this survey is about..."
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Jotform Form ID <span className="font-normal text-gray-500">(optional)</span>
+              <label className="block text-sm font-semibold text-foreground mb-1">
+                Jotform Form ID <span className="font-normal text-muted-foreground">(optional)</span>
               </label>
               <input
                 type="text"
                 value={jotformFormId}
                 onChange={(e) => setJotformFormId(e.target.value)}
                 placeholder="e.g., 260698533879881 - from communityhealthmedia.jotform.com/build/..."
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Link an existing Jotform form. Ensure the form has the webhook and Hidden Box (user_id) configured.
               </p>
             </div>
@@ -173,11 +173,11 @@ export default function AdminCreateSurvey() {
 
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="text-lg font-bold text-gray-900">Questions *</h2>
+            <h2 className="text-lg font-bold text-foreground">Questions *</h2>
             <button
               type="button"
               onClick={addQuestion}
-              className="rounded-xl border border-gray-900 px-4 py-2 text-sm font-semibold text-gray-900 inline-flex items-center gap-2 hover:bg-gray-50"
+              className="rounded-xl border border-gray-900 px-4 py-2 text-sm font-semibold text-foreground inline-flex items-center gap-2 hover:bg-muted"
             >
               + Add Question
             </button>
@@ -185,10 +185,10 @@ export default function AdminCreateSurvey() {
           {questions.map((q, i) => (
             <div
               key={i}
-              className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 flex gap-2"
+              className="bg-card rounded-card border border-border p-6 space-y-4 flex gap-2"
             >
               <div className="flex-1">
-                <label className="block text-sm font-semibold text-gray-900 mb-1">
+                <label className="block text-sm font-semibold text-foreground mb-1">
                   Question {i + 1}
                 </label>
                 <input
@@ -196,13 +196,13 @@ export default function AdminCreateSurvey() {
                   value={q.prompt}
                   onChange={(e) => updateQuestion(i, e.target.value)}
                   placeholder="Enter your question..."
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm"
+                  className="w-full rounded-xl border border-border px-4 py-3 text-sm"
                 />
               </div>
               <button
                 type="button"
                 onClick={() => removeQuestion(i)}
-                className="self-end rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                className="self-end rounded-lg border border-destructive/25 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
               >
                 Remove
               </button>
@@ -211,7 +211,7 @@ export default function AdminCreateSurvey() {
         </div>
 
         {createMutation.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive text-sm">
             Failed to create survey. Please try again.
           </div>
         )}
@@ -220,7 +220,7 @@ export default function AdminCreateSurvey() {
           <button
             type="button"
             onClick={() => navigate('/admin/surveys')}
-            className="rounded-xl border border-blue-600 bg-white px-6 py-2.5 text-sm font-semibold text-blue-600 hover:bg-gray-50"
+            className="rounded-xl border border-blue-600 bg-card px-6 py-2.5 text-sm font-semibold text-blue-600 hover:bg-muted"
           >
             Cancel
           </button>

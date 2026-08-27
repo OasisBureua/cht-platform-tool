@@ -36,13 +36,13 @@ export default function ForgotPassword() {
       >
         <Link
           to="/reset-password/confirm"
-          className="block w-full rounded-lg bg-[#000000] px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-brand-700"
+          className="block w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-center text-sm font-medium text-white hover:bg-brand-700"
         >
           Enter reset code
         </Link>
         <Link
           to="/login"
-          className="mt-3 block w-full rounded-lg border border-gray-300 px-4 py-2.5 text-center text-sm font-medium text-gray-700 hover:bg-gray-50"
+          className="mt-3 block w-full rounded-[6px] border border-border px-4 py-2.5 text-center text-sm font-medium text-muted-foreground hover:bg-muted"
         >
           Back to Login
         </Link>
@@ -60,30 +60,30 @@ export default function ForgotPassword() {
         </div>
         <form className="space-y-4" onSubmit={handleSubmit}>
         {error && (
-          <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {error}
           </div>
         )}
         <div className="space-y-1.5">
-          <label className="text-sm font-medium text-gray-700">Email address</label>
+          <label className="text-sm font-medium text-muted-foreground">Email address</label>
           <input
             type="email"
             placeholder="johndoe@gmail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
           />
         </div>
         <button
           type="submit"
           disabled={submitting}
-          className="w-full rounded-lg bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+          className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
         >
           {submitting ? 'Sending...' : 'Send reset link'}
         </button>
       </form>
-      <p className="mt-6 text-center text-sm text-gray-600">
+      <p className="mt-6 text-center text-sm text-muted-foreground">
         <Link to="/login" className="font-medium text-blue-600 hover:text-blue-700 hover:underline">
           Back to Login
         </Link>

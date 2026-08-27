@@ -29,9 +29,9 @@ export function PlaylistVideosFlattenGrid({
         <Link
           key={`${playlistId}-${video.id}`}
           to={watchUrl(isInApp, playlistId, video.id)}
-          className="group min-w-0 overflow-hidden rounded-xl border border-zinc-200/90 bg-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[box-shadow,transform] hover:shadow-md active:scale-[0.98] dark:border-zinc-800 dark:bg-zinc-900"
+          className="group min-w-0 overflow-hidden rounded-card border border-zinc-200/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-[box-shadow,transform] hover:shadow-md active:scale-[0.98]"
         >
-          <div className="aspect-video w-full shrink-0 overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+          <div className="aspect-video w-full shrink-0 overflow-hidden bg-muted">
             <img
               src={video.thumbnailUrl || `https://img.youtube.com/vi/${video.id}/hqdefault.jpg`}
               alt=""
@@ -42,11 +42,11 @@ export function PlaylistVideosFlattenGrid({
             />
           </div>
           <div className="flex min-w-0 flex-col gap-0.5 p-2.5 pt-2">
-            <p className="line-clamp-2 text-left text-xs font-semibold leading-snug text-zinc-900 dark:text-zinc-100">
+            <p className="line-clamp-2 text-left text-xs font-semibold leading-snug text-foreground">
               {video.title}
             </p>
             {showPlaylistTitles && playlistTitle ? (
-              <p className="line-clamp-1 text-left text-[11px] text-zinc-500 dark:text-zinc-400">{playlistTitle}</p>
+              <p className="line-clamp-1 text-left text-[11px] text-muted-foreground">{playlistTitle}</p>
             ) : null}
           </div>
         </Link>

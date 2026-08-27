@@ -63,12 +63,16 @@ export default function Layout() {
   }, []);
 
   return (
-    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-chm-surface text-gray-900 md:flex-row dark:bg-zinc-950 dark:text-zinc-100">
+    <div className="app-shell flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
       <AppSidebar />
       <AppBottomNav />
 
+      {/* One field for the whole shell. This carried a hard `#18181b`
+          below md, which painted a dark strip into the light appearance
+          whenever the drawer was mid-slide; the token follows the
+          appearance instead. */}
       <div
-        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-chm-surface dark:bg-zinc-950 max-md:bg-[#18181b] md:overflow-visible"
+        className="relative flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden bg-app-ground md:overflow-visible"
         onClick={(e) => {
           if (!mobileDrawerOpen) return;
           const front = mobileFrontRef.current;
@@ -91,7 +95,7 @@ export default function Layout() {
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
-            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, end }) => (
+            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
               <li key={to}>
                 <NavLink
                   to={to}
@@ -99,10 +103,10 @@ export default function Layout() {
                   onClick={() => setMobileDrawerOpen(false)}
                   className={({ isActive }) =>
                     [
-                      'flex min-h-[48px] items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
+                      'flex min-h-[48px] items-center gap-3 rounded-card px-3 py-2.5 text-sm font-medium transition-[background-color,color,transform] duration-200 ease-out active:scale-[0.98]',
                       isActive
                         ? 'bg-steel-100 text-steel-950 shadow-[0_4px_18px_-10px_rgba(49,105,149,0.25)] ring-2 ring-steel-500/25 dark:bg-steel-600 dark:text-white dark:ring-steel-400/35 dark:shadow-[0_4px_20px_-10px_rgba(37,99,235,0.35)]'
-                        : 'text-zinc-900 hover:bg-steel-50/90 hover:text-zinc-950 dark:text-zinc-100 dark:hover:bg-zinc-800/85 dark:hover:text-white',
+                        : 'text-foreground hover:bg-steel-50/90 dark:hover:text-white',
                     ].join(' ')
                   }
                 >
@@ -112,7 +116,7 @@ export default function Layout() {
                         className={
                           isActive
                             ? 'h-5 w-5 shrink-0 text-steel-950 dark:text-white'
-                            : 'h-5 w-5 shrink-0 text-steel-600 dark:text-steel-400'
+                            : `h-5 w-5 shrink-0 ${iconTone}`
                         }
                         strokeWidth={2}
                         aria-hidden
@@ -124,7 +128,7 @@ export default function Layout() {
               </li>
             ))}
           </ul>
-          <div className="mt-auto border-t border-zinc-200 px-4 py-3 text-[11px] leading-snug text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          <div className="mt-auto border-t border-border px-4 py-3 text-[11px] leading-snug text-muted-foreground">
             <Link
               to="/app/settings"
               className="font-semibold text-steel-700 underline-offset-2 hover:underline dark:text-steel-400"
@@ -135,7 +139,7 @@ export default function Layout() {
             {' · '}
             <button
               type="button"
-              className="font-semibold text-zinc-700 hover:underline dark:text-zinc-300"
+              className="font-semibold text-muted-foreground hover:underline"
               onClick={() => {
                 setMobileDrawerOpen(false);
                 logout();
@@ -152,7 +156,7 @@ export default function Layout() {
           data-drawer-front
           className={[
             // Avoid translate-x-0 when closed: it breaks position:fixed descendants.
-            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-gray-50 motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none dark:bg-zinc-950',
+            'relative z-[1] flex min-h-[100dvh] flex-1 flex-col bg-app-ground motion-reduce:transition-none md:min-h-0 md:rounded-none md:shadow-none ',
             mobileDrawerOpen
               ? 'translate-x-[38%] rounded-r-[18px] shadow-[-4px_0_20px_rgba(0,0,0,0.1),0_12px_32px_rgba(0,0,0,0.14)] transition-[transform,box-shadow,border-radius] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]'
               : 'shadow-none',
@@ -163,7 +167,7 @@ export default function Layout() {
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl bg-white/95 text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden dark:bg-zinc-900/95 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:bg-zinc-800 dark:hover:text-steel-200"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card bg-white/95 text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden /95 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:text-steel-200"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}
@@ -172,10 +176,10 @@ export default function Layout() {
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-lg font-bold tracking-tight text-gray-900 dark:text-zinc-50 md:text-xl">
+                <h1 className="truncate text-lg font-bold tracking-tight text-foreground md:text-xl">
                   Welcome, {displayName}!
                 </h1>
-                <p className="mt-0.5 hidden text-pretty text-sm text-gray-600 dark:text-zinc-400 sm:block">
+                <p className="mt-0.5 hidden text-pretty text-sm text-muted-foreground sm:block">
                   You have new opportunities to earn rewards today
                 </p>
               </div>
@@ -188,7 +192,7 @@ export default function Layout() {
                 title="Search"
                 className={({ isActive }) =>
                   [
-                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-xl text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-steel-300 dark:hover:bg-zinc-800/80 dark:hover:text-steel-200',
+                    'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card text-steel-700 transition-[color,background-color,transform] duration-200 ease-out hover:bg-steel-50/80 hover:text-steel-800 active:scale-[0.96] sm:h-10 sm:min-h-0 sm:w-10 sm:min-w-0 dark:text-steel-300 dark:hover:text-steel-200',
                     isActive ? 'bg-steel-100 text-steel-900 ring-2 ring-steel-500/25 dark:bg-steel-600/25 dark:text-white dark:ring-steel-400/30' : '',
                   ].join(' ')
                 }
@@ -204,7 +208,7 @@ export default function Layout() {
                   aria-expanded={profileMenuOpen}
                   aria-haspopup="menu"
                   aria-label="Open profile menu"
-                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200/90 text-sm font-semibold text-gray-700 shadow-[0_0_0_1px_rgba(0,0,0,0.06)_inset,0_2px_8px_-2px_rgba(0,0,0,0.08)] ring-2 ring-white/90 transition-[transform,box-shadow,color,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] dark:from-zinc-800 dark:to-zinc-700 dark:text-zinc-100 dark:ring-zinc-900"
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-gray-100 to-gray-200/90 text-sm font-semibold text-muted-foreground shadow-[0_0_0_1px_rgba(0,0,0,0.06)_inset,0_2px_8px_-2px_rgba(0,0,0,0.08)] ring-2 ring-white/90 transition-[transform,box-shadow,color,background-color] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96] dark:from-zinc-800 dark:to-zinc-700 dark:ring-zinc-900"
                 >
                   {displayName.charAt(0).toUpperCase()}
                 </button>
@@ -212,13 +216,13 @@ export default function Layout() {
                 {profileMenuOpen ? (
                   <div
                     role="menu"
-                    className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-xl border border-gray-100/90 bg-white p-1.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_40px_-18px_rgba(0,0,0,0.2)] dark:border-zinc-700/80 dark:bg-zinc-900 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_16px_40px_-18px_rgba(0,0,0,0.55)]"
+                    className="absolute right-0 top-[calc(100%+0.5rem)] z-40 w-48 overflow-hidden rounded-card border border-border/90 bg-card p-1.5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_16px_40px_-18px_rgba(0,0,0,0.2)] /80 dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_16px_40px_-18px_rgba(0,0,0,0.55)]"
                   >
                     <button
                       type="button"
                       role="menuitem"
                       onClick={() => toggleColorScheme()}
-                      className="flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-sm font-medium text-gray-700 transition-[background-color,color] duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 md:hidden dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground md:hidden"
                     >
                       {resolvedTheme === 'dark' ? 'Light mode' : 'Dark mode'}
                     </button>
@@ -226,7 +230,7 @@ export default function Layout() {
                       to="/app/settings"
                       role="menuitem"
                       onClick={() => setProfileMenuOpen(false)}
-                      className="flex min-h-[44px] items-center rounded-lg px-3 text-sm font-medium text-gray-700 transition-[background-color,color] duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="flex min-h-[44px] items-center rounded-[6px] px-3 text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
                     >
                       Settings
                     </Link>
@@ -237,7 +241,7 @@ export default function Layout() {
                         setProfileMenuOpen(false);
                         logout();
                       }}
-                      className="flex min-h-[44px] w-full items-center rounded-lg px-3 text-left text-sm font-medium text-gray-700 transition-[background-color,color] duration-200 ease-out hover:bg-gray-50 hover:text-gray-900 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+                      className="flex min-h-[44px] w-full items-center rounded-[6px] px-3 text-left text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
                     >
                       Logout
                     </button>

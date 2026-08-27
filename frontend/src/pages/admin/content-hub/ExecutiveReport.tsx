@@ -37,11 +37,11 @@ const SLIDE_IDS = [
   'slide-back',
 ];
 
-// Chillax is already loaded by the platform, so no external @import here (keeps the deck
+// Geist is already loaded by the platform, so no external @import here (keeps the deck
 // self-contained). `color-scheme: dark` + hardcoded colors keep the deck's intrinsic look
 // regardless of the platform theme.
 const DECK_CSS = `
-        .exec-slide, .exec-slide * { font-family: 'Chillax', system-ui, sans-serif !important; }
+        .exec-slide, .exec-slide * { font-family: 'Geist', system-ui, sans-serif !important; }
         @media print {
           @page { size: landscape; margin: 0; }
           .exec-deck-root { background: transparent !important; }
@@ -57,7 +57,7 @@ const PLATFORM_DOT_COLORS: Record<string, string> = {
   linkedin: '#0077b5',
   meta: '#1877f2',
   youtube: '#ff0000',
-  livestream: '#3da4c0',
+  livestream: '#007cff',
   survey: '#2e7d32',
 };
 
@@ -108,7 +108,7 @@ export default function ExecutiveReport() {
 
   if (isLoading || !report) {
     return (
-      <div className="exec-deck-root flex min-h-screen items-center justify-center bg-[#1e2433] text-sm text-white/40" style={{ fontFamily: 'Chillax, sans-serif' }}>
+      <div className="exec-deck-root flex min-h-screen items-center justify-center bg-[#1e2433] text-sm text-white/40" style={{ fontFamily: 'Geist, sans-serif' }}>
         Loading executive report…
       </div>
     );
@@ -121,11 +121,11 @@ export default function ExecutiveReport() {
   const episodeCount = Number(config.longFormEpisodes);
 
   return (
-    <div className="exec-deck-root min-h-screen bg-[#1e2433]" style={{ fontFamily: 'Chillax, sans-serif', colorScheme: 'dark' }}>
+    <div className="exec-deck-root min-h-screen bg-[#1e2433]" style={{ fontFamily: 'Geist, sans-serif', colorScheme: 'dark' }}>
       <style>{DECK_CSS}</style>
 
       {/* ---- Toolbar ---- */}
-      <div className="no-print sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#1e2433] px-5 py-2.5 text-white shadow-xl">
+      <div className="no-print sticky top-0 z-50 flex items-center justify-between border-b border-white/10 bg-[#1e2433] px-5 py-2.5 text-white shadow-card-hover">
         <div className="flex items-center gap-3">
           <Link to="/admin/content-hub">
             <button aria-label="Back to Content Hub" className="rounded p-1 text-white/40 transition-colors hover:bg-white/10 hover:text-white">
@@ -146,7 +146,7 @@ export default function ExecutiveReport() {
                 key={sid}
                 aria-label={`Go to slide ${i + 1}`}
                 onClick={() => goTo(i)}
-                className={cn('h-1.5 rounded-full transition-all', i === active ? 'w-4 bg-[#3da4c0]' : 'w-1.5 bg-white/20 hover:bg-white/40')}
+                className={cn('h-1.5 rounded-full transition-all', i === active ? 'w-4 bg-[#007cff]' : 'w-1.5 bg-white/20 hover:bg-white/40')}
               />
             ))}
           </div>
@@ -158,7 +158,7 @@ export default function ExecutiveReport() {
             <ChevronRight className="h-4 w-4" />
           </button>
           <div className="mx-1 h-4 w-px bg-white/20" />
-          <button onClick={() => refetch()} className={`${GHOST_BTN} h-7 px-3 text-xs text-[#ff9e40]/70 hover:bg-white/10 hover:text-[#ff9e40]`}>
+          <button onClick={() => refetch()} className={`${GHOST_BTN} h-7 px-3 text-xs text-[#f99d9d]/70 hover:bg-white/10 hover:text-[#f99d9d]`}>
             <Sparkles className="mr-1 h-3 w-3" />
             AI Draft
           </button>
@@ -178,7 +178,7 @@ export default function ExecutiveReport() {
           </button>
           <button
             onClick={() => window.print()}
-            className="ml-1 inline-flex h-7 min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-[#e7764f] px-3 text-xs font-medium text-white transition-colors hover:bg-[#c0603c] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
+            className="ml-1 inline-flex h-7 min-h-8 items-center justify-center gap-2 whitespace-nowrap rounded-md border border-transparent bg-[#c54ebe] px-3 text-xs font-medium text-white transition-colors hover:bg-[#c0603c] [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0"
           >
             <Printer className="mr-1 h-3 w-3" />
             Export
@@ -198,7 +198,7 @@ export default function ExecutiveReport() {
               <div className="h-8 w-8 object-contain">
                 <LogoMark size={32} />
               </div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.32em', textTransform: 'uppercase', fontFamily: 'Chillax, sans-serif' }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255, 255, 255, 0.7)', letterSpacing: '0.32em', textTransform: 'uppercase', fontFamily: 'Geist, sans-serif' }}>
                 Community Health Media
               </span>
             </div>
@@ -207,7 +207,7 @@ export default function ExecutiveReport() {
                 <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.28em', textTransform: 'uppercase', color: 'rgba(255, 255, 255, 0.6)' }}>Campaign Performance Report</span>
               </div>
               <h1 className="mb-5 font-black leading-[1.05] text-white" style={{ fontSize: 'clamp(2.55rem, 5.5vw, 4.9rem)' }}>{campaign.name}</h1>
-              <div className="font-semibold text-[#e7764f]" style={{ fontSize: 'clamp(1.15rem, 2.3vw, 1.6rem)' }}>Prepared for {campaign.clientSponsor}</div>
+              <div className="font-semibold text-[#c54ebe]" style={{ fontSize: 'clamp(1.15rem, 2.3vw, 1.6rem)' }}>Prepared for {campaign.clientSponsor}</div>
             </div>
             <div className="flex items-end justify-between">
               <div className="text-sm leading-relaxed text-white/35">
@@ -225,25 +225,25 @@ export default function ExecutiveReport() {
         {/* ---- 2. Executive Summary ---- */}
         <Slide id="slide-exec-summary">
           <div className="flex flex-1" style={{ minHeight: 'inherit' }}>
-            <div className="flex flex-1 flex-col border-r border-[#f2f4f8] px-14 py-10">
-              <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">Executive Summary</div>
-              <h2 className="mb-2 text-5xl font-black leading-tight text-[#485165]">Content Campaign Executive Report</h2>
-              <p className="mb-6 text-2xl font-light italic text-[#79869a]">{campaign.programName}</p>
+            <div className="flex flex-1 flex-col border-r border-[#f6f6f6] px-14 py-10">
+              <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#007cff]">Executive Summary</div>
+              <h2 className="mb-2 text-5xl font-black leading-tight text-[#373737]">Content Campaign Executive Report</h2>
+              <p className="mb-6 text-2xl font-light italic text-[#5c5c5c]">{campaign.programName}</p>
               <div className="mb-3 mt-3 flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#79869a]">Overview</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[#5c5c5c]">Overview</h3>
               </div>
-              <p className="text-lg leading-relaxed text-[#485165]">{config.overviewText}</p>
+              <p className="text-lg leading-relaxed text-[#373737]">{config.overviewText}</p>
             </div>
             <DecoPanel className="w-72 flex-shrink-0" style={{ backgroundColor: 'rgb(72, 81, 101)' }}>
               <div className="flex h-full flex-col items-center justify-center gap-8 px-9 py-10">
                 <div className="text-center">
-                  <div className="text-6xl font-black leading-none text-[#3da4c0]">{views}</div>
+                  <div className="text-6xl font-black leading-none text-[#007cff]">{views}</div>
                   <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white">Total Views</div>
                   <div className="mt-1 text-sm text-white/35">Across all platforms</div>
                 </div>
                 <div className="h-px w-8 bg-white/15" />
                 <div className="text-center">
-                  <div className="text-6xl font-black leading-none text-[#ff9e40]">{impressions}</div>
+                  <div className="text-6xl font-black leading-none text-[#f99d9d]">{impressions}</div>
                   <div className="mt-3 text-sm font-semibold uppercase tracking-widest text-white">Total Impressions</div>
                   <div className="mt-1 text-sm text-white/35">Owned + paid-supported</div>
                 </div>
@@ -258,9 +258,9 @@ export default function ExecutiveReport() {
           <div className="flex flex-1 gap-12 px-14 py-8">
             <div className="flex-1">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#79869a]">Overview</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[#5c5c5c]">Overview</h3>
               </div>
-              <p className="text-lg leading-relaxed text-[#485165]">{config.productionOverview}</p>
+              <p className="text-lg leading-relaxed text-[#373737]">{config.productionOverview}</p>
             </div>
             <div className="w-72 flex-shrink-0 space-y-4">
               <DecoPanel className="h-28 flex-shrink-0 items-end rounded-xl p-5" style={{ backgroundColor: 'rgb(61, 164, 192)' }} markColor="#ffffff">
@@ -269,15 +269,15 @@ export default function ExecutiveReport() {
                   <div className="mt-0.5 text-base font-black text-white">Community Health Media</div>
                 </div>
               </DecoPanel>
-              <div className="rounded-xl border-l-4 border-[#3da4c0] bg-[#f2f4f8] p-6">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#3da4c0]">Long-Form</div>
-                <div className="text-4xl font-black text-[#485165]">{config.longFormEpisodes} Episode{episodeCount === 1 ? '' : 's'}</div>
-                <div className="mt-2 text-base text-[#79869a]">Expert conversation, professionally produced</div>
+              <div className="rounded-xl border-l-4 border-[#007cff] bg-[#f6f6f6] p-6">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#007cff]">Long-Form</div>
+                <div className="text-4xl font-black text-[#373737]">{config.longFormEpisodes} Episode{episodeCount === 1 ? '' : 's'}</div>
+                <div className="mt-2 text-base text-[#5c5c5c]">Expert conversation, professionally produced</div>
               </div>
-              <div className="rounded-xl border-l-4 border-[#e7764f] bg-[#f2f4f8] p-6">
-                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#e7764f]">Live Stream</div>
-                <div className="text-4xl font-black text-[#485165]">Live Event</div>
-                <div className="mt-2 text-base text-[#79869a]">Virtual scientific exchange</div>
+              <div className="rounded-xl border-l-4 border-[#c54ebe] bg-[#f6f6f6] p-6">
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-[#c54ebe]">Live Stream</div>
+                <div className="text-4xl font-black text-[#373737]">Live Event</div>
+                <div className="mt-2 text-base text-[#5c5c5c]">Virtual scientific exchange</div>
               </div>
             </div>
           </div>
@@ -289,17 +289,17 @@ export default function ExecutiveReport() {
           <div className="flex flex-1 gap-12 px-14 py-8">
             <div className="flex-1">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[#79869a]">Overview</h3>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-[#5c5c5c]">Overview</h3>
               </div>
-              <p className="mb-6 text-lg leading-relaxed text-[#485165]">{config.distributionOverview}</p>
-              <h3 className="mb-3 mt-5 text-sm font-bold uppercase tracking-widest text-[#79869a]">Short-Form Content Areas</h3>
+              <p className="mb-6 text-lg leading-relaxed text-[#373737]">{config.distributionOverview}</p>
+              <h3 className="mb-3 mt-5 text-sm font-bold uppercase tracking-widest text-[#5c5c5c]">Short-Form Content Areas</h3>
               {config.contentThemes.length === 0 ? (
-                <p className="text-lg italic text-[#79869a]">Click "Edit Deck" to add clinical content themes.</p>
+                <p className="text-lg italic text-[#5c5c5c]">Click "Edit Deck" to add clinical content themes.</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3">
                   {config.contentThemes.map((theme) => (
-                    <div key={theme} className="flex items-start gap-3 text-lg text-[#485165]">
-                      <div className="mt-2.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#e7764f]" />
+                    <div key={theme} className="flex items-start gap-3 text-lg text-[#373737]">
+                      <div className="mt-2.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#c54ebe]" />
                       {theme}
                     </div>
                   ))}
@@ -309,16 +309,16 @@ export default function ExecutiveReport() {
             <div className="w-60 flex-shrink-0">
               <DecoPanel className="mb-5 h-36 flex-shrink-0 items-end rounded-xl p-5" style={{ backgroundColor: 'rgb(72, 81, 101)' }}>
                 <div>
-                  <div className="text-[10px] font-black uppercase tracking-widest text-[#3da4c0]">Distribution</div>
+                  <div className="text-[10px] font-black uppercase tracking-widest text-[#007cff]">Distribution</div>
                   <div className="mt-0.5 text-base font-black text-white">Multi-Channel Strategy</div>
                 </div>
               </DecoPanel>
-              <div className="mb-3 text-sm font-bold uppercase tracking-widest text-[#79869a]">Platforms</div>
+              <div className="mb-3 text-sm font-bold uppercase tracking-widest text-[#5c5c5c]">Platforms</div>
               <div className="space-y-2">
                 {campaign.platforms.map((p) => (
-                  <div key={p} className="flex items-center gap-3 rounded-xl bg-[#f2f4f8] px-4 py-2.5">
-                    <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: PLATFORM_DOT_COLORS[p] ?? '#79869a' }} />
-                    <span className="text-lg font-medium capitalize text-[#485165]">{p}</span>
+                  <div key={p} className="flex items-center gap-3 rounded-xl bg-[#f6f6f6] px-4 py-2.5">
+                    <div className="h-2.5 w-2.5 flex-shrink-0 rounded-full" style={{ background: PLATFORM_DOT_COLORS[p] ?? '#5c5c5c' }} />
+                    <span className="text-lg font-medium capitalize text-[#373737]">{p}</span>
                   </div>
                 ))}
               </div>
@@ -389,9 +389,9 @@ export default function ExecutiveReport() {
         {/* ---- 7. Platform Breakdown ---- */}
         <Slide id="slide-platforms">
           <div className="flex h-full flex-col px-14 py-10">
-            <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">Enduring Content</div>
-            <h2 className="mb-2 text-5xl font-black text-[#485165]">Platform Breakdown</h2>
-            <p className="mb-7 text-base text-[#79869a]">
+            <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#007cff]">Enduring Content</div>
+            <h2 className="mb-2 text-5xl font-black text-[#373737]">Platform Breakdown</h2>
+            <p className="mb-7 text-base text-[#5c5c5c]">
               Aggregated performance by platform across the full distribution window, long-form and short-form assets combined.
             </p>
             <div className="grid grid-cols-4 gap-5">
@@ -400,7 +400,7 @@ export default function ExecutiveReport() {
               ))}
             </div>
             {platformBreakdown.some((p) => !p.hasData) && (
-              <div className="mt-6 flex-1 rounded-xl bg-[#f2f4f8] px-6 py-4 text-lg leading-relaxed text-[#79869a]">
+              <div className="mt-6 flex-1 rounded-xl bg-[#f6f6f6] px-6 py-4 text-lg leading-relaxed text-[#5c5c5c]">
                 Upload CSV exports for each platform to populate performance data.
               </div>
             )}
@@ -412,7 +412,7 @@ export default function ExecutiveReport() {
           <div className="flex flex-1" style={{ minHeight: 'inherit' }}>
             <DecoPanel className="w-64 flex-shrink-0" style={{ backgroundColor: 'rgb(72, 81, 101)' }}>
               <div className="flex h-full flex-col justify-center gap-4 px-8 py-10">
-                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-[#3da4c0]">Targeting</div>
+                <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.25em] text-[#007cff]">Targeting</div>
                 {TARGETING_CHIPS.map((chip) => (
                   <div key={chip} className="rounded-xl bg-white/10 px-5 py-4">
                     <div className="whitespace-pre-line text-base font-semibold leading-snug text-white">{chip}</div>
@@ -421,20 +421,20 @@ export default function ExecutiveReport() {
               </div>
             </DecoPanel>
             <div className="flex-1 px-14 py-10">
-              <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">Precision Targeting</div>
+              <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#007cff]">Precision Targeting</div>
               <div className="mb-6 flex items-center justify-between">
-                <h2 className="text-5xl font-black text-[#485165]">Targeting Overview</h2>
+                <h2 className="text-5xl font-black text-[#373737]">Targeting Overview</h2>
               </div>
-              <p className="mb-6 text-lg leading-relaxed text-[#485165]">{config.targetingNarrative}</p>
+              <p className="mb-6 text-lg leading-relaxed text-[#373737]">{config.targetingNarrative}</p>
               <div className="mt-5 grid grid-cols-2 gap-3">
                 {TARGETING_BULLETS.map((b) => (
-                  <div key={b} className="flex items-start gap-3 text-base text-[#79869a]">
-                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#3da4c0]" />
+                  <div key={b} className="flex items-start gap-3 text-base text-[#5c5c5c]">
+                    <div className="mt-1.5 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#007cff]" />
                     {b}
                   </div>
                 ))}
               </div>
-              <div className="mt-6 border-t border-[#f2f4f8] pt-4 text-sm italic leading-relaxed text-[#79869a]/50">
+              <div className="mt-6 border-t border-[#f6f6f6] pt-4 text-sm italic leading-relaxed text-[#5c5c5c]/50">
                 * Targeting capabilities vary by platform and are subject to platform-specific policies. Community Health Media applies best-available targeting methods.
               </div>
             </div>
@@ -444,15 +444,15 @@ export default function ExecutiveReport() {
         {/* ---- 9. Key Takeaways & Recommendations ---- */}
         <Slide id="slide-learnings">
           <div className="px-14 py-10">
-            <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#3da4c0]">What We Learned</div>
-            <h2 className="mb-7 text-5xl font-black text-[#485165]">Key Takeaways &amp; Recommendations</h2>
+            <div className="mb-2 text-sm font-bold uppercase tracking-[0.28em] text-[#007cff]">What We Learned</div>
+            <h2 className="mb-7 text-5xl font-black text-[#373737]">Key Takeaways &amp; Recommendations</h2>
             <div className="grid grid-cols-2 gap-x-14 gap-y-7">
               {config.keyLearnings.map((learning, i) => (
                 <div key={learning.title} className="flex gap-4">
-                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#3da4c0] text-sm font-black text-white">{i + 1}</div>
+                  <div className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#007cff] text-sm font-black text-white">{i + 1}</div>
                   <div className="flex-1">
-                    <div className="mb-1 text-lg font-bold text-[#485165]">{learning.title}</div>
-                    <div className="text-lg leading-relaxed text-[#79869a]">{learning.body}</div>
+                    <div className="mb-1 text-lg font-bold text-[#373737]">{learning.title}</div>
+                    <div className="text-lg leading-relaxed text-[#5c5c5c]">{learning.body}</div>
                   </div>
                 </div>
               ))}
@@ -469,7 +469,7 @@ export default function ExecutiveReport() {
           </div>
           <div className="pointer-events-none absolute bottom-6 right-10 select-none" style={{ opacity: 0.06, width: 180, height: 180 }}>
             <div className="h-full w-full" style={{ transform: 'rotate(-10deg)' }}>
-              <FluidMark color="#e7764f" />
+              <FluidMark color="#c54ebe" />
             </div>
           </div>
           <div className="relative z-10 flex max-w-2xl flex-1 flex-col justify-center px-16 py-14">
@@ -501,7 +501,7 @@ export default function ExecutiveReport() {
           </div>
           <div className="pointer-events-none absolute bottom-10 right-16 select-none" style={{ opacity: 0.06, width: 200, height: 200 }}>
             <div className="h-full w-full" style={{ transform: 'rotate(12deg)' }}>
-              <FluidMark color="#e7764f" />
+              <FluidMark color="#c54ebe" />
             </div>
           </div>
           <div className="relative z-10 text-center">

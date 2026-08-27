@@ -135,21 +135,21 @@ export default function OperationalEmailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-xl">
-        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-gray-200 bg-white px-6 py-4">
+      <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-card bg-card shadow-card-hover">
+        <div className="sticky top-0 z-10 flex items-start justify-between border-b border-border bg-card px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <Mail className="h-5 w-5 text-gray-600" aria-hidden />
+            <h2 className="text-lg font-semibold text-foreground flex items-center gap-2">
+              <Mail className="h-5 w-5 text-muted-foreground" aria-hidden />
               Email registrants
             </h2>
-            <p className="mt-1 text-sm text-gray-600">
-              Freeform notice for <strong className="font-medium text-gray-800">{programTitle}</strong>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Freeform notice for <strong className="font-medium text-foreground">{programTitle}</strong>
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            className="shrink-0 rounded-[6px] p-1 text-muted-foreground hover:bg-muted hover:text-muted-foreground"
             aria-label="Close"
           >
             <X className="h-5 w-5" />
@@ -158,68 +158,68 @@ export default function OperationalEmailModal({
 
         <div className="space-y-5 px-6 py-5">
           <label className="block text-sm">
-            <span className="font-medium text-gray-700">From</span>
+            <span className="font-medium text-muted-foreground">From</span>
             <input
               readOnly
               value="Community Health Media <info@communityhealth.media>"
-              className="mt-1 w-full rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600"
+              className="mt-1 w-full rounded-[6px] border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
             />
           </label>
 
           <div>
             <div className="flex flex-wrap items-center gap-2 mb-2">
-              <span className="text-sm font-medium text-gray-700">To</span>
+              <span className="text-sm font-medium text-muted-foreground">To</span>
               <button
                 type="button"
                 onClick={() => selectByStatus()}
-                className="rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 All registrants
               </button>
               <button
                 type="button"
                 onClick={() => selectByStatus('PENDING')}
-                className="rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 Pending
               </button>
               <button
                 type="button"
                 onClick={() => selectByStatus('APPROVED')}
-                className="rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 Approved
               </button>
               <button
                 type="button"
                 onClick={() => setSelected(new Set())}
-                className="rounded-md border border-gray-200 px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-[6px] border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted"
               >
                 Clear
               </button>
-              <span className="ml-auto text-xs text-gray-500">{toList.length} selected (max 50)</span>
+              <span className="ml-auto text-xs text-muted-foreground">{toList.length} selected (max 50)</span>
             </div>
-            <div className="max-h-40 overflow-y-auto rounded-lg border border-gray-200 divide-y divide-gray-100">
+            <div className="max-h-40 overflow-y-auto rounded-[6px] border border-border divide-y divide-gray-100">
               {uniqueRecipients.length === 0 ? (
-                <p className="px-3 py-4 text-sm text-gray-500">No registrations on this program yet.</p>
+                <p className="px-3 py-4 text-sm text-muted-foreground">No registrations on this program yet.</p>
               ) : (
                 uniqueRecipients.map((r) => (
                   <label
                     key={r.email}
-                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-gray-50 cursor-pointer"
+                    className="flex items-center gap-3 px-3 py-2 text-sm hover:bg-muted cursor-pointer"
                   >
                     <input
                       type="checkbox"
-                      className="h-4 w-4 rounded border-gray-300"
+                      className="h-4 w-4 rounded border-border"
                       checked={selected.has(r.email)}
                       onChange={() => toggle(r.email)}
                     />
                     <span className="min-w-0 flex-1">
-                      <span className="font-medium text-gray-900">{r.name || r.email}</span>
-                      <span className="block text-xs text-gray-500 truncate">{r.email}</span>
+                      <span className="font-medium text-foreground">{r.name || r.email}</span>
+                      <span className="block text-xs text-muted-foreground truncate">{r.email}</span>
                     </span>
                     {r.status ? (
-                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-gray-500">
+                      <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground">
                         {r.status}
                       </span>
                     ) : null}
@@ -228,16 +228,16 @@ export default function OperationalEmailModal({
               )}
             </div>
             <label className="mt-3 block text-sm">
-              <span className="font-medium text-gray-700">Additional emails (optional)</span>
+              <span className="font-medium text-muted-foreground">Additional emails (optional)</span>
               <textarea
                 value={extraEmails}
                 onChange={(e) => setExtraEmails(e.target.value)}
                 rows={2}
                 placeholder="Paste emails separated by commas or newlines"
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+                className="mt-1 w-full rounded-[6px] border border-border px-3 py-2 text-sm"
               />
               {invalidExtras.length > 0 ? (
-                <span className="mt-1 block text-xs text-red-600">
+                <span className="mt-1 block text-xs text-destructive">
                   Invalid: {invalidExtras.join(', ')}
                 </span>
               ) : null}
@@ -245,36 +245,36 @@ export default function OperationalEmailModal({
           </div>
 
           <label className="block text-sm">
-            <span className="font-medium text-gray-700">Subject</span>
+            <span className="font-medium text-muted-foreground">Subject</span>
             <input
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               maxLength={200}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className="mt-1 w-full rounded-[6px] border border-border px-3 py-2 text-sm"
               placeholder="Session update"
             />
           </label>
 
           <label className="block text-sm">
-            <span className="font-medium text-gray-700">Body</span>
+            <span className="font-medium text-muted-foreground">Body</span>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={8}
               maxLength={10_000}
-              className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm font-mono"
+              className="mt-1 w-full rounded-[6px] border border-border px-3 py-2 text-sm font-mono"
               placeholder="Write your message (plain text)…"
             />
           </label>
 
           {sendMut.isError ? (
-            <p className="text-sm text-red-600">
+            <p className="text-sm text-destructive">
               {getApiErrorMessage(sendMut.error, 'Failed to send email.')}
             </p>
           ) : null}
 
           {result ? (
-            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+            <div className="rounded-[6px] border border-success/25 bg-success/10 px-4 py-3 text-sm text-green-900">
               Sent {result.sent} email{result.sent === 1 ? '' : 's'}
               {result.failed.length > 0
                 ? `; ${result.failed.length} failed (${result.failed.map((f) => f.email).join(', ')})`
@@ -286,11 +286,11 @@ export default function OperationalEmailModal({
           ) : null}
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-gray-200 bg-white px-6 py-4">
+        <div className="sticky bottom-0 flex justify-end gap-2 border-t border-border bg-card px-6 py-4">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-800 hover:bg-gray-50"
+            className="rounded-[6px] border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-muted"
           >
             {result ? 'Close' : 'Cancel'}
           </button>
@@ -299,7 +299,7 @@ export default function OperationalEmailModal({
               type="button"
               disabled={!canSend}
               onClick={() => sendMut.mutate()}
-              className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-40"
             >
               {sendMut.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" aria-hidden />

@@ -13,9 +13,9 @@ import type { RxTrendPoint } from '../lib/intel';
 
 // Chart strokes are literal brand hexes (SVG attributes can't resolve the
 // hsl(var(--x)) tokens): teal = primary-500, orange = accent-500.
-const TEAL = '#3da4c0';
-const ORANGE = '#e7764f';
-const MUTED = '#79869a';
+const TEAL = '#007cff';
+const ORANGE = '#c54ebe';
+const MUTED = '#5c5c5c';
 
 function TrendTooltip({
   active,

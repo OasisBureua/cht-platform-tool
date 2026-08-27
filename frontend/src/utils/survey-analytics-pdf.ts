@@ -79,6 +79,7 @@ function buildAnalyticsPrintHtml(title: string, analyticsHtml: string, styles: s
     }
 
     [data-testid="survey-analytics-view"] section,
+    [data-testid="survey-analytics-view"] .rounded-card,
     [data-testid="survey-analytics-view"] .rounded-2xl {
       break-inside: avoid;
       page-break-inside: avoid;

@@ -2,22 +2,22 @@ import type { CSSProperties, ReactNode } from 'react';
 import { LogoMark } from './components/Logo';
 import type { GlossaryEntry, KpiTile } from './lib/types';
 
-// SANS = the platform's shared display font (Chillax). SERIF = the report's editorial
+// SANS = the platform's shared display font (Geist). SERIF = the report's editorial
 // Georgia stack (matches the platform's `font-report` token). These are the intrinsic
 // document fonts of the Analytics "white paper" and must not change with the theme.
-export const SANS = 'Chillax, system-ui, sans-serif';
+export const SANS = 'Geist, system-ui, sans-serif';
 export const SERIF = 'Georgia, "Times New Roman", serif';
 
 export const INK = {
-  slate: '#485165',
-  muted: '#79869a',
+  slate: '#373737',
+  muted: '#5c5c5c',
   faint: '#c8cdd6',
   fainter: '#d4d8e0',
   teal: '#3dc4c0',
   rule: '#e2e8f0',
   rowAlt: '#f8f9fc',
   rowBorder: '#e8eaef',
-  orange: '#e7764f',
+  orange: '#c54ebe',
   orangeDark: '#c0603c',
   orangeBorder: '#f0c4a0',
   orangeBg: '#fff8f3',
@@ -203,7 +203,7 @@ export function KpiTable({ tiles, withNotes, footnote }: { tiles: KpiTile[]; wit
 }
 
 const CHIP_COLORS: Record<string, string> = {
-  All: '#79869a',
+  All: '#5c5c5c',
   Meta: '#1877f2',
   LinkedIn: '#0077b5',
   YouTube: '#ff0000',
@@ -219,7 +219,7 @@ export function PlatformChip({ platform }: { platform: string }) {
         fontSize: 9,
         fontWeight: 700,
         padding: '2px 7px',
-        background: CHIP_COLORS[platform] ?? '#79869a',
+        background: CHIP_COLORS[platform] ?? '#5c5c5c',
         color: '#ffffff',
         borderRadius: 2,
         display: 'inline-block',

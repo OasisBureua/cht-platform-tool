@@ -30,7 +30,7 @@ const headerOutlineBtn =
   'inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-muted disabled:pointer-events-none disabled:opacity-50';
 
 const newReportBtn =
-  'inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm transition-colors hover:bg-primary-hover';
+  'inline-flex h-8 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-primary bg-primary px-4 text-sm font-medium text-primary-foreground shadow-card transition-colors hover:bg-primary-hover';
 
 const solidReportBtn =
   'inline-flex h-8 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-primary bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary-hover';
@@ -42,7 +42,7 @@ const chevronBtn =
   'inline-flex h-8 w-8 items-center justify-center rounded-lg border border-primary bg-primary text-primary-foreground transition-colors hover:bg-primary-hover';
 
 const textInput =
-  'flex h-8 w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1 text-sm text-foreground shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+  'flex h-8 w-full rounded-lg border border-border bg-background pl-9 pr-3 py-1 text-sm text-foreground shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
 
 const selectInput =
   'h-8 rounded-lg border border-border bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary';
@@ -272,7 +272,7 @@ function CampaignCard({
   }
 
   return (
-    <div className="group rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-sm">
+    <div className="group rounded-xl border border-border bg-card transition-all hover:border-primary/50 hover:shadow-card">
       <div className="flex items-start gap-4 px-5 pb-4 pt-5">
         <div
           className={cn('w-1 flex-shrink-0 self-stretch rounded-full', isAnalytics ? 'bg-primary' : 'bg-foreground/60')}

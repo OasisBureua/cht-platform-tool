@@ -99,7 +99,7 @@ export default function CompleteProfile() {
   if (isLoading || !userId) {
     return (
       <div className="min-h-[calc(100vh-64px)] flex items-center justify-center">
-        <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-gray-300 border-t-gray-900" />
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-border border-t-gray-900" />
       </div>
     );
   }
@@ -107,21 +107,21 @@ export default function CompleteProfile() {
   const professionSelectOptions = professionOptionsForSelect(persistedSpecialtyHint, profession);
 
   return (
-    <div className="bg-white min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
-      <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 md:p-8">
-        <h1 className="text-xl font-semibold text-gray-900">Complete your profile</h1>
-        <p className="mt-1 text-sm text-gray-600">
+    <div className="bg-card min-h-[calc(100vh-64px)] flex items-center justify-center px-4 sm:px-6 py-8 sm:py-12 md:py-16">
+      <div className="w-full max-w-md rounded-card border border-border bg-card p-6 md:p-8">
+        <h1 className="text-xl font-semibold text-foreground">Complete your profile</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
           Add your <strong>profession</strong> and <strong>NPI</strong> (when required for your profession) so you can
           receive payments. You already have app access; without this on file, <strong>earnings and payouts may be held</strong>.
         </p>
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           {error && (
-            <div className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+            <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
           )}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Profession</label>
+            <label className="block text-sm font-semibold text-foreground mb-1">Profession</label>
             <select
               value={profession}
               onChange={(e) => {
@@ -130,7 +130,7 @@ export default function CompleteProfile() {
                 if (!professionRequiresNpi(v)) setNpiNumber('');
               }}
               required
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
             >
               {professionSelectOptions.map((opt) => (
                 <option key={opt.value || 'empty'} value={opt.value}>
@@ -141,7 +141,7 @@ export default function CompleteProfile() {
           </div>
 
           {profession && !professionRequiresNpi(profession) ? (
-            <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" role="note">
+            <div className="rounded-[6px] border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900" role="note">
               <strong>Note:</strong> NPI number is not required for your role. Honorarium programs and payment eligibility
               are designed for licensed healthcare professionals. You can still access all educational content and register
               for events.
@@ -150,7 +150,7 @@ export default function CompleteProfile() {
 
           {profession && professionRequiresNpi(profession) ? (
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">NPI number</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">NPI number</label>
               <input
                 type="text"
                 value={npiNumber}
@@ -158,45 +158,45 @@ export default function CompleteProfile() {
                 placeholder="10-digit National Provider Identifier"
                 required
                 maxLength={10}
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
           ) : null}
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              Institution <span className="font-normal text-gray-500">(optional)</span>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              Institution <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
               type="text"
               value={institution}
               onChange={(e) => setInstitution(e.target.value)}
               placeholder="Hospital, clinic, or practice name"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">
-              City <span className="font-normal text-gray-500">(optional)</span>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              City <span className="font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
               type="text"
               value={city}
               onChange={(e) => setCity(e.target.value)}
               placeholder="New York"
-              className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+              className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">State</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">State</label>
               <select
                 value={state}
                 onChange={(e) => setState(e.target.value)}
                 required
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
               >
                 {US_STATE_SELECT_OPTIONS.map((opt) => (
                   <option key={opt.value || 'empty'} value={opt.value}>
@@ -206,7 +206,7 @@ export default function CompleteProfile() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">ZIP code</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">ZIP code</label>
               <input
                 type="text"
                 value={zipCode}
@@ -215,7 +215,7 @@ export default function CompleteProfile() {
                 required
                 maxLength={5}
                 inputMode="numeric"
-                className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-200"
+                className="w-full rounded-card border border-border bg-card px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-gray-200"
               />
             </div>
           </div>
@@ -223,7 +223,7 @@ export default function CompleteProfile() {
           <button
             type="submit"
             disabled={saving}
-            className="w-full rounded-full bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
+            className="w-full rounded-[6px] bg-brand-600 px-7 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-70"
           >
             {saving ? 'Saving...' : 'Continue to platform'}
           </button>

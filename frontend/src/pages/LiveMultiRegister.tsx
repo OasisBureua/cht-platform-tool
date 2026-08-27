@@ -310,8 +310,8 @@ export default function LiveMultiRegister() {
   if (!user?.userId) {
     const returnLocation = { pathname: location.pathname, search: location.search };
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
-        <p className="text-gray-700">Sign in to register for live webinars.</p>
+      <div className="rounded-card border border-border bg-muted p-8 text-center">
+        <p className="text-muted-foreground">Sign in to register for live webinars.</p>
         <div className="mt-4 flex flex-wrap justify-center gap-3">
           <Link
             to="/login"
@@ -343,21 +343,21 @@ export default function LiveMultiRegister() {
       {phase === 'select' ? (
         <Link
           to="/app/live"
-          className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
           Back to LIVE
         </Link>
       ) : phase !== 'result' ? (
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-muted-foreground">
           Complete each step in order. After you click <strong>Continue</strong> on an intake form, you cannot go back
           to change that session&apos;s answers.
         </p>
       ) : null}
 
       <header className="space-y-2">
-        <h1 className="text-2xl font-bold text-gray-900">Register for multiple webinars</h1>
-        <p className="text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-foreground">Register for multiple webinars</h1>
+        <p className="text-sm text-muted-foreground">
           {phase === 'select'
             ? 'Select upcoming sessions, then complete each session’s intake form when prompted before submitting your registration requests.'
             : phase === 'intake'
@@ -379,7 +379,7 @@ export default function LiveMultiRegister() {
                   ? 'bg-brand-600 text-white'
                   : i < activeStepIndex
                     ? 'bg-green-100 text-green-900'
-                    : 'bg-gray-100 text-gray-600',
+                    : 'bg-muted text-muted-foreground',
               ].join(' ')}
             >
               {i + 1}. {label}
@@ -389,10 +389,10 @@ export default function LiveMultiRegister() {
       ) : null}
 
       {phase === 'result' && result ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Registration summary</h2>
+        <div className="rounded-card border border-border bg-card p-6 space-y-4">
+          <h2 className="font-semibold text-foreground">Registration summary</h2>
           {result.submitted.length > 0 ? (
-            <div className="rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-950">
+            <div className="rounded-card bg-success/10 border border-success/25 px-4 py-3 text-sm text-green-950">
               <p className="font-semibold flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4" />
                 {result.submitted.length} request{result.submitted.length === 1 ? '' : 's'} submitted
@@ -411,7 +411,7 @@ export default function LiveMultiRegister() {
             </div>
           ) : null}
           {result.skipped.length > 0 ? (
-            <div className="rounded-xl bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-950">
+            <div className="rounded-card bg-warning/10 border border-warning/25 px-4 py-3 text-sm text-amber-950">
               <p className="font-semibold">Skipped</p>
               <ul className="mt-2 list-disc pl-5 space-y-1">
                 {result.skipped.map((r) => (
@@ -423,7 +423,7 @@ export default function LiveMultiRegister() {
             </div>
           ) : null}
           {result.failed.length > 0 ? (
-            <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-950">
+            <div className="rounded-card bg-destructive/10 border border-destructive/25 px-4 py-3 text-sm text-red-950">
               <p className="font-semibold flex items-center gap-2">
                 <AlertCircle className="h-4 w-4" />
                 Could not submit
@@ -448,13 +448,13 @@ export default function LiveMultiRegister() {
                 setMaxIntakeIndexCompleted(-1);
                 clearMultiRegisterState();
               }}
-              className="rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
+              className="rounded-card bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Register for more
             </button>
             <Link
               to="/app/live"
-              className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-800 hover:bg-gray-50"
+              className="rounded-card border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
             >
               Back to LIVE
             </Link>
@@ -465,9 +465,9 @@ export default function LiveMultiRegister() {
       {phase === 'select' ? (
         <>
           {upcoming.length === 0 ? (
-            <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
-              <p className="font-medium text-gray-900">No sessions available</p>
-              <p className="mt-1 text-sm text-gray-600">
+            <div className="rounded-card border border-border bg-muted p-8 text-center">
+              <p className="font-medium text-foreground">No sessions available</p>
+              <p className="mt-1 text-sm text-muted-foreground">
                 You may already be registered or pending for all upcoming webinars.
               </p>
               <Link
@@ -480,7 +480,7 @@ export default function LiveMultiRegister() {
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted-foreground">
                   {selected.size} of {upcoming.length} selected
                 </p>
                 <div className="flex gap-2">
@@ -496,37 +496,37 @@ export default function LiveMultiRegister() {
                     type="button"
                     onClick={clearAll}
                     disabled={selected.size === 0}
-                    className="text-sm font-medium text-gray-600 hover:underline disabled:opacity-40"
+                    className="text-sm font-medium text-muted-foreground hover:underline disabled:opacity-40"
                   >
                     Clear
                   </button>
                 </div>
               </div>
 
-              <ul className="divide-y divide-gray-100 overflow-hidden rounded-2xl border border-gray-200 bg-white">
+              <ul className="divide-y divide-gray-100 overflow-hidden rounded-card border border-border bg-card">
                 {upcoming.map((w) => (
                   <li key={w.id}>
-                    <label className="flex cursor-pointer items-start gap-3 px-4 py-4 hover:bg-gray-50">
+                    <label className="flex cursor-pointer items-start gap-3 px-4 py-4 hover:bg-muted">
                       <input
                         type="checkbox"
                         checked={selected.has(w.id)}
                         onChange={() => toggle(w.id)}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-brand-600 focus:ring-brand-500"
+                        className="mt-1 h-4 w-4 rounded border-border text-brand-600 focus:ring-brand-500"
                       />
                       <span className="min-w-0 flex-1">
-                        <span className="block font-medium text-gray-900">{w.title}</span>
+                        <span className="block font-medium text-foreground">{w.title}</span>
                         {w.startTime ? (
-                          <span className="mt-0.5 block text-sm text-gray-600">
+                          <span className="mt-0.5 block text-sm text-muted-foreground">
                             {format(new Date(w.startTime), 'EEE, MMM d, yyyy · h:mm a')}
                           </span>
                         ) : null}
                         {hasIntakeForm(w) ? (
-                          <span className="mt-1 inline-block text-xs font-medium text-amber-800">
+                          <span className="mt-1 inline-block text-xs font-medium text-warning">
                             Intake form required before submit
                           </span>
                         ) : null}
                         {w.registrationRequiresApproval ? (
-                          <span className="mt-1 ml-2 inline-block text-xs font-medium text-amber-800">
+                          <span className="mt-1 ml-2 inline-block text-xs font-medium text-warning">
                             Requires admin approval
                           </span>
                         ) : null}
@@ -538,7 +538,7 @@ export default function LiveMultiRegister() {
 
               {selectionOverlapMessage ? (
                 <div
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                  className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                   role="alert"
                 >
                   {selectionOverlapMessage}
@@ -549,7 +549,7 @@ export default function LiveMultiRegister() {
                 type="button"
                 disabled={selected.size === 0 || !!selectionOverlapMessage}
                 onClick={continueFromSelect}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-card bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
               >
                 Continue
               </button>
@@ -559,32 +559,32 @@ export default function LiveMultiRegister() {
       ) : null}
 
       {phase === 'intake' && currentIntakeProgram ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
+        <div className="rounded-card border border-border bg-card p-6 space-y-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Intake {intakeIndex + 1} of {intakePrograms.length}
             </p>
-            <h2 className="mt-1 text-lg font-semibold text-gray-900">{currentIntakeProgram.title}</h2>
+            <h2 className="mt-1 text-lg font-semibold text-foreground">{currentIntakeProgram.title}</h2>
             {currentIntakeProgram.startTime ? (
-              <p className="mt-1 text-sm text-gray-600">
+              <p className="mt-1 text-sm text-muted-foreground">
                 {format(new Date(currentIntakeProgram.startTime), 'EEE, MMM d, yyyy · h:mm a')}
               </p>
             ) : null}
           </div>
 
-          <p className="text-sm text-gray-700">
+          <p className="text-sm text-muted-foreground">
             Complete the intake form below for this session. Submit the form, then click{' '}
             <strong>Continue</strong> to move on: you won&apos;t be able to return to this step afterward.
           </p>
 
           {currentIntakeSubmissionId ? (
-            <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+            <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
               Intake submission recorded for this session. Click <strong>Continue</strong> to proceed to the next step.
             </p>
           ) : null}
 
           {intakeIndex <= maxIntakeIndexCompleted ? (
-            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-900 bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
               You already continued past this intake step. Answers are locked. Complete the remaining steps below.
             </p>
           ) : currentIntakeProgram.intakeSurveyId ? (
@@ -623,11 +623,11 @@ export default function LiveMultiRegister() {
                 }}
               />
               {intakeSubmitError ? (
-                <p className="text-sm text-red-700">{intakeSubmitError}</p>
+                <p className="text-sm text-destructive">{intakeSubmitError}</p>
               ) : null}
             </div>
           ) : (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-muted-foreground">
               No native intake survey is configured for this session yet.
             </p>
           )}
@@ -636,7 +636,7 @@ export default function LiveMultiRegister() {
             type="button"
             onClick={continueFromIntake}
             disabled={intakeSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-card bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {intakeSubmitting ? (
               <>
@@ -651,16 +651,16 @@ export default function LiveMultiRegister() {
       ) : null}
 
       {phase === 'review' ? (
-        <div className="rounded-2xl border border-gray-200 bg-white p-6 space-y-4">
-          <h2 className="font-semibold text-gray-900">Review & submit</h2>
-          <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+        <div className="rounded-card border border-border bg-card p-6 space-y-4">
+          <h2 className="font-semibold text-foreground">Review & submit</h2>
+          <ul className="divide-y divide-gray-100 rounded-card border border-border">
             {selectedWebinars.map((w) => {
               const intakeDone = !hasIntakeForm(w) || !!intakeByProgramId[w.id]?.trim();
               return (
                 <li key={w.id} className="px-4 py-3 text-sm">
-                  <p className="font-medium text-gray-900">{w.title}</p>
+                  <p className="font-medium text-foreground">{w.title}</p>
                   {w.startTime ? (
-                    <p className="text-gray-600">
+                    <p className="text-muted-foreground">
                       {format(new Date(w.startTime), 'EEE, MMM d, yyyy · h:mm a')}
                     </p>
                   ) : null}
@@ -668,7 +668,7 @@ export default function LiveMultiRegister() {
                     <p
                       className={[
                         'mt-1 text-xs font-medium',
-                        intakeDone ? 'text-green-800' : 'text-amber-800',
+                        intakeDone ? 'text-success' : 'text-warning',
                       ].join(' ')}
                     >
                       {intakeDone ? 'Intake completed' : 'Intake not completed: you can still submit'}
@@ -680,7 +680,7 @@ export default function LiveMultiRegister() {
           </ul>
 
           {intakePrograms.some((w) => !intakeByProgramId[w.id]?.trim()) ? (
-            <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+            <p className="text-xs text-amber-900 bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
               Some sessions are missing intake submissions. You can submit anyway, but complete intake when possible
               so your answers stay on file.
             </p>
@@ -688,7 +688,7 @@ export default function LiveMultiRegister() {
 
           {selectionOverlapMessage ? (
             <div
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
               role="alert"
             >
               {selectionOverlapMessage}
@@ -697,7 +697,7 @@ export default function LiveMultiRegister() {
 
           {submitMut.isError ? (
             <div
-              className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+              className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
               role="alert"
             >
               {getApiErrorMessage(submitMut.error)}
@@ -712,7 +712,7 @@ export default function LiveMultiRegister() {
               !!selectionOverlapMessage
             }
             onClick={() => submitMut.mutate()}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-card bg-brand-600 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
           >
             {submitMut.isPending ? (
               <>

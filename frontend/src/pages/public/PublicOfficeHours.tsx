@@ -34,32 +34,32 @@ export default function PublicOfficeHours() {
   }, [sessions]);
 
   return (
-    <div className="bg-white min-h-screen">
+    <div className="bg-card min-h-screen">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 py-8 sm:py-10 md:py-14 space-y-8">
         <header className="space-y-1">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-gray-900">CHM Office Hours</h1>
-          <p className="text-sm text-gray-600 max-w-2xl md:text-base">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-foreground">CHM Office Hours</h1>
+          <p className="text-sm text-muted-foreground max-w-2xl md:text-base">
             Live sessions: click any session to register and join.
           </p>
         </header>
 
         {isLoading ? (
           <div className="flex justify-center py-20">
-            <Loader2 className="h-10 w-10 animate-spin text-gray-400" />
+            <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
           </div>
         ) : sessions.length === 0 ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-center">
-            <p className="text-lg font-semibold text-gray-900">No CHM Office Hours scheduled</p>
-            <p className="mt-1 text-base text-gray-600">Check back soon for upcoming sessions.</p>
+          <div className="rounded-card border border-border bg-card p-12 text-center">
+            <p className="text-lg font-semibold text-foreground">No CHM Office Hours scheduled</p>
+            <p className="mt-1 text-base text-muted-foreground">Check back soon for upcoming sessions.</p>
           </div>
         ) : (
           <div className="space-y-8">
             {upcoming.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Upcoming · {upcoming.length}
                 </h2>
-                <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden">
+                <div className="bg-card rounded-card border border-border divide-y divide-gray-100 overflow-hidden">
                   {upcoming.map((w) => (
                     <SessionRow key={w.id} session={w} />
                   ))}
@@ -69,10 +69,10 @@ export default function PublicOfficeHours() {
 
             {past.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
+                <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
                   Past · {past.length}
                 </h2>
-                <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100 overflow-hidden opacity-70">
+                <div className="bg-card rounded-card border border-border divide-y divide-gray-100 overflow-hidden opacity-70">
                   {past.map((w) => (
                     <SessionRow key={w.id} session={w} expired />
                   ))}
@@ -92,42 +92,42 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
   return (
     <Link
       to={`/chm-office-hours/${w.id}`}
-      className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors group"
+      className="flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors group"
     >
       <div className="shrink-0 w-12 text-center">
         {date ? (
           <>
-            <p className="text-xs font-semibold text-gray-500 uppercase">{format(date, 'MMM')}</p>
-            <p className="text-2xl font-bold text-gray-900 leading-none">{format(date, 'd')}</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase">{format(date, 'MMM')}</p>
+            <p className="text-2xl font-bold text-foreground leading-none">{format(date, 'd')}</p>
           </>
         ) : (
-          <p className="text-xs text-gray-400">TBD</p>
+          <p className="text-xs text-muted-foreground">TBD</p>
         )}
       </div>
 
-      <div className="w-px h-10 bg-gray-200 shrink-0" />
+      <div className="w-px h-10 bg-muted shrink-0" />
 
       <div className="flex-1 min-w-0 space-y-1">
         <div className="flex items-center gap-2 flex-wrap">
-          <p className={['font-semibold truncate', expired ? 'text-gray-500' : 'text-gray-900'].join(' ')}>
+          <p className={['font-semibold truncate', expired ? 'text-muted-foreground' : 'text-foreground'].join(' ')}>
             {w.title}
           </p>
           {w.hostDisplayName ? (
-            <span className="text-xs font-medium text-gray-600 shrink-0">· Get time with {w.hostDisplayName}</span>
+            <span className="text-xs font-medium text-muted-foreground shrink-0">· Get time with {w.hostDisplayName}</span>
           ) : null}
           {expired && (
-            <span className="shrink-0 rounded-full border border-gray-300 bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+            <span className="shrink-0 rounded-[6px] border border-border bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
               Ended
             </span>
           )}
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 tabular-nums">
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground tabular-nums">
           {date && (
             <span className="inline-flex items-center gap-1">
               <Calendar className="h-3 w-3" />
               {format(date, 'EEE, MMM d, yyyy')}
               {!expired && (
-                <span className="text-gray-400">· {formatDistanceToNow(date, { addSuffix: true })}</span>
+                <span className="text-muted-foreground">· {formatDistanceToNow(date, { addSuffix: true })}</span>
               )}
             </span>
           )}
@@ -140,11 +140,11 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
           {w.duration && <span>{formatDuration(w.duration)}</span>}
         </div>
         {w.description && (
-          <p className="text-xs text-gray-500 line-clamp-1">{w.description}</p>
+          <p className="text-xs text-muted-foreground line-clamp-1">{w.description}</p>
         )}
       </div>
 
-      <ChevronRight className="h-4 w-4 text-gray-400 shrink-0 group-hover:text-gray-600 transition-colors" />
+      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-muted-foreground transition-colors" />
     </Link>
   );
 }

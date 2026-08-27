@@ -208,11 +208,11 @@ export default function ProgramRegisterWizard() {
 
   if (isError || !program) {
     return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-10 text-center">
-        <p className="font-semibold text-gray-900">Session not found</p>
+      <div className="rounded-card border border-border bg-muted p-10 text-center">
+        <p className="font-semibold text-foreground">Session not found</p>
         <Link
           to="/app/live"
-          className="mt-4 inline-block text-sm font-semibold text-gray-900 underline"
+          className="mt-4 inline-block text-sm font-semibold text-foreground underline"
         >
           Back to sessions
         </Link>
@@ -286,13 +286,13 @@ export default function ProgramRegisterWizard() {
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
       <Link
         to={backHref}
-        className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+        className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
         Back to session
       </Link>
 
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-card border border-border bg-card shadow-card overflow-hidden">
         {sessionCoverUrl ? (
           <div className="border-b border-gray-100 bg-gray-50">
             <img
@@ -303,18 +303,18 @@ export default function ProgramRegisterWizard() {
           </div>
         ) : null}
         <div className="p-6 md:p-8 space-y-6">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             {program.zoomSessionType === 'MEETING'
               ? 'Office hours'
               : 'Live webinar'}{' '}
             registration
           </p>
-          <h1 className="text-2xl font-semibold text-gray-900">
+          <h1 className="text-2xl font-semibold text-foreground">
             {program.title}
           </h1>
 
           {registrationClosed ? (
-            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-800 space-y-2">
+            <div className="rounded-card border border-border bg-muted p-4 text-sm text-foreground space-y-2">
               <p className="font-semibold">Registration closed</p>
               <p>
                 This session has already started. New registrations are no longer accepted.
@@ -322,7 +322,7 @@ export default function ProgramRegisterWizard() {
               </p>
               <Link
                 to={backHref}
-                className="inline-flex w-fit items-center rounded-lg bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
+                className="inline-flex w-fit items-center rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
                 Back to session
               </Link>
@@ -344,7 +344,7 @@ export default function ProgramRegisterWizard() {
                       ? 'bg-brand-600 text-white'
                       : i < stepIndex
                         ? 'bg-green-100 text-green-900'
-                        : 'bg-gray-100 text-gray-600',
+                        : 'bg-muted text-muted-foreground',
                   ].join(' ')}
                 >
                   {i + 1}. {s === 'intake' ? 'Intake' : 'Pick a time'}
@@ -357,7 +357,7 @@ export default function ProgramRegisterWizard() {
             <>
               <div className="space-y-4">
                 {alreadyRegistered ? (
-                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-950 space-y-1">
+                  <div className="rounded-card border border-success/25 bg-success/10 p-4 text-sm text-green-950 space-y-1">
                     <p className="font-semibold">Registration already submitted</p>
                     <p>
                       {myRegistration?.status === 'PENDING'
@@ -366,7 +366,7 @@ export default function ProgramRegisterWizard() {
                     </p>
                   </div>
                 ) : myRegistration?.status === 'SURVEY_SUBMITTED' ? (
-                  <div className="rounded-xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
+                  <div className="rounded-card border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
                     <p className="font-semibold">Survey submitted</p>
                     <p>
                       Your intake survey was saved. Continue to submit registration so an administrator can approve you.
@@ -376,7 +376,7 @@ export default function ProgramRegisterWizard() {
 
                 {current === 'intake' && program.intakeSurveyId ? (
                   <div className="space-y-3">
-                    <p className="text-sm font-semibold text-gray-900">
+                    <p className="text-sm font-semibold text-foreground">
                       Your information
                     </p>
                     <ProgramSurveyPanel
@@ -407,10 +407,10 @@ export default function ProgramRegisterWizard() {
                       }}
                     />
                     {intakeSubmitError ? (
-                      <p className="text-sm text-red-700">{intakeSubmitError}</p>
+                      <p className="text-sm text-destructive">{intakeSubmitError}</p>
                     ) : null}
                     {intakeRecorded ? (
-                      <p className="text-xs font-medium text-green-800 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                      <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
                         Your answers are saved.{' '}
                         {isLastStep
                           ? 'Click Submit registration when ready.'
@@ -421,13 +421,13 @@ export default function ProgramRegisterWizard() {
                 ) : null}
 
                 {current === 'intake' && !program.intakeSurveyId ? (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     No native intake survey is configured for this session yet.
                   </p>
                 ) : null}
 
                 {current === 'slot' && (
-                  <div className="rounded-xl border border-gray-100 bg-white p-5 md:p-6">
+                  <div className="rounded-card border border-gray-100 bg-card p-5 md:p-6">
                     <OfficeHoursSlotPicker
                       slots={slots}
                       selectedId={selectedSlotId}
@@ -442,7 +442,7 @@ export default function ProgramRegisterWizard() {
                     intake nor slot applies (steps.length === 0), the Submit button shows
                     immediately with a brief context line. */}
                 {steps.length === 0 && !alreadyRegistered && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     {program.registrationRequiresApproval
                       ? 'Submitting sends a registration request to an administrator for review.'
                       : `Submitting completes your registration${program.zoomSessionType === 'MEETING' ? ' and reserves your time slot' : ''}.`}
@@ -451,7 +451,7 @@ export default function ProgramRegisterWizard() {
 
                 {submitMut.isError && (
                   <div
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-800"
+                    className="rounded-[6px] border border-destructive/25 bg-destructive/10 px-3 py-2.5 text-sm text-destructive"
                     role="alert"
                   >
                     {getApiErrorMessage(
@@ -471,7 +471,7 @@ export default function ProgramRegisterWizard() {
                     (current === 'intake' && intakeSubmitting) ||
                     (current === 'slot' && slots.length > 0 && !selectedSlotId)
                   }
-                  className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96] disabled:opacity-50"
                 >
                   {submitMut.isPending && isLastStep ? (
                     <>

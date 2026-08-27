@@ -162,10 +162,10 @@ export default function AdminWebinarScheduler({
   return (
     <div className="mx-auto w-full max-w-[min(100%,100rem)] space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-foreground">
           {isWebinar ? 'Webinar scheduler' : 'Office Hours scheduler'}
         </h1>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-muted-foreground mt-1">
           {isWebinar ? (
             <>
               Creates a Zoom Webinar and publishes it. The server automatically creates native registration intake and
@@ -181,7 +181,7 @@ export default function AdminWebinarScheduler({
 
       {/* Post-submit: session saved but Zoom was not available */}
       {zoomWarning && (
-        <div className="flex items-start gap-3 rounded-xl bg-yellow-50 border border-yellow-300 px-4 py-3">
+        <div className="flex items-start gap-3 rounded-xl bg-warning/10 border border-yellow-300 px-4 py-3">
           <Video className="h-4 w-4 text-yellow-600 mt-0.5 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-yellow-800">Session saved, no Zoom meeting created</p>
@@ -244,34 +244,34 @@ export default function AdminWebinarScheduler({
       )}
 
       {validationError && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-xl border border-destructive/25 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {validationError}
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-6">
+        <div className="bg-card rounded-card border border-border p-6 space-y-6">
           <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-gray-700" />
-            <h2 className="text-lg font-bold text-gray-900">Schedule session</h2>
+            <Calendar className="h-5 w-5 text-muted-foreground" />
+            <h2 className="text-lg font-bold text-foreground">Schedule session</h2>
           </div>
 
           {!lockSessionType ? (
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Session type *</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Session type *</label>
               <select
                 value={zoomSessionType}
                 onChange={(e) => {
                   setZoomSessionType(e.target.value as ZoomSessionType);
                 }}
-                className="w-full max-w-md rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full max-w-md rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
                 <option value="WEBINAR">Live webinar (Zoom Webinar; intake Jotform required)</option>
                 <option value="MEETING">Office Hours (Zoom Meeting; Q&A, waiting room)</option>
               </select>
             </div>
           ) : (
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-muted-foreground">
               Session type:{' '}
               <span className="font-semibold">
                 {isWebinar ? 'Webinar (WEBINAR)' : 'Office Hours (MEETING)'}
@@ -281,7 +281,7 @@ export default function AdminWebinarScheduler({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-foreground mb-1">
                 {isWebinar ? 'Webinar title *' : 'Session title *'}
               </label>
               <input
@@ -290,23 +290,23 @@ export default function AdminWebinarScheduler({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={isWebinar ? 'e.g., Advanced Cardiology Update' : 'e.g., Tumor board Q&A'}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Sponsor / category</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Sponsor / category</label>
               <input
                 type="text"
                 value={sponsorName}
                 onChange={(e) => setSponsorName(e.target.value)}
                 placeholder="e.g., Medical Affairs"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-1">Description</label>
+            <label className="block text-sm font-semibold text-foreground mb-1">Description</label>
             <textarea
               rows={3}
               value={description}
@@ -314,7 +314,7 @@ export default function AdminWebinarScheduler({
               placeholder={
                 isWebinar ? 'What will be covered…' : 'Topics, who will host, what to bring…'
               }
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
             />
           </div>
 
@@ -325,17 +325,17 @@ export default function AdminWebinarScheduler({
               onChange={setSessionHeroImageUrl}
             />
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
-                Learner disclaimer <span className="font-normal text-gray-500">, optional</span>
+              <label className="block text-sm font-semibold text-foreground mb-1">
+                Learner disclaimer <span className="font-normal text-muted-foreground">, optional</span>
               </label>
               <textarea
                 rows={3}
                 value={sessionDisclaimer}
                 onChange={(e) => setSessionDisclaimer(e.target.value)}
                 placeholder="Sponsor attestation, CE limits, or privacy wording shown above registration."
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
-              <p className="mt-1 text-xs text-gray-500">
+              <p className="mt-1 text-xs text-muted-foreground">
                 Plain text. Shown on the registration wizard and session detail page; update anytime from the webinar editor.
               </p>
             </div>
@@ -343,29 +343,29 @@ export default function AdminWebinarScheduler({
 
           {/* Host */}
           <div>
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-foreground mb-2">
               Host
-              <span className="ml-1 font-normal text-gray-500">, optional</span>
+              <span className="ml-1 font-normal text-muted-foreground">, optional</span>
             </label>
-            <div className="flex gap-3 rounded-xl border border-gray-200 bg-gray-50/60 px-4 py-3">
+            <div className="flex gap-3 rounded-xl border border-border bg-gray-50/60 px-4 py-3">
               <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
                   type="text"
                   value={hostName}
                   onChange={(e) => setHostName(e.target.value)}
                   placeholder="Dr. Jane Smith"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-card"
                 />
                 <input
                   type="text"
                   value={hostBio}
                   onChange={(e) => setHostBio(e.target.value)}
                   placeholder="Title, specialty, or brief note…"
-                  className="w-full rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-white"
+                  className="w-full rounded-xl border border-border px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900 bg-card"
                 />
               </div>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               {isWebinar
                 ? 'Person moderating/running the session. Shown as "Host:" on the live session card.'
                 : 'Person hosting Office Hours. Shown as "Get time with…" on the session card.'}
@@ -375,14 +375,14 @@ export default function AdminWebinarScheduler({
           {/* Speakers / KOLs */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-semibold text-gray-900">
+              <label className="text-sm font-semibold text-foreground">
                 Speakers / KOLs
-                <span className="ml-1 font-normal text-gray-500">, optional; add one or more</span>
+                <span className="ml-1 font-normal text-muted-foreground">, optional; add one or more</span>
               </label>
               <button
                 type="button"
                 onClick={() => setSpeakers((prev) => [...prev, ''])}
-                className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-lg px-2.5 py-1 hover:bg-gray-50 transition-colors"
+                className="text-xs font-semibold text-muted-foreground border border-border rounded-lg px-2.5 py-1 hover:bg-muted transition-colors"
               >
                 + Add speaker
               </button>
@@ -395,13 +395,13 @@ export default function AdminWebinarScheduler({
                     value={sp}
                     onChange={(e) => setSpeakers((prev) => prev.map((s, i) => (i === idx ? e.target.value : s)))}
                     placeholder="Dr. John Doe"
-                    className="flex-1 rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                    className="flex-1 rounded-xl border border-border px-3 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                   />
                   {speakers.length > 1 && (
                     <button
                       type="button"
                       onClick={() => setSpeakers((prev) => prev.filter((_, i) => i !== idx))}
-                      className="shrink-0 text-xs font-semibold text-red-600 hover:text-red-800"
+                      className="shrink-0 text-xs font-semibold text-destructive hover:text-destructive"
                       aria-label={`Remove speaker ${idx + 1}`}
                     >
                       Remove
@@ -410,38 +410,38 @@ export default function AdminWebinarScheduler({
                 </div>
               ))}
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted-foreground">
               Shown as "Speaker(s):" on the card. Each speaker also gets a unique Zoom panelist join URL.
             </p>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Date *</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Date *</label>
               <input
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Time *</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Time *</label>
               <input
                 type="time"
                 required
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Timezone</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Timezone</label>
               <select
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               >
                 {SCHEDULER_TIMEZONES.map((tz) => (
                   <option key={tz.value} value={tz.value}>
@@ -451,7 +451,7 @@ export default function AdminWebinarScheduler({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">Duration (min)</label>
+              <label className="block text-sm font-semibold text-foreground mb-1">Duration (min)</label>
               <input
                 type="number"
                 min="15"
@@ -459,12 +459,12 @@ export default function AdminWebinarScheduler({
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
                 placeholder="60"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
             </div>
           </div>
 
-          <p className="text-xs text-gray-600">
+          <p className="text-xs text-muted-foreground">
             Date and time use the timezone you select above; we save the instant in UTC so the app and Zoom show the same
             local time (fixes wrong times when the server runs in UTC).
           </p>
@@ -475,9 +475,9 @@ export default function AdminWebinarScheduler({
 
           {isWebinar ? (
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-1">
+              <label className="block text-sm font-semibold text-foreground mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-gray-500">, optional; webinars only</span>
+                <span className="font-normal text-muted-foreground">, optional; webinars only</span>
               </label>
               <input
                 type="number"
@@ -486,9 +486,9 @@ export default function AdminWebinarScheduler({
                 value={honorariumUsd}
                 onChange={(e) => setHonorariumUsd(e.target.value)}
                 placeholder="e.g. 500"
-                className="w-full max-w-xs rounded-xl border border-gray-200 px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+                className="w-full max-w-xs rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
-              <p className="mt-1 text-xs text-gray-600 flex flex-wrap items-center gap-x-1 gap-y-1">
+              <p className="mt-1 text-xs text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
                 Learners can request this amount after post-event steps; admins pay via{' '}
                 <BillComMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
               </p>
@@ -496,26 +496,26 @@ export default function AdminWebinarScheduler({
           ) : null}
 
           {isWebinar ? (
-            <div className="text-sm text-gray-700 border border-gray-200 rounded-xl bg-gray-50 px-4 py-3 space-y-2">
-              <p className="font-semibold text-gray-900">Registration &amp; post-event surveys</p>
+            <div className="text-sm text-muted-foreground border border-border rounded-xl bg-muted px-4 py-3 space-y-2">
+              <p className="font-semibold text-foreground">Registration &amp; post-event surveys</p>
               <p>
                 When you save a webinar, the platform creates two native surveys for this program: a{' '}
                 <strong>registration intake</strong> form (required before admin approval) and a{' '}
                 <strong>post-event feedback</strong> form (shown after the session). No Jotform URLs are required here.
               </p>
-              <p className="text-xs text-gray-600">
+              <p className="text-xs text-muted-foreground">
                 To replace or edit questions later, use Program hub or the admin Surveys list.
               </p>
             </div>
           ) : (
-            <p className="text-sm text-gray-600 border border-gray-100 rounded-xl bg-gray-50 px-4 py-3">
+            <p className="text-sm text-muted-foreground border border-gray-100 rounded-xl bg-muted px-4 py-3">
               Office hours use Zoom Meetings (MEETING). Optional intake or other links can be set in Program hub.
             </p>
           )}
         </div>
 
         {createMutation.isError && (
-          <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-red-700 text-sm">
+          <div className="rounded-xl border border-destructive/25 bg-destructive/10 p-4 text-destructive text-sm">
             Failed to schedule. Please check the details and try again.
           </div>
         )}
@@ -524,7 +524,7 @@ export default function AdminWebinarScheduler({
           <button
             type="button"
             onClick={() => navigate(successPath)}
-            className="rounded-xl border border-gray-200 bg-white px-6 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 transition-colors"
+            className="rounded-xl border border-border bg-card px-6 py-2.5 text-sm font-semibold text-foreground hover:bg-muted transition-colors"
           >
             Cancel
           </button>

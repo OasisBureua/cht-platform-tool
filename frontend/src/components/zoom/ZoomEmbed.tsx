@@ -277,8 +277,8 @@ export function ZoomEmbed({
           onClick={() => void join()}
           className={
             fill
-              ? 'inline-flex items-center justify-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-50'
-              : 'inline-flex items-center justify-center gap-2 rounded-lg border border-gray-900 bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50'
+              ? 'inline-flex items-center justify-center gap-2 rounded-[6px] bg-white px-3 py-1.5 text-sm font-semibold text-gray-900 hover:bg-gray-100 disabled:opacity-50'
+              : 'inline-flex items-center justify-center gap-2 rounded-[6px] border border-gray-900 bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50'
           }
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <MonitorPlay className="h-4 w-4" />}
@@ -296,8 +296,8 @@ export function ZoomEmbed({
           onClick={() => void leave()}
           className={
             fill
-              ? 'inline-flex items-center gap-2 rounded-lg border border-white/20 bg-transparent px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
-              : 'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+              ? 'inline-flex items-center gap-2 rounded-[6px] border border-white/20 bg-transparent px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
+              : 'inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted'
           }
         >
           <X className="h-4 w-4" />
@@ -311,8 +311,8 @@ export function ZoomEmbed({
           rel="noopener noreferrer"
           className={
             fill
-              ? 'inline-flex items-center gap-2 rounded-lg border border-white/20 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
-              : 'inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50'
+              ? 'inline-flex items-center gap-2 rounded-[6px] border border-white/20 px-3 py-1.5 text-sm font-semibold text-white hover:bg-white/10'
+              : 'inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:bg-muted'
           }
         >
           Open in Zoom
@@ -328,8 +328,8 @@ export function ZoomEmbed({
         <p
           className={
             fill
-              ? 'text-sm text-amber-100 rounded-lg bg-amber-950/80 border border-amber-700/50 px-3 py-2'
-              : 'text-sm text-amber-950 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2'
+              ? 'text-sm text-amber-100 rounded-[6px] bg-amber-950/80 border border-amber-700/50 px-3 py-2'
+              : 'text-sm text-amber-950 rounded-[6px] bg-warning/10 border border-warning/25 px-3 py-2'
           }
         >
           {WAITING_FOR_HOST_COPY}
@@ -340,8 +340,8 @@ export function ZoomEmbed({
         <p
           className={
             fill
-              ? 'text-sm text-red-100 rounded-lg bg-red-950/80 border border-red-700/50 px-3 py-2'
-              : 'text-sm text-red-700 rounded-lg bg-red-50 px-3 py-2'
+              ? 'text-sm text-red-100 rounded-[6px] bg-red-950/80 border border-red-700/50 px-3 py-2'
+              : 'text-sm text-destructive rounded-[6px] bg-destructive/10 px-3 py-2'
           }
         >
           {error}
@@ -363,11 +363,11 @@ export function ZoomEmbed({
 
       {!fill &&
         (unsupported ? (
-          <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          <p className="text-xs text-warning bg-warning/10 border border-warning/25 rounded-[6px] px-3 py-2">
             Unsupported browser or device for the embedded Zoom client. Use Open in Zoom to continue.
           </p>
         ) : (
-          <p className="text-xs text-gray-500">{hint}</p>
+          <p className="text-xs text-muted-foreground">{hint}</p>
         ))}
     </>
   );
@@ -380,7 +380,7 @@ export function ZoomEmbed({
       className={
         fill
           ? 'h-full w-full border-0 bg-black'
-          : 'h-[75vh] min-h-[640px] w-full rounded-xl border border-gray-200 bg-black/5 overflow-hidden'
+          : 'h-[75vh] min-h-[640px] w-full rounded-card border border-border bg-black/5 overflow-hidden'
       }
       allow="camera; microphone; display-capture; autoplay; clipboard-write; fullscreen"
     />
@@ -393,7 +393,7 @@ export function ZoomEmbed({
           {controls}
           {statusBlocks}
         </div>
-        <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-white/10 bg-black">
+        <div className="min-h-0 flex-1 overflow-hidden rounded-[6px] border border-white/10 bg-black">
           {iframe}
         </div>
       </div>
