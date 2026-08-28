@@ -372,24 +372,15 @@ export class CampaignsFunnelService {
       this.prisma.programRegistration.count({ where }),
       this.prisma.programRegistration.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              npiNumber: true,
-            },
-          },
-          program: {
-            select: { id: true, title: true },
-          },
-        },
         orderBy,
         take: limit,
         skip: offset,
       }),
+    ]);
+
+    const [programById, userById] = await Promise.all([
+      this.programsById(rows.map((row) => row.programId)),
+      this.usersById(rows.map((row) => row.userId)),
     ]);
 
     const chByProgramId = new Map<string, FunnelChCampaign>();
@@ -399,7 +390,10 @@ export class CampaignsFunnelService {
       }
     }
 
-    const items = rows.map((row) => {
+    const items = rows.flatMap((row) => {
+      const program = programById.get(row.programId);
+      const user = userById.get(row.userId);
+      if (!program || !user) return [];
       const ch = chByProgramId.get(row.programId) ?? null;
       const stageEnteredAt =
         stage === 'converted'
@@ -408,21 +402,23 @@ export class CampaignsFunnelService {
             ? row.postEventAttendanceReviewedAt ?? row.reviewedAt
             : row.reviewedAt ?? row.updatedAt;
 
-      return {
-        userId: row.user.id,
-        firstName: row.user.firstName,
-        lastName: row.user.lastName,
-        email: row.user.email,
-        npiNumber: row.user.npiNumber,
-        programId: row.program.id,
-        programTitle: row.program.title,
-        campaignId: ch?.hubspotCampaignId ?? (ch ? String(ch.id) : null),
-        campaignName: ch?.name ?? null,
-        clientSponsor: ch?.clientSponsor ?? null,
-        stageEnteredAt: stageEnteredAt
-          ? stageEnteredAt.toISOString()
-          : null,
-      };
+      return [
+        {
+          userId: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          npiNumber: user.npiNumber,
+          programId: program.id,
+          programTitle: program.title,
+          campaignId: ch?.hubspotCampaignId ?? (ch ? String(ch.id) : null),
+          campaignName: ch?.name ?? null,
+          clientSponsor: ch?.clientSponsor ?? null,
+          stageEnteredAt: stageEnteredAt
+            ? stageEnteredAt.toISOString()
+            : null,
+        },
+      ];
     });
 
     return {
@@ -652,13 +648,18 @@ export class CampaignsFunnelService {
     }
 
     const warnings: string[] = [];
-    const registrations = await this.prisma.programRegistration.findMany({
+    const registrationRows = await this.prisma.programRegistration.findMany({
       where: { userId: id },
-      include: {
-        program: { select: { id: true, title: true } },
-      },
       orderBy: { updatedAt: 'desc' },
       take: 50,
+    });
+    const programById = await this.programsById(
+      registrationRows.map((row) => row.programId),
+    );
+    const registrations = registrationRows.flatMap((row) => {
+      const program = programById.get(row.programId);
+      if (!program) return [];
+      return [{ ...row, program }];
     });
 
     const lastChtActivity = this.buildHcpActivityTimeline(registrations);
@@ -756,6 +757,47 @@ export class CampaignsFunnelService {
     });
 
     return events.slice(0, MAX_HCP_ACTIVITY_EVENTS);
+  }
+
+  private async programsById(
+    programIds: string[],
+  ): Promise<Map<string, { id: string; title: string }>> {
+    const unique = [...new Set(programIds.filter((id) => id.trim()))];
+    if (unique.length === 0) return new Map();
+    const programs = await this.prisma.program.findMany({
+      where: { id: { in: unique } },
+      select: { id: true, title: true },
+    });
+    return new Map(programs.map((program) => [program.id, program]));
+  }
+
+  private async usersById(
+    userIds: string[],
+  ): Promise<
+    Map<
+      string,
+      {
+        id: string;
+        firstName: string;
+        lastName: string;
+        email: string;
+        npiNumber: string | null;
+      }
+    >
+  > {
+    const unique = [...new Set(userIds.filter((id) => id.trim()))];
+    if (unique.length === 0) return new Map();
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: unique } },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        npiNumber: true,
+      },
+    });
+    return new Map(users.map((user) => [user.id, user]));
   }
 
   private resolveLastCampaignForPrograms(
@@ -1340,6 +1382,10 @@ export class CampaignsFunnelService {
     const approvedBase = {
       status: ProgramRegistrationStatus.APPROVED,
       ...programFilter,
+      // Skip orphaned FKs. Testapp has ProgramRegistration rows whose Program
+      // was deleted; a required include then 500s ("program ... got null").
+      user: { is: {} },
+      program: { is: {} },
     };
 
     if (stage === 'registered') {
