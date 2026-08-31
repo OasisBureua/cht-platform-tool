@@ -36,7 +36,6 @@ import {
   resolveAttendanceFromZoomJoins,
   zoomPresenceForRegistration,
   type ZoomJoinEvidence,
-  type ZoomTimedParticipantEvent,
 } from '../webinars/zoom-attendance-match';
 
 @Injectable()
@@ -1264,7 +1263,7 @@ export class ProgramRegistrationsService {
 
   async listZoomTimedEventsForProgram(
     programId: string,
-  ): Promise<ZoomTimedParticipantEvent[]> {
+  ): Promise<ZoomJoinEvidence[]> {
     const rows = await this.prisma.webinarParticipantEvent.findMany({
       where: { programId },
       select: {
