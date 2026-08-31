@@ -33,9 +33,10 @@ import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
 import {
-  matchRegistrationsToZoomJoins,
+  matchRegistrationsToQualifiedAttendance,
   zoomPresenceForRegistration,
   type ZoomJoinEvidence,
+  type ZoomTimedParticipantEvent,
 } from '../webinars/zoom-attendance-match';
 
 @Injectable()
@@ -1254,29 +1255,44 @@ export class ProgramRegistrationsService {
     });
   }
 
-  /** JOINED Zoom / Meeting SDK rows for a program (attendance match + admin hub). */
+  /** Zoom / Meeting SDK join+leave rows for a program (presence + duration). */
   async listZoomJoinEvidenceForProgram(
     programId: string,
   ): Promise<ZoomJoinEvidence[]> {
+    return this.listZoomTimedEventsForProgram(programId);
+  }
+
+  async listZoomTimedEventsForProgram(
+    programId: string,
+  ): Promise<ZoomTimedParticipantEvent[]> {
     const rows = await this.prisma.webinarParticipantEvent.findMany({
-      where: { programId, event: 'JOINED' },
-      select: { userId: true, participantEmail: true },
+      where: { programId },
+      select: {
+        userId: true,
+        participantEmail: true,
+        event: true,
+        occurredAt: true,
+      },
+      orderBy: { occurredAt: 'asc' },
     });
     return rows.map((r) => ({
       userId: r.userId,
       participantEmail: r.participantEmail,
+      event: r.event,
+      occurredAt: r.occurredAt,
     }));
   }
 
   /**
    * After webinar/meeting ended: auto-VERIFY approved registrations whose
-   * platform email (or userId) appears in Zoom JOINED events. Does not override
-   * DENIED / already VERIFIED / NOT_REQUIRED. Sends post-event survey email.
+   * platform email (or userId) appears in Zoom for at least 30 minutes
+   * (JOINED/LEFT webhook times, or join until session end if still in session).
+   * Does not override DENIED / already VERIFIED / NOT_REQUIRED.
    */
   async autoVerifyAttendanceFromZoomJoins(
     programId: string,
   ): Promise<{ verifiedCount: number; matchedRegistrationIds: string[] }> {
-    const [pending, joinEvents] = await Promise.all([
+    const [pending, timedEvents] = await Promise.all([
       this.prisma.programRegistration.findMany({
         where: {
           programId,
@@ -1295,24 +1311,27 @@ export class ProgramRegistrationsService {
               sponsorName: true,
               honorariumAmount: true,
               zoomSessionType: true,
+              zoomSessionEndedAt: true,
             },
           },
         },
       }),
-      this.listZoomJoinEvidenceForProgram(programId),
+      this.listZoomTimedEventsForProgram(programId),
     ]);
 
-    if (pending.length === 0 || joinEvents.length === 0) {
+    if (pending.length === 0 || timedEvents.length === 0) {
       return { verifiedCount: 0, matchedRegistrationIds: [] };
     }
 
-    const matches = matchRegistrationsToZoomJoins(
+    const sessionEndedAt = pending[0]?.program.zoomSessionEndedAt ?? null;
+    const matches = matchRegistrationsToQualifiedAttendance(
       pending.map((r) => ({
         id: r.id,
         userId: r.userId,
         userEmail: r.user.email,
       })),
-      joinEvents,
+      timedEvents,
+      sessionEndedAt,
     );
 
     const matchedIds: string[] = [];
@@ -1369,7 +1388,7 @@ export class ProgramRegistrationsService {
       }
 
       this.logger.log(
-        `Zoom auto-verified attendance for registration ${reg.id} (matchedBy=${match.matchedBy})`,
+        `Zoom auto-verified attendance for registration ${reg.id} (matchedBy=${match.matchedBy}, ≥30min)`,
       );
     }
 
