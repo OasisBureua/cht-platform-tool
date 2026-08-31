@@ -48,6 +48,13 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
 
   const req = { ip: '127.0.0.1', headers: {} } as never;
 
+  const featureFlags = {
+    isMfaEnrollmentEnabled: jest.fn().mockReturnValue(false),
+    getAuthFeatures: jest.fn().mockReturnValue({
+      mfa: { enabled: false, method: 'sms' },
+    }),
+  };
+
   const buildController = () =>
     new AuthController(
       authService as never,
@@ -57,6 +64,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
       { lookup: jest.fn(), normalizeNpi: (v: string) => (v || '').replace(/\D/g, '').slice(0, 10) } as never,
       configService as never,
       audit as never,
+      featureFlags as never,
     );
 
   beforeEach(() => {

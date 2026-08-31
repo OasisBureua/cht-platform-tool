@@ -8,6 +8,7 @@ import {
   Logger,
   Req,
   Res,
+  ForbiddenException,
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
@@ -57,6 +58,8 @@ function passwordMeetsSignupPolicy(password: string): string | null {
 import { isProductionEnv } from '../utils/is-production-env';
 import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
+import type { MfaFeatureFlags } from '../feature-flags/feature-flags.types';
 
 /** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
 const SUPABASE_FETCH_TIMEOUT_MS = 15000;
@@ -89,6 +92,7 @@ interface LoginSuccess {
   profileComplete?: boolean;
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
+  mfaFeature?: MfaFeatureFlags;
 }
 
 @Controller('auth')
@@ -104,6 +108,7 @@ export class AuthController {
     private readonly npiRegistry: NpiRegistryService,
     private readonly configService: ConfigService,
     private readonly audit: AuditService,
+    private readonly featureFlags: FeatureFlagsService,
   ) {
     this.supabaseAuthDecommissioned =
       this.configService.get<boolean>('supabase.authDecommissioned') ?? true;
@@ -141,20 +146,22 @@ export class AuthController {
   }
 
   /**
-   * Soft MFA enrollment gate (redirect to /mfa/setup) for all roles.
-   * Enabled in deployed Cognito environments; local NODE_ENV=development stays optional.
-   * Cognito pool MFA remains OPTIONAL until flipped to ON via Terraform.
+   * MFA enrollment gate from AppConfig `mfa.enabled` (default off until SMS/10DLC is ready).
    */
   private isMfaEnrollmentEnforced(): boolean {
-    const env = (
-      this.configService.get<string>('app.environment') || ''
-    ).toLowerCase();
-    return (
-      env === 'dev' ||
-      env === 'platform' ||
-      env === 'prod' ||
-      env === 'staging'
-    );
+    return this.featureFlags.isMfaEnrollmentEnabled();
+  }
+
+  private mfaFeaturePayload(): MfaFeatureFlags {
+    return this.featureFlags.getAuthFeatures().mfa;
+  }
+
+  private assertMfaEnrollmentAllowed(): void {
+    if (!this.featureFlags.isMfaEnrollmentEnabled()) {
+      throw new ForbiddenException(
+        'Multi-factor authentication enrollment is not available yet.',
+      );
+    }
   }
 
   private async rejectIfLocked(
@@ -281,6 +288,7 @@ export class AuthController {
       profileComplete,
       mfaEnabled,
       mfaEnrollmentRequired,
+      mfaFeature: this.mfaFeaturePayload(),
     };
   }
 
@@ -497,6 +505,8 @@ export class AuthController {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Cognito login is not configured.' };
     }
+
+    this.assertMfaEnrollmentAllowed();
 
     const emailStr = (email || '').trim();
     const sessionStr = (session || '').trim();
@@ -1612,6 +1622,8 @@ export class AuthController {
       return { error: 'MFA is not configured.' };
     }
 
+    this.assertMfaEnrollmentAllowed();
+
     const sessionToken = getSessionTokenFromRequest(req);
     if (!sessionToken) return { error: 'Session required.' };
 
@@ -1668,6 +1680,8 @@ export class AuthController {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'MFA is not configured.' };
     }
+
+    this.assertMfaEnrollmentAllowed();
 
     const codeStr = (code || '').trim();
     if (!/^\d{6}$/.test(codeStr)) {
@@ -1800,7 +1814,7 @@ export class AuthController {
       }
     }
 
-    // Soft enforce for all roles in deployed Cognito envs while pool MFA is OPTIONAL.
+    // MFA enrollment gate from AppConfig while pool MFA is OPTIONAL.
     const mfaEnrollmentRequired =
       this.isMfaEnrollmentEnforced() &&
       this.cognitoService.isConfigured() &&
@@ -1820,6 +1834,7 @@ export class AuthController {
       profileComplete,
       mfaEnabled,
       mfaEnrollmentRequired,
+      mfaFeature: this.mfaFeaturePayload(),
     };
   }
 }

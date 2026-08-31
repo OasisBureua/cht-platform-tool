@@ -150,6 +150,16 @@ resource "aws_iam_role_policy" "backend_task" {
           ]
           Resource = var.cognito_user_pool_arn
         }
+      ] : [],
+      var.appconfig_configuration_arn != "" ? [
+        {
+          Effect = "Allow"
+          Action = [
+            "appconfig:StartConfigurationSession",
+            "appconfig:GetLatestConfiguration"
+          ]
+          Resource = var.appconfig_configuration_arn
+        }
       ] : []
     )
   })

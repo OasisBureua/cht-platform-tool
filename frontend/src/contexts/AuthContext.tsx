@@ -12,6 +12,11 @@ import { resolveApiBaseUrl } from '../config/app-urls';
 import { cognitoAuthEnabled, mediahubAuthDecommissioned } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
 
+export interface MfaFeatureFlags {
+  enabled: boolean;
+  method: 'sms' | 'totp';
+}
+
 export interface AuthUser {
   userId: string;
   email?: string;
@@ -22,8 +27,22 @@ export interface AuthUser {
   profileComplete?: boolean;
   /** Cognito software-token MFA enabled for this user. */
   mfaEnabled?: boolean;
-  /** Soft gate: ADMIN must enroll MFA while pool MFA is still OPTIONAL. */
+  /** Soft gate: redirect to /mfa/setup when AppConfig mfa.enabled is on and user is not enrolled. */
   mfaEnrollmentRequired?: boolean;
+  /** Server-driven MFA feature flag (AppConfig auth-features). */
+  mfaFeature?: MfaFeatureFlags;
+}
+
+function parseMfaFeature(
+  data: Record<string, unknown>,
+): MfaFeatureFlags | undefined {
+  const raw = data.mfaFeature;
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  return {
+    enabled: obj.enabled === true,
+    method: obj.method === 'totp' ? 'totp' : 'sms',
+  };
 }
 
 function profileFromMePayload(data: Record<string, unknown>): AuthUser {
@@ -37,6 +56,7 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     profileComplete: (data.profileComplete as boolean | undefined) ?? true,
     mfaEnabled: Boolean(data.mfaEnabled),
     mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
+    mfaFeature: parseMfaFeature(data),
   };
 }
 
