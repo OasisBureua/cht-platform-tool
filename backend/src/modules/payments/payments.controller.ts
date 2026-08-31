@@ -59,16 +59,24 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/connect-account
-   * Create Bill.com vendor for user (auth required). Optional body with bank details.
+   * Stripe: creates Connect recipient + returns hosted Account Link URL.
+   * Bill: creates/updates vendor (body required). Bill DTO is not validated when Stripe is on.
    */
   @Post(':userId/connect-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createConnectAccount(
     @Param('userId') userId: string,
-    @Body() body?: CreateVendorDto,
+    @Body() body?: Record<string, unknown>,
   ): Promise<CreateConnectAccountResponseDto> {
+    if (this.stripeService.isConfigured()) {
+      this.logger.log(`Creating Stripe Connect account for user: ${userId}`);
+      return this.paymentsService.createConnectAccount(userId);
+    }
     this.logger.log(`Creating Bill.com vendor for user: ${userId}`);
-    return this.paymentsService.createConnectAccount(userId, body);
+    return this.paymentsService.createConnectAccount(
+      userId,
+      body as CreateVendorDto | undefined,
+    );
   }
 
   /**

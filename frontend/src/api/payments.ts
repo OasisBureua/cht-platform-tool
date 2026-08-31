@@ -34,16 +34,15 @@ export const paymentsApi = {
     }
   },
 
+  /** Stripe hosted Account Link (or Bill settings URL when Stripe is off). */
+  createAccountLink: async (userId: string): Promise<{ url: string }> => {
+    const { data } = await apiClient.post(`/payments/${userId}/account-link`);
+    return { url: data.url || '/settings?tab=payment' };
+  },
+
+  /** @deprecated Use createAccountLink */
   createConnectLink: async (userId: string): Promise<{ url: string }> => {
-    try {
-      // Hosted Stripe Account Link (or Bill settings URL). Do not use
-      // /connect-account — that validates Bill CreateVendorDto body fields.
-      const { data } = await apiClient.post(`/payments/${userId}/account-link`);
-      return { url: data.url || data.onboardingUrl || '/settings?tab=payment' };
-    } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) return { url: '/settings?tab=payment' };
-      throw err;
-    }
+    return paymentsApi.createAccountLink(userId);
   },
 
   /** Stripe Connect Embedded Account Session (client_secret + publishable key). */
@@ -59,8 +58,11 @@ export const paymentsApi = {
     return data;
   },
 
-  /** @deprecated Bill.com path — use createAccountSession when Stripe is configured */
-  createConnectAccount: async (
+  /**
+   * Bill.com vendor create only. Do not call when Stripe is configured —
+   * use createAccountLink / createAccountSession instead.
+   */
+  createBillVendor: async (
     userId: string,
     bankData: {
       payeeName: string;
