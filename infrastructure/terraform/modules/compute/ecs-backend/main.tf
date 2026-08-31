@@ -123,6 +123,13 @@ resource "aws_ecs_task_definition" "backend" {
             var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
             [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
             var.redis_url != "" ? [{ name = "REDIS_URL", value = var.redis_url }] : [],
+            var.appconfig_application != "" && var.appconfig_environment != "" && var.appconfig_profile != ""
+            ? [
+              { name = "APPCONFIG_APPLICATION", value = var.appconfig_application },
+              { name = "APPCONFIG_ENVIRONMENT", value = var.appconfig_environment },
+              { name = "APPCONFIG_PROFILE", value = var.appconfig_profile },
+            ]
+            : [],
           )
         )
 

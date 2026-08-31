@@ -396,13 +396,15 @@ export default function Settings() {
                   </Link>
                 </div>
                 <div className="border-t border-gray-100 pt-4">
-                  <p className="font-medium text-foreground">Authenticator app (MFA)</p>
+                  <p className="font-medium text-foreground">Multi-factor authentication</p>
                   <p className="mt-1">
                     {user?.mfaEnabled
                       ? 'Multi-factor authentication is enabled on your account.'
-                      : 'Add an authenticator app for an extra sign-in step.'}
+                      : user?.mfaFeature?.enabled
+                        ? 'Add an authenticator app for an extra sign-in step.'
+                        : 'SMS multi-factor authentication is not required yet. You can sign in with your password as usual.'}
                   </p>
-                  {!user?.mfaEnabled && (
+                  {!user?.mfaEnabled && user?.mfaFeature?.enabled && (
                     <Link
                       to="/mfa/setup"
                       className="mt-2 inline-flex text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"

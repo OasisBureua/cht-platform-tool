@@ -4,156 +4,340 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CHT Zoom session</title>
+    <!--
+      Client View = Zoom web client UI inside this same-origin iframe
+      (live host video, backgrounds, gallery, toolbars — closer to the Zoom app).
+      Component View was too limited for “updates like the Zoom app”.
+      Do not load this SDK into the React 19 SPA — keep it isolated here.
+    -->
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="https://source.zoom.us/5.1.4/css/bootstrap.css"
+    />
+    <link
+      type="text/css"
+      rel="stylesheet"
+      href="https://source.zoom.us/5.1.4/css/react-select.css"
+    />
     <style>
       html,
       body {
         margin: 0;
         height: 100%;
+        width: 100%;
+        overflow: hidden;
         background: #0b0f14;
         color: #e5e7eb;
         font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
       }
+      /* Client View mounts #zmmtg-root; keep it full-bleed in the iframe. */
+      #zmmtg-root {
+        width: 100% !important;
+        height: 100% !important;
+        min-height: 100% !important;
+      }
+      .meeting-client,
+      .meeting-client-inner {
+        width: 100% !important;
+        height: 100% !important;
+      }
       #status {
+        position: absolute;
+        z-index: 10000;
+        left: 12px;
+        right: 12px;
+        top: 12px;
         padding: 12px 14px;
         font-size: 13px;
         line-height: 1.4;
+        border-radius: 8px;
+        pointer-events: none;
       }
-      #meetingSDKElement {
-        width: 100%;
-        height: calc(100% - 0px);
-        min-height: 480px;
+      #status:empty {
+        display: none;
       }
-      .err {
+      #status.err {
+        pointer-events: auto;
         color: #fecaca;
         background: #7f1d1d;
+      }
+      #status.waiting {
+        pointer-events: auto;
+        color: #78350f;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+      }
+      #gate {
+        display: none;
+        position: absolute;
+        inset: 0;
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #0b0f14;
+      }
+      #gate.visible {
+        display: flex;
+      }
+      #gate button {
+        cursor: pointer;
+        border: 0;
         border-radius: 8px;
-        margin: 12px;
-        padding: 10px 12px;
+        background: #f8fafc;
+        color: #0f172a;
+        font-size: 15px;
+        font-weight: 600;
+        padding: 12px 20px;
+      }
+      #gate button:hover {
+        background: #e2e8f0;
+      }
+      #gate .meta {
+        font-size: 12px;
+        color: #94a3b8;
+        max-width: 36rem;
       }
     </style>
-    <!--
-      Zoom Meeting SDK Component View via CDN (ships React 18).
-      Must run in this iframe — host CHT app uses React 19 and conflicts with the SDK
-      (ReactCurrentOwner undefined when importing @zoom/meetingsdk into the SPA).
-    -->
-    <script src="https://source.zoom.us/4.1.0/lib/vendor/react.min.js"></script>
-    <script src="https://source.zoom.us/4.1.0/lib/vendor/react-dom.min.js"></script>
-    <script src="https://source.zoom.us/4.1.0/lib/vendor/redux.min.js"></script>
-    <script src="https://source.zoom.us/4.1.0/lib/vendor/redux-thunk.min.js"></script>
-    <script src="https://source.zoom.us/4.1.0/lib/vendor/lodash.min.js"></script>
-    <script src="https://source.zoom.us/zoom-meeting-embedded-4.1.0.min.js"></script>
+    <script src="https://source.zoom.us/5.1.4/lib/vendor/react.min.js"></script>
+    <script src="https://source.zoom.us/5.1.4/lib/vendor/react-dom.min.js"></script>
+    <script src="https://source.zoom.us/5.1.4/lib/vendor/redux.min.js"></script>
+    <script src="https://source.zoom.us/5.1.4/lib/vendor/redux-thunk.min.js"></script>
+    <script src="https://source.zoom.us/5.1.4/lib/vendor/lodash.min.js"></script>
+    <script src="https://source.zoom.us/zoom-meeting-5.1.4.min.js"></script>
   </head>
   <body>
     <div id="status">Preparing Zoom…</div>
-    <div id="meetingSDKElement" aria-label="Zoom session"></div>
+    <div id="gate" aria-live="polite">
+      <button type="button" id="enterBtn">Enter session</button>
+      <p class="meta" id="gateMeta"></p>
+    </div>
     <script>
       (function () {
+        var SDK_VER = '5.1.4';
         var STATUS = document.getElementById('status');
-        var ROOT = document.getElementById('meetingSDKElement');
-        var client = null;
+        var GATE = document.getElementById('gate');
+        var GATE_META = document.getElementById('gateMeta');
+        var ENTER = document.getElementById('enterBtn');
         var joined = false;
+        var pendingCreds = null;
+        var sdkReady = false;
+        var parentOrigin = (function () {
+          try {
+            return parent.location.origin;
+          } catch (e) {
+            return window.location.origin;
+          }
+        })();
 
-        function setStatus(text, isError) {
+        function setStatus(text, isError, isWaiting) {
           if (!STATUS) return;
           STATUS.textContent = text || '';
-          STATUS.className = isError ? 'err' : '';
+          STATUS.className = isWaiting ? 'waiting' : isError ? 'err' : '';
           STATUS.style.display = text ? 'block' : 'none';
+        }
+
+        function showGate(show) {
+          if (!GATE) return;
+          if (show) GATE.classList.add('visible');
+          else GATE.classList.remove('visible');
         }
 
         function post(msg) {
           try {
-            parent.postMessage(msg, window.location.origin);
+            parent.postMessage(msg, parentOrigin);
           } catch (e) {
             /* ignore */
           }
         }
 
-        function isSdkFailure(r) {
-          return r && typeof r === 'object' && 'type' in r && 'reason' in r;
+        function isolationMeta() {
+          var isolated = !!window.crossOriginIsolated;
+          var sab =
+            typeof SharedArrayBuffer !== 'undefined' ? 'available' : 'missing';
+          return (
+            'Full Zoom web client in this panel. Isolation: ' +
+            (isolated ? 'on' : 'off') +
+            ' · SharedArrayBuffer: ' +
+            sab +
+            (isolated
+              ? ''
+              : ' — use Chrome/Edge for best live video.')
+          );
         }
 
-        async function leave() {
-          if (!client) return;
-          try {
-            await client.leaveMeeting();
-          } catch (e) {
-            /* ignore */
+        function leaveUrl() {
+          // After leave, Client View navigates here; notify parent and show a calm end state.
+          return (
+            window.location.origin +
+            '/zoom-embed.html?left=1&t=' +
+            String(Date.now())
+          );
+        }
+
+        function handleLeftLanding() {
+          var params = new URLSearchParams(window.location.search);
+          if (params.get('left') !== '1') return false;
+          setStatus('You left the session.');
+          showGate(false);
+          post({ type: 'cht-zoom-left' });
+          return true;
+        }
+
+        function prepareSdk() {
+          if (!window.ZoomMtg) {
+            throw new Error('Zoom Meeting SDK failed to load. Check network / CSP.');
           }
+          if (sdkReady) return;
+          ZoomMtg.setZoomJSLib(
+            'https://source.zoom.us/' + SDK_VER + '/lib',
+            '/av',
+          );
+          ZoomMtg.preLoadWasm();
+          ZoomMtg.prepareWebSDK();
+          sdkReady = true;
+        }
+
+        function join(creds) {
+          setStatus('Connecting to Zoom…');
+          showGate(false);
+          prepareSdk();
+
+          ZoomMtg.init({
+            leaveUrl: leaveUrl(),
+            patchJsMedia: true,
+            // Prefer full client chrome (speaker view / gallery / share) like Zoom web.
+            disableCORP: !window.crossOriginIsolated,
+            success: function () {
+              ZoomMtg.join({
+                signature: creds.signature,
+                meetingNumber: String(creds.meetingNumber || ''),
+                userName: creds.userName || 'Guest',
+                sdkKey: creds.sdkKey || undefined,
+                userEmail: creds.userEmail || undefined,
+                passWord: creds.password || '',
+                tk: creds.tk || undefined,
+                zak: creds.zak || undefined,
+                success: function () {
+                  joined = true;
+                  setStatus('');
+                  post({
+                    type: 'cht-zoom-joined',
+                    crossOriginIsolated: !!window.crossOriginIsolated,
+                  });
+                },
+                error: function (err) {
+                  onJoinError(err);
+                },
+              });
+            },
+            error: function (err) {
+              onJoinError(err);
+            },
+          });
+        }
+
+        function onJoinError(err) {
+          var raw =
+            (err && (err.reason || err.message || err.errorMessage)) ||
+            (typeof err === 'string' ? err : '') ||
+            '';
+          var lower = String(raw).toLowerCase();
+          var waiting =
+            lower.indexOf('has not started') !== -1 ||
+            lower.indexOf('not started') !== -1 ||
+            lower.indexOf('waiting for the host') !== -1 ||
+            lower.indexOf('waiting for host') !== -1 ||
+            lower.indexOf('host has not started') !== -1;
+          if (waiting) {
+            var waitMsg =
+              'Waiting for the host to start this session. Once they start it in Zoom, click Join in browser again.';
+            setStatus(waitMsg, false, true);
+            showGate(false);
+            post({
+              type: 'cht-zoom-error',
+              code: 'waiting_for_host',
+              message: waitMsg,
+            });
+            return;
+          }
+          var message =
+            raw || 'Could not start in-browser Zoom. Use Open in Zoom if needed.';
+          setStatus(message, true, false);
+          showGate(false);
+          post({ type: 'cht-zoom-error', message: message });
+        }
+
+        function armJoin(creds) {
+          pendingCreds = creds;
+          setStatus('');
+          if (GATE_META) GATE_META.textContent = isolationMeta();
+          showGate(true);
+          post({
+            type: 'cht-zoom-armed',
+            crossOriginIsolated: !!window.crossOriginIsolated,
+          });
+        }
+
+        function leave() {
+          // Client View leave is normally via Zoom UI → leaveUrl.
+          // Parent “Leave session” forces a soft teardown + notify.
           if (joined) {
             joined = false;
             post({ type: 'cht-zoom-left' });
           }
-          client = null;
-          setStatus('Left session.');
+          try {
+            if (window.ZoomMtg && typeof ZoomMtg.leaveMeeting === 'function') {
+              ZoomMtg.leaveMeeting({});
+            }
+          } catch (e) {
+            /* ignore */
+          }
+          window.location.replace(leaveUrl());
         }
 
-        async function join(creds) {
-          setStatus('Connecting to Zoom…');
-          if (!window.ZoomMtgEmbedded) {
-            throw new Error('Zoom Meeting SDK failed to load. Check network / CSP.');
-          }
-          if (client || joined) {
-            await leave();
-          }
-
-          client = ZoomMtgEmbedded.createClient();
-          var initArgs = {
-            zoomAppRoot: ROOT,
-            language: 'en-US',
-            patchJsMedia: true,
-          };
-          if (!window.crossOriginIsolated) {
-            initArgs.disableCORP = true;
-          }
-
-          var initResult = await client.init(initArgs);
-          if (isSdkFailure(initResult)) {
-            throw new Error(initResult.reason || 'Could not start Zoom in the browser.');
-          }
-
-          var joinArgs = {
-            signature: creds.signature,
-            meetingNumber: creds.meetingNumber,
-            password: creds.password || '',
-            userName: creds.userName,
-            userEmail: creds.userEmail || undefined,
-          };
-          if (creds.sdkKey) joinArgs.sdkKey = creds.sdkKey;
-          if (creds.tk) joinArgs.tk = creds.tk;
-
-          var joinResult = await client.join(joinArgs);
-          if (isSdkFailure(joinResult)) {
-            throw new Error(joinResult.reason || 'Could not join the session.');
-          }
-
-          joined = true;
-          setStatus('');
-          post({ type: 'cht-zoom-joined' });
+        if (ENTER) {
+          ENTER.addEventListener('click', function () {
+            if (!pendingCreds) return;
+            var creds = pendingCreds;
+            pendingCreds = null;
+            try {
+              join(creds);
+            } catch (err) {
+              onJoinError(err);
+            }
+          });
         }
 
         window.addEventListener('message', function (event) {
-          if (event.origin !== window.location.origin) return;
+          if (parentOrigin !== '*' && event.origin !== parentOrigin) return;
           var data = event.data;
           if (!data || typeof data !== 'object') return;
 
           if (data.type === 'cht-zoom-join') {
-            join(data.payload || {})
-              .catch(function (err) {
-                var message =
-                  (err && err.message) ||
-                  'Could not start in-browser Zoom. Use Open in Zoom if needed.';
-                setStatus(message, true);
-                post({ type: 'cht-zoom-error', message: message });
-              });
+            armJoin(data.payload || {});
             return;
           }
 
-          if (data.type === 'cht-zoom-leave') {
-            leave();
-          }
+          if (data.type === 'cht-zoom-leave') leave();
         });
 
-        post({ type: 'cht-zoom-ready' });
+        if (handleLeftLanding()) {
+          post({
+            type: 'cht-zoom-ready',
+            crossOriginIsolated: !!window.crossOriginIsolated,
+          });
+          return;
+        }
+
+        post({
+          type: 'cht-zoom-ready',
+          crossOriginIsolated: !!window.crossOriginIsolated,
+        });
         setStatus('Waiting for session credentials…');
       })();
     </script>

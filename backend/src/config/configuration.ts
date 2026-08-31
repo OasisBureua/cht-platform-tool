@@ -335,4 +335,10 @@ export default () => ({
       'https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search',
     timeoutMs: parseInt(process.env.NPI_API_TIMEOUT_MS || '8000', 10),
   },
+
+  appconfig: {
+    application: process.env.APPCONFIG_APPLICATION?.trim() || '',
+    environment: process.env.APPCONFIG_ENVIRONMENT?.trim() || '',
+    profile: process.env.APPCONFIG_PROFILE?.trim() || '',
+  },
 });

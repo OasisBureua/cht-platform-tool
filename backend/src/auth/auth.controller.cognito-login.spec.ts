@@ -34,6 +34,13 @@ describe('AuthController Cognito password login (SCRUM-100)', () => {
 
   const req = { ip: '127.0.0.1', headers: {} } as never;
 
+  const featureFlags = {
+    isMfaEnrollmentEnabled: jest.fn().mockReturnValue(false),
+    getAuthFeatures: jest.fn().mockReturnValue({
+      mfa: { enabled: false, method: 'sms' },
+    }),
+  };
+
   const buildController = () =>
     new AuthController(
       {
@@ -48,6 +55,7 @@ describe('AuthController Cognito password login (SCRUM-100)', () => {
       { lookup: jest.fn(), normalizeNpi: (v: string) => v } as never,
       { get: jest.fn().mockReturnValue(undefined) } as never,
       { record: jest.fn() } as never,
+      featureFlags as never,
     );
 
   beforeEach(() => {

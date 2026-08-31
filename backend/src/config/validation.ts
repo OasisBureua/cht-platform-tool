@@ -128,4 +128,8 @@ export const validationSchema = Joi.object({
   REDIS_URL: Joi.string().allow('').optional(),
   REDIS_CACHE_TTL_SECONDS: Joi.number().optional(),
   INTERNAL_CACHE_SECRET: Joi.string().allow('').optional(),
+
+  APPCONFIG_APPLICATION: Joi.string().allow('').optional(),
+  APPCONFIG_ENVIRONMENT: Joi.string().allow('').optional(),
+  APPCONFIG_PROFILE: Joi.string().allow('').optional(),
 });

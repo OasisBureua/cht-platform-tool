@@ -331,6 +331,16 @@ module "secrets" {
 }
 
 # ============================================
+# Config - AppConfig (feature flags)
+# ============================================
+module "appconfig" {
+  source = "../../modules/config/appconfig"
+
+  project     = var.project
+  environment = var.environment
+}
+
+# ============================================
 # Security - IAM Roles
 # ============================================
 module "iam" {
@@ -353,9 +363,10 @@ module "iam" {
     module.sqs.cme_queue_arn,
     module.sqs.scheduled_jobs_queue_arn
   ]
-  certificates_bucket_arn   = module.s3_certificates.bucket_arn
-  session_assets_bucket_arn = module.s3_session_assets.bucket_arn
-  cognito_user_pool_arn     = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
+  certificates_bucket_arn       = module.s3_certificates.bucket_arn
+  session_assets_bucket_arn   = module.s3_session_assets.bucket_arn
+  cognito_user_pool_arn       = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
+  appconfig_configuration_arn = module.appconfig.auth_features_configuration_arn
 }
 
 # ============================================
@@ -439,6 +450,9 @@ module "ecs_backend" {
   cognito_region                 = "us-east-1"
   recaptcha_min_score            = var.recaptcha_min_score
   redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
+  appconfig_application          = module.appconfig.application_name
+  appconfig_environment          = module.appconfig.environment_name
+  appconfig_profile              = module.appconfig.auth_features_profile_name
   # Always apply Prisma migrations on backend boot (primary/writer).
   run_db_migrations = true
 }

@@ -516,8 +516,8 @@ export default function VideosPage() {
 
   // Back-compat: legacy `?sort=recent` was byte-identical to `?sort=posted`
   // at the backend (2026-05-16 audit). Redirect old links to `posted`.
-  const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
-  const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
+    const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
+    const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
   const sortBy = SORT_PARAM_VALUES.has(sortNormalized) ? sortNormalized : DEFAULT_SORT;
 
   const areaDef = area === 'all' ? null : (DISEASE_AREAS.find((d) => d.slug === area) ?? null);
@@ -789,7 +789,7 @@ export default function VideosPage() {
                 className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
               >
                 Every conversation, every cut
-              </h1>
+            </h1>
               <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
                 Filter by format and disease state at the same time. Every session exists as
                 long-form video, an audio cut, a written explainer and a set of clips.
@@ -806,7 +806,7 @@ export default function VideosPage() {
                 >
                   Browse by faculty
                 </Button>
-              </div>
+          </div>
             </div>
 
             <FeaturedCarousel clips={featured} hrefFor={clipHref} />
@@ -831,18 +831,18 @@ export default function VideosPage() {
       <div className={`${RAIL} ${isInApp ? 'pt-6 md:pt-8' : 'pt-6'} ${view === 'playlists' ? 'hidden' : ''}`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
-            <Search
+              <Search
               className="pointer-events-none absolute start-5 top-1/2 size-5 -translate-y-1/2 text-faint"
               strokeWidth={1.5}
-              aria-hidden
-            />
+                aria-hidden
+              />
             <label htmlFor="library-search" className="sr-only">
               Search the content library
             </label>
-            <input
+              <input
               id="library-search"
               type="search"
-              value={query}
+                value={query}
               onChange={(e) => setFilters({ q: e.target.value })}
               placeholder="Search sessions, trials, faculty"
               className="h-14 w-full rounded-[6px] bg-surface ps-14 pe-5 text-base text-text shadow-card outline-none placeholder:text-faint focus:bg-ground focus:shadow-card-hover"
@@ -859,7 +859,7 @@ export default function VideosPage() {
               Browse by faculty
             </Button>
           ) : null}
-        </div>
+            </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {FORMATS.map((f) => (
@@ -951,9 +951,9 @@ export default function VideosPage() {
                       </button>
                     ))}
                   </div>
-                </div>
-              ) : null}
             </div>
+              ) : null}
+                </div>
           ) : null}
           {filtersActive ? (
             <button
@@ -963,9 +963,9 @@ export default function VideosPage() {
             >
               Clear all
             </button>
-          ) : null}
-        </div>
-      </div>
+                ) : null}
+              </div>
+                </div>
 
       {/* ── rails (app, unfiltered) / grid ─────────────── */}
       <div className={`${RAIL} pt-12 pb-20`}>
@@ -992,19 +992,19 @@ export default function VideosPage() {
               <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
                 Curated lists appear here as faculty group sessions into series.
               </p>
-            </div>
+                </div>
           )
         ) : isFirstLoad ? (
           <div className="flex items-center justify-center py-16" aria-busy="true">
             <Loader2 className="size-10 animate-spin text-faint" aria-hidden />
-          </div>
+                </div>
         ) : clipsError ? (
           <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
             <p className="display text-display-s text-text">Could not load the library</p>
             <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
               The catalogue did not answer. Try again in a moment.
             </p>
-          </div>
+                </div>
         ) : results.length === 0 ? (
           <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
             <p className="display text-display-s text-text">Nothing matches that yet</p>
@@ -1021,15 +1021,15 @@ export default function VideosPage() {
               >
                 Clear all filters
               </Button>
-            </div>
-          </div>
+              </div>
+                </div>
         ) : showRails ? (
           <div className="space-y-14 md:space-y-16">
             {railItems.length > 0 ? (
               <CatalogRow
                 title="Recently added"
                 subtitle={`${railItems.length} video${railItems.length !== 1 ? 's' : ''}`}
-                seeAllHref={APP_CATALOG_CLIPS_GRID}
+                    seeAllHref={APP_CATALOG_CLIPS_GRID}
                 seeAllLabel="See all in library"
               >
                 {railItems.map((item) => (
@@ -1037,18 +1037,18 @@ export default function VideosPage() {
                     key={`recent-${item.id}`}
                     clip={item}
                     to={clipHref(item)}
-                    title={item.title}
-                    imageUrl={getMediaHubThumbnail(item)}
+                        title={item.title}
+                        imageUrl={getMediaHubThumbnail(item)}
                     duration={clipDuration(item.duration_seconds)}
                     description={
                       item.doctors?.[0]
                         ? doctorLabelFromSlug(item.doctors[0])
                         : clipStripeSubtitle(item) || 'Conversation'
                     }
-                  />
-                ))}
+                      />
+                    ))}
               </CatalogRow>
-            ) : null}
+                ) : null}
 
             {playlists.length > 0 ? (
               <CatalogRow
@@ -1073,7 +1073,7 @@ export default function VideosPage() {
             {/* The themed lanes, driven by `carousels.config.ts`. Same
                 contract as the dashboard's rows; `catalog` only swaps the
                 presentation onto the design's cards and type. */}
-            {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
               <BiomarkerConversationRow key={id} carouselId={id} isInApp variant="catalog" />
             ))}
           </div>
@@ -1093,11 +1093,11 @@ export default function VideosPage() {
                       <span className="absolute top-3 start-3">
                         <FormatBadge clip={item} />
                       </span>
-                    </div>
+                </div>
                     <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
                       <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
                       <p className="meta mt-auto pt-5 text-faint">{lead}</p>
-                    </div>
+                </div>
                   </Link>
                 </li>
               );
@@ -1113,7 +1113,7 @@ export default function VideosPage() {
             {isFetchingNextPage ? (
               <Loader2 className="size-8 animate-spin text-faint" aria-hidden />
             ) : null}
-          </div>
+            </div>
         ) : null}
       </div>
     </div>
