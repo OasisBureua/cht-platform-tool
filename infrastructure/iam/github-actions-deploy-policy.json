@@ -23,7 +23,11 @@
     {
       "Sid": "ECRAuth",
       "Effect": "Allow",
-      "Action": ["ecr:GetAuthorizationToken"],
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:DescribeRegistry",
+        "ecr:PutReplicationConfiguration"
+      ],
       "Resource": "*"
     },
     {
@@ -38,6 +42,7 @@
         "ecr:BatchGetImage",
         "ecr:GetDownloadUrlForLayer",
         "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
         "ecr:ListImages",
         "ecr:PutLifecyclePolicy",
         "ecr:GetLifecyclePolicy",
