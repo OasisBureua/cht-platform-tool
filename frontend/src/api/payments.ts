@@ -36,10 +36,12 @@ export const paymentsApi = {
 
   createConnectLink: async (userId: string): Promise<{ url: string }> => {
     try {
-      const { data } = await apiClient.post(`/payments/${userId}/connect-account`);
-      return { url: data.onboardingUrl || data.url || '/app/payments' };
+      // Hosted Stripe Account Link (or Bill settings URL). Do not use
+      // /connect-account — that validates Bill CreateVendorDto body fields.
+      const { data } = await apiClient.post(`/payments/${userId}/account-link`);
+      return { url: data.url || data.onboardingUrl || '/settings?tab=payment' };
     } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) return { url: '/app/payments' };
+      if (ENABLE_MOCK_FALLBACK) return { url: '/settings?tab=payment' };
       throw err;
     }
   },
