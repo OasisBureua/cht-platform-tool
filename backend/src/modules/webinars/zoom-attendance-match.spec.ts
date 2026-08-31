@@ -2,8 +2,7 @@ import {
   buildZoomJoinIndex,
   matchRegistrationsToZoomJoins,
   zoomPresenceForRegistration,
-  attendanceDurationMs,
-  matchRegistrationsToQualifiedAttendance,
+  resolveAttendanceFromZoomJoins,
 } from './zoom-attendance-match';
 
 describe('zoom-attendance-match', () => {
@@ -13,7 +12,7 @@ describe('zoom-attendance-match', () => {
     { userId: 'u3', participantEmail: null },
   ];
 
-  it('matches by userId and email case-insensitively', () => {
+  it('matches by email case-insensitively only (not userId alone)', () => {
     const matches = matchRegistrationsToZoomJoins(
       [
         { id: 'r1', userId: 'u1', userEmail: 'alice@example.com' },
@@ -28,7 +27,7 @@ describe('zoom-attendance-match', () => {
       {
         registrationId: 'r1',
         userId: 'u1',
-        matchedBy: 'userId',
+        matchedBy: 'email',
         zoomEmail: 'Alice@Example.com',
       },
       {
@@ -36,12 +35,6 @@ describe('zoom-attendance-match', () => {
         userId: 'u2',
         matchedBy: 'email',
         zoomEmail: 'bob@example.com',
-      },
-      {
-        registrationId: 'r4',
-        userId: 'u3',
-        matchedBy: 'userId',
-        zoomEmail: null,
       },
     ]);
   });
@@ -64,70 +57,50 @@ describe('zoom-attendance-match', () => {
   });
 });
 
-describe('attendance duration (30 min auto-verify)', () => {
-  const t = (iso: string) => new Date(iso);
-
-  it('sums join/leave and qualifies at 30 minutes', () => {
-    const timed = [
-      {
-        userId: 'u1',
-        participantEmail: 'alice@example.com',
-        event: 'JOINED',
-        occurredAt: t('2026-08-31T18:00:00Z'),
-      },
-      {
-        userId: 'u1',
-        participantEmail: 'alice@example.com',
-        event: 'LEFT',
-        occurredAt: t('2026-08-31T18:35:00Z'),
-      },
-    ];
-    expect(attendanceDurationMs(timed, 'u1', 'alice@example.com')).toBe(
-      35 * 60 * 1000,
+describe('resolveAttendanceFromZoomJoins', () => {
+  it('verifies when HCP email equals Zoom email', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'alice@example.com' }],
+      [{ userId: 'u1', participantEmail: 'Alice@Example.com', event: 'JOINED' }],
     );
-    expect(
-      matchRegistrationsToQualifiedAttendance(
-        [{ id: 'r1', userId: 'u1', userEmail: 'alice@example.com' }],
-        timed,
-      ),
-    ).toHaveLength(1);
+    expect(resolved).toEqual([
+      {
+        registrationId: 'r1',
+        userId: 'u1',
+        status: 'VERIFIED',
+        matchedBy: 'email',
+        zoomEmail: 'Alice@Example.com',
+      },
+    ]);
   });
 
-  it('does not qualify under 30 minutes', () => {
-    const timed = [
+  it('denies when same userId joined Zoom with a different email', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'hcp@hospital.org' }],
+      [
+        {
+          userId: 'u1',
+          participantEmail: 'personal@gmail.com',
+          event: 'JOINED',
+        },
+      ],
+    );
+    expect(resolved).toEqual([
       {
+        registrationId: 'r1',
         userId: 'u1',
-        participantEmail: 'alice@example.com',
-        event: 'JOINED',
-        occurredAt: t('2026-08-31T18:00:00Z'),
+        status: 'DENIED',
+        matchedBy: 'mismatch',
+        zoomEmail: 'personal@gmail.com',
       },
-      {
-        userId: 'u1',
-        participantEmail: 'alice@example.com',
-        event: 'LEFT',
-        occurredAt: t('2026-08-31T18:10:00Z'),
-      },
-    ];
-    expect(
-      matchRegistrationsToQualifiedAttendance(
-        [{ id: 'r1', userId: 'u1', userEmail: 'alice@example.com' }],
-        timed,
-      ),
-    ).toHaveLength(0);
+    ]);
   });
 
-  it('closes an open join at session end', () => {
-    const timed = [
-      {
-        userId: 'u1',
-        participantEmail: 'alice@example.com',
-        event: 'JOINED',
-        occurredAt: t('2026-08-31T18:00:00Z'),
-      },
-    ];
-    const ended = t('2026-08-31T18:40:00Z');
-    expect(
-      attendanceDurationMs(timed, 'u1', 'alice@example.com', ended),
-    ).toBe(40 * 60 * 1000);
+  it('leaves unmatched learners unresolved (stay pending)', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'hcp@hospital.org' }],
+      [{ userId: 'u9', participantEmail: 'other@x.com', event: 'JOINED' }],
+    );
+    expect(resolved).toEqual([]);
   });
 });

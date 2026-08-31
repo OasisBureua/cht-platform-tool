@@ -44,6 +44,9 @@
         "ecr:DescribeRepositories",
         "ecr:DescribeImages",
         "ecr:ListImages",
+        "ecr:ListTagsForResource",
+        "ecr:TagResource",
+        "ecr:UntagResource",
         "ecr:PutLifecyclePolicy",
         "ecr:GetLifecyclePolicy",
         "ecr:DeleteLifecyclePolicy"

@@ -1,21 +1,18 @@
 /**
- * Match Zoom join evidence to CHT registrations (email / userId).
- * Used after webinar.ended / meeting.ended to auto-verify attendance.
+ * Match Zoom join evidence to CHT registrations by **email**.
+ * Used after webinar.ended / meeting.ended to auto-resolve attendance.
+ *
+ * Rules:
+ * - HCP account email == Zoom participant email → VERIFIED (Attendance Yes)
+ * - Seen in Zoom under a different email (same CHT userId) → DENIED (Attendance No)
+ * - Not seen in Zoom → leave PENDING
  */
-
-/** Minimum in-session time (join→leave, summed) to auto-verify attendance. */
-export const MIN_ATTENDANCE_DURATION_MS = 30 * 60 * 1000;
 
 export type ZoomJoinEvidence = {
   userId: string | null;
   participantEmail: string | null;
   event?: string;
   occurredAt?: Date;
-};
-
-export type ZoomTimedParticipantEvent = ZoomJoinEvidence & {
-  event: string;
-  occurredAt: Date;
 };
 
 export type RegistrationMatchCandidate = {
@@ -27,7 +24,15 @@ export type RegistrationMatchCandidate = {
 export type ZoomJoinMatch = {
   registrationId: string;
   userId: string;
-  matchedBy: 'userId' | 'email';
+  matchedBy: 'email';
+  zoomEmail: string | null;
+};
+
+export type AttendanceResolution = {
+  registrationId: string;
+  userId: string;
+  status: 'VERIFIED' | 'DENIED';
+  matchedBy: 'email' | 'mismatch';
   zoomEmail: string | null;
 };
 
@@ -51,6 +56,7 @@ export function buildZoomJoinIndex(events: ZoomJoinEvidence[]): {
   const zoomEmailByNorm = new Map<string, string>();
 
   for (const e of events) {
+    if (e.event && e.event !== 'JOINED') continue;
     const email = normEmail(e.participantEmail);
     if (email) {
       emails.add(email);
@@ -67,6 +73,7 @@ export function buildZoomJoinIndex(events: ZoomJoinEvidence[]): {
   return { userIds, emails, emailByUserId, zoomEmailByNorm };
 }
 
+/** Exact email match only (HCP email present on a Zoom JOINED event). */
 export function matchRegistrationsToZoomJoins(
   registrations: RegistrationMatchCandidate[],
   events: ZoomJoinEvidence[],
@@ -75,15 +82,6 @@ export function matchRegistrationsToZoomJoins(
   const matches: ZoomJoinMatch[] = [];
 
   for (const reg of registrations) {
-    if (index.userIds.has(reg.userId)) {
-      matches.push({
-        registrationId: reg.id,
-        userId: reg.userId,
-        matchedBy: 'userId',
-        zoomEmail: index.emailByUserId.get(reg.userId) ?? null,
-      });
-      continue;
-    }
     const email = normEmail(reg.userEmail);
     if (email && index.emails.has(email)) {
       matches.push({
@@ -98,19 +96,62 @@ export function matchRegistrationsToZoomJoins(
   return matches;
 }
 
-/** Per-registration Zoom presence for admin Program Hub. */
+/**
+ * Auto attendance after session ends:
+ * - email match → VERIFIED
+ * - CHT user joined Zoom with a different email → DENIED
+ * - otherwise omit (stay PENDING)
+ */
+export function resolveAttendanceFromZoomJoins(
+  registrations: RegistrationMatchCandidate[],
+  events: ZoomJoinEvidence[],
+): AttendanceResolution[] {
+  const index = buildZoomJoinIndex(events);
+  const out: AttendanceResolution[] = [];
+
+  for (const reg of registrations) {
+    const hcp = normEmail(reg.userEmail);
+    if (hcp && index.emails.has(hcp)) {
+      out.push({
+        registrationId: reg.id,
+        userId: reg.userId,
+        status: 'VERIFIED',
+        matchedBy: 'email',
+        zoomEmail: index.zoomEmailByNorm.get(hcp) ?? null,
+      });
+      continue;
+    }
+
+    if (!index.userIds.has(reg.userId)) {
+      continue;
+    }
+
+    const zoomEmail = index.emailByUserId.get(reg.userId) ?? null;
+    const zoomNorm = normEmail(zoomEmail);
+    if (zoomNorm && hcp && zoomNorm !== hcp) {
+      out.push({
+        registrationId: reg.id,
+        userId: reg.userId,
+        status: 'DENIED',
+        matchedBy: 'mismatch',
+        zoomEmail,
+      });
+    }
+  }
+
+  return out;
+}
+
+/**
+ * Per-registration Zoom presence for admin Program Hub.
+ * "Seen in Zoom" is true when HCP email or userId appears on a JOINED event.
+ */
 export function zoomPresenceForRegistration(
   userId: string,
   userEmail: string,
   events: ZoomJoinEvidence[],
 ): { zoomJoined: boolean; zoomParticipantEmail: string | null } {
   const index = buildZoomJoinIndex(events);
-  if (index.userIds.has(userId)) {
-    return {
-      zoomJoined: true,
-      zoomParticipantEmail: index.emailByUserId.get(userId) ?? null,
-    };
-  }
   const email = normEmail(userEmail);
   if (email && index.emails.has(email)) {
     return {
@@ -118,79 +159,11 @@ export function zoomPresenceForRegistration(
       zoomParticipantEmail: index.zoomEmailByNorm.get(email) ?? null,
     };
   }
+  if (index.userIds.has(userId)) {
+    return {
+      zoomJoined: true,
+      zoomParticipantEmail: index.emailByUserId.get(userId) ?? null,
+    };
+  }
   return { zoomJoined: false, zoomParticipantEmail: null };
-}
-
-function eventsForRegistration(
-  events: ZoomTimedParticipantEvent[],
-  userId: string,
-  userEmail: string,
-): ZoomTimedParticipantEvent[] {
-  const email = normEmail(userEmail);
-  return events.filter(
-    (e) =>
-      e.userId === userId ||
-      (email != null && normEmail(e.participantEmail) === email),
-  );
-}
-
-/**
- * Sum JOINED→LEFT intervals for a learner. An open JOINED (no leave yet) is
- * closed at sessionEndedAt when the webinar has ended.
- * Times come from Zoom webhooks (`join_time` / `leave_time`) or SDK join/leave.
- */
-export function attendanceDurationMs(
-  events: ZoomTimedParticipantEvent[],
-  userId: string,
-  userEmail: string,
-  sessionEndedAt?: Date | null,
-): number {
-  const mine = eventsForRegistration(events, userId, userEmail).slice().sort(
-    (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
-  );
-  if (mine.length === 0) return 0;
-
-  let total = 0;
-  let joinAt: Date | null = null;
-  for (const e of mine) {
-    const type = e.event === 'LEFT' ? 'LEFT' : 'JOINED';
-    if (type === 'JOINED') {
-      if (!joinAt) joinAt = e.occurredAt;
-    } else if (joinAt) {
-      total += Math.max(0, e.occurredAt.getTime() - joinAt.getTime());
-      joinAt = null;
-    }
-  }
-  if (joinAt) {
-    const end =
-      sessionEndedAt && sessionEndedAt.getTime() > joinAt.getTime()
-        ? sessionEndedAt
-        : null;
-    if (end) {
-      total += Math.max(0, end.getTime() - joinAt.getTime());
-    }
-  }
-  return total;
-}
-
-/** Email/userId match **and** at least {@link MIN_ATTENDANCE_DURATION_MS} in session. */
-export function matchRegistrationsToQualifiedAttendance(
-  registrations: RegistrationMatchCandidate[],
-  events: ZoomTimedParticipantEvent[],
-  sessionEndedAt?: Date | null,
-  minMs: number = MIN_ATTENDANCE_DURATION_MS,
-): ZoomJoinMatch[] {
-  const matches = matchRegistrationsToZoomJoins(registrations, events);
-  return matches.filter((m) => {
-    const reg = registrations.find((r) => r.id === m.registrationId);
-    if (!reg) return false;
-    return (
-      attendanceDurationMs(
-        events,
-        reg.userId,
-        reg.userEmail,
-        sessionEndedAt,
-      ) >= minMs
-    );
-  });
 }
