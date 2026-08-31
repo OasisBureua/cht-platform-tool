@@ -240,16 +240,18 @@ export class PaymentsService {
     return this.createBillConnectAccount(userId, vendorDto);
   }
 
-  private async createStripeConnectAccount(
-    userId: string,
-  ): Promise<CreateConnectAccountResponseDto> {
-    this.logger.log(`Creating Stripe Express account for user: ${userId}`);
+  /** Ensure a Stripe Connect recipient account exists; does not create Account Links. */
+  private async ensureStripeAccountId(userId: string): Promise<{
+    accountId: string;
+    accountStatus: string;
+  }> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(user);
 
     let accountId = user.stripeAccountId;
     if (!accountId) {
+      this.logger.log(`Creating Stripe Express account for user: ${userId}`);
       const account = await this.stripeService.createExpressAccount({
         email: user.email,
         firstName: user.firstName,
@@ -267,8 +269,20 @@ export class PaymentsService {
       });
     }
 
-    const refreshUrl = `${this.frontendUrl}/settings/payments?stripe=refresh`;
-    const returnUrl = `${this.frontendUrl}/settings/payments?stripe=return`;
+    return {
+      accountId,
+      accountStatus: user.stripeAccountStatus ?? 'onboarding_incomplete',
+    };
+  }
+
+  private async createStripeConnectAccount(
+    userId: string,
+  ): Promise<CreateConnectAccountResponseDto> {
+    const { accountId, accountStatus } =
+      await this.ensureStripeAccountId(userId);
+
+    const refreshUrl = `${this.frontendUrl}/settings?tab=payment&stripe=refresh`;
+    const returnUrl = `${this.frontendUrl}/settings?tab=payment&stripe=return`;
     const link = await this.stripeService.createAccountLink(accountId, {
       refreshUrl,
       returnUrl,
@@ -277,7 +291,7 @@ export class PaymentsService {
     return {
       accountId,
       onboardingUrl: link.url,
-      accountStatus: user.stripeAccountStatus ?? 'onboarding_incomplete',
+      accountStatus,
     };
   }
 
@@ -295,10 +309,8 @@ export class PaymentsService {
         'Stripe is not configured in this environment.',
       );
     }
-    const created = await this.createStripeConnectAccount(userId);
-    const session = await this.stripeService.createAccountSession(
-      created.accountId,
-    );
+    const { accountId } = await this.ensureStripeAccountId(userId);
+    const session = await this.stripeService.createAccountSession(accountId);
     const publishableKey = this.stripeService.getPublishableKey();
     if (!publishableKey) {
       throw new BadRequestException(
@@ -308,7 +320,7 @@ export class PaymentsService {
     return {
       clientSecret: session.clientSecret,
       publishableKey,
-      accountId: created.accountId,
+      accountId,
       expiresAt: session.expiresAt,
     };
   }
