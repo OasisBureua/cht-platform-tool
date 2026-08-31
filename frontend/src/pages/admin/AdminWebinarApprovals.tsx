@@ -334,8 +334,8 @@ export default function AdminWebinarApprovals() {
         </div>
         {tab === 'attendance' ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Attendance is verified automatically after the live session when the learner&apos;s email appears in
-            Zoom for at least 30 minutes. Status below is read-only.
+            Attendance is verified automatically after the live session when the learner&apos;s HCP account email
+            matches the email Zoom recorded. Status below is read-only.
           </p>
         ) : null}
 
@@ -507,7 +507,7 @@ export default function AdminWebinarApprovals() {
                       {attendanceStatusLabel(att)}
                     </span>
                     {att === 'PENDING_VERIFICATION' ? (
-                      <div className="mt-1 text-[11px] text-muted-foreground">Waiting for Zoom ≥30 min</div>
+                      <div className="mt-1 text-[11px] text-muted-foreground">Waiting for Zoom email match</div>
                     ) : null}
                   </td>
                   <td className="py-3 px-4 text-muted-foreground whitespace-nowrap text-xs">

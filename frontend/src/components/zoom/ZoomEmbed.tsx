@@ -14,8 +14,9 @@ function isBrowserSupportedForZoomEmbed(): boolean {
 }
 
 type ZoomFrameMessage =
-  | { type: 'cht-zoom-ready' }
-  | { type: 'cht-zoom-joined' }
+  | { type: 'cht-zoom-ready'; crossOriginIsolated?: boolean }
+  | { type: 'cht-zoom-armed'; crossOriginIsolated?: boolean }
+  | { type: 'cht-zoom-joined'; crossOriginIsolated?: boolean }
   | { type: 'cht-zoom-left' }
   | { type: 'cht-zoom-error'; message?: string; code?: string };
 
@@ -59,9 +60,11 @@ export type ZoomEmbedProps = {
 /**
  * Shared Zoom Meeting SDK embed for Office Hours and Live Webinars.
  *
- * Runs Zoom inside a same-origin iframe (`/zoom-embed.html`) that loads the SDK from Zoom's CDN
- * with React 18. Importing `@zoom/meetingsdk` into this React 19 SPA throws ReactCurrentOwner.
- * Same-origin (not blob:) is required for crossOriginIsolated + reliable live video updates.
+ * Runs Zoom inside a same-origin iframe (`/zoom-embed.html`) that loads the Meeting SDK
+ * **Client View** from Zoom's CDN (React 18). That is the full Zoom web-client UI
+ * (live video, backgrounds, gallery, toolbars) — closer to the Zoom app than Component View.
+ * Do not import `@zoom/meetingsdk` into this React 19 SPA (`ReactCurrentOwner`).
+ * Same-origin (not blob:) is required for crossOriginIsolated + reliable live video.
  */
 export function ZoomEmbed({
   fetchAuth,
@@ -79,6 +82,7 @@ export function ZoomEmbed({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [waitingForHost, setWaitingForHost] = useState(false);
+  const [awaitingEnterClick, setAwaitingEnterClick] = useState(false);
   const [unsupported, setUnsupported] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const frameReadyRef = useRef(false);
@@ -149,9 +153,18 @@ export function ZoomEmbed({
         return;
       }
 
+      if (data.type === 'cht-zoom-armed') {
+        // Credentials received; join waits for an in-iframe click (browser autoplay/WebRTC).
+        setLoading(false);
+        setAwaitingEnterClick(true);
+        setError(null);
+        return;
+      }
+
       if (data.type === 'cht-zoom-joined') {
         joinedRef.current = true;
         setLoading(false);
+        setAwaitingEnterClick(false);
         setError(null);
         setWaitingForHost(false);
         void report('JOINED');
@@ -168,6 +181,7 @@ export function ZoomEmbed({
 
       if (data.type === 'cht-zoom-error') {
         setLoading(false);
+        setAwaitingEnterClick(false);
         joinedRef.current = false;
         const raw = data.message || '';
         if (data.code === 'waiting_for_host' || isWaitingForHostMessage(raw)) {
@@ -196,12 +210,14 @@ export function ZoomEmbed({
     setLoading(false);
     setError(null);
     setWaitingForHost(false);
+    setAwaitingEnterClick(false);
     frameReadyRef.current = false;
   }, [postToFrame, report]);
 
   const join = useCallback(async () => {
     setError(null);
     setWaitingForHost(false);
+    setAwaitingEnterClick(false);
     setUnsupported(false);
 
     if (!isBrowserSupportedForZoomEmbed()) {
@@ -322,6 +338,19 @@ export function ZoomEmbed({
 
   const statusBlocks = (
     <>
+      {awaitingEnterClick && (
+        <p
+          className={
+            fill
+              ? 'text-sm text-sky-100 rounded-[6px] bg-sky-950/80 border border-sky-700/50 px-3 py-2'
+              : 'text-sm text-sky-950 rounded-[6px] bg-sky-50 border border-sky-200 px-3 py-2'
+          }
+        >
+          Click <strong>Enter session</strong> in the Zoom panel below to start audio and video (browsers require a
+          click inside the embed).
+        </p>
+      )}
+
       {waitingForHost && (
         <p
           className={

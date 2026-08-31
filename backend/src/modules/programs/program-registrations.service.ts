@@ -33,7 +33,7 @@ import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
 import { QueueService } from '../../queue/queue.service';
 import {
-  matchRegistrationsToQualifiedAttendance,
+  resolveAttendanceFromZoomJoins,
   zoomPresenceForRegistration,
   type ZoomJoinEvidence,
   type ZoomTimedParticipantEvent,
@@ -1284,14 +1284,17 @@ export class ProgramRegistrationsService {
   }
 
   /**
-   * After webinar/meeting ended: auto-VERIFY approved registrations whose
-   * platform email (or userId) appears in Zoom for at least 30 minutes
-   * (JOINED/LEFT webhook times, or join until session end if still in session).
-   * Does not override DENIED / already VERIFIED / NOT_REQUIRED.
+   * After webinar/meeting ended: auto-resolve attendance from Zoom emails.
+   * HCP email == Zoom email → VERIFIED; same user joined with a different Zoom
+   * email → DENIED. Does not override already VERIFIED / DENIED / NOT_REQUIRED.
    */
   async autoVerifyAttendanceFromZoomJoins(
     programId: string,
-  ): Promise<{ verifiedCount: number; matchedRegistrationIds: string[] }> {
+  ): Promise<{
+    verifiedCount: number;
+    deniedCount: number;
+    matchedRegistrationIds: string[];
+  }> {
     const [pending, timedEvents] = await Promise.all([
       this.prisma.programRegistration.findMany({
         where: {
@@ -1320,26 +1323,31 @@ export class ProgramRegistrationsService {
     ]);
 
     if (pending.length === 0 || timedEvents.length === 0) {
-      return { verifiedCount: 0, matchedRegistrationIds: [] };
+      return { verifiedCount: 0, deniedCount: 0, matchedRegistrationIds: [] };
     }
 
-    const sessionEndedAt = pending[0]?.program.zoomSessionEndedAt ?? null;
-    const matches = matchRegistrationsToQualifiedAttendance(
+    const resolutions = resolveAttendanceFromZoomJoins(
       pending.map((r) => ({
         id: r.id,
         userId: r.userId,
         userEmail: r.user.email,
       })),
       timedEvents,
-      sessionEndedAt,
     );
 
     const matchedIds: string[] = [];
+    let verifiedCount = 0;
+    let deniedCount = 0;
     const now = new Date();
 
-    for (const match of matches) {
-      const reg = pending.find((r) => r.id === match.registrationId);
+    for (const resolution of resolutions) {
+      const reg = pending.find((r) => r.id === resolution.registrationId);
       if (!reg) continue;
+
+      const nextStatus =
+        resolution.status === 'VERIFIED'
+          ? PostEventAttendanceStatus.VERIFIED
+          : PostEventAttendanceStatus.DENIED;
 
       const updated = await this.prisma.programRegistration.updateMany({
         where: {
@@ -1348,7 +1356,7 @@ export class ProgramRegistrationsService {
             PostEventAttendanceStatus.PENDING_VERIFICATION,
         },
         data: {
-          postEventAttendanceStatus: PostEventAttendanceStatus.VERIFIED,
+          postEventAttendanceStatus: nextStatus,
           postEventAttendanceReviewedAt: now,
           postEventAttendanceReviewedByUserId: null,
         },
@@ -1356,6 +1364,16 @@ export class ProgramRegistrationsService {
       if (updated.count !== 1) continue;
 
       matchedIds.push(reg.id);
+
+      if (resolution.status === 'DENIED') {
+        deniedCount += 1;
+        this.logger.log(
+          `Zoom auto-denied attendance for registration ${reg.id} (HCP ${reg.user.email} ≠ Zoom ${resolution.zoomEmail})`,
+        );
+        continue;
+      }
+
+      verifiedCount += 1;
       await this.ensureEnrollment(reg.userId, programId);
 
       if (reg.user.email) {
@@ -1388,12 +1406,13 @@ export class ProgramRegistrationsService {
       }
 
       this.logger.log(
-        `Zoom auto-verified attendance for registration ${reg.id} (matchedBy=${match.matchedBy}, ≥30min)`,
+        `Zoom auto-verified attendance for registration ${reg.id} (email match)`,
       );
     }
 
     return {
-      verifiedCount: matchedIds.length,
+      verifiedCount,
+      deniedCount,
       matchedRegistrationIds: matchedIds,
     };
   }
