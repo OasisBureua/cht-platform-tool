@@ -132,6 +132,7 @@
         "acm:Describe*",
         "acm:Get*",
         "acm:List*",
+        "appconfig:*",
         "application-autoscaling:*",
         "cloudfront:*",
         "cloudtrail:*",

@@ -209,3 +209,21 @@ variable "redis_url" {
   type        = string
   default     = ""
 }
+
+variable "appconfig_application" {
+  description = "AWS AppConfig application identifier for feature flags (empty disables polling)"
+  type        = string
+  default     = ""
+}
+
+variable "appconfig_environment" {
+  description = "AWS AppConfig environment identifier for feature flags"
+  type        = string
+  default     = ""
+}
+
+variable "appconfig_profile" {
+  description = "AWS AppConfig configuration profile identifier for auth-features"
+  type        = string
+  default     = ""
+}

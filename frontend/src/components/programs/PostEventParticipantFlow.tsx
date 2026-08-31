@@ -153,8 +153,8 @@ export default function PostEventParticipantFlow(props: {
       <section className="bg-card border border-border rounded-card p-6 space-y-2">
         <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
         <p className="text-sm text-muted-foreground">
-          Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the
-          live session before the post-event survey and honorarium steps unlock here.
+          Your registration is approved. After the live session, attendance is recorded automatically when your
+          email appears in Zoom for at least 30 minutes. The post-event survey unlocks once that happens.
         </p>
       </section>
     );
