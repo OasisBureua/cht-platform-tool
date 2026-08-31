@@ -49,10 +49,11 @@ resource "aws_cloudfront_function" "spa_rewrite" {
   EOT
 }
 
-# Security headers policy - X-Frame-Options, HSTS, etc.
+# Security headers for the SPA / API (no COOP/COEP — those break Stripe Connect
+# embedded iframes: "Data layer message channel was not initialized").
 resource "aws_cloudfront_response_headers_policy" "security_headers" {
   name    = "${local.prefix}-security-headers"
-  comment = "Security headers for ${local.prefix}"
+  comment = "Security headers for ${local.prefix} SPA/API"
 
   security_headers_config {
     content_type_options {
@@ -80,10 +81,40 @@ resource "aws_cloudfront_response_headers_policy" "security_headers" {
       override                   = true
     }
   }
+}
 
-  # Meeting SDK (WASM / SharedArrayBuffer): COOP + COEP credentialless enable
-  # crossOriginIsolated without blocking cross-origin images that lack CORP.
-  # ZoomEmbed also sets disableCORP when isolation is unavailable.
+# Zoom Meeting SDK (WASM / SharedArrayBuffer) needs COOP + COEP. Scope to the
+# embed document only — applying site-wide breaks Stripe Connect.js data-layer
+# iframes on Settings / Payments.
+resource "aws_cloudfront_response_headers_policy" "security_headers_zoom" {
+  name    = "${local.prefix}-security-headers-zoom"
+  comment = "Security headers for ${local.prefix} /zoom-embed.html (COOP/COEP)"
+
+  security_headers_config {
+    content_type_options {
+      override = true
+    }
+    frame_options {
+      frame_option = "SAMEORIGIN"
+      override     = true
+    }
+    referrer_policy {
+      referrer_policy = "strict-origin-when-cross-origin"
+      override        = true
+    }
+    xss_protection {
+      mode_block = true
+      protection = true
+      override   = true
+    }
+    strict_transport_security {
+      access_control_max_age_sec = 63072000
+      include_subdomains         = true
+      preload                    = true
+      override                   = true
+    }
+  }
+
   custom_headers_config {
     items {
       header   = "Cross-Origin-Opener-Policy"
@@ -192,6 +223,29 @@ resource "aws_cloudfront_distribution" "frontend" {
     default_ttl            = 0
     max_ttl                = 86400
     compress               = true
+  }
+
+  # Zoom embed only: COOP/COEP for SharedArrayBuffer. Must be ordered before
+  # default so /zoom-embed.html does not inherit SPA headers without isolation.
+  ordered_cache_behavior {
+    path_pattern               = "/zoom-embed.html"
+    allowed_methods            = ["GET", "HEAD", "OPTIONS"]
+    cached_methods             = ["GET", "HEAD"]
+    target_origin_id           = "S3-${var.s3_bucket_id}"
+    compress                   = true
+    viewer_protocol_policy     = "redirect-to-https"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers_zoom.id
+
+    forwarded_values {
+      query_string = false
+      cookies {
+        forward = "none"
+      }
+    }
+
+    min_ttl     = 0
+    default_ttl = 0
+    max_ttl     = 86400
   }
 
   dynamic "ordered_cache_behavior" {
