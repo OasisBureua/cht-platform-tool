@@ -771,7 +771,6 @@ export default function AdminProgramHub() {
                           <th className="py-2 pr-4">Registration</th>
                           <th className="py-2 pr-4">Seen in Zoom</th>
                           <th className="py-2 pr-4">Attendance</th>
-                          <th className="py-2 pr-4">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -796,14 +795,36 @@ export default function AdminProgramHub() {
                               <div className="text-xs text-muted-foreground">{r.user.email}</div>
                             </td>
                             <td className="py-2 pr-4">
-                              <span
-                                className={[
-                                  'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                                  registrationStatusClass(r.status),
-                                ].join(' ')}
-                              >
-                                {registrationStatusLabel(r.status)}
-                              </span>
+                              <div className="space-y-1.5">
+                                <span
+                                  className={[
+                                    'inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold',
+                                    registrationStatusClass(r.status),
+                                  ].join(' ')}
+                                >
+                                  {registrationStatusLabel(r.status)}
+                                </span>
+                                {r.status === 'PENDING' ? (
+                                  <div className="flex flex-wrap gap-1.5">
+                                    <button
+                                      type="button"
+                                      disabled={approvalBusy}
+                                      onClick={() => approveMut.mutate({ id: r.id })}
+                                      className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={approvalBusy}
+                                      onClick={() => setRejectModalIds([r.id])}
+                                      className="rounded border border-border px-2 py-0.5 text-[11px] font-semibold disabled:opacity-40"
+                                    >
+                                      Reject
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
                             </td>
                             <td className="py-2 pr-4">
                               {r.zoomJoined ? (
@@ -842,46 +863,17 @@ export default function AdminProgramHub() {
                                           : 'bg-gray-100 text-gray-500',
                                   ].join(' ')}
                                 >
-                                  {attendanceStatusLabel(att)}
+                                  {att === 'VERIFIED'
+                                    ? 'Yes'
+                                    : att === 'DENIED'
+                                      ? 'No'
+                                      : attendanceStatusLabel(att)}
                                 </span>
                                 {att === 'PENDING_VERIFICATION' ? (
                                   <div className="text-[11px] text-muted-foreground">
-                                    Auto when Zoom shows ≥30 min
+                                    Auto when HCP email matches Zoom
                                   </div>
                                 ) : null}
-                              </div>
-                            </td>
-                            <td className="py-2 pr-4">
-                              <div className="flex flex-wrap gap-2">
-                                {r.status === 'PENDING' && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={approvalBusy}
-                                      onClick={() => approveMut.mutate({ id: r.id })}
-                                      className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                                    >
-                                      Approve
-                                    </button>
-                                    <button
-                                      type="button"
-                                      disabled={approvalBusy}
-                                      onClick={() => setRejectModalIds([r.id])}
-                                      className="rounded-lg border border-border px-2 py-1 text-xs font-semibold disabled:opacity-40"
-                                    >
-                                      Reject
-                                    </button>
-                                  </>
-                                )}
-                                {r.status === 'APPROVED' && (
-                                  <button
-                                    type="button"
-                                    onClick={() => void downloadIcs(r.id)}
-                                    className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold"
-                                  >
-                                    <Download className="h-3 w-3" /> ICS invite
-                                  </button>
-                                )}
                               </div>
                             </td>
                           </tr>
@@ -900,10 +892,8 @@ export default function AdminProgramHub() {
                 <div>
                   <h2 className="text-lg font-semibold text-foreground">Survey responses</h2>
                   <p className="text-sm text-muted-foreground">
-                  <p className="text-sm text-muted-foreground">
-                    Native intake and post-event responses per learner. Attendance is verified automatically from Zoom
-                    (email + 30 minutes in session).
-                  </p>
+                    Native intake and post-event responses per learner. Attendance is verified automatically when
+                    the HCP account email matches the email Zoom recorded.
                   </p>
                 </div>
                 <button
@@ -1108,13 +1098,22 @@ export default function AdminProgramHub() {
                                               : 'bg-gray-100 text-gray-500',
                                       ].join(' ')}
                                     >
-                                      {attendanceStatusLabel(att)}
-                                    </span>
-                                    {r.postEventAttendanceReviewedAt ? (
-                                      <div className="text-[11px] text-muted-foreground">
-                                        {format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, h:mm a')}
-                                      </div>
-                                    ) : null}
+                                    {att === 'VERIFIED'
+                                      ? 'Yes'
+                                      : att === 'DENIED'
+                                        ? 'No'
+                                        : attendanceStatusLabel(att)}
+                                  </span>
+                                  {r.postEventAttendanceReviewedAt ? (
+                                    <div className="text-[11px] text-muted-foreground">
+                                      {format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, h:mm a')}
+                                    </div>
+                                  ) : null}
+                                  {att === 'PENDING_VERIFICATION' ? (
+                                    <div className="text-[11px] text-muted-foreground">
+                                      Auto when HCP email matches Zoom
+                                    </div>
+                                  ) : null}
                                   </div>
                                 </td>
                                 <td className="py-2 pr-4 align-top text-muted-foreground">

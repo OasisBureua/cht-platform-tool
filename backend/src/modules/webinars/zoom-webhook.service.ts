@@ -213,9 +213,9 @@ export class ZoomWebhookService {
         await this.programRegistrations.autoVerifyAttendanceFromZoomJoins(
           program.id,
         );
-      if (result.verifiedCount > 0) {
+      if (result.verifiedCount > 0 || result.deniedCount > 0) {
         this.logger.log(
-          `[Zoom webhook] ${eventNorm}: auto-verified ${result.verifiedCount} registration(s) from Zoom joins for program ${program.id}`,
+          `[Zoom webhook] ${eventNorm}: auto-resolved attendance for program ${program.id} (verified=${result.verifiedCount}, denied=${result.deniedCount})`,
         );
       }
     } catch (err) {
