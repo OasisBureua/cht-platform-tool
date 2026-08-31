@@ -60,6 +60,43 @@ resource "aws_secretsmanager_secret" "app_secrets" {
   }
 }
 
+# Read AWSCURRENT so empty TF_VAR_stripe_* (typical for deploy-dev) does not wipe
+# keys already set in Secrets Manager. Non-empty TF vars still update (e.g. prod).
+data "external" "app_secrets_current" {
+  program = [
+    "python3",
+    "-c",
+    <<-PY
+import json, subprocess
+secret_id = "${aws_secretsmanager_secret.app_secrets.id}"
+try:
+    out = subprocess.check_output(
+        [
+            "aws", "secretsmanager", "get-secret-value",
+            "--secret-id", secret_id,
+            "--query", "SecretString",
+            "--output", "text",
+        ],
+        stderr=subprocess.DEVNULL,
+        text=True,
+    )
+except Exception:
+    out = "{}"
+print(json.dumps({"json": out}))
+PY
+  ]
+}
+
+locals {
+  existing_app_secrets = try(jsondecode(data.external.app_secrets_current.result.json), {})
+
+  # Prefer explicitly provided Terraform vars; otherwise keep SM values.
+  stripe_secret_key = trimspace(var.stripe_secret_key) != "" ? var.stripe_secret_key : try(local.existing_app_secrets.stripe_secret_key, "")
+  stripe_publishable_key = trimspace(var.stripe_publishable_key) != "" ? var.stripe_publishable_key : try(local.existing_app_secrets.stripe_publishable_key, "")
+  stripe_webhook_secret = trimspace(var.stripe_webhook_secret) != "" ? var.stripe_webhook_secret : try(local.existing_app_secrets.stripe_webhook_secret, "")
+  stripe_connect_webhook_secret = trimspace(var.stripe_connect_webhook_secret) != "" ? var.stripe_connect_webhook_secret : try(local.existing_app_secrets.stripe_connect_webhook_secret, "")
+}
+
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
@@ -89,10 +126,10 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     bill_webhook_secret                       = var.bill_webhook_secret
     bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
     bill_mfa_device_name                      = var.bill_mfa_device_name
-    stripe_secret_key                         = var.stripe_secret_key
-    stripe_publishable_key                    = var.stripe_publishable_key
-    stripe_webhook_secret                     = var.stripe_webhook_secret
-    stripe_connect_webhook_secret             = var.stripe_connect_webhook_secret
+    stripe_secret_key                         = local.stripe_secret_key
+    stripe_publishable_key                    = local.stripe_publishable_key
+    stripe_webhook_secret                     = local.stripe_webhook_secret
+    stripe_connect_webhook_secret             = local.stripe_connect_webhook_secret
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
     recaptcha_secret_key                      = var.recaptcha_secret_key

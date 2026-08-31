@@ -407,28 +407,28 @@ variable "bill_mfa_device_name" {
 }
 
 variable "stripe_secret_key" {
-  description = "Stripe secret API key (sk_test_ / sk_live_)"
+  description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps existing Secrets Manager value (dev)."
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "stripe_publishable_key" {
-  description = "Stripe publishable key (pk_test_ / pk_live_)"
+  description = "Stripe publishable key (pk_test_ / pk_live_). Empty keeps existing Secrets Manager value (dev)."
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "stripe_webhook_secret" {
-  description = "Stripe webhook signing secret for Your account destination"
+  description = "Stripe webhook signing secret for Your account destination. Empty keeps existing Secrets Manager value (dev)."
   type        = string
   sensitive   = true
   default     = ""
 }
 
 variable "stripe_connect_webhook_secret" {
-  description = "Stripe webhook signing secret for Connected accounts destination"
+  description = "Stripe webhook signing secret for Connected accounts destination. Empty keeps existing Secrets Manager value (dev)."
   type        = string
   sensitive   = true
   default     = ""

@@ -65,4 +65,7 @@ cognito_mrr_associate_waf_replica     = false
 # mediahub_api_key     = ""
 # contenthub_api_key   = ""   # required for WordPress catalog on devapp
 # youtube_api_key      = ""
-# zoom_* / jotform_* / bill_* / hubspot_* / recaptcha_* / internal_cache_secret
+# zoom_* / jotform_* / bill_* / stripe_* / hubspot_* / recaptcha_* / internal_cache_secret
+# Dev Stripe keys live in AWS Secrets Manager (cht-dev-app-secrets); sync with:
+#   ./scripts/sync-tfvars-from-secrets-manager.sh dev
+# deploy-dev.yml does not pass TF_VAR_stripe_* (avoids wiping SM).

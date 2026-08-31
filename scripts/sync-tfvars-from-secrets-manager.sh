@@ -36,6 +36,7 @@ SECRET_KEYS = [
     "jotform_api_key", "jotform_webinar_default_intake_url", "jotform_webinar_post_event_shared_form_id",
     "bill_dev_key", "bill_username", "bill_password", "bill_org_id", "bill_funding_account_id",
     "bill_webhook_secret", "bill_mfa_remember_me_id", "bill_mfa_device_name",
+    "stripe_secret_key", "stripe_publishable_key", "stripe_webhook_secret", "stripe_connect_webhook_secret",
     "admin_bootstrap_secret", "hubspot_access_token", "recaptcha_secret_key", "internal_cache_secret",
     "cognito_google_client_id", "cognito_google_client_secret", "recaptcha_site_key",
 ]

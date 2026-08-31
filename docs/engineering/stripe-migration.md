@@ -68,7 +68,7 @@ Webhooks → POST /api/webhooks/bill → payment.updated / failed → Payment st
 | **Tax** | **PAY-4:** Collect TIN/name/address via **Express embedded onboarding** requirements (`requirements.currently_due` / `past_due`). No Stripe Tax Forms product in Dashboard — finance owns 1099 (assumed NEC). `User.w9Submitted` is set **only** from Stripe `taxComplete` (legacy Bill W-9 does not satisfy eligibility on Stripe envs). `POST /w9` syncs status only; does not push TIN to Bill |
 | **Cutover** | **No dual-run.** Build and test on **dev**, then deploy to **testapp**, test there, then go live. Stripe replaces Bill in that environment when promoted |
 | **Re-onboard** | Existing `billVendorId` users **must re-onboard** to Connect when that environment switches (IDs do not port) |
-| **Env secrets** | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET` — when secret key is set, Bill happy path is disabled |
+| **Env secrets** | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_CONNECT_WEBHOOK_SECRET` — when secret key is set, Bill happy path is disabled. **Dev:** set once in AWS Secrets Manager `cht-dev-app-secrets` (not via `deploy-dev.yml`); Terraform keeps existing `stripe_*` when TF vars are empty. **Platform/prod:** still passed as `TF_VAR_stripe_*` from GitHub Environment secrets in `deploy-prod.yml`. |
 | **PAY-3 UX** | In-app embedded onboarding; copy uses **legal name / business entity** (not “payee”); brand marks use Stripe logo |
 
 ---
