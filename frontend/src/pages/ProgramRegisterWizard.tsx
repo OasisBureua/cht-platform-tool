@@ -356,16 +356,7 @@ export default function ProgramRegisterWizard() {
           {!registrationClosed ? (
             <>
               <div className="space-y-4">
-                {alreadyRegistered ? (
-                  <div className="rounded-card border border-success/25 bg-success/10 p-4 text-sm text-green-950 space-y-1">
-                    <p className="font-semibold">Registration already submitted</p>
-                    <p>
-                      {myRegistration?.status === 'PENDING'
-                        ? 'Your request is pending administrator review. Join opens after approval, when the live session starts.'
-                        : 'You are registered for this session. Join opens closer to the live start time.'}
-                    </p>
-                  </div>
-                ) : myRegistration?.status === 'SURVEY_SUBMITTED' ? (
+                {myRegistration?.status === 'SURVEY_SUBMITTED' ? (
                   <div className="rounded-card border border-sky-200 bg-sky-50 p-4 text-sm text-sky-950 space-y-1">
                     <p className="font-semibold">Survey submitted</p>
                     <p>
@@ -409,8 +400,8 @@ export default function ProgramRegisterWizard() {
                     {intakeSubmitError ? (
                       <p className="text-sm text-destructive">{intakeSubmitError}</p>
                     ) : null}
-                    {intakeRecorded ? (
-                      <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
+                    {intakeRecorded && myRegistration?.status !== 'SURVEY_SUBMITTED' ? (
+                      <p className="text-xs font-medium text-sky-900 bg-sky-50 border border-sky-200 rounded-[6px] px-3 py-2">
                         Your answers are saved.{' '}
                         {isLastStep
                           ? 'Click Submit registration when ready.'

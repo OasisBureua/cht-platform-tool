@@ -235,6 +235,13 @@ upload_frontend_bucket() {
     fi
   done
 
+  if [ -f dist/zoom-embed.html ]; then
+    aws s3 cp dist/zoom-embed.html "s3://${target_bucket}/zoom-embed.html" \
+      "${region_flag[@]}" \
+      --cache-control "no-cache, no-store, must-revalidate" \
+      --content-type "text/html"
+  fi
+
   aws s3 cp dist/index.html "s3://${target_bucket}/index.html" \
     "${region_flag[@]}" \
     --cache-control "no-cache, no-store, must-revalidate" \

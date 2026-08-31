@@ -211,14 +211,6 @@ export default function AdminWebinarApprovals() {
     },
   });
 
-  const attendanceMut = useMutation({
-    mutationFn: ({ id, status }: { id: string; status: 'VERIFIED' | 'DENIED' }) =>
-      adminApi.updatePostEventAttendance(id, status),
-    onSuccess: () => {
-      invalidate();
-    },
-  });
-
   const undoMut = useMutation({
     mutationFn: (id: string) => adminApi.undoRegistrationApproval(id),
     onSuccess: () => {
@@ -241,7 +233,7 @@ export default function AdminWebinarApprovals() {
   });
 
   const busy =
-    approveMut.isPending || rejectMut.isPending || bulkMut.isPending || attendanceMut.isPending || undoMut.isPending;
+    approveMut.isPending || rejectMut.isPending || bulkMut.isPending || undoMut.isPending;
   const selectedList = filteredRows.filter((r) => selectedIds.has(r.id)).map((r) => r.id);
   const selectedRows = useMemo(
     () => filteredRows.filter((r) => selectedIds.has(r.id)),
@@ -342,8 +334,8 @@ export default function AdminWebinarApprovals() {
         </div>
         {tab === 'attendance' ? (
           <p className="mt-3 text-sm text-muted-foreground">
-            Verify attendance after the live session. Verified and denied learners stay in this list with their status
-            so you can audit who was marked.
+            Attendance is verified automatically after the live session when the learner&apos;s email appears in
+            Zoom for at least 30 minutes. Status below is read-only.
           </p>
         ) : null}
 
@@ -452,10 +444,6 @@ export default function AdminWebinarApprovals() {
         <p className="text-sm text-destructive">One or more updates failed. Try again or use row actions.</p>
       ) : null}
 
-      {tab === 'attendance' && attendanceMut.isError ? (
-        <p className="text-sm text-destructive">Could not update attendance. Try again.</p>
-      ) : null}
-
       {tab === 'attendance' && !attendanceLoading && !attendanceError ? (
         <div className="overflow-x-auto rounded-card border border-border bg-card">
           <table className="min-w-full text-sm">
@@ -467,13 +455,11 @@ export default function AdminWebinarApprovals() {
                 <th className="py-3 px-4">Registration</th>
                 <th className="py-3 px-4">Attendance</th>
                 <th className="py-3 px-4">Reviewed</th>
-                <th className="py-3 px-4">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filteredAttendanceRows.map((r) => {
                 const att = r.postEventAttendanceStatus;
-                const isPending = att === 'PENDING_VERIFICATION';
                 return (
                 <tr key={r.id}>
                   <td className="py-3 px-4">
@@ -520,35 +506,14 @@ export default function AdminWebinarApprovals() {
                     >
                       {attendanceStatusLabel(att)}
                     </span>
+                    {att === 'PENDING_VERIFICATION' ? (
+                      <div className="mt-1 text-[11px] text-muted-foreground">Waiting for Zoom ≥30 min</div>
+                    ) : null}
                   </td>
                   <td className="py-3 px-4 text-muted-foreground whitespace-nowrap text-xs">
                     {r.postEventAttendanceReviewedAt
                       ? format(parseISO(r.postEventAttendanceReviewedAt), 'MMM d, yyyy h:mm a')
                       : '-'}
-                  </td>
-                  <td className="py-3 px-4">
-                    {isPending ? (
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => attendanceMut.mutate({ id: r.id, status: 'VERIFIED' })}
-                          className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
-                        >
-                          Verify attendance
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => attendanceMut.mutate({ id: r.id, status: 'DENIED' })}
-                          className="rounded-lg border border-border px-2 py-1 text-xs font-semibold"
-                        >
-                          Did not attend
-                        </button>
-                      </div>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">No action needed</span>
-                    )}
                   </td>
                 </tr>
                 );

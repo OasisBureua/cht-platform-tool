@@ -578,8 +578,8 @@ export default function LiveMultiRegister() {
           </p>
 
           {currentIntakeSubmissionId ? (
-            <p className="text-xs font-medium text-success bg-success/10 border border-success/25 rounded-[6px] px-3 py-2">
-              Intake submission recorded for this session. Click <strong>Continue</strong> to proceed to the next step.
+            <p className="text-xs font-medium text-sky-900 bg-sky-50 border border-sky-200 rounded-[6px] px-3 py-2">
+              Survey submitted for this session. Click <strong>Continue</strong> to proceed to the next step.
             </p>
           ) : null}
 

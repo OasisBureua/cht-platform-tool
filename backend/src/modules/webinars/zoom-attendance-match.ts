@@ -3,9 +3,19 @@
  * Used after webinar.ended / meeting.ended to auto-verify attendance.
  */
 
+/** Minimum in-session time (join→leave, summed) to auto-verify attendance. */
+export const MIN_ATTENDANCE_DURATION_MS = 30 * 60 * 1000;
+
 export type ZoomJoinEvidence = {
   userId: string | null;
   participantEmail: string | null;
+  event?: string;
+  occurredAt?: Date;
+};
+
+export type ZoomTimedParticipantEvent = ZoomJoinEvidence & {
+  event: string;
+  occurredAt: Date;
 };
 
 export type RegistrationMatchCandidate = {
@@ -109,4 +119,78 @@ export function zoomPresenceForRegistration(
     };
   }
   return { zoomJoined: false, zoomParticipantEmail: null };
+}
+
+function eventsForRegistration(
+  events: ZoomTimedParticipantEvent[],
+  userId: string,
+  userEmail: string,
+): ZoomTimedParticipantEvent[] {
+  const email = normEmail(userEmail);
+  return events.filter(
+    (e) =>
+      e.userId === userId ||
+      (email != null && normEmail(e.participantEmail) === email),
+  );
+}
+
+/**
+ * Sum JOINED→LEFT intervals for a learner. An open JOINED (no leave yet) is
+ * closed at sessionEndedAt when the webinar has ended.
+ * Times come from Zoom webhooks (`join_time` / `leave_time`) or SDK join/leave.
+ */
+export function attendanceDurationMs(
+  events: ZoomTimedParticipantEvent[],
+  userId: string,
+  userEmail: string,
+  sessionEndedAt?: Date | null,
+): number {
+  const mine = eventsForRegistration(events, userId, userEmail).slice().sort(
+    (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
+  );
+  if (mine.length === 0) return 0;
+
+  let total = 0;
+  let joinAt: Date | null = null;
+  for (const e of mine) {
+    const type = e.event === 'LEFT' ? 'LEFT' : 'JOINED';
+    if (type === 'JOINED') {
+      if (!joinAt) joinAt = e.occurredAt;
+    } else if (joinAt) {
+      total += Math.max(0, e.occurredAt.getTime() - joinAt.getTime());
+      joinAt = null;
+    }
+  }
+  if (joinAt) {
+    const end =
+      sessionEndedAt && sessionEndedAt.getTime() > joinAt.getTime()
+        ? sessionEndedAt
+        : null;
+    if (end) {
+      total += Math.max(0, end.getTime() - joinAt.getTime());
+    }
+  }
+  return total;
+}
+
+/** Email/userId match **and** at least {@link MIN_ATTENDANCE_DURATION_MS} in session. */
+export function matchRegistrationsToQualifiedAttendance(
+  registrations: RegistrationMatchCandidate[],
+  events: ZoomTimedParticipantEvent[],
+  sessionEndedAt?: Date | null,
+  minMs: number = MIN_ATTENDANCE_DURATION_MS,
+): ZoomJoinMatch[] {
+  const matches = matchRegistrationsToZoomJoins(registrations, events);
+  return matches.filter((m) => {
+    const reg = registrations.find((r) => r.id === m.registrationId);
+    if (!reg) return false;
+    return (
+      attendanceDurationMs(
+        events,
+        reg.userId,
+        reg.userEmail,
+        sessionEndedAt,
+      ) >= minMs
+    );
+  });
 }

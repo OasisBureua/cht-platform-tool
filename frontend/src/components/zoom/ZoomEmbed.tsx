@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ExternalLink, Loader2, MonitorPlay, X } from 'lucide-react';
 import type { MeetingSdkAuth } from '../../api/webinars';
-import { ZOOM_EMBED_HTML } from './zoomEmbedHtml';
+
+/** Same-origin iframe so CloudFront COOP/COEP enable Meeting SDK video (blob: URLs cannot). */
+const ZOOM_EMBED_SRC = '/zoom-embed.html';
 
 function isBrowserSupportedForZoomEmbed(): boolean {
   if (typeof window === 'undefined') return false;
@@ -57,9 +59,9 @@ export type ZoomEmbedProps = {
 /**
  * Shared Zoom Meeting SDK embed for Office Hours and Live Webinars.
  *
- * Runs Zoom inside a blob: iframe that loads the SDK from Zoom's CDN with React 18.
- * Importing `@zoom/meetingsdk` into this React 19 SPA throws ReactCurrentOwner.
- * Deploy excludes `*.html` except index.html, so we do not fetch `/zoom-embed.html` from S3.
+ * Runs Zoom inside a same-origin iframe (`/zoom-embed.html`) that loads the SDK from Zoom's CDN
+ * with React 18. Importing `@zoom/meetingsdk` into this React 19 SPA throws ReactCurrentOwner.
+ * Same-origin (not blob:) is required for crossOriginIsolated + reliable live video updates.
  */
 export function ZoomEmbed({
   fetchAuth,
@@ -88,14 +90,10 @@ export function ZoomEmbed({
   useEffect(() => {
     if (!open) {
       setIframeSrc(null);
+      frameReadyRef.current = false;
       return;
     }
-    const blob = new Blob([ZOOM_EMBED_HTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    setIframeSrc(url);
-    return () => {
-      URL.revokeObjectURL(url);
-    };
+    setIframeSrc(ZOOM_EMBED_SRC);
   }, [open]);
 
   const report = useCallback(

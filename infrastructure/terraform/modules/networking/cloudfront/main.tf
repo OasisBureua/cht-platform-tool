@@ -185,6 +185,7 @@ resource "aws_cloudfront_distribution" "frontend" {
     }
 
     viewer_protocol_policy = "redirect-to-https"
+    response_headers_policy_id = aws_cloudfront_response_headers_policy.security_headers.id
     # default_ttl=0: if S3 omits Cache-Control (mis-deploy), do not cache at edge for 1h.
     # Explicit object headers still control caching up to max_ttl (hashed assets).
     min_ttl                = 0

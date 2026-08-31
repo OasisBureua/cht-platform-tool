@@ -39,3 +39,9 @@ variable "cognito_user_pool_arn" {
   type        = string
   default     = ""
 }
+
+variable "appconfig_configuration_arn" {
+  description = "AppConfig configuration ARN for backend feature-flag polling (empty disables)"
+  type        = string
+  default     = ""
+}

@@ -33,6 +33,7 @@ import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ConfigModule } from '@nestjs/config';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 const usePrettyLogs = process.env.LOG_PRETTY === 'true';
 
@@ -140,6 +141,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     AuditModule,
     HealthModule,
     QueueModule,
+    FeatureFlagsModule,
     AuthModule,
     DashboardModule,
     PaymentsModule,
