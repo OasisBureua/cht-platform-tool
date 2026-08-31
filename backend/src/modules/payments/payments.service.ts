@@ -551,9 +551,9 @@ export class PaymentsService {
           preferredPaymentMethod: 'ACH',
           // PAY-4: w9Submitted mirrors Stripe taxComplete only (ignore legacy Bill W-9).
           w9Submitted: summary.taxComplete,
-          ...(summary.taxComplete
-            ? { w9SubmittedAt: user.w9SubmittedAt ?? new Date() }
-            : {}),
+          w9SubmittedAt: summary.taxComplete
+            ? (user.w9SubmittedAt ?? new Date())
+            : null,
           ...(summary.bankAccountLast4
             ? { bankAccountLast4: summary.bankAccountLast4 }
             : {}),

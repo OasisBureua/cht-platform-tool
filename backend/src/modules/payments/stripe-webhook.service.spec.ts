@@ -6,6 +6,7 @@ describe('StripeWebhookService', () => {
   const prisma = {
     user: {
       findFirst: jest.fn(),
+      findUnique: jest.fn(),
       update: jest.fn(),
     },
     payment: {
@@ -103,6 +104,114 @@ describe('StripeWebhookService', () => {
     expect(prisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: { totalEarnings: { decrement: 5000 } },
+      }),
+    );
+  });
+
+  it('clears w9SubmittedAt when taxComplete flips false', async () => {
+    stripeService.constructEvent.mockReturnValue({
+      id: 'evt_3',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_1',
+          metadata: { userId: 'user_1' },
+        },
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue({
+      id: 'user_1',
+      stripeAccountId: 'acct_1',
+      w9SubmittedAt: new Date('2026-01-01'),
+      stripeOnboardingCompleteAt: new Date('2026-01-01'),
+    });
+    stripeService.summarizeAccount.mockReturnValue({
+      id: 'acct_1',
+      payoutsEnabled: false,
+      detailsSubmitted: true,
+      chargesEnabled: false,
+      currentlyDue: ['individual.id_number'],
+      taxComplete: false,
+      status: 'restricted',
+      bankAccountLast4: null,
+    });
+    prisma.user.update.mockResolvedValue({});
+
+    await service.processEvent('{}', 'sig');
+
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user_1' },
+        data: expect.objectContaining({
+          w9Submitted: false,
+          w9SubmittedAt: null,
+          paymentEnabled: false,
+        }),
+      }),
+    );
+  });
+
+  it('does not hijack a user who already has a different stripeAccountId', async () => {
+    stripeService.constructEvent.mockReturnValue({
+      id: 'evt_4',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_new',
+          metadata: { userId: 'user_1' },
+        },
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user_1',
+      stripeAccountId: 'acct_other',
+    });
+
+    await service.processEvent('{}', 'sig');
+
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('links metadata userId only when they have no stripeAccountId yet', async () => {
+    stripeService.constructEvent.mockReturnValue({
+      id: 'evt_5',
+      type: 'account.updated',
+      data: {
+        object: {
+          id: 'acct_new',
+          metadata: { userId: 'user_1' },
+        },
+      },
+    });
+    prisma.user.findFirst.mockResolvedValue(null);
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'user_1',
+      stripeAccountId: null,
+      w9SubmittedAt: null,
+      stripeOnboardingCompleteAt: null,
+    });
+    stripeService.summarizeAccount.mockReturnValue({
+      id: 'acct_new',
+      payoutsEnabled: true,
+      detailsSubmitted: true,
+      chargesEnabled: true,
+      currentlyDue: [],
+      taxComplete: true,
+      status: 'active',
+      bankAccountLast4: '1234',
+    });
+    prisma.user.update.mockResolvedValue({});
+
+    await service.processEvent('{}', 'sig');
+
+    expect(prisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'user_1' },
+        data: expect.objectContaining({
+          stripeAccountId: 'acct_new',
+          w9Submitted: true,
+        }),
       }),
     );
   });

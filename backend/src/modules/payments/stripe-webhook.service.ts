@@ -48,11 +48,25 @@ export class StripeWebhookService {
   private async handleAccountUpdated(account: Stripe.Account): Promise<void> {
     const summary = this.stripeService.summarizeAccount(account);
     const userIdMeta = account.metadata?.userId;
-    const user = await this.prisma.user.findFirst({
-      where: userIdMeta
-        ? { OR: [{ stripeAccountId: account.id }, { id: userIdMeta }] }
-        : { stripeAccountId: account.id },
+
+    // Prefer the account already linked in our DB. Only fall back to metadata
+    // userId when that user has no stripeAccountId yet (first sync) — never
+    // hijack a user who already has a different Connect account.
+    let user = await this.prisma.user.findFirst({
+      where: { stripeAccountId: account.id },
     });
+    if (!user && userIdMeta) {
+      const candidate = await this.prisma.user.findUnique({
+        where: { id: userIdMeta },
+      });
+      if (candidate && !candidate.stripeAccountId) {
+        user = candidate;
+      } else if (candidate?.stripeAccountId) {
+        this.logger.warn(
+          `[Stripe webhook] account.updated metadata userId=${userIdMeta} already linked to ${candidate.stripeAccountId}; ignoring for ${account.id}`,
+        );
+      }
+    }
     if (!user) {
       this.logger.warn(
         `[Stripe webhook] account.updated no user for ${account.id}`,
@@ -71,9 +85,9 @@ export class StripeWebhookService {
         preferredPaymentMethod: 'ACH',
         // PAY-4: always mirror Stripe taxComplete (clears legacy Bill W-9 flags).
         w9Submitted: taxComplete,
-        ...(taxComplete
-          ? { w9SubmittedAt: user.w9SubmittedAt ?? new Date() }
-          : {}),
+        w9SubmittedAt: taxComplete
+          ? (user.w9SubmittedAt ?? new Date())
+          : null,
         ...(summary.bankAccountLast4
           ? { bankAccountLast4: summary.bankAccountLast4 }
           : {}),
