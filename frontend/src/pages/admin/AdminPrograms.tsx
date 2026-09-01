@@ -53,6 +53,7 @@ export default function AdminPrograms() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       queryClient.invalidateQueries({ queryKey: ['webinars'] });
+      queryClient.invalidateQueries({ queryKey: ['office-hours'] });
       setDeleteConfirmId(null);
       setDeleteError(null);
     },
@@ -235,6 +236,7 @@ export default function AdminPrograms() {
             onSaved={(updatedId?: string) => {
               queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
               queryClient.invalidateQueries({ queryKey: ['webinars'] });
+              queryClient.invalidateQueries({ queryKey: ['office-hours'] });
               if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
               setEditingId(null);
             }}

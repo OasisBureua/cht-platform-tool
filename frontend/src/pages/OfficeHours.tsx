@@ -7,6 +7,10 @@ import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
+import {
+  OFFICE_HOURS_QUERY_KEY,
+  liveSessionListQueryOptions,
+} from '../utils/live-session-list-query';
 import { isSessionExpired } from '../utils/live-session-timing';
 
 function isExpired(w: WebinarItem): boolean {
@@ -26,9 +30,9 @@ export default function OfficeHours() {
   const userId = user?.userId;
 
   const { data: sessions = [], isLoading } = useQuery({
-    queryKey: ['office-hours'],
+    queryKey: OFFICE_HOURS_QUERY_KEY,
     queryFn: webinarsApi.listOfficeHours,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: liveStatuses = [] } = useQuery({

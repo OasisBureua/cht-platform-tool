@@ -507,7 +507,8 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
       include: { slot: true, program: true },
     });
-    if (!reg) return null;
+    // Orphan registration rows (program deleted without FK cascade) must not 500 the API.
+    if (!reg?.program) return null;
 
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||

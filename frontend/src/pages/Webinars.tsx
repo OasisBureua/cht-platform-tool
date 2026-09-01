@@ -9,6 +9,10 @@ import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { StripeMark } from '../components/branding/StripeMark';
 import { isSessionExpired } from '../utils/live-session-timing';
+import {
+  LIVE_WEBINARS_QUERY_KEY,
+  liveSessionListQueryOptions,
+} from '../utils/live-session-list-query';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -36,9 +40,9 @@ export default function Webinars() {
   const userId = user?.userId;
 
   const { data: webinars = [], isLoading } = useQuery({
-    queryKey: ['webinars'],
+    queryKey: LIVE_WEBINARS_QUERY_KEY,
     queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: liveStatuses = [] } = useQuery({
