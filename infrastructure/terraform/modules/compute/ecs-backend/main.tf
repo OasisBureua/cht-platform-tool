@@ -103,6 +103,18 @@ resource "aws_ecs_task_definition" "backend" {
             {
               name  = "SESSION_ABSOLUTE_TTL_SECONDS"
               value = "28800"
+            },
+            {
+              name  = "ZOOM_RECORDINGS_SYNC_MONTHS_BACK"
+              value = "24"
+            },
+            {
+              name  = "ZOOM_ATTENDANCE_IMPORT_MONTHS_BACK"
+              value = "12"
+            },
+            {
+              name  = "ZOOM_ATTENDANCE_IMPORT_AUTO_VERIFY"
+              value = "false"
             }
           ],
           concat(

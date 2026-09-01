@@ -123,6 +123,38 @@ export default () => ({
    */
   zoomRecordings: {
     s3Bucket: process.env.SESSION_ASSETS_S3_BUCKET?.trim() || '',
+    /** How many months back manual account Sync crawls on first run (default 24). */
+    syncMonthsBackDefault: (() => {
+      const parsed = parseInt(process.env.ZOOM_RECORDINGS_SYNC_MONTHS_BACK || '', 10);
+      if (Number.isNaN(parsed) || parsed < 1) return 24;
+      return Math.min(parsed, 120);
+    })(),
+    /** File types that always stream to S3 (large video/audio). */
+    streamFileTypes: ['MP4', 'M4A'],
+    multipartPartSizeMb: (() => {
+      const parsed = parseInt(process.env.ZOOM_RECORDINGS_MULTIPART_PART_MB || '', 10);
+      if (Number.isNaN(parsed) || parsed < 5) return 10;
+      return Math.min(parsed, 100);
+    })(),
+    /** How many months back manual attendance import crawls (default 12). */
+    attendanceImportMonthsBackDefault: (() => {
+      const parsed = parseInt(
+        process.env.ZOOM_ATTENDANCE_IMPORT_MONTHS_BACK || '',
+        10,
+      );
+      if (Number.isNaN(parsed) || parsed < 1) return 12;
+      return Math.min(parsed, 120);
+    })(),
+    /** Default for attendance import jobs unless admin opts in per job. */
+    attendanceImportAutoVerifyDefault: (() => {
+      const v = (process.env.ZOOM_ATTENDANCE_IMPORT_AUTO_VERIFY || 'false')
+        .trim()
+        .toLowerCase();
+      return v === 'true' || v === '1' || v === 'yes';
+    })(),
+    /** S3 object name for exported attendee CSV under each webinar prefix. */
+    attendanceReportFilename:
+      process.env.ZOOM_ATTENDANCE_REPORT_FILENAME?.trim() || 'attendees.csv',
   },
 
   // Transactional email (Amazon SES): e.g. registration approved for Live / Office Hours

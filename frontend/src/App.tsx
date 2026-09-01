@@ -69,6 +69,10 @@ const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
 const AdminPrograms         = lazy(() => import('./pages/admin/AdminPrograms'));
+const AdminLiveLayout       = lazy(() => import('./pages/admin/AdminLiveLayout'));
+const AdminZoomRecordingsLayout = lazy(() => import('./pages/admin/AdminZoomRecordingsLayout'));
+const AdminZoomRecordingsList   = lazy(() => import('./pages/admin/AdminZoomRecordingsList'));
+const AdminZoomRecordingDetail = lazy(() => import('./pages/admin/AdminZoomRecordingDetail'));
 const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
 const AdminSurveyResponses  = lazy(() => import('./pages/admin/AdminSurveyResponses'));
 const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
@@ -282,7 +286,15 @@ function App() {
               }
             >
               <Route index element={<AdminDashboard />} />
-              <Route path="programs" element={<AdminPrograms />} />
+              <Route path="programs" element={<AdminLiveLayout />}>
+                <Route index element={<AdminPrograms />} />
+                <Route path="zoom-recordings" element={<AdminZoomRecordingsLayout />}>
+                  <Route index element={<AdminZoomRecordingsList filter="all" />} />
+                  <Route path="zoom-only" element={<AdminZoomRecordingsList filter="unlinked" />} />
+                  <Route path="linked" element={<AdminZoomRecordingsList filter="linked" />} />
+                </Route>
+                <Route path="zoom-recordings/:sessionId" element={<AdminZoomRecordingDetail />} />
+              </Route>
               <Route path="programs/:programId" element={<AdminProgramHubRedirect />} />
               <Route path="programs/:programId/hub" element={<AdminProgramHub />} />
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />

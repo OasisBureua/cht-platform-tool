@@ -96,18 +96,22 @@ export default function AdminPrograms() {
           </button>
         </div>
       ) : null}
-      {/* Header */}
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-foreground">
-            {isOfficeHours ? 'Office Hours' : 'Webinars'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {isOfficeHours
-              ? 'Zoom Meeting sessions for live Q&A, often scheduled beside webinars. Host admits participants from the waiting room.'
-              : 'Schedule and manage live Zoom Webinars and learner-facing registration.'}
-          </p>
-        </div>
+      {/* Header — LIVE layout provides title/tabs for webinars; Office Hours keeps its own heading */}
+        <div
+          className={[
+            'flex flex-col gap-4 sm:flex-row sm:items-center',
+            isOfficeHours ? 'sm:justify-between' : 'sm:justify-end',
+          ].join(' ')}
+        >
+        {isOfficeHours ? (
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground">Office Hours</h1>
+            <p className="text-sm text-muted-foreground">
+              Zoom Meeting sessions for live Q&A, often scheduled beside webinars. Host admits
+              participants from the waiting room.
+            </p>
+          </div>
+        ) : null}
         <div className="flex flex-wrap items-center gap-2">
           {isOfficeHours ? (
             <Link

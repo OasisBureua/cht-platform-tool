@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import type { Readable } from 'stream';
 import {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
   fromZoomWebinarSettingsApi,
@@ -1020,6 +1021,265 @@ export class ZoomService implements OnModuleInit {
         : undefined;
     return { buffer: Buffer.from(data), contentType };
   }
+
+  /**
+   * Stream a Zoom recording download (for large MP4 multipart upload to S3).
+   * Prefer this over {@link downloadRecordingFile} when files may exceed ALB timeouts.
+   */
+  async downloadRecordingFileStream(
+    downloadUrl: string,
+    bearerToken?: string,
+  ): Promise<{ stream: Readable; contentType?: string }> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = bearerToken || (await this.getAccessToken());
+    const response = await firstValueFrom(
+      this.http.get<Readable>(downloadUrl, {
+        responseType: 'stream',
+        timeout: 60 * 60 * 1000,
+        maxContentLength: Infinity,
+        maxBodyLength: Infinity,
+        headers: { Authorization: `Bearer ${token}` },
+        maxRedirects: 5,
+      }),
+    );
+    const contentType =
+      typeof response.headers?.['content-type'] === 'string'
+        ? response.headers['content-type']
+        : undefined;
+    return { stream: response.data, contentType };
+  }
+
+  /**
+   * One page of account cloud recordings for a date window (max ~1 month).
+   * Requires cloud_recording:read:list_account_recordings:admin.
+   */
+  async listAccountRecordingsPage(opts: {
+    from: string;
+    to: string;
+    pageSize?: number;
+    nextPageToken?: string;
+  }): Promise<ZoomAccountRecordingsPage> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const accountId = this.config.get<string>('zoom.accountId')?.trim();
+    if (!accountId) {
+      throw new Error('Zoom account ID is not configured');
+    }
+
+    const token = await this.getAccessToken();
+    const params: Record<string, string | number> = {
+      from: opts.from,
+      to: opts.to,
+      page_size: opts.pageSize ?? 300,
+    };
+    if (opts.nextPageToken?.trim()) {
+      params.next_page_token = opts.nextPageToken.trim();
+    }
+
+    const { data } = await firstValueFrom(
+      this.http.get<ZoomAccountRecordingsApiResponse>(
+        `https://api.zoom.us/v2/accounts/${encodeURIComponent(accountId)}/recordings`,
+        {
+          params,
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+
+    return {
+      from: data.from ?? opts.from,
+      to: data.to ?? opts.to,
+      nextPageToken: data.next_page_token?.trim() || undefined,
+      totalRecords: data.total_records,
+      sessions: (data.meetings || []).map((m) => this.mapAccountRecordingSession(m)),
+    };
+  }
+
+  /**
+   * Fetch all account recording sessions in a date window (handles pagination).
+   */
+  async listAccountRecordingsInRange(opts: {
+    from: string;
+    to: string;
+    pageSize?: number;
+  }): Promise<ZoomAccountRecordingSessionSummary[]> {
+    const sessions: ZoomAccountRecordingSessionSummary[] = [];
+    let nextPageToken: string | undefined;
+
+    do {
+      const page = await this.listAccountRecordingsPage({
+        from: opts.from,
+        to: opts.to,
+        pageSize: opts.pageSize,
+        nextPageToken,
+      });
+      sessions.push(...page.sessions);
+      nextPageToken = page.nextPageToken;
+    } while (nextPageToken);
+
+    return sessions;
+  }
+
+  /**
+   * One page of past webinar participants from Zoom Report API.
+   * Requires report:read:list_webinar_participants:admin (or master).
+   */
+  async listWebinarReportParticipantsPage(opts: {
+    webinarId: string;
+    pageSize?: number;
+    nextPageToken?: string;
+  }): Promise<ZoomReportParticipantsPage> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = await this.getAccessToken();
+    const pathId = this.encodeMeetingIdForPath(opts.webinarId);
+    const params: Record<string, string | number> = {
+      page_size: opts.pageSize ?? 300,
+    };
+    if (opts.nextPageToken?.trim()) {
+      params.next_page_token = opts.nextPageToken.trim();
+    }
+
+    const { data } = await firstValueFrom(
+      this.http.get<ZoomReportParticipantsApiResponse>(
+        `https://api.zoom.us/v2/report/webinars/${pathId}/participants`,
+        {
+          params,
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+
+    return this.mapReportParticipantsPage(data);
+  }
+
+  /**
+   * One page of past meeting participants from Zoom Report API.
+   * Requires report:read:list_meeting_participants:admin (or master).
+   */
+  async listMeetingReportParticipantsPage(opts: {
+    meetingId: string;
+    pageSize?: number;
+    nextPageToken?: string;
+  }): Promise<ZoomReportParticipantsPage> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = await this.getAccessToken();
+    const pathId = this.encodeMeetingIdForPath(opts.meetingId);
+    const params: Record<string, string | number> = {
+      page_size: opts.pageSize ?? 300,
+    };
+    if (opts.nextPageToken?.trim()) {
+      params.next_page_token = opts.nextPageToken.trim();
+    }
+
+    const { data } = await firstValueFrom(
+      this.http.get<ZoomReportParticipantsApiResponse>(
+        `https://api.zoom.us/v2/report/meetings/${pathId}/participants`,
+        {
+          params,
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      ),
+    );
+
+    return this.mapReportParticipantsPage(data);
+  }
+
+  /** Fetch all report participants for one session; retries with UUID on 404. */
+  async listReportParticipantsForSession(opts: {
+    sessionType: 'WEBINAR' | 'MEETING';
+    meetingId: string;
+    zoomUuid?: string | null;
+    pageSize?: number;
+  }): Promise<ZoomReportParticipant[]> {
+    const fetchAll = async (id: string) => {
+      const participants: ZoomReportParticipant[] = [];
+      let nextPageToken: string | undefined;
+      do {
+        const page =
+          opts.sessionType === 'WEBINAR'
+            ? await this.listWebinarReportParticipantsPage({
+                webinarId: id,
+                pageSize: opts.pageSize,
+                nextPageToken,
+              })
+            : await this.listMeetingReportParticipantsPage({
+                meetingId: id,
+                pageSize: opts.pageSize,
+                nextPageToken,
+              });
+        participants.push(...page.participants);
+        nextPageToken = page.nextPageToken;
+      } while (nextPageToken);
+      return participants;
+    };
+
+    try {
+      return await fetchAll(opts.meetingId);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      const altId = opts.zoomUuid?.trim();
+      if (status === 404 && altId && altId !== opts.meetingId) {
+        return fetchAll(altId);
+      }
+      throw err;
+    }
+  }
+
+  private mapReportParticipantsPage(
+    data: ZoomReportParticipantsApiResponse,
+  ): ZoomReportParticipantsPage {
+    return {
+      nextPageToken: data.next_page_token?.trim() || undefined,
+      totalRecords: data.total_records,
+      participants: (data.participants || []).map((p) => ({
+        id: p.id?.trim() || null,
+        userId: p.user_id,
+        name: p.name ?? p.user_name,
+        userEmail: p.user_email,
+        joinTime: p.join_time,
+        leaveTime: p.leave_time,
+        durationSeconds: p.duration,
+        internalUser: p.internal_user,
+      })),
+    };
+  }
+
+  private mapAccountRecordingSession(
+    meeting: ZoomAccountRecordingsApiMeeting,
+  ): ZoomAccountRecordingSessionSummary {
+    return {
+      uuid: meeting.uuid,
+      id: meeting.id != null ? String(meeting.id) : '',
+      hostId: meeting.host_id,
+      hostEmail: meeting.host_email,
+      topic: meeting.topic,
+      startTime: meeting.start_time,
+      duration: meeting.duration,
+      totalSize: meeting.total_size,
+      recordingCount: meeting.recording_count,
+      meetingType: meeting.type,
+      recordingFiles: (meeting.recording_files || []).map((f) => ({
+        id: f.id,
+        meetingId: f.meeting_id != null ? String(f.meeting_id) : undefined,
+        fileType: f.file_type,
+        fileExtension: f.file_extension,
+        fileSize: f.file_size,
+        downloadUrl: f.download_url ?? '',
+        playUrl: f.play_url,
+        status: f.status,
+        recordingType: f.recording_type,
+        recordingStart: f.recording_start,
+        recordingEnd: f.recording_end,
+      })),
+    };
+  }
 }
 
 export type ZoomRecordingFile = {
@@ -1047,6 +1307,63 @@ export type ZoomMeetingRecordings = {
   recordingFiles: ZoomRecordingFile[];
 };
 
+/** One meeting/webinar entry from account cloud recordings inventory. */
+export type ZoomAccountRecordingSessionSummary = {
+  uuid?: string;
+  id: string;
+  hostId?: string;
+  hostEmail?: string;
+  topic?: string;
+  startTime?: string;
+  duration?: number;
+  totalSize?: number;
+  recordingCount?: number;
+  /** Zoom meeting type integer when returned by API. */
+  meetingType?: number;
+  recordingFiles: ZoomRecordingFile[];
+};
+
+export type ZoomAccountRecordingsPage = {
+  from: string;
+  to: string;
+  nextPageToken?: string;
+  totalRecords?: number;
+  sessions: ZoomAccountRecordingSessionSummary[];
+};
+
+export type ZoomReportParticipant = {
+  id: string | null;
+  userId?: string;
+  name?: string;
+  userEmail?: string;
+  joinTime?: string;
+  leaveTime?: string;
+  durationSeconds?: number;
+  internalUser?: boolean;
+};
+
+export type ZoomReportParticipantsPage = {
+  nextPageToken?: string;
+  totalRecords?: number;
+  participants: ZoomReportParticipant[];
+};
+
+type ZoomReportParticipantsApiResponse = {
+  next_page_token?: string;
+  total_records?: number;
+  participants?: Array<{
+    id?: string;
+    user_id?: string;
+    name?: string;
+    user_name?: string;
+    user_email?: string;
+    join_time?: string;
+    leave_time?: string;
+    duration?: number;
+    internal_user?: boolean;
+  }>;
+};
+
 type ZoomMeetingRecordingsApiResponse = {
   uuid?: string;
   id?: string | number;
@@ -1068,4 +1385,40 @@ type ZoomMeetingRecordingsApiResponse = {
     recording_start?: string;
     recording_end?: string;
   }>;
+};
+
+type ZoomAccountRecordingsApiMeeting = {
+  uuid?: string;
+  id?: string | number;
+  host_id?: string;
+  host_email?: string;
+  topic?: string;
+  start_time?: string;
+  duration?: number;
+  total_size?: number;
+  recording_count?: number;
+  type?: number;
+  recording_files?: Array<{
+    id: string;
+    meeting_id?: string | number;
+    file_type: string;
+    file_extension?: string;
+    file_size?: number;
+    download_url?: string;
+    play_url?: string;
+    status?: string;
+    recording_type?: string;
+    recording_start?: string;
+    recording_end?: string;
+  }>;
+};
+
+type ZoomAccountRecordingsApiResponse = {
+  from?: string;
+  to?: string;
+  page_count?: number;
+  page_size?: number;
+  total_records?: number;
+  next_page_token?: string;
+  meetings?: ZoomAccountRecordingsApiMeeting[];
 };

@@ -4,9 +4,27 @@
 **Owner:** Platform  
 **Related:** [integrations.md](./integrations.md), [chmbot-migration-architecture.md](./chmbot-migration-architecture.md)
 
-**Canonical pipeline:** Zoom Cloud Recording API → **existing** `SESSION_ASSETS_S3_BUCKET` under prefix `zoom-recordings/` → Program Hub (presigned View/Download).
+**Canonical pipeline:** Zoom Cloud Recording API → **existing** `SESSION_ASSETS_S3_BUCKET` under prefix `zoom-recordings/` → Program Hub (presigned View/Download) and **LIVE → Zoom Recordings** catalog (account Sync — in progress).
 
 Do **not** create a separate recordings bucket. Do **not** treat Zoom `download_url` as durable storage.
+
+### Admin UI (LIVE tab)
+
+| Route | Purpose |
+| ----- | ------- |
+| `/admin/programs` | **Sessions** — schedule and manage webinars (existing LIVE list) |
+| `/admin/programs/zoom-recordings` | **Zoom Recordings** — account catalog (Sync / Pull / link — rolling out) |
+| `/admin/programs/:id/hub` | Program Hub — per-program Pull / View / Download (unchanged) |
+
+Zoom recording work lives under **LIVE**, not Reporting / Content Hub.
+
+### Config
+
+| Env | Default | Purpose |
+| --- | ------- | ------- |
+| `ZOOM_RECORDINGS_SYNC_MONTHS_BACK` | `24` | Months of Zoom account history for manual Sync (max 120) |
+
+Read in backend as `zoomRecordings.syncMonthsBackDefault` (`configuration.ts`).
 
 ---
 
@@ -16,11 +34,14 @@ Do **not** create a separate recordings bucket. Do **not** treat Zoom `download_
 
 | Zoom API | Use |
 | -------- | --- |
-| `GET /accounts/{accountId}/recordings` | Account-wide inventory (meetings + webinars). Max ~**1 month** per call — loop months. Scope: `cloud_recording:read:list_account_recordings:admin` |
+| `GET /accounts/{accountId}/recordings` | Account-wide inventory (Sync). Max ~**1 month** per call — loop months via `buildMonthWindows`. Scope: `cloud_recording:read:list_account_recordings:admin`. Implemented: `ZoomService.listAccountRecordingsPage` |
 | `GET /users/{userId}/recordings` | Per-host inventory (same date windows) |
-| `GET /meetings/{meetingId}/recordings` | **One** webinar/meeting — what CHT Program Hub **Pull** uses |
+| `GET /meetings/{meetingId}/recordings` | **One** webinar/meeting — Program Hub **Pull** |
 
-For product use, drive pulls from **CHT programs** (`zoomMeetingId`) via the admin API below.
+**Backend helpers (Sync):**
+- `backend/src/modules/zoom-recordings/zoom-sync-date.util.ts` — `buildMonthWindows`, `syncWindowFromMonthsBack`
+- `ZoomService.listAccountRecordingsInRange` — paginates one month window
+- `ZoomService.downloadRecordingFileStream` — stream large MP4s (multipart S3 upload in a later chunk)
 
 ---
 

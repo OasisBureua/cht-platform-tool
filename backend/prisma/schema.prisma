@@ -169,6 +169,8 @@ model Program {
   /// True when this program was auto-created by a webinar.created / meeting.created Zoom webhook (outside the app).
   /// Indicates admin review is required to fill in sponsor, honorarium, Jotform forms, host bio, etc.
   importedViaWebhook Boolean @default(false)
+  /// Official CHM Content ID (CLIENT-YY-SS_BBBnn) when assigned via Program Registry.
+  chmProgramId       String?
 
   // Timestamps
   createdAt         DateTime @default(now())
@@ -185,40 +187,170 @@ model Program {
   payments          Payment[]
   cmeCredits        CMECredit[]
   webinarParticipantEvents WebinarParticipantEvent[]
-  zoomRecordings    ProgramZoomRecording[]
+  zoomRecordingSessions ZoomRecordingSession[]
+  zoomRecordingFiles    ZoomRecordingFile[]
 
   @@index([status])
   @@index([startDate])
   @@index([status, startDate])
+  @@index([chmProgramId])
   @@map("Program")
 }
 
-/// Cloud recording file pulled from Zoom into private S3 for admin Program Hub.
-model ProgramZoomRecording {
-  id                   String   @id @default(cuid())
-  programId            String
-  zoomMeetingId        String
-  zoomRecordingFileId  String
-  fileType             String
-  recordingType        String?
-  fileExtension        String?
-  fileSizeBytes        Int?
-  s3Bucket             String
-  s3Key                String
-  recordingStart       DateTime?
-  recordingEnd         DateTime?
-  topic                String?
-  pulledAt             DateTime @default(now())
-  pulledByUserId       String?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+/// Catalog row for a Zoom webinar/meeting with cloud recordings (linked or Zoom-only).
+model ZoomRecordingSession {
+  id              String   @id @default(cuid())
+  zoomMeetingId   String   @unique
+  zoomUuid        String?
+  topic           String?
+  hostEmail       String?
+  sessionType     ProgramZoomSessionType @default(WEBINAR)
+  startTime       DateTime?
+  durationMinutes Int?
+  totalSizeBytes  Int?
+  programId       String?
+  chmProgramId    String?
+  firstSyncedAt   DateTime @default(now())
+  lastSyncedAt    DateTime @updatedAt
+  attendeeReportS3Bucket           String?
+  attendeeReportS3Key              String?
+  attendeeReportExportedAt         DateTime?
+  attendeeReportParticipantCount   Int?
+  attendanceLastImportedAt         DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  files   ZoomRecordingFile[]
+  attendanceParticipants ZoomAttendanceParticipant[]
 
-  @@unique([programId, zoomRecordingFileId])
   @@index([programId])
+  @@index([startTime])
+  @@index([sessionType])
+  @@index([chmProgramId])
+  @@map("ZoomRecordingSession")
+}
+
+/// Zoom cloud recording file (metadata + optional S3 object after Pull).
+model ZoomRecordingFile {
+  id                  String   @id @default(cuid())
+  sessionId           String
+  programId           String?
+  zoomMeetingId       String
+  zoomRecordingFileId String
+  fileType            String
+  recordingType       String?
+  fileExtension       String?
+  fileSizeBytes       Int?
+  s3Bucket            String?
+  s3Key               String?
+  chmAssetFilename    String?
+  pullStatus          ZoomRecordingPullStatus @default(PENDING)
+  pullError           String?
+  recordingStart      DateTime?
+  recordingEnd        DateTime?
+  topic               String?
+  pulledAt            DateTime?
+  pulledByUserId      String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  session ZoomRecordingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  program Program? @relation(fields: [programId], references: [id], onDelete: SetNull)
+
+  @@unique([zoomMeetingId, zoomRecordingFileId])
+  @@index([sessionId])
+  @@index([programId])
+  @@index([pullStatus])
+  @@map("ZoomRecordingFile")
+}
+
+/// Manual account-wide Sync from Zoom (month-by-month crawl).
+model ZoomSyncJob {
+  id                String   @id @default(cuid())
+  status            ZoomSyncJobStatus @default(QUEUED)
+  monthsBack        Int
+  sessionTypeFilter ProgramZoomSessionType?
+  fromDate          DateTime
+  toDate            DateTime
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  startedByUserId   String?
+  progressJson      Json?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("ZoomSyncJob")
+}
+
+/// Manual import of Zoom Report API participant lists (12-month backfill).
+model ZoomAttendanceImportJob {
+  id                String   @id @default(cuid())
+  status            ZoomSyncJobStatus @default(QUEUED)
+  monthsBack        Int
+  sessionTypeFilter ProgramZoomSessionType?
+  fromDate          DateTime
+  toDate            DateTime
+  runAutoVerify     Boolean  @default(false)
+  startedAt         DateTime?
+  finishedAt        DateTime?
+  startedByUserId   String?
+  progressJson      Json?
+  errorMessage      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("ZoomAttendanceImportJob")
+}
+
+/// Staged attendees for catalog sessions not yet linked to a Program.
+model ZoomAttendanceParticipant {
+  id                String   @id @default(cuid())
+  sessionId         String
+  zoomMeetingId     String
+  zoomParticipantId String?
+  participantName   String?
+  participantEmail  String?
+  joinTime          DateTime
+  leaveTime         DateTime?
+  durationSeconds   Int?
+  isHost            Boolean  @default(false)
+  importJobId       String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  session ZoomRecordingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  /// Partial uniques in migration 20260901140000 (with-id vs email+joinTime without id).
+  @@index([sessionId])
   @@index([zoomMeetingId])
-  @@map("ProgramZoomRecording")
+  @@map("ZoomAttendanceParticipant")
+}
+
+enum ZoomRecordingPullStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
+
+enum ZoomSyncJobStatus {
+  QUEUED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum WebinarParticipantEventSource {
+  WEBHOOK
+  MEETING_SDK
+  REPORT_IMPORT
 }
 
 enum ProgramStatus {
@@ -635,12 +767,19 @@ model WebinarParticipantEvent {
   isHost           Boolean  @default(false)
   occurredAt       DateTime @default(now())
   rawPayload       Json?    // Full webhook payload for debugging
+  source           WebinarParticipantEventSource @default(WEBHOOK)
+  joinTime         DateTime?
+  leaveTime        DateTime?
+  durationSeconds  Int?
+  importJobId      String?
 
+  @@unique([programId, zoomParticipantId, event, source, joinTime])
   @@index([programId])
   @@index([userId])
   @@index([occurredAt])
   @@index([event])
   @@index([zoomMeetingId])
+  @@index([source])
   @@map("WebinarParticipantEvent")
 }
 
