@@ -22,15 +22,7 @@ export const validationSchema = Joi.object({
   AUTH0_AUDIENCE: Joi.string().allow('').optional(),
   AUTH0_CLIENT_ID: Joi.string().allow('').optional(),
 
-  // GoTrue/Supabase auth wiring (optional during migration)
-  GOTRUE_JWT_SECRET: Joi.string().allow('').optional(),
-  SUPABASE_URL: Joi.string().allow('').optional(),
-  SUPABASE_ANON_KEY: Joi.string().allow('').optional(),
-  SUPABASE_AUTH_DECOMMISSIONED: Joi.string()
-    .valid('true', 'false', '1', '0', '')
-    .optional(),
-
-  // Cognito (optional: when set, Cognito replaces GoTrue for auth)
+  // Cognito (optional in local/dev; required for production auth)
   COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
   COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_REGION: Joi.string().allow('').optional(),
@@ -80,16 +72,12 @@ export const validationSchema = Joi.object({
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 
-  // MediaHub Public API (optional – for catalog clips, tags, doctors)
-  MEDIAHUB_BASE_URL: Joi.string().allow('').optional(),
-  MEDIAHUB_API_KEY: Joi.string().allow('').optional(),
-
-  // Content Hub producer API (KOL network + HCP upsert; catalog stays on MediaHub)
+  // Content Hub (catalog clips/tags/KOLs + HCP upsert)
   CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
   CONTENTHUB_ADMIN_BASE_URL: Joi.string().allow('').optional(),
   CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
 
-  // YouTube (optional – for catalog playlists, fallback when MediaHub not configured)
+  // YouTube (optional – for catalog playlists, fallback when Content Hub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),
   YOUTUBE_PLAYLIST_IDS: Joi.string().allow('').optional(),
 

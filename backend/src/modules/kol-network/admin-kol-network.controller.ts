@@ -27,7 +27,6 @@ import { UserRole } from '@prisma/client';
 import { CacheClearService } from '../../cache/cache-clear.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import { ContentHubKolService } from './content-hub-kol.service';
-import { MediaHubService } from '../catalog/mediahub.service';
 import { KolIntelService } from './kol-intel.service';
 import {
   KolMutationsService,
@@ -70,7 +69,6 @@ export class AdminKolNetworkController {
 
   constructor(
     private readonly contentHub: ContentHubKolService,
-    private readonly mediahub: MediaHubService,
     private readonly visibility: KolVisibilityService,
     private readonly intel: KolIntelService,
     private readonly mutations: KolMutationsService,
@@ -110,13 +108,6 @@ export class AdminKolNetworkController {
         return await this.contentHub.getKols(params);
       } catch (err: unknown) {
         this.logger.warn(`Admin KOL list: Content Hub failed: ${String(err)}`);
-      }
-    }
-    if (this.mediahub.isConfigured()) {
-      try {
-        return await this.mediahub.getKols(params);
-      } catch (err: unknown) {
-        this.logger.warn(`Admin KOL list: MediaHub failed: ${String(err)}`);
       }
     }
     return { items: [], total: 0, regions: [], institutions: [] };

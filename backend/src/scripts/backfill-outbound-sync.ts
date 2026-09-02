@@ -1,17 +1,17 @@
 /**
  * One-shot backfill: push every existing CHT user with a valid NPI to
- * MediaHub + HubSpot.
+ * Content Hub + HubSpot.
  *
  * Motivation: outbound sync is wired on signup + profile-update going forward,
  * but any user who signed up before this landed never got propagated. Both
- * downstream endpoints are idempotent (HubSpot email-upsert, MediaHub
+ * downstream endpoints are idempotent (HubSpot email-upsert, Content Hub
  * NPI-upsert) so re-running is safe.
  *
  * Usage (from backend/):
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --dry-run
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --apply
  *
- * Env vars read: DATABASE_URL, MEDIAHUB_BASE_URL, MEDIAHUB_API_KEY,
+ * Env vars read: DATABASE_URL, CONTENTHUB_BASE_URL, CONTENTHUB_API_KEY,
  *                HUBSPOT_ACCESS_TOKEN.
  */
 import { PrismaClient } from '@prisma/client';
@@ -20,7 +20,7 @@ type Stats = {
   users_scanned: number;
   users_with_npi: number;
   hubspot_ok: number;
-  mediahub_ok: number;
+  contenthub_ok: number;
   errors: string[];
 };
 
@@ -70,7 +70,7 @@ async function syncHubspot(user: {
   return res.ok;
 }
 
-async function syncMediahub(user: {
+async function syncContentHub(user: {
   email: string;
   firstName: string;
   lastName: string;
@@ -81,12 +81,9 @@ async function syncMediahub(user: {
   zipCode: string | null;
   npiNumber: string | null;
 }): Promise<boolean> {
-  const key = process.env.MEDIAHUB_API_KEY?.trim();
-  if (!key || !user.npiNumber) return false;
-  const base = (
-    process.env.MEDIAHUB_BASE_URL ||
-    'https://mediahub.communityhealth.media/api/public'
-  ).replace(/\/$/, '');
+  const key = process.env.CONTENTHUB_API_KEY?.trim();
+  const base = (process.env.CONTENTHUB_BASE_URL || '').replace(/\/$/, '');
+  if (!key || !base || !user.npiNumber) return false;
   const res = await fetch(`${base}/hcp/upsert`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
@@ -112,7 +109,7 @@ async function run(dry: boolean): Promise<Stats> {
     users_scanned: 0,
     users_with_npi: 0,
     hubspot_ok: 0,
-    mediahub_ok: 0,
+    contenthub_ok: 0,
     errors: [],
   };
 
@@ -147,12 +144,12 @@ async function run(dry: boolean): Promise<Stats> {
         continue;
       }
 
-      // HubSpot always runs (even without NPI, for CRM); MediaHub only when
+      // HubSpot always runs (even without NPI, for CRM); Content Hub only when
       // NPI is present (it's an HCP-only roster).
       const results = await Promise.allSettled([
         syncHubspot({ ...u, npiNumber: hasNpi ? npi : null }),
         hasNpi
-          ? syncMediahub({ ...u, npiNumber: npi })
+          ? syncContentHub({ ...u, npiNumber: npi })
           : Promise.resolve(false),
       ]);
 
@@ -162,9 +159,9 @@ async function run(dry: boolean): Promise<Stats> {
         stats.errors.push(`hubspot ${u.email}: ${results[0].reason}`);
 
       if (results[1].status === 'fulfilled' && results[1].value)
-        stats.mediahub_ok++;
+        stats.contenthub_ok++;
       else if (results[1].status === 'rejected')
-        stats.errors.push(`mediahub ${u.email}: ${results[1].reason}`);
+        stats.errors.push(`contenthub ${u.email}: ${results[1].reason}`);
 
       // Be polite: throttle ~5 req/s so we don't tip HubSpot rate limits.
       await new Promise((r) => setTimeout(r, 200));

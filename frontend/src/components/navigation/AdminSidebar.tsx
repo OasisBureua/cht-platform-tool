@@ -5,7 +5,7 @@ import { ADMIN_NAV_ITEMS } from './adminNavItems';
 export default function AdminSidebar() {
   return (
     <aside
-      className="sticky top-0 hidden h-[100dvh] max-h-[100dvh] w-[120px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-card md:flex /80"
+      className="sticky top-0 flex h-[100dvh] max-h-[100dvh] w-[88px] shrink-0 flex-col self-start overflow-y-auto overflow-x-hidden border-r border-gray-200/80 bg-card sm:w-[120px] dark:border-border"
       aria-label="Admin sidebar"
     >
       <div className="flex h-[82px] w-full shrink-0 items-center justify-center">

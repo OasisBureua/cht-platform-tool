@@ -30,7 +30,6 @@ github_file = var_dir / f"{env}.github.tfvars"
 out_file = var_dir / f"{env}.tfvars"
 
 SECRET_KEYS = [
-    "supabase_url", "supabase_anon_key", "gotrue_jwt_secret", "mediahub_base_url", "mediahub_api_key",
     "contenthub_base_url", "contenthub_api_key", "youtube_api_key", "youtube_playlist_ids",
     "zoom_account_id", "zoom_client_id", "zoom_client_secret", "zoom_webhook_secret", "zoom_sdk_key", "zoom_sdk_secret",
     "jotform_api_key", "jotform_webinar_default_intake_url", "jotform_webinar_post_event_shared_form_id",

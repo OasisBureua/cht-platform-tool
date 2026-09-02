@@ -16,9 +16,6 @@ require() {
 }
 
 missing=0
-require SUPABASE_ANON_KEY SUPABASE_ANON_KEY || missing=1
-require GOTRUE_JWT_SECRET GOTRUE_JWT_SECRET || missing=1
-require MEDIAHUB_API_KEY MEDIAHUB_API_KEY || missing=1
 require YOUTUBE_API_KEY YOUTUBE_API_KEY || missing=1
 require YOUTUBE_PLAYLIST_IDS YOUTUBE_PLAYLIST_IDS || missing=1
 require ZOOM_ACCOUNT_ID ZOOM_ACCOUNT_ID || missing=1

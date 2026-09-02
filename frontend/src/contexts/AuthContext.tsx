@@ -9,7 +9,7 @@ import {
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
-import { cognitoAuthEnabled, mediahubAuthDecommissioned } from '../lib/auth-config';
+import { cognitoAuthEnabled } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
 
 export interface MfaFeatureFlags {
@@ -69,8 +69,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  /** GoTrue/Cognito JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
-  accessToken: string | null;
   login: (
     email: string,
     password: string,
@@ -80,8 +78,6 @@ interface AuthContextValue {
     mfa?: { session: string };
     mfaSetup?: { session: string; secretCode: string; otpauthUri: string };
   }>;
-  /** Legacy GoTrue OAuth access_token exchange. Use completeCognitoCallback for Cognito PKCE. */
-  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
   completeCognitoCallback: (
     code: string,
@@ -171,9 +167,7 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       user: bypassUser,
       isAuthenticated: !!bypassUser,
       isLoading: false,
-      accessToken: null,
       login,
-      loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeCognitoCallback: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeMfaLogin: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeMfaSetupLogin: async () => ({
@@ -234,7 +228,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       return '';
     }
   });
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -347,13 +340,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     if (data.session_token) {
       setAuthMode('cookie');
       setDevUserId('');
-      setAccessToken((data.access_token as string | undefined) ?? null);
       setProfile(profileFromMePayload(data));
       return true;
     }
     if (data.userId) {
       setAuthMode('dev');
-      setAccessToken(null);
       setDevUserId(data.userId as string);
       setProfile(profileFromMePayload(data));
       return true;
@@ -494,41 +485,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl, applyLoginSuccess],
   );
 
-  const loginOAuth = useCallback(
-    async (accessTokenValue: string) => {
-      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
-        return {
-          error: {
-            message:
-              'Google OAuth is temporarily unavailable while auth is migrating.',
-          },
-        };
-      }
-      const token = (accessTokenValue || '').trim();
-      if (!token) return { error: { message: 'Access token is required.' } };
-
-      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/login-oauth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token: token }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (data.error) {
-        return { error: { message: data.error } };
-      }
-
-      if (applyLoginSuccess(data)) {
-        return {
-          profileComplete: data.profileComplete as boolean | undefined,
-          role: data.role as string | undefined,
-        };
-      }
-      return { error: { message: 'Login failed.' } };
-    },
-    [apiUrl, applyLoginSuccess],
-  );
-
   const signUp = useCallback(
     async (
       email: string,
@@ -545,16 +501,15 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       },
       recaptchaToken?: string,
     ) => {
-      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
+      if (!cognitoAuthEnabled) {
         return {
           error: {
             message:
-              'New account creation is temporarily unavailable while auth is migrating.',
+              'Sign up requires Cognito. Configure VITE_COGNITO_* env vars.',
           },
         };
       }
-      const signupPath = cognitoAuthEnabled ? '/auth/cognito/signup' : '/auth/signup';
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}${signupPath}`, {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -722,7 +677,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     const finishLogout = () => {
       setAuthMode(null);
       setDevUserId('');
-      setAccessToken(null);
       setProfile(null);
       try {
         if (typeof localStorage?.removeItem === 'function') {
@@ -762,9 +716,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
-    accessToken,
     login,
-    loginOAuth,
     completeCognitoCallback,
     completeMfaLogin,
     completeMfaSetupLogin,

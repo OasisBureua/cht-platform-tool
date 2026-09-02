@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
-import { GoTrueStrategy } from './gotrue.strategy';
 import { CognitoStrategy } from './cognito.strategy';
 import { CognitoService } from './cognito.service';
 import { RecaptchaService } from './recaptcha.service';
@@ -37,9 +36,6 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
         }
         if (config.get<string>('auth0.domain')) {
           return new JwtStrategy(config, auth);
-        }
-        if (config.get<string>('gotrue.jwtSecret')) {
-          return new GoTrueStrategy(config, auth);
         }
         // No auth configured - guard uses dev bypass; strategy never invoked
         return { validate: async () => null } as unknown as JwtStrategy;

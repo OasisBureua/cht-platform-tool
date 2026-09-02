@@ -170,7 +170,7 @@ async function bootstrap() {
   logger.log(`🚀 Application is running on: ${baseUrl}`);
   logger.log(`📡 API base: ${baseUrl}/api`);
   logger.log(
-    `🔐 Auth: ${process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? 'Supabase' : 'Dev (DB)'}`,
+    `🔐 Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
   );
   logger.log(`📊 Health check: ${baseUrl}/health`);
   logger.log(`🔍 Health ready: ${baseUrl}/health/ready`);

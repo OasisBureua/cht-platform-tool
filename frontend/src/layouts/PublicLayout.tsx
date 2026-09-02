@@ -10,7 +10,6 @@ import {
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
-import ChatBubble from '../components/ChatBubble';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { useTheme } from '../contexts/ThemeContext';
 import DISEASE_AREAS from '../data/disease-areas';
@@ -283,7 +282,6 @@ export default function PublicLayout() {
       <main id="main" className="min-w-0 flex-1 overflow-x-clip">
         <Outlet />
       </main>
-      <ChatBubble />
 
       {!isAuthRoute && <SiteFooter />}
 

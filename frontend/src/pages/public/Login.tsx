@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
-import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
+import { googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
@@ -47,9 +46,7 @@ export default function Login() {
     setError(null);
     setOauthLoading(provider);
     try {
-      const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', from)
-        : buildOAuthAuthorizeUrl(provider, from);
+      const url = await buildCognitoAuthorizeUrl('Google', from);
       if (import.meta.env.DEV) console.log('[OAuth] Redirecting to:', url);
       window.location.href = url;
     } catch (err) {

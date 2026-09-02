@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
-import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
+import { googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-config';
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
@@ -28,9 +27,7 @@ export default function AdminLogin() {
     setError(null);
     setOauthLoading('google');
     try {
-      const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', from)
-        : buildOAuthAuthorizeUrl('google', from);
+      const url = await buildCognitoAuthorizeUrl('Google', from);
       window.location.href = url;
     } catch (err) {
       setOauthLoading(null);
