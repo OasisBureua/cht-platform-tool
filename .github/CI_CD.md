@@ -8,7 +8,7 @@
 | `branch-policy.yml` | PRs → `main` | Require head branch `release/*` or `hotfix/*` |
 | `security-monthly.yml` | First Monday monthly | npm audit, Trivy filesystem scan |
 | `deploy-dev.yml` | Push to `feature/**` (app/infra paths), manual | Build images (`1.0.0`, `1.0.1`, …) → `cht-dev-*` ECR, Terraform apply dev |
-| `deploy-prod.yml` | Merged `release/*` or `hotfix/*` → `main`, manual | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …), Terraform apply platform, frontend |
+| `deploy-prod.yml` | Push to `main` (from merged `release/*` / `hotfix/*`), manual | App deploy → `cht-platform-*` ECR (`v1.0.0`, `v1.0.1`, …), Terraform apply platform, frontend |
 | `rollback.yml` | Manual | Roll back ECS services |
 
 Dependabot and CodeQL config files are removed for now. Optional: disable GitHub **default CodeQL** under Settings → Code security → Code scanning if PR scans still appear.
@@ -27,8 +27,7 @@ Docs-only changes under `docs/**` do not trigger dev deploy.
 
 Change base:
 
-- **Push (dev):** previous tip (`github.event.before`)
-- **Merged release/hotfix → main:** PR base SHA on `main`
+- **Push (dev / platform main):** previous tip (`github.event.before`)
 - **Manual run:** last successful run of that workflow on the same branch
 - **Fallback:** merge-base with `develop` (dev) or `main` (platform)
 - If no base can be resolved, all lanes run (safe first deploy)
@@ -56,7 +55,7 @@ Repo → **Settings → Rules → Rulesets → New branch ruleset**
 
 Do **not** allow broad bypass on this ruleset.
 
-**Hotfixes:** PRs from `hotfix/*` → `main` are allowed by `branch-policy.yml` and trigger `deploy-prod.yml` the same way as `release/*`. Hotfixes do **not** need to contain `develop`. Pushes to `release/*` / `hotfix/*` alone do **not** deploy.
+**Hotfixes:** PRs from `hotfix/*` → `main` are allowed by `branch-policy.yml`. Merging them (or `release/*`) into `main` pushes `main` and triggers `deploy-prod.yml`. Pushes to `release/*` / `hotfix/*` alone do **not** deploy.
 
 **Status checks (important):** GitHub only lets you pick checks that have **run at least once** on the repo. Until then:
 
@@ -101,7 +100,7 @@ release/vX.Y.Z  (cut from main → platform deploy)
 ```
 
 For CHT dev deploys: push to `feature/**` triggers `deploy-dev.yml` (or run manually).
-For platform deploys: merge a `release/*` or `hotfix/*` PR into `main` triggers `deploy-prod.yml` (or run manually).
+For platform deploys: merging `release/*` or `hotfix/*` into `main` triggers `deploy-prod.yml` on **main** (or run manually).
 
 ### 4. Optional: block direct pushes to main
 
