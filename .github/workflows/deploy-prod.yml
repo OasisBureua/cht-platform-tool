@@ -2,8 +2,8 @@ name: Deploy to Platform
 
 # Mirror of deploy-dev.yml for testapp (us-east-1 only).
 # us-east-2 ECS / deploy-secondary.sh is intentional later, not part of this workflow.
-# Platform deploys only via workflow_dispatch (manual). Merging release/* or
-# hotfix/* into main does not auto-deploy — run Actions → Deploy to Platform.
+# Manual dispatch, or when a release/* / hotfix/* PR merges into main.
+# Commits/pushes on release/* do not deploy. Scope detection deploys only changed lanes.
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +15,10 @@ on:
         description: 'Deploy all lanes (ignore change detection)'
         type: boolean
         default: false
+  pull_request:
+    types: [closed]
+    branches:
+      - main
 
 concurrency:
   group: deploy-platform
@@ -49,10 +53,35 @@ jobs:
     steps:
       - name: Evaluate trigger
         id: check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
         run: |
-          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-          echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
-          echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+              echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+              echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
+              ;;
+            pull_request)
+              if [ "$PR_MERGED" = "true" ] && { [[ "$HEAD_REF" == release/* ]] || [[ "$HEAD_REF" == hotfix/* ]]; }; then
+                echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+                echo "checkout_ref=${MERGE_SHA}" >> "$GITHUB_OUTPUT"
+                echo "Trigger: merged ${HEAD_REF} PR → main (${MERGE_SHA})"
+              else
+                echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+                echo "checkout_ref=" >> "$GITHUB_OUTPUT"
+                echo "Skipped: not a merged release/* or hotfix/* pull request to main"
+              fi
+              ;;
+            *)
+              echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+              echo "checkout_ref=" >> "$GITHUB_OUTPUT"
+              echo "Skipped: unsupported event ($EVENT_NAME)"
+              ;;
+          esac
 
   changes:
     name: Detect deploy scope
@@ -79,11 +108,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           chmod +x scripts/ci-resolve-deploy-base.sh
+          BEFORE_SHA="${{ github.event.before || '' }}"
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BEFORE_SHA="${{ github.event.pull_request.base.sha }}"
+          fi
           ./scripts/ci-resolve-deploy-base.sh \
             "${{ github.event_name }}" \
-            "${{ github.event.before || '' }}" \
+            "$BEFORE_SHA" \
             "deploy-prod.yml" \
-            "${{ github.ref_name }}" \
+            "main" \
             "origin/main"
 
       - name: Detect changed paths
@@ -91,7 +124,7 @@ jobs:
         uses: dorny/paths-filter@v4
         id: filter
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.gate.outputs.checkout_ref }}
           base: ${{ steps.base.outputs.base_sha }}
           list-files: shell
           filters: |
