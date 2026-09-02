@@ -33,7 +33,6 @@ export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
  *
  * `iconTone` runs coral → purple → cyan → pink → blue → green down the rail.
  * Destinations that also exist in the admin shell keep the same hue there.
- * Chatbot nav is intentionally omitted until CHT Companion replaces MediaHub chmbot.
  */
 export const APP_NAV_ITEMS: AppNavItem[] = [
   { to: '/app/live', label: 'LIVE', icon: Radio, iconTone: 'text-ink-coral', end: false },

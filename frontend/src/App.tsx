@@ -61,7 +61,6 @@ const WatchVideo            = lazy(() => import('./pages/WatchVideo'));
 const Earnings              = lazy(() => import('./pages/Earnings'));
 const Payments              = lazy(() => import('./pages/Payments'));
 const Settings              = lazy(() => import('./pages/Settings'));
-const ChatBot               = lazy(() => import('./pages/ChatBot'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
@@ -257,7 +256,6 @@ function App() {
                 <Route path="catalog" element={<VideosPage />} />
 
                 <Route path="earnings" element={<Earnings />} />
-                <Route path="chatbot" element={<ChatBot />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
 

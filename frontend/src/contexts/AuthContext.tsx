@@ -69,8 +69,6 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  /** GoTrue/Cognito JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
-  accessToken: string | null;
   login: (
     email: string,
     password: string,
@@ -171,7 +169,6 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       user: bypassUser,
       isAuthenticated: !!bypassUser,
       isLoading: false,
-      accessToken: null,
       login,
       loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeCognitoCallback: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
@@ -234,7 +231,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       return '';
     }
   });
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -347,13 +343,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     if (data.session_token) {
       setAuthMode('cookie');
       setDevUserId('');
-      setAccessToken((data.access_token as string | undefined) ?? null);
       setProfile(profileFromMePayload(data));
       return true;
     }
     if (data.userId) {
       setAuthMode('dev');
-      setAccessToken(null);
       setDevUserId(data.userId as string);
       setProfile(profileFromMePayload(data));
       return true;
@@ -722,7 +716,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     const finishLogout = () => {
       setAuthMode(null);
       setDevUserId('');
-      setAccessToken(null);
       setProfile(null);
       try {
         if (typeof localStorage?.removeItem === 'function') {
@@ -762,7 +755,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
-    accessToken,
     login,
     loginOAuth,
     completeCognitoCallback,

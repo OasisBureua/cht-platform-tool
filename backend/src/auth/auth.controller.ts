@@ -1755,20 +1755,6 @@ export class AuthController {
   }
 
   /**
-   * GET /api/auth/chatbot-token
-   * Returns GoTrue JWT for chatbot (unlimited queries). Requires session auth.
-   */
-  @Get('chatbot-token')
-  @UseGuards(JwtAuthGuard)
-  async getChatbotToken(@CurrentUser() user: AuthUser, @Req() req: Request) {
-    void user;
-    const sessionToken = getSessionTokenFromRequest(req);
-    if (!sessionToken) return { token: null };
-    const token = await this.authService.getChatbotToken(sessionToken);
-    return { token };
-  }
-
-  /**
    * GET /api/auth/me
    * Returns the current authenticated user's profile (userId, email, firstName, lastName, role).
    * Frontend uses this to get the DB userId for API calls.
