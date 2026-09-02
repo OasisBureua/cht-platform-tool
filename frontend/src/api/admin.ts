@@ -280,14 +280,129 @@ export type ProgramZoomRecordingRow = {
   topic?: string | null;
   recordingStart?: string | null;
   recordingEnd?: string | null;
-  pulledAt: string;
+  pulledAt: string | null;
   pulledByUserId?: string | null;
+  pullStatus?: string;
+  storedInS3?: boolean;
 };
 
 export type ProgramZoomRecordingsList = {
   storageConfigured: boolean;
   zoomConfigured: boolean;
   recordings: ProgramZoomRecordingRow[];
+};
+
+export type ZoomRecordingCatalogSession = {
+  id: string;
+  zoomMeetingId: string;
+  topic: string | null;
+  hostEmail: string | null;
+  startTime: string | null;
+  sessionType: string;
+  programId: string | null;
+  programTitle: string | null;
+  chmProgramId: string | null;
+  linked: boolean;
+  fileCount: number;
+  filesInS3Count: number;
+  attendeesImported?: boolean;
+  attendeeImportCount?: number;
+  attendanceLastImportedAt?: string | null;
+  attendeeCount?: number;
+  attendeeReportStoredInS3?: boolean;
+  attendeeReportExportedAt?: string | null;
+  attendeeReportParticipantCount?: number | null;
+  lastSyncedAt: string;
+};
+
+export type ZoomRecordingCatalogList = {
+  storageConfigured: boolean;
+  zoomConfigured: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  sessions: ZoomRecordingCatalogSession[];
+};
+
+export type ZoomRecordingCatalogDetail = {
+  storageConfigured: boolean;
+  zoomConfigured: boolean;
+  session: ZoomRecordingCatalogSession;
+  files: ProgramZoomRecordingRow[];
+};
+
+export type ZoomSyncJobProgress = {
+  monthsTotal: number;
+  monthsDone: number;
+  sessionsUpserted: number;
+  fileStubsUpserted: number;
+  errors: string[];
+};
+
+export type ZoomSyncJob = {
+  id: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  monthsBack: number;
+  sessionTypeFilter: string | null;
+  fromDate: string;
+  toDate: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  startedByUserId: string | null;
+  progress: ZoomSyncJobProgress | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ZoomAttendanceImportJobProgress = {
+  sessionsTotal: number;
+  sessionsDone: number;
+  participantsUpserted: number;
+  registrationsAutoVerified: number;
+  reportsExported: number;
+  reportExportErrors: string[];
+  errors: string[];
+};
+
+export type ZoomAttendanceImportJob = {
+  id: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  monthsBack: number;
+  sessionTypeFilter: string | null;
+  runAutoVerify: boolean;
+  fromDate: string;
+  toDate: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  startedByUserId: string | null;
+  progress: ZoomAttendanceImportJobProgress | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ZoomAttendanceParticipant = {
+  id: string;
+  zoomParticipantId: string;
+  participantName: string | null;
+  participantEmail: string | null;
+  joinTime: string;
+  leaveTime: string | null;
+  durationSeconds: number | null;
+  isHost: boolean;
+  source: string;
+  matchedRegistration: boolean;
+};
+
+export type ZoomSessionAttendanceList = {
+  sessionId: string;
+  linked: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  search: string | null;
+  participants: ZoomAttendanceParticipant[];
 };
 
 export interface PostEventAttendanceAdminRow {
@@ -1208,6 +1323,162 @@ export const adminApi = {
       url: string;
       expiresInSeconds: number;
       recording: ProgramZoomRecordingRow;
+    };
+  },
+
+  listZoomRecordingSessions: async (params?: {
+    page?: number;
+    pageSize?: number;
+    linked?: boolean;
+    q?: string;
+  }) => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/sessions', {
+      params: {
+        page: params?.page,
+        pageSize: params?.pageSize,
+        linked:
+          params?.linked === true
+            ? 'true'
+            : params?.linked === false
+              ? 'false'
+              : undefined,
+        q: params?.q?.trim() || undefined,
+      },
+    });
+    return data as ZoomRecordingCatalogList;
+  },
+
+  getZoomRecordingSession: async (sessionId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}`,
+    );
+    return data as ZoomRecordingCatalogDetail;
+  },
+
+  pullZoomRecordingSession: async (
+    sessionId: string,
+    body?: { fileTypes?: string[] },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/pull`,
+      body ?? {},
+    );
+    return data as ZoomRecordingCatalogDetail & {
+      pulledCount: number;
+      errors?: string[];
+    };
+  },
+
+  getZoomRecordingCatalogDownloadUrl: async (
+    sessionId: string,
+    fileId: string,
+    disposition: 'inline' | 'attachment' = 'attachment',
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/files/${encodeURIComponent(fileId)}/download-url`,
+      { params: { disposition } },
+    );
+    return data as {
+      url: string;
+      expiresInSeconds: number;
+      recording: ProgramZoomRecordingRow;
+    };
+  },
+
+  linkZoomRecordingSession: async (sessionId: string, programId: string) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/link`,
+      { programId },
+    );
+    return data as ZoomRecordingCatalogDetail;
+  },
+
+  startZoomRecordingsSync: async (body?: { monthsBack?: number }) => {
+    const { data } = await apiClient.post('/admin/zoom-recordings/sync', body ?? {});
+    return data as ZoomSyncJob;
+  },
+
+  getLatestZoomSyncJob: async () => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/sync/latest');
+    return (data as ZoomSyncJob | null) ?? null;
+  },
+
+  getZoomSyncJob: async (jobId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sync/${encodeURIComponent(jobId)}`,
+    );
+    return data as ZoomSyncJob;
+  },
+
+  startZoomAttendanceImport: async (body?: {
+    monthsBack?: number;
+    runAutoVerify?: boolean;
+  }) => {
+    const { data } = await apiClient.post(
+      '/admin/zoom-recordings/attendance/import',
+      body ?? {},
+    );
+    return data as ZoomAttendanceImportJob;
+  },
+
+  getLatestZoomAttendanceImportJob: async () => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/attendance/import/latest');
+    return (data as ZoomAttendanceImportJob | null) ?? null;
+  },
+
+  getZoomAttendanceImportJob: async (jobId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/attendance/import/${encodeURIComponent(jobId)}`,
+    );
+    return data as ZoomAttendanceImportJob;
+  },
+
+  listZoomSessionAttendance: async (
+    sessionId: string,
+    params?: { page?: number; pageSize?: number; search?: string },
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance`,
+      {
+        params: {
+          page: params?.page,
+          pageSize: params?.pageSize,
+          search: params?.search || undefined,
+        },
+      },
+    );
+    return data as ZoomSessionAttendanceList;
+  },
+
+  getZoomSessionAttendanceReportDownloadUrl: async (sessionId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance/report/download-url`,
+    );
+    return data as {
+      url: string;
+      expiresInSeconds: number;
+      filename: string;
+      participantCount: number | null;
+      exportedAt: string | null;
+      zoomMeetingId: string;
+    };
+  },
+
+  importZoomSessionAttendance: async (
+    sessionId: string,
+    body?: { runAutoVerify?: boolean },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance/import`,
+      body ?? {},
+    );
+    return data as ZoomRecordingCatalogDetail & {
+      participantsUpserted: number;
+      registrationsAutoVerified: number;
+      reportExported?: boolean;
+      reportParticipantCount?: number;
+      reportExportError?: string | null;
+      errors?: string[];
     };
   },
 

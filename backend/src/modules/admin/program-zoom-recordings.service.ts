@@ -1,115 +1,34 @@
 import {
   Injectable,
   BadRequestException,
-  Logger,
   NotFoundException,
-  ServiceUnavailableException,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
+import { ZoomRecordingsPullService } from '../zoom-recordings/zoom-recordings-pull.service';
+import { ZoomRecordingsStorageService } from '../zoom-recordings/zoom-recordings-storage.service';
+import { extForFile } from '../zoom-recordings/zoom-recordings-media.util';
 
-const PRESIGN_EXPIRES_SEC = 15 * 60;
+export {
+  extForFile,
+  contentTypeFor,
+  inlineContentType,
+} from '../zoom-recordings/zoom-recordings-media.util';
 
-export function extForFile(fileType: string, fileExtension?: string | null): string {
-  if (fileExtension?.trim()) {
-    const e = fileExtension.trim().replace(/^\./, '').toLowerCase();
-    return e || 'bin';
-  }
-  const t = fileType.toUpperCase();
-  if (t === 'MP4') return 'mp4';
-  if (t === 'M4A') return 'm4a';
-  if (t === 'TIMELINE') return 'json';
-  if (t === 'TRANSCRIPT' || t === 'CC') return 'vtt';
-  if (t === 'CHAT') return 'txt';
-  if (t === 'CSV') return 'csv';
-  return 'bin';
-}
+export type { RecordingUrlDisposition } from '../zoom-recordings/zoom-recordings-media.util';
 
-export function contentTypeFor(fileType: string, ext: string): string {
-  const t = fileType.toUpperCase();
-  if (t === 'MP4' || ext === 'mp4') return 'video/mp4';
-  if (t === 'M4A' || ext === 'm4a') return 'audio/mp4';
-  if (ext === 'vtt') return 'text/vtt';
-  if (ext === 'txt') return 'text/plain';
-  if (ext === 'json') return 'application/json';
-  if (ext === 'csv') return 'text/csv';
-  return 'application/octet-stream';
-}
-
-/** Content-Type that browsers will display in a tab instead of saving to disk. */
-export function inlineContentType(fileType: string, ext: string): string {
-  const t = fileType.toUpperCase();
-  if (t === 'TRANSCRIPT' || t === 'CC' || t === 'CHAT') {
-    return 'text/plain; charset=utf-8';
-  }
-  return contentTypeFor(fileType, ext);
-}
-
-export type RecordingUrlDisposition = 'inline' | 'attachment';
-
-function storedContentType(
-  fileType: string,
-  ext: string,
-  zoomContentType?: string | null,
-): string {
-  const zoomCt = zoomContentType?.split(';')[0]?.trim().toLowerCase() || '';
-  if (!zoomCt || zoomCt === 'application/octet-stream') {
-    return contentTypeFor(fileType, ext);
-  }
-  return zoomCt;
-}
-
-function downloadFilename(row: {
-  fileType: string;
-  zoomRecordingFileId: string;
-  fileExtension: string | null;
-}): string {
-  const ext =
-    (row.fileExtension || extForFile(row.fileType, row.fileExtension))
-      .replace(/[^a-z0-9]/gi, '')
-      .toLowerCase() || 'bin';
-  const id = row.zoomRecordingFileId.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return `${row.fileType.toLowerCase()}-${id}.${ext}`;
-}
-
+/** Program Hub facade — delegates to shared zoom-recordings services. */
 @Injectable()
 export class ProgramZoomRecordingsService {
-  private readonly logger = new Logger(ProgramZoomRecordingsService.name);
-  private readonly s3: S3Client;
-
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
     private readonly zoom: ZoomService,
-  ) {
-    const region = this.config.get<string>('aws.region') || 'us-east-1';
-    const accessKeyId = this.config.get<string>('aws.accessKeyId');
-    const secretAccessKey = this.config.get<string>('aws.secretAccessKey');
-    this.s3 = new S3Client({
-      region,
-      ...(accessKeyId && secretAccessKey
-        ? { credentials: { accessKeyId, secretAccessKey } }
-        : {}),
-    });
-  }
-
-  private recordingsBucket(): string {
-    return (
-      this.config.get<string>('zoomRecordings.s3Bucket')?.trim() ||
-      this.config.get<string>('sessionAssets.s3Bucket')?.trim() ||
-      ''
-    );
-  }
+    private readonly pullService: ZoomRecordingsPullService,
+    private readonly storage: ZoomRecordingsStorageService,
+  ) {}
 
   isStorageConfigured(): boolean {
-    return !!this.recordingsBucket();
+    return this.storage.isStorageConfigured();
   }
 
   async list(programId: string) {
@@ -119,7 +38,7 @@ export class ProgramZoomRecordingsService {
     });
     if (!program) throw new NotFoundException('Program not found');
 
-    const rows = await this.prisma.programZoomRecording.findMany({
+    const rows = await this.prisma.zoomRecordingFile.findMany({
       where: { programId },
       orderBy: [{ recordingStart: 'desc' }, { pulledAt: 'desc' }],
     });
@@ -127,7 +46,7 @@ export class ProgramZoomRecordingsService {
     return {
       storageConfigured: this.isStorageConfigured(),
       zoomConfigured: this.zoom.isConfigured(),
-      recordings: rows.map((r) => this.toDto(r)),
+      recordings: rows.map((r) => this.pullService.toDto(r)),
     };
   }
 
@@ -135,236 +54,45 @@ export class ProgramZoomRecordingsService {
     programId: string,
     opts: { zoomMeetingId?: string; adminUserId?: string },
   ) {
-    if (!this.zoom.isConfigured()) {
-      throw new ServiceUnavailableException('Zoom API is not configured');
-    }
-    const bucket = this.recordingsBucket();
-    if (!bucket) {
-      throw new ServiceUnavailableException(
-        'Zoom recordings S3 is not configured. Set SESSION_ASSETS_S3_BUCKET (files go under zoom-recordings/).',
-      );
-    }
-
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-      select: { id: true, zoomMeetingId: true, title: true },
-    });
-    if (!program) throw new NotFoundException('Program not found');
-
-    const meetingId =
-      opts.zoomMeetingId?.trim() || program.zoomMeetingId?.trim() || '';
-    if (!meetingId) {
-      throw new BadRequestException(
-        'No Zoom meeting/webinar id on this program. Pass zoomMeetingId or set it on the program first.',
-      );
-    }
-
-    let zoomPayload;
-    try {
-      zoomPayload = await this.zoom.getMeetingRecordings(meetingId);
-    } catch (err: unknown) {
-      const axiosErr = err as {
-        response?: { status?: number; data?: { message?: string; code?: number } };
-        message?: string;
-      };
-      const status = axiosErr.response?.status;
-      const zoomMsg = axiosErr.response?.data?.message;
-      if (status === 404) {
-        throw new NotFoundException(
-          zoomMsg ||
-            'No cloud recording found for this Zoom id (not ready, deleted, or wrong id).',
-        );
-      }
-      if (status === 401 || status === 403) {
-        throw new ServiceUnavailableException(
-          zoomMsg ||
-            'Zoom rejected the recordings request. Check cloud_recording scopes and mint a fresh token.',
-        );
-      }
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`Zoom getMeetingRecordings failed: ${msg}`);
-      throw new BadRequestException(
-        `Could not fetch Zoom recordings: ${zoomMsg || msg}`,
-      );
-    }
-
-    const completed = zoomPayload.recordingFiles.filter(
-      (f) =>
-        f.downloadUrl &&
-        (!f.status || f.status.toLowerCase() === 'completed'),
-    );
-    if (completed.length === 0) {
-      throw new NotFoundException(
-        'Zoom returned no completed recording files yet. Wait for cloud processing and try again.',
-      );
-    }
-
-    const downloadToken =
-      zoomPayload.downloadAccessToken || undefined;
-    const upserted: string[] = [];
-    const errors: string[] = [];
-
-    for (const file of completed) {
-      try {
-        const { buffer, contentType } = await this.zoom.downloadRecordingFile(
-          file.downloadUrl,
-          downloadToken,
-        );
-        const ext = extForFile(file.fileType, file.fileExtension);
-        const key = `zoom-recordings/${programId}/${meetingId}/${file.id}.${ext}`;
-        const ct = storedContentType(file.fileType, ext, contentType);
-
-        await this.s3.send(
-          new PutObjectCommand({
-            Bucket: bucket,
-            Key: key,
-            Body: buffer,
-            ContentType: ct,
-          }),
-        );
-
-        const row = await this.prisma.programZoomRecording.upsert({
-          where: {
-            programId_zoomRecordingFileId: {
-              programId,
-              zoomRecordingFileId: file.id,
-            },
-          },
-          create: {
-            programId,
-            zoomMeetingId: meetingId,
-            zoomRecordingFileId: file.id,
-            fileType: file.fileType,
-            recordingType: file.recordingType ?? null,
-            fileExtension: ext,
-            fileSizeBytes: file.fileSize ?? buffer.length,
-            s3Bucket: bucket,
-            s3Key: key,
-            recordingStart: file.recordingStart
-              ? new Date(file.recordingStart)
-              : null,
-            recordingEnd: file.recordingEnd
-              ? new Date(file.recordingEnd)
-              : null,
-            topic: zoomPayload.topic ?? program.title,
-            pulledByUserId: opts.adminUserId ?? null,
-          },
-          update: {
-            zoomMeetingId: meetingId,
-            fileType: file.fileType,
-            recordingType: file.recordingType ?? null,
-            fileExtension: ext,
-            fileSizeBytes: file.fileSize ?? buffer.length,
-            s3Bucket: bucket,
-            s3Key: key,
-            recordingStart: file.recordingStart
-              ? new Date(file.recordingStart)
-              : null,
-            recordingEnd: file.recordingEnd
-              ? new Date(file.recordingEnd)
-              : null,
-            topic: zoomPayload.topic ?? program.title,
-            pulledAt: new Date(),
-            pulledByUserId: opts.adminUserId ?? null,
-          },
-        });
-        upserted.push(row.id);
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(
-          `Failed to pull Zoom file ${file.id} for program ${programId}: ${msg}`,
-        );
-        errors.push(`${file.fileType}/${file.id}: ${msg}`);
-      }
-    }
-
-    if (upserted.length === 0) {
-      throw new BadRequestException(
-        errors.length
-          ? `Failed to store recordings: ${errors.join('; ')}`
-          : 'No recording files were stored.',
-      );
-    }
-
+    const result = await this.pullService.pullForProgram(programId, opts);
     const list = await this.list(programId);
     return {
       ...list,
-      pulledCount: upserted.length,
-      zoomMeetingId: meetingId,
-      topic: zoomPayload.topic,
-      errors: errors.length ? errors : undefined,
+      pulledCount: result.upserted.length,
+      zoomMeetingId: result.zoomMeetingId,
+      topic: result.topic,
+      errors: result.errors.length ? result.errors : undefined,
     };
   }
 
   async createDownloadUrl(
     programId: string,
     recordingId: string,
-    opts?: { disposition?: RecordingUrlDisposition },
+    opts?: { disposition?: import('../zoom-recordings/zoom-recordings-media.util').RecordingUrlDisposition },
   ) {
-    const row = await this.prisma.programZoomRecording.findFirst({
+    const row = await this.prisma.zoomRecordingFile.findFirst({
       where: { id: recordingId, programId },
     });
     if (!row) throw new NotFoundException('Recording not found');
+    if (!row.s3Bucket || !row.s3Key) {
+      throw new BadRequestException(
+        'Recording file is not stored in S3 yet. Pull from Zoom first.',
+      );
+    }
 
-    const ext = row.fileExtension || extForFile(row.fileType, row.fileExtension);
-    const disposition =
-      opts?.disposition === 'inline' ? 'inline' : 'attachment';
-    const contentType =
-      disposition === 'inline'
-        ? inlineContentType(row.fileType, ext)
-        : contentTypeFor(row.fileType, ext);
-
-    const command = new GetObjectCommand({
-      Bucket: row.s3Bucket,
-      Key: row.s3Key,
-      ResponseContentType: contentType,
-      ResponseContentDisposition:
-        disposition === 'inline'
-          ? 'inline'
-          : `attachment; filename="${downloadFilename(row)}"`,
-    });
-    const url = await getSignedUrl(this.s3, command, {
-      expiresIn: PRESIGN_EXPIRES_SEC,
+    const presigned = await this.storage.createPresignedDownloadUrl({
+      bucket: row.s3Bucket,
+      key: row.s3Key,
+      fileType: row.fileType,
+      fileExtension: row.fileExtension || extForFile(row.fileType, row.fileExtension),
+      zoomRecordingFileId: row.zoomRecordingFileId,
+      chmAssetFilename: row.chmAssetFilename,
+      disposition: opts?.disposition,
     });
 
     return {
-      url,
-      expiresInSeconds: PRESIGN_EXPIRES_SEC,
-      recording: this.toDto(row),
-    };
-  }
-
-  private toDto(r: {
-    id: string;
-    programId: string;
-    zoomMeetingId: string;
-    zoomRecordingFileId: string;
-    fileType: string;
-    recordingType: string | null;
-    fileExtension: string | null;
-    fileSizeBytes: number | null;
-    s3Bucket: string;
-    s3Key: string;
-    recordingStart: Date | null;
-    recordingEnd: Date | null;
-    topic: string | null;
-    pulledAt: Date;
-    pulledByUserId: string | null;
-  }) {
-    return {
-      id: r.id,
-      programId: r.programId,
-      zoomMeetingId: r.zoomMeetingId,
-      zoomRecordingFileId: r.zoomRecordingFileId,
-      fileType: r.fileType,
-      recordingType: r.recordingType,
-      fileExtension: r.fileExtension,
-      fileSizeBytes: r.fileSizeBytes,
-      topic: r.topic,
-      recordingStart: r.recordingStart?.toISOString() ?? null,
-      recordingEnd: r.recordingEnd?.toISOString() ?? null,
-      pulledAt: r.pulledAt.toISOString(),
-      pulledByUserId: r.pulledByUserId,
+      ...presigned,
+      recording: this.pullService.toDto(row),
     };
   }
 }
