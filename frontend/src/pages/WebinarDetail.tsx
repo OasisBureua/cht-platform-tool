@@ -88,6 +88,17 @@ export default function WebinarDetail() {
     queryFn: () => programsApi.getById(id!),
     enabled: !!id && !isZoomWebinar,
     retry: false,
+    refetchInterval: (query) => {
+      const p = query.state.data;
+      if (!p) return false;
+      if (p.canJoinSession) return 60_000;
+      if (!p.joinSessionOpensAt) return false;
+      const opensAt = new Date(p.joinSessionOpensAt).getTime();
+      if (Number.isNaN(opensAt)) return false;
+      const msUntilOpen = opensAt - Date.now();
+      if (msUntilOpen > 2 * 60 * 60 * 1000) return false;
+      return 15_000;
+    },
   });
 
   const { data: slots = [] } = useQuery({
@@ -291,15 +302,19 @@ export default function WebinarDetail() {
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
   const wantsPostEventExtras =
     hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
+  const attendanceAllowsPostEvent =
+    myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
+    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
+  /** Only mark survey complete after the learner actually finished (ack), not merely because the window opened. */
   const surveyDone =
     enrolled &&
-    (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
+    (!hasPostEventSurvey || !!myRegistration?.postEventSurveyAcknowledgedAt);
   const surveyInProgress =
     enrolled &&
     hasPostEventSurvey &&
     !surveyDone &&
-    !!myRegistration?.postEventSurveySubmitted &&
-    !myRegistration?.postEventSurveyAcknowledgedAt;
+    attendanceAllowsPostEvent &&
+    postEventSurveyWindowOpen;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
   const surveySubmittedOnly = myRegistration?.status === 'SURVEY_SUBMITTED';
@@ -333,9 +348,6 @@ export default function WebinarDetail() {
     enrollMutation.isPending ||
     myRegistration?.status === 'PENDING';
 
-  const attendanceAllowsPostEvent =
-    myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
-    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
   const showPostEventReminderBanner =
     program.zoomSessionType === 'WEBINAR' &&
     postEventReminder &&

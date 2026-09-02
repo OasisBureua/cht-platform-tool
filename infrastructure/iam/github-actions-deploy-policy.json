@@ -23,7 +23,11 @@
     {
       "Sid": "ECRAuth",
       "Effect": "Allow",
-      "Action": ["ecr:GetAuthorizationToken"],
+      "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecr:DescribeRegistry",
+        "ecr:PutReplicationConfiguration"
+      ],
       "Resource": "*"
     },
     {
@@ -38,7 +42,11 @@
         "ecr:BatchGetImage",
         "ecr:GetDownloadUrlForLayer",
         "ecr:DescribeRepositories",
+        "ecr:DescribeImages",
         "ecr:ListImages",
+        "ecr:ListTagsForResource",
+        "ecr:TagResource",
+        "ecr:UntagResource",
         "ecr:PutLifecyclePolicy",
         "ecr:GetLifecyclePolicy",
         "ecr:DeleteLifecyclePolicy"
@@ -132,6 +140,7 @@
         "acm:Describe*",
         "acm:Get*",
         "acm:List*",
+        "appconfig:*",
         "application-autoscaling:*",
         "cloudfront:*",
         "cloudtrail:*",

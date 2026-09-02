@@ -64,9 +64,33 @@ const FROST =
 export default function Join() {
   const { isAuthenticated, signUp } = useAuth();
   const location = useLocation();
-  const fromLocation = (
-    location.state as { from?: { pathname: string; search?: string } } | null
-  )?.from;
+
+  // SCRUM-175: `?invite=<token>` means this visitor came from an admin-generated
+  // unregistered-invite email. Resolve the token to pre-fill the email field
+  // and route them post-signup to the webinar they were invited to.
+  const inviteToken = useMemo(
+    () => new URLSearchParams(location.search).get('invite')?.trim() || null,
+    [location.search],
+  );
+  const [invite, setInvite] = useState<ResolvedInvite | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteLoading, setInviteLoading] = useState<boolean>(!!inviteToken);
+
+  const inviteFromLocation = useMemo(
+    () =>
+      invite
+        ? {
+            pathname: '/app/live/register-multiple',
+            search: `?programs=${invite.programIds.map(encodeURIComponent).join(',')}`,
+          }
+        : null,
+    [invite],
+  );
+  const fromLocation =
+    inviteFromLocation ??
+    (
+      location.state as { from?: { pathname: string; search?: string } } | null
+    )?.from;
   const returnTo = fromLocation
     ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
     : undefined;
@@ -140,6 +164,32 @@ export default function Join() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when digits/role change
   }, [npiDigits, requiresNpi]);
 
+  // SCRUM-175: resolve the invite token from the URL, pre-fill the email field.
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    setInviteLoading(true);
+    invitesApi
+      .getInvite(inviteToken)
+      .then((data) => {
+        if (cancelled) return;
+        setInvite(data);
+        setEmail(data.email);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setInviteError(
+          'This invitation link is no longer valid. It may have expired or already been used. Please request a new invitation from the sender.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setInviteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
+
   const canSubmit =
     signupEnabled &&
     !submitting &&
@@ -210,6 +260,11 @@ export default function Join() {
       if (err) {
         setError(err.message || 'Sign up failed. Please try again.');
         return;
+      }
+      if (inviteToken) {
+        invitesApi.consumeInvite(inviteToken).catch(() => {
+          // Consume is best-effort; expired tokens on a retry are acceptable.
+        });
       }
       setSuccess(true);
     } catch (captchaErr) {
@@ -306,6 +361,24 @@ export default function Join() {
       <p className="eyebrow mt-8 text-faint">Or with email</p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-5">
+        {inviteToken && inviteLoading ? (
+          <p className="mb-5 rounded-[6px] bg-card px-4 py-3 text-body-s text-muted-foreground shadow-card">
+            Loading your invitation…
+          </p>
+        ) : null}
+        {inviteError && (
+          <p
+            role="alert"
+            className="mb-5 rounded-[6px] bg-amber-50 px-4 py-3 text-body-s text-amber-900"
+          >
+            {inviteError}
+          </p>
+        )}
+        {invite && !inviteError ? (
+          <p className="mb-5 rounded-[6px] bg-emerald-50 px-4 py-3 text-body-s text-emerald-900">
+            You&apos;re signing up from an invitation. Complete the form to register for the webinar.
+          </p>
+        ) : null}
         {error && (
           <p
             role="alert"
@@ -346,6 +419,8 @@ export default function Join() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
+            readOnly={!!invite}
+            hint={invite ? 'Email locked from your invitation.' : undefined}
           />
 
           <div>

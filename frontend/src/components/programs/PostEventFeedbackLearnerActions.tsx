@@ -18,8 +18,8 @@ export function PostEventAttendanceMessage(props: {
       <section className="bg-card border border-border rounded-card p-6 space-y-2">
         <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
         <p className="text-sm text-muted-foreground">
-          Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the live
-          session before the post-event survey and honorarium steps unlock here.
+          Your registration is approved. After the live session, attendance is recorded automatically when the
+          email on your HCP account matches the email Zoom saw. The post-event survey unlocks once that happens.
         </p>
       </section>
     );
@@ -153,20 +153,19 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-3">
           {nativeSurveyMode ? (
             <p className="text-sm text-muted-foreground">
-              When you are finished, tap <strong>Complete survey</strong> to save your responses
-              {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+              Please complete the survey below, then tap <strong>Complete survey</strong> to save your responses
+              {hasHonorarium ? ' before continuing to payout' : ''}.
             </p>
           ) : surveyReadyForAck ? (
             <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
                   Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
-                  {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+                  {hasHonorarium ? ' before continuing to payout' : ''}.
                 </>
               ) : (
                 <>
-                  We&apos;ve received your survey responses. Tap <strong>Complete survey</strong> to record your
-                  response
+                  Your survey answers were saved. Tap <strong>Complete survey</strong> to finish this step
                   {hasHonorarium ? ' before continuing to payout' : ''}.
                 </>
               )}
@@ -175,13 +174,12 @@ export function PostEventFeedbackLearnerActions(props: {
             <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
-                  Submit the embedded survey below, then return here and tap <strong>Complete survey</strong>
+                  Complete the survey below, then tap <strong>Complete survey</strong>
                   {hasHonorarium ? ' before confirming your honorarium' : ''}.
                 </>
               ) : (
                 <>
-                  Use <strong>Start survey</strong> above (or open the embedded form), submit your responses, then return
-                  here and tap <strong>Complete survey</strong>
+                  Open and complete the post-event survey, then return here and tap <strong>Complete survey</strong>
                   {hasHonorarium ? ' before confirming your honorarium' : ''}.
                 </>
               )}

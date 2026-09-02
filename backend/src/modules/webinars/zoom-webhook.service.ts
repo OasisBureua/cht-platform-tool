@@ -213,9 +213,9 @@ export class ZoomWebhookService {
         await this.programRegistrations.autoVerifyAttendanceFromZoomJoins(
           program.id,
         );
-      if (result.verifiedCount > 0) {
+      if (result.verifiedCount > 0 || result.deniedCount > 0) {
         this.logger.log(
-          `[Zoom webhook] ${eventNorm}: auto-verified ${result.verifiedCount} registration(s) from Zoom joins for program ${program.id}`,
+          `[Zoom webhook] ${eventNorm}: auto-resolved attendance for program ${program.id} (verified=${result.verifiedCount}, denied=${result.deniedCount})`,
         );
       }
     } catch (err) {
@@ -384,6 +384,14 @@ export class ZoomWebhookService {
         ? 'JOINED'
         : 'LEFT';
 
+    const timeRaw =
+      eventType === 'JOINED' ? participant.join_time : participant.leave_time;
+    let occurredAt = new Date();
+    if (timeRaw?.trim()) {
+      const parsed = new Date(timeRaw);
+      if (!Number.isNaN(parsed.getTime())) occurredAt = parsed;
+    }
+
     if (eventType === 'JOINED' && participant.email) {
       const nameParts = (participant.user_name ?? '').trim().split(/\s+/);
       const firstname = nameParts[0] ?? '';
@@ -402,6 +410,7 @@ export class ZoomWebhookService {
         programId: program.id,
         userId,
         event: eventType,
+        occurredAt,
         zoomMeetingId: meetingId,
         zoomParticipantId:
           participant.id ?? participant.participant_user_id ?? undefined,

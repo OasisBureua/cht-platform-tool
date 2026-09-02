@@ -2,6 +2,7 @@ import {
   buildZoomJoinIndex,
   matchRegistrationsToZoomJoins,
   zoomPresenceForRegistration,
+  resolveAttendanceFromZoomJoins,
 } from './zoom-attendance-match';
 
 describe('zoom-attendance-match', () => {
@@ -11,7 +12,7 @@ describe('zoom-attendance-match', () => {
     { userId: 'u3', participantEmail: null },
   ];
 
-  it('matches by userId and email case-insensitively', () => {
+  it('matches by email case-insensitively only (not userId alone)', () => {
     const matches = matchRegistrationsToZoomJoins(
       [
         { id: 'r1', userId: 'u1', userEmail: 'alice@example.com' },
@@ -26,7 +27,7 @@ describe('zoom-attendance-match', () => {
       {
         registrationId: 'r1',
         userId: 'u1',
-        matchedBy: 'userId',
+        matchedBy: 'email',
         zoomEmail: 'Alice@Example.com',
       },
       {
@@ -34,12 +35,6 @@ describe('zoom-attendance-match', () => {
         userId: 'u2',
         matchedBy: 'email',
         zoomEmail: 'bob@example.com',
-      },
-      {
-        registrationId: 'r4',
-        userId: 'u3',
-        matchedBy: 'userId',
-        zoomEmail: null,
       },
     ]);
   });
@@ -59,5 +54,53 @@ describe('zoom-attendance-match', () => {
     expect(index.emails.has('alice@example.com')).toBe(true);
     expect(index.userIds.has('u1')).toBe(true);
     expect(index.userIds.has('u3')).toBe(true);
+  });
+});
+
+describe('resolveAttendanceFromZoomJoins', () => {
+  it('verifies when HCP email equals Zoom email', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'alice@example.com' }],
+      [{ userId: 'u1', participantEmail: 'Alice@Example.com', event: 'JOINED' }],
+    );
+    expect(resolved).toEqual([
+      {
+        registrationId: 'r1',
+        userId: 'u1',
+        status: 'VERIFIED',
+        matchedBy: 'email',
+        zoomEmail: 'Alice@Example.com',
+      },
+    ]);
+  });
+
+  it('denies when same userId joined Zoom with a different email', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'hcp@hospital.org' }],
+      [
+        {
+          userId: 'u1',
+          participantEmail: 'personal@gmail.com',
+          event: 'JOINED',
+        },
+      ],
+    );
+    expect(resolved).toEqual([
+      {
+        registrationId: 'r1',
+        userId: 'u1',
+        status: 'DENIED',
+        matchedBy: 'mismatch',
+        zoomEmail: 'personal@gmail.com',
+      },
+    ]);
+  });
+
+  it('leaves unmatched learners unresolved (stay pending)', () => {
+    const resolved = resolveAttendanceFromZoomJoins(
+      [{ id: 'r1', userId: 'u1', userEmail: 'hcp@hospital.org' }],
+      [{ userId: 'u9', participantEmail: 'other@x.com', event: 'JOINED' }],
+    );
+    expect(resolved).toEqual([]);
   });
 });
