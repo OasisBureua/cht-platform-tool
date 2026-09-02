@@ -2,6 +2,7 @@
 # Resolve the git SHA to diff against for deploy-scope detection.
 #
 # Push: previous tip (github.event.before), unless it is missing/zero (new branch).
+# Pull request (merged): caller may pass the PR base SHA as before_sha.
 # Dispatch / missing before: last successful run of this workflow on this branch.
 # Fallback: merge-base with the environment default branch.
 # If nothing can be resolved, base_resolved=false (caller should deploy all lanes).
@@ -43,9 +44,13 @@ write_outputs() {
 BASE=""
 SOURCE=""
 
-if [ "$EVENT_NAME" = "push" ] && is_usable_sha "$BEFORE_SHA"; then
+if { [ "$EVENT_NAME" = "push" ] || [ "$EVENT_NAME" = "pull_request" ]; } && is_usable_sha "$BEFORE_SHA"; then
   BASE="$BEFORE_SHA"
-  SOURCE="push_before"
+  if [ "$EVENT_NAME" = "pull_request" ]; then
+    SOURCE="pr_base"
+  else
+    SOURCE="push_before"
+  fi
 fi
 
 if [ -z "$BASE" ] && command -v gh >/dev/null 2>&1; then
