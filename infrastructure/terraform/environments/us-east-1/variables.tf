@@ -222,37 +222,6 @@ variable "ecr_repository_names" {
 }
 
 # Application secrets
-variable "supabase_url" {
-  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
-  type        = string
-}
-
-variable "supabase_anon_key" {
-  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-}
-
-variable "gotrue_jwt_secret" {
-  description = "GoTrue JWT secret for validating tokens (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "mediahub_base_url" {
-  description = "MediaHub Public API base URL"
-  type        = string
-  default     = "https://mediahub.communityhealth.media/api/public"
-}
-
-variable "mediahub_api_key" {
-  description = "MediaHub Public API key for catalog"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "contenthub_base_url" {
   description = "Content Hub API base URL for KOL network reads and HCP upsert"
   type        = string

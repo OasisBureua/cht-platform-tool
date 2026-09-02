@@ -63,11 +63,6 @@ resource "aws_secretsmanager_secret" "app_secrets" {
 resource "aws_secretsmanager_secret_version" "app_secrets" {
   secret_id = aws_secretsmanager_secret.app_secrets.id
   secret_string = jsonencode({
-    supabase_url                              = var.supabase_url
-    supabase_anon_key                         = var.supabase_anon_key
-    gotrue_jwt_secret                         = var.gotrue_jwt_secret
-    mediahub_base_url                         = var.mediahub_base_url
-    mediahub_api_key                          = var.mediahub_api_key
     contenthub_base_url                       = var.contenthub_base_url
     contenthub_api_key                        = var.contenthub_api_key
     youtube_api_key                           = var.youtube_api_key

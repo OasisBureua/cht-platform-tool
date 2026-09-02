@@ -223,7 +223,7 @@ export class AuthService {
           zipCode: zipCode?.trim() || undefined,
         },
       });
-      // Fan out to HubSpot + MediaHub/Content Hub. Fire-and-forget: a slow
+      // Fan out to HubSpot + Content Hub. Fire-and-forget: a slow
       // downstream must not block signup.
       this.outboundSync
         .syncUser({

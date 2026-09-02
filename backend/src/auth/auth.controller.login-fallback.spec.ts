@@ -1,25 +1,17 @@
 import type { Response as ExpressResponse } from 'express';
 import { AuthController } from './auth.controller';
+import { ServiceUnavailableException } from '@nestjs/common';
 
 /**
- * SCRUM-101: /auth/login must fail-closed when Supabase is not configured
- * in production. The DB-fallback branch below the Supabase call would
- * otherwise log a user in by email with the password IGNORED, a critical
- * vulnerability if SUPABASE_URL/SUPABASE_ANON_KEY drift out of the prod
- * secret in any deploy.
+ * SCRUM-101: /auth/login must fail-closed in production when Cognito is not
+ * configured. The DB-fallback branch logs a user in by email with the password
+ * IGNORED — never allow that outside local/test.
  */
 describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
   const originalNodeEnv = process.env.NODE_ENV;
 
-  // ConfigService that reports Supabase as NOT configured. Reproduces the
-  // real vulnerability window: prod env with missing SUPABASE_URL/ANON_KEY.
   const configService = {
-    get: jest.fn((key: string) => {
-      if (key === 'supabase.authDecommissioned') return true;
-      if (key === 'supabase.url') return undefined;
-      if (key === 'supabase.anonKey') return undefined;
-      return undefined;
-    }),
+    get: jest.fn(() => undefined),
   };
 
   const authService = {
@@ -29,7 +21,10 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     isProfileComplete: jest.fn().mockReturnValue(true),
   };
 
-  const cognitoService = {} as never;
+  const cognitoService = {
+    isConfigured: jest.fn().mockReturnValue(false),
+  };
+
   const recaptchaService = {} as never;
   const lockout = {
     assertAllowed: jest.fn().mockResolvedValue({ locked: false }),
@@ -58,7 +53,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
   const buildController = () =>
     new AuthController(
       authService as never,
-      cognitoService,
+      cognitoService as never,
       recaptchaService,
       lockout as never,
       { lookup: jest.fn(), normalizeNpi: (v: string) => (v || '').replace(/\D/g, '').slice(0, 10) } as never,
@@ -70,6 +65,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     lockout.assertAllowed.mockResolvedValue({ locked: false });
+    cognitoService.isConfigured.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -90,10 +86,20 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     expect(result).toEqual({
       error: 'Login is not available. Please contact support.',
     });
-    // Critical: no DB lookup, no session created, no cookie set.
     expect(authService.findByEmail).not.toHaveBeenCalled();
     expect(authService.createSession).not.toHaveBeenCalled();
     expect(expressRes.cookie).not.toHaveBeenCalled();
+  });
+
+  it('directs clients to Cognito when Cognito is configured', async () => {
+    process.env.NODE_ENV = 'production';
+    cognitoService.isConfigured.mockReturnValue(true);
+    const controller = buildController();
+
+    await expect(
+      controller.login('user@example.com', 'anything', req, expressRes),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    expect(authService.findByEmail).not.toHaveBeenCalled();
   });
 
   it('allows the DB-fallback login in non-production (dev/local)', async () => {

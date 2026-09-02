@@ -28,11 +28,11 @@ export interface OutboundProgramEventInput extends OutboundSyncInput {
 
 export interface OutboundSyncResult {
   hubspot: boolean;
-  mediahub: boolean;
+  contenthub: boolean;
 }
 
 /**
- * Fan-out an NPI-bearing user update to HubSpot + MediaHub/Content Hub HCP roster.
+ * Fan-out an NPI-bearing user update to HubSpot + Content Hub HCP roster.
  *
  * Contract: never throws. Any single destination's failure is logged but does
  * not block the other destinations. Returns per-destination booleans for
@@ -49,7 +49,7 @@ export class OutboundSyncService {
 
   constructor(
     private readonly hubspot: HubSpotService,
-    private readonly mediahub: MediaHubSyncService,
+    private readonly contentHubSync: MediaHubSyncService,
   ) {}
 
   async syncUser(input: OutboundSyncInput): Promise<OutboundSyncResult> {
@@ -77,10 +77,10 @@ export class OutboundSyncService {
           })
       : Promise.resolve(false);
 
-    // MediaHub roster is NPI-keyed, skip HCPs without a valid NPI rather than
+    // Content Hub roster is NPI-keyed; skip HCPs without a valid NPI rather than
     // pushing noise. HubSpot still syncs (CRM contact surface).
-    const mediahubPromise = hasValidNpi
-      ? this.mediahub.upsertHCP({
+    const contenthubPromise = hasValidNpi
+      ? this.contentHubSync.upsertHCP({
           npi,
           firstName: input.firstName,
           lastName: input.lastName,
@@ -93,21 +93,21 @@ export class OutboundSyncService {
         })
       : Promise.resolve(false);
 
-    const [hubspot, mediahub] = await Promise.all([
+    const [hubspot, contenthub] = await Promise.all([
       hubspotPromise,
-      mediahubPromise,
+      contenthubPromise,
     ]);
 
     this.logger.log(
-      `[OutboundSync] ${email} npi=${hasValidNpi ? npi : 'none'} results: hubspot=${hubspot} mediahub=${mediahub}`,
+      `[OutboundSync] ${email} npi=${hasValidNpi ? npi : 'none'} results: hubspot=${hubspot} contenthub=${contenthub}`,
     );
 
-    return { hubspot, mediahub };
+    return { hubspot, contenthub };
   }
 
   /**
    * Contact upsert + HubSpot timeline note for registration/survey lifecycle.
-   * Never throws. MediaHub still only gets identity when NPI is valid.
+   * Never throws. Content Hub still only gets identity when NPI is valid.
    */
   async syncProgramEvent(
     input: OutboundProgramEventInput,
@@ -145,8 +145,8 @@ export class OutboundSyncService {
           })
       : Promise.resolve(false);
 
-    const mediahubPromise = hasValidNpi
-      ? this.mediahub.upsertHCP({
+    const contenthubPromise = hasValidNpi
+      ? this.contentHubSync.upsertHCP({
           npi,
           firstName: input.firstName,
           lastName: input.lastName,
@@ -159,15 +159,15 @@ export class OutboundSyncService {
         })
       : Promise.resolve(false);
 
-    const [hubspot, mediahub] = await Promise.all([
+    const [hubspot, contenthub] = await Promise.all([
       hubspotPromise,
-      mediahubPromise,
+      contenthubPromise,
     ]);
 
     this.logger.log(
-      `[OutboundSync] program-event ${input.event} ${email} program=${input.programId} hubspot=${hubspot} mediahub=${mediahub}`,
+      `[OutboundSync] program-event ${input.event} ${email} program=${input.programId} hubspot=${hubspot} contenthub=${contenthub}`,
     );
 
-    return { hubspot, mediahub };
+    return { hubspot, contenthub };
   }
 }

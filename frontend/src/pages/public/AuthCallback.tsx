@@ -12,15 +12,11 @@ import {
 /**
  * OAuth callback page.
  * Cognito PKCE: ?code=...&state=... → POST /auth/cognito/callback
- * Legacy GoTrue: #access_token=... → POST /auth/login-oauth
  */
-const INITIAL_HASH =
-  typeof window !== 'undefined' && window.location.hash ? window.location.hash.slice(1) : '';
-
 export default function AuthCallback() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { completeCognitoCallback, loginOAuth } = useAuth();
+  const { completeCognitoCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
   /** Prevent Strict Mode / dep churn from starting the exchange twice. */
   const startedRef = useRef(false);
@@ -69,24 +65,8 @@ export default function AuthCallback() {
       return;
     }
 
-    const hash = INITIAL_HASH || window.location.hash?.slice(1);
-    const hashParams = hash ? new URLSearchParams(hash) : null;
-    const accessToken = hashParams?.get('access_token') ?? searchParams.get('access_token');
-
-    if (!accessToken?.trim()) {
-      setError('Missing authorization response. Please try signing in again.');
-      startedRef.current = false;
-      return;
-    }
-
-    void loginOAuth(accessToken.trim()).then((result) => {
-      if (result.error) {
-        setError(result.error.message || 'Sign-in failed.');
-        startedRef.current = false;
-        return;
-      }
-      navigate(getPostLoginPath(result.role, fromPath), { replace: true });
-    });
+    setError('Missing authorization response. Please try signing in again.');
+    startedRef.current = false;
     // Intentionally omit callback fn deps: startedRef guards a single exchange per code.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate, searchParams]);
