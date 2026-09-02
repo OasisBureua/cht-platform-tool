@@ -294,11 +294,6 @@ module "secrets" {
   db_name              = local.app_db_name
   db_connection_string = local.app_db_connection_string
 
-  supabase_url                              = var.supabase_url
-  supabase_anon_key                         = var.supabase_anon_key
-  gotrue_jwt_secret                         = var.gotrue_jwt_secret
-  mediahub_base_url                         = var.mediahub_base_url
-  mediahub_api_key                          = var.mediahub_api_key
   contenthub_base_url                       = var.contenthub_base_url
   contenthub_api_key                        = var.contenthub_api_key
   youtube_api_key                           = var.youtube_api_key

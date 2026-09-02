@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router-dom';
 
 /**
  * The frame every auth screen shares: the form on one side and a panel
@@ -25,16 +24,8 @@ export function AuthLayout({
 }) {
   return (
     <div className="grid min-h-[calc(100dvh-4rem)] bg-background lg:grid-cols-2">
-      <div className="flex flex-col justify-center px-5 py-12 sm:px-10 lg:px-14 xl:px-20">
+      <div className="flex flex-col justify-start px-5 pb-12 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-14 xl:px-20">
         <div className="mx-auto w-full max-w-[26rem]">
-          <Link
-            to="/"
-            aria-label="Home"
-            className="-ms-2 mb-8 inline-block rounded-[6px] p-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-          >
-            <img src="/logo.svg" alt="" className="h-8 w-auto" />
-          </Link>
-
           <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
             {heading}
           </h1>

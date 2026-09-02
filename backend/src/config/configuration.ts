@@ -29,12 +29,7 @@ export default () => ({
     clientId: process.env.AUTH0_CLIENT_ID,
   },
 
-  // GoTrue / shared CHT auth (mediahub.communityhealth.media/auth/v1)
-  gotrue: {
-    jwtSecret: process.env.GOTRUE_JWT_SECRET,
-  },
-
-  // Amazon Cognito (replaces GoTrue when COGNITO_USER_POOL_ID is set)
+  // Amazon Cognito
   cognito: {
     userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
     clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
@@ -45,21 +40,6 @@ export default () => ({
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
     domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
     jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
-  },
-
-  // Supabase Auth (for backend login validation)
-  supabase: {
-    url: process.env.SUPABASE_URL,
-    anonKey: process.env.SUPABASE_ANON_KEY,
-    /**
-     * When true, block MediaHub/GoTrue-backed user creation flows (signup + oauth login).
-     * Existing email/password login can remain temporarily available for migrated users.
-     */
-    authDecommissioned:
-      process.env.SUPABASE_AUTH_DECOMMISSIONED === undefined
-        ? true
-        : process.env.SUPABASE_AUTH_DECOMMISSIONED === 'true' ||
-          process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
   // Idle session TTL in seconds (default 30 min). Slid on getSession activity.
@@ -192,15 +172,7 @@ export default () => ({
       'true',
   },
 
-  // MediaHub Public API (catalog - clips, tags, doctors, search)
-  mediahub: {
-    baseUrl:
-      process.env.MEDIAHUB_BASE_URL ||
-      'https://mediahub.communityhealth.media/api/public',
-    apiKey: process.env.MEDIAHUB_API_KEY,
-  },
-
-  // Content Hub: KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
+  // Content Hub: catalog clips/tags/KOLs + HCP upsert
   contenthub: {
     baseUrl: process.env.CONTENTHUB_BASE_URL || '',
     adminBaseUrl: (() => {
@@ -213,7 +185,7 @@ export default () => ({
     apiKey: process.env.CONTENTHUB_API_KEY,
   },
 
-  // YouTube Data API v3 (for catalog playlists - fallback when MediaHub not configured)
+  // YouTube Data API v3 (for catalog playlists - fallback when Content Hub not configured)
   youtube: (() => {
     let ids: string[] =
       process.env.YOUTUBE_PLAYLIST_IDS?.split(',')

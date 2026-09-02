@@ -68,39 +68,6 @@ variable "ecr_repository_names" {
   default     = ["cht-platform-backend", "cht-platform-worker"]
 }
 
-variable "supabase_url" {
-  description = "Primary only: Supabase/GoTrue base URL."
-  type        = string
-  default     = ""
-}
-
-variable "supabase_anon_key" {
-  description = "Primary only: Supabase anon key."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "gotrue_jwt_secret" {
-  description = "Primary only: GoTrue JWT secret."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "mediahub_base_url" {
-  description = "Primary only: MediaHub Public API base URL."
-  type        = string
-  default     = "https://mediahub.communityhealth.media/api/public"
-}
-
-variable "mediahub_api_key" {
-  description = "Primary only: MediaHub API key."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "contenthub_base_url" {
   description = "Primary only: Content Hub API base URL."
   type        = string

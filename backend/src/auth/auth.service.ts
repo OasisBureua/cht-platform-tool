@@ -223,7 +223,7 @@ export class AuthService {
           zipCode: zipCode?.trim() || undefined,
         },
       });
-      // Fan out to HubSpot + MediaHub/Content Hub. Fire-and-forget: a slow
+      // Fan out to HubSpot + Content Hub. Fire-and-forget: a slow
       // downstream must not block signup.
       this.outboundSync
         .syncUser({
@@ -357,7 +357,7 @@ export class AuthService {
   /**
    * Create a session in Postgres and mirror it in Redis.
    * Idle expiry starts at now + SESSION_TTL_SECONDS; absolute cap uses createdAt.
-   * @param accessToken - Optional Cognito/legacy access token (MFA, password, chatbot)
+   * @param accessToken - Optional Cognito/legacy access token (MFA, password change)
    */
   async createSession(
     user: AuthUser,
@@ -394,23 +394,6 @@ export class AuthService {
       this.prisma.session.deleteMany({ where: { token } }),
       this.deleteSessionCache(token),
     ]);
-  }
-
-  /**
-   * Get chatbot token for the given session. Returns null if missing or timed out.
-   */
-  async getChatbotToken(sessionToken: string): Promise<string | null> {
-    const session = await this.prisma.session.findUnique({
-      where: { token: sessionToken.trim() },
-      select: { accessToken: true, expiresAt: true, createdAt: true },
-    });
-    if (
-      !session ||
-      this.isSessionTimedOut(new Date(), session.expiresAt, session.createdAt)
-    ) {
-      return null;
-    }
-    return session.accessToken;
   }
 
   /**

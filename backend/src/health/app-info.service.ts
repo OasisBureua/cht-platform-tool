@@ -9,7 +9,7 @@ export interface ActuatorInfoResponse {
   'node-env': string;
   'uptime-seconds': number;
   timestamp: string;
-  'auth-provider': 'cognito' | 'gotrue' | 'dev';
+  'auth-provider': 'cognito' | 'dev';
   'frontend-url': string;
   build: {
     image: string | null;
@@ -22,15 +22,10 @@ export class AppInfoService {
 
   getInfo(): ActuatorInfoResponse {
     const cognitoPoolId = this.config.get<string>('cognito.userPoolId')?.trim();
-    const gotrueSecret = this.config.get<string>('gotrue.jwtSecret')?.trim();
-    const supabaseUrl = this.config.get<string>('supabase.url')?.trim();
 
-    let authProvider: ActuatorInfoResponse['auth-provider'] = 'dev';
-    if (cognitoPoolId) {
-      authProvider = 'cognito';
-    } else if (gotrueSecret || supabaseUrl) {
-      authProvider = 'gotrue';
-    }
+    const authProvider: ActuatorInfoResponse['auth-provider'] = cognitoPoolId
+      ? 'cognito'
+      : 'dev';
 
     const imageTag =
       this.config.get<string>('app.imageTag')?.trim() ||

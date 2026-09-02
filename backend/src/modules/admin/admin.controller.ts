@@ -207,36 +207,23 @@ export class AdminController {
       'Operational diagnostics for auth migration. Returns booleans only; no secrets are exposed.',
   })
   getAuthStatus() {
-    const supabaseUrl = this.config.get<string>('supabase.url')?.trim() || '';
-    const supabaseAnonKey =
-      this.config.get<string>('supabase.anonKey')?.trim() || '';
-    const gotrueJwtSecret =
-      this.config.get<string>('gotrue.jwtSecret')?.trim() || '';
-    const mediahubApiKey =
-      this.config.get<string>('mediahub.apiKey')?.trim() || '';
-    const mediahubBaseUrl =
-      this.config.get<string>('mediahub.baseUrl')?.trim() ||
-      'https://mediahub.communityhealth.media/api/public';
-    const supabaseAuthDecommissioned =
-      this.config.get<boolean>('supabase.authDecommissioned') ?? true;
+    const cognitoPoolId =
+      this.config.get<string>('cognito.userPoolId')?.trim() || '';
+    const contenthubApiKey =
+      this.config.get<string>('contenthub.apiKey')?.trim() || '';
+    const contenthubBaseUrl =
+      this.config.get<string>('contenthub.baseUrl')?.trim() || '';
 
     return {
-      authMigration: {
-        supabaseAuthDecommissioned,
-        signupEnabled: !supabaseAuthDecommissioned,
-        oauthLoginEnabled: !supabaseAuthDecommissioned,
+      auth: {
+        cognitoConfigured: !!cognitoPoolId,
+        signupEnabled: !!cognitoPoolId,
+        oauthLoginEnabled: !!cognitoPoolId,
       },
-      legacySupabaseAuth: {
-        configured: !!(supabaseUrl && supabaseAnonKey),
-        supabaseUrlConfigured: !!supabaseUrl,
-        supabaseAnonKeyConfigured: !!supabaseAnonKey,
-        gotrueJwtValidationEnabled: !!gotrueJwtSecret,
-      },
-      mediahubIntegration: {
-        mediahubBaseUrl,
-        apiKeyConfigured: !!mediahubApiKey,
-        hcpUpsertEnabled: !!mediahubApiKey,
-        userCreationEnabled: false,
+      contenthubIntegration: {
+        contenthubBaseUrl,
+        apiKeyConfigured: !!contenthubApiKey,
+        hcpUpsertEnabled: !!contenthubApiKey,
       },
     };
   }

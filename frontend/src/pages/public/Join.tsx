@@ -3,13 +3,11 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
 import {
   cognitoAuthEnabled,
   googleOAuthEnabled,
   googleOAuthMigrationMessage,
-  mediahubAuthDecommissioned,
   recaptchaEnabled,
 } from '../../lib/auth-config';
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
@@ -94,7 +92,7 @@ export default function Join() {
   const returnTo = fromLocation
     ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
     : undefined;
-  const signupEnabled = cognitoAuthEnabled || !mediahubAuthDecommissioned;
+  const signupEnabled = cognitoAuthEnabled;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
@@ -215,9 +213,7 @@ export default function Join() {
     setOauthLoading(provider);
     try {
       const oauthReturn = returnTo ?? PLATFORM_HOME;
-      const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', oauthReturn)
-        : buildOAuthAuthorizeUrl(provider, oauthReturn);
+      const url = await buildCognitoAuthorizeUrl('Google', oauthReturn);
       window.location.href = url;
     } catch (err) {
       setOauthLoading(null);

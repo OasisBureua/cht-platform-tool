@@ -106,7 +106,7 @@ export class CatalogController {
         ?.status;
       if (status === 401) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 Invalid API key - returning empty clips. Update mediahub_api_key in Secrets Manager.',
+          '[Catalog] Content Hub 401 Invalid API key - returning empty clips. Update contenthub_api_key in Secrets Manager.',
         );
         return { items: [], total: 0 };
       }
@@ -328,19 +328,11 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/transcripts/:shootId
-   * MediaHub: Full diarized transcript with speaker names.
-   * Returns null (200) on missing shoot so the frontend shows "not available" rather than an error.
+   * Legacy MediaHub transcript endpoint removed; returns null so clients show unavailable.
    */
   @Get('transcripts/:shootId')
-  async getTranscript(@Param('shootId') shootId: string) {
-    if (!this.mediahub.isConfigured()) {
-      return null;
-    }
-    try {
-      return await this.mediahub.getTranscript(shootId);
-    } catch {
-      return null;
-    }
+  async getTranscript(@Param('shootId') _shootId: string) {
+    return null;
   }
 
   /**

@@ -151,26 +151,6 @@ resource "aws_ecs_task_definition" "backend" {
             valueFrom = "${var.database_secret_arn}:url::"
           },
           {
-            name      = "SUPABASE_URL"
-            valueFrom = "${var.app_secrets_arn}:supabase_url::"
-          },
-          {
-            name      = "SUPABASE_ANON_KEY"
-            valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
-          },
-          {
-            name      = "GOTRUE_JWT_SECRET"
-            valueFrom = "${var.app_secrets_arn}:gotrue_jwt_secret::"
-          },
-          {
-            name      = "MEDIAHUB_BASE_URL"
-            valueFrom = "${var.app_secrets_arn}:mediahub_base_url::"
-          },
-          {
-            name      = "MEDIAHUB_API_KEY"
-            valueFrom = "${var.app_secrets_arn}:mediahub_api_key::"
-          },
-          {
             name      = "CONTENTHUB_BASE_URL"
             valueFrom = "${var.app_secrets_arn}:contenthub_base_url::"
           },

@@ -77,9 +77,6 @@ fi
 MAPPINGS=$(cat <<'EOF'
 acm_certificate_arn:ACM_CERTIFICATE_ARN
 cloudfront_certificate_arn:CLOUDFRONT_CERTIFICATE_ARN
-supabase_anon_key:SUPABASE_ANON_KEY
-gotrue_jwt_secret:GOTRUE_JWT_SECRET
-mediahub_api_key:MEDIAHUB_API_KEY
 youtube_api_key:YOUTUBE_API_KEY
 youtube_playlist_ids:YOUTUBE_PLAYLIST_IDS
 zoom_account_id:ZOOM_ACCOUNT_ID
