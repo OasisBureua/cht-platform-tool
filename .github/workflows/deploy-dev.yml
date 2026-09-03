@@ -152,6 +152,24 @@ jobs:
         working-directory: ./backend
         run: npm test
 
+      - name: Worker - Setup Python
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: worker/requirements.txt
+
+      - name: Worker - Install dependencies
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pip install -r requirements.txt
+
+      - name: Worker - Run tests
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pytest
+
       - name: Frontend - Install dependencies
         if: needs.changes.outputs.deploy_frontend == 'true'
         working-directory: ./frontend
