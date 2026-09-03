@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { resolveApiBaseUrl, resolveAppBaseUrl } from '../../config/app-urls';
+import { isTestappHost, resolveApiBaseUrl, resolveAppBaseUrl } from '../../config/app-urls';
 
 describe('app-urls', () => {
   afterEach(() => {
@@ -37,6 +37,12 @@ describe('app-urls', () => {
   it('uses VITE_APP_URL for OAuth when set', () => {
     vi.stubEnv('VITE_APP_URL', 'https://staging.testapp.communityhealth.media');
     expect(resolveAppBaseUrl()).toBe('https://staging.testapp.communityhealth.media');
+  });
+
+  it('treats testapp and staging.testapp as platform hosts', () => {
+    expect(isTestappHost('testapp.communityhealth.media')).toBe(true);
+    expect(isTestappHost('staging.testapp.communityhealth.media')).toBe(true);
+    expect(isTestappHost('devapp.communityhealth.media')).toBe(false);
   });
 
   it('does not map staging host to platform OAuth URL', () => {

@@ -12,6 +12,7 @@ import {
   ZoomFilterTabs,
   ZoomJobBanner,
 } from '../../components/admin/zoom-recordings/ZoomRecordingsUi';
+import { zoomSyncProgressDisplay } from '../../components/admin/zoom-recordings/zoomSyncProgress';
 
 const SYNC_POLL_MS = 2500;
 
@@ -27,10 +28,7 @@ function SyncStatusBanner({ job }: { job: ZoomSyncJob | null | undefined }) {
   if (!job) return null;
 
   const progress = job.progress;
-  const pct =
-    progress && progress.monthsTotal > 0
-      ? Math.round((progress.monthsDone / progress.monthsTotal) * 100)
-      : null;
+  const { pct, label: progressLabel } = zoomSyncProgressDisplay(progress);
 
   if (job.status === 'FAILED') {
     return (
@@ -48,8 +46,8 @@ function SyncStatusBanner({ job }: { job: ZoomSyncJob | null | undefined }) {
         tone="running"
         title="Syncing from Zoom"
         progress={
-          pct != null
-            ? { pct, label: `${progress!.monthsDone}/${progress!.monthsTotal} months (${pct}%)` }
+          pct != null && progressLabel
+            ? { pct, label: progressLabel }
             : undefined
         }
         detail={
@@ -70,7 +68,7 @@ function SyncStatusBanner({ job }: { job: ZoomSyncJob | null | undefined }) {
         title={`Last sync: ${progress.sessionsUpserted} sessions, ${progress.fileStubsUpserted} files indexed`}
         detail={[
           job.finishedAt ? format(parseISO(job.finishedAt), 'MMM d, yyyy h:mm a') : null,
-          progress.errors.length ? `${progress.errors.length} window warning(s)` : null,
+          progress.errors.length ? `${progress.errors.length} host/window warning(s)` : null,
         ]
           .filter(Boolean)
           .join(' · ')}
