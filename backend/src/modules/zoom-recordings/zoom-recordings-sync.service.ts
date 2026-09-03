@@ -20,10 +20,16 @@ import { formatZoomHttpError } from './zoom-http-error.util';
 type SyncProgress = {
   monthsTotal: number;
   monthsDone: number;
+  usersTotal: number;
+  usersDone: number;
+  windowsTotal: number;
+  windowsDone: number;
   sessionsUpserted: number;
   fileStubsUpserted: number;
   errors: string[];
 };
+
+const MAX_SYNC_ERROR_LINES = 40;
 
 @Injectable()
 export class ZoomRecordingsSyncService {
@@ -76,6 +82,10 @@ export class ZoomRecordingsSyncService {
         progressJson: {
           monthsTotal: buildMonthWindows(fromDate, toDate).length,
           monthsDone: 0,
+          usersTotal: 0,
+          usersDone: 0,
+          windowsTotal: 0,
+          windowsDone: 0,
           sessionsUpserted: 0,
           fileStubsUpserted: 0,
           errors: [],
@@ -119,71 +129,130 @@ export class ZoomRecordingsSyncService {
         },
       });
 
+      const windows = buildMonthWindows(job.fromDate, job.toDate);
       const progress: SyncProgress = {
-        monthsTotal: buildMonthWindows(job.fromDate, job.toDate).length,
+        monthsTotal: windows.length,
         monthsDone: 0,
+        usersTotal: 0,
+        usersDone: 0,
+        windowsTotal: 0,
+        windowsDone: 0,
         sessionsUpserted: 0,
         fileStubsUpserted: 0,
         errors: [],
       };
 
-      const windows = buildMonthWindows(job.fromDate, job.toDate);
-      for (const window of windows) {
-        try {
-          const sessions = await this.zoom.listAccountRecordingsInRange({
-            from: window.from,
-            to: window.to,
-          });
-          for (const summary of sessions) {
-            if (!summary.id) continue;
+      let users: Awaited<ReturnType<ZoomService['listAllAccountUsers']>> = [];
+      try {
+        users = await this.zoom.listAllAccountUsers({ status: 'active' });
+      } catch (err) {
+        const msg = formatZoomHttpError(err);
+        throw new Error(
+          `Unable to list Zoom users for recordings sync (need user:read:list_users:admin): ${msg}`,
+        );
+      }
 
-            const linked = await this.sessions.findProgramByZoomMeetingId(
-              summary.id,
-            );
-            const session = await this.sessions.ensureSessionFromSync({
-              meetingId: summary.id,
-              topic: summary.topic,
-              sessionType:
-                linked?.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
-              startTime: summary.startTime
-                ? new Date(summary.startTime)
-                : null,
-              durationMinutes: summary.duration ?? null,
-              zoomUuid: summary.uuid,
-              hostEmail: summary.hostEmail,
-              totalSizeBytes: summary.totalSize ?? null,
-              programId: linked?.id ?? null,
+      progress.usersTotal = users.length;
+      progress.windowsTotal = users.length * windows.length;
+      await this.prisma.zoomSyncJob.update({
+        where: { id: jobId },
+        data: { progressJson: progress },
+      });
+
+      if (users.length === 0) {
+        await this.prisma.zoomSyncJob.update({
+          where: { id: jobId },
+          data: {
+            status: ZoomSyncJobStatus.COMPLETED,
+            finishedAt: new Date(),
+            progressJson: progress,
+            errorMessage: 'No active Zoom users returned; nothing to inventory.',
+          },
+        });
+        return;
+      }
+
+      for (const user of users) {
+        progress.monthsDone = 0;
+        for (const window of windows) {
+          try {
+            const sessions = await this.zoom.listUserRecordingsInRange({
+              userId: user.id,
+              from: window.from,
+              to: window.to,
             });
-            progress.sessionsUpserted += 1;
+            for (const summary of sessions) {
+              if (!summary.id) continue;
+              try {
+                const linked = await this.sessions.findProgramByZoomMeetingId(
+                  summary.id,
+                );
+                const session = await this.sessions.ensureSessionFromSync({
+                  meetingId: summary.id,
+                  topic: summary.topic,
+                  sessionType:
+                    linked?.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
+                  startTime: summary.startTime
+                    ? new Date(summary.startTime)
+                    : null,
+                  durationMinutes: summary.duration ?? null,
+                  zoomUuid: summary.uuid,
+                  hostEmail: summary.hostEmail || user.email || null,
+                  totalSizeBytes: summary.totalSize ?? null,
+                  programId: linked?.id ?? null,
+                });
+                progress.sessionsUpserted += 1;
 
-            for (const file of summary.recordingFiles) {
-              if (!file.id) continue;
-              await this.sessions.upsertFileStub({
-                sessionId: session.id,
-                programId: linked?.id ?? null,
-                zoomMeetingId: summary.id,
-                zoomRecordingFileId: file.id,
-                fileType: file.fileType,
-                recordingType: file.recordingType ?? null,
-                fileExtension: extForFile(file.fileType, file.fileExtension),
-                fileSizeBytes: file.fileSize ?? null,
-                recordingStart: file.recordingStart
-                  ? new Date(file.recordingStart)
-                  : null,
-                recordingEnd: file.recordingEnd
-                  ? new Date(file.recordingEnd)
-                  : null,
-                topic: summary.topic ?? null,
-              });
-              progress.fileStubsUpserted += 1;
+                for (const file of summary.recordingFiles) {
+                  if (!file.id) continue;
+                  await this.sessions.upsertFileStub({
+                    sessionId: session.id,
+                    programId: linked?.id ?? null,
+                    zoomMeetingId: summary.id,
+                    zoomRecordingFileId: file.id,
+                    fileType: file.fileType,
+                    recordingType: file.recordingType ?? null,
+                    fileExtension: extForFile(file.fileType, file.fileExtension),
+                    fileSizeBytes: file.fileSize ?? null,
+                    recordingStart: file.recordingStart
+                      ? new Date(file.recordingStart)
+                      : null,
+                    recordingEnd: file.recordingEnd
+                      ? new Date(file.recordingEnd)
+                      : null,
+                    topic: summary.topic ?? null,
+                  });
+                  progress.fileStubsUpserted += 1;
+                }
+              } catch (err) {
+                const msg = formatZoomHttpError(err);
+                const host = user.email || user.id;
+                this.pushSyncError(
+                  progress,
+                  `${host} meeting ${summary.id}: ${msg}`,
+                );
+                this.logger.warn(
+                  `Zoom sync session failed (${host} ${summary.id}): ${msg}`,
+                );
+              }
             }
+          } catch (err) {
+            const msg = formatZoomHttpError(err);
+            const host = user.email || user.id;
+            this.pushSyncError(
+              progress,
+              `${host} ${window.from}..${window.to}: ${msg}`,
+            );
+            this.logger.warn(`Zoom sync window failed (${host}): ${msg}`);
           }
-        } catch (err) {
-          const msg = formatZoomHttpError(err);
-          progress.errors.push(`${window.from}..${window.to}: ${msg}`);
-          this.logger.warn(`Zoom sync window failed: ${msg}`);
+          progress.monthsDone += 1;
+          progress.windowsDone += 1;
+          await this.prisma.zoomSyncJob.update({
+            where: { id: jobId },
+            data: { progressJson: progress },
+          });
         }
-        progress.monthsDone += 1;
+        progress.usersDone += 1;
         await this.prisma.zoomSyncJob.update({
           where: { id: jobId },
           data: { progressJson: progress },
@@ -217,6 +286,17 @@ export class ZoomRecordingsSyncService {
       if (this.runningJobId === jobId) {
         this.runningJobId = null;
       }
+    }
+  }
+
+  private pushSyncError(progress: SyncProgress, line: string) {
+    if (progress.errors.length < MAX_SYNC_ERROR_LINES) {
+      progress.errors.push(line);
+    } else if (
+      progress.errors[progress.errors.length - 1] !==
+      'Additional host/window errors omitted.'
+    ) {
+      progress.errors.push('Additional host/window errors omitted.');
     }
   }
 }

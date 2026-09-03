@@ -187,6 +187,62 @@ export class ZoomService implements OnModuleInit {
     return `${base}${status}${detail ? `: ${detail}` : ''}`;
   }
 
+  private sleep(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private axiosStatus(err: unknown): number | undefined {
+    if (err == null || typeof err !== 'object' || !('response' in err)) {
+      return undefined;
+    }
+    return (err as { response?: { status?: number } }).response?.status;
+  }
+
+  private retryAfterMs(err: unknown, attempt: number): number {
+    const header =
+      err != null && typeof err === 'object' && 'response' in err
+        ? (err as { response?: { headers?: Record<string, string> } }).response
+            ?.headers?.['retry-after']
+        : undefined;
+    const fromHeader = header ? Number.parseInt(String(header), 10) : NaN;
+    if (Number.isFinite(fromHeader) && fromHeader > 0) {
+      return Math.min(fromHeader * 1000, 30_000);
+    }
+    return Math.min(1000 * 2 ** attempt, 16_000);
+  }
+
+  /** GET with retries on HTTP 429 (Zoom rate limits during Sync). */
+  private async zoomGetWithRetry<T>(
+    url: string,
+    config: { params?: Record<string, string | number>; headers?: Record<string, string> },
+  ): Promise<T> {
+    const maxAttempts = 4;
+    let lastErr: unknown;
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        const { data } = await firstValueFrom(
+          this.http.get<T>(url, {
+            ...config,
+            headers: { Authorization: config.headers?.Authorization ?? '' },
+          }),
+        );
+        return data;
+      } catch (err) {
+        lastErr = err;
+        if (this.axiosStatus(err) === 429 && attempt < maxAttempts - 1) {
+          const wait = this.retryAfterMs(err, attempt);
+          this.logger.warn(
+            `Zoom GET ${url} rate-limited (429); retry in ${wait}ms (attempt ${attempt + 1}/${maxAttempts})`,
+          );
+          await this.sleep(wait);
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
+  }
+
   /**
    * Create/update webinars with settings. If Zoom rejects HD / 1080p / cloud
    * recording (account-locked), retry without those fields so the rest of the
@@ -1052,8 +1108,150 @@ export class ZoomService implements OnModuleInit {
   }
 
   /**
+   * One page of Zoom account users (S2S).
+   * Requires user:read:list_users:admin (or equivalent list-users scope).
+   */
+  async listAccountUsersPage(opts?: {
+    status?: 'active' | 'inactive' | 'pending';
+    pageSize?: number;
+    nextPageToken?: string;
+  }): Promise<ZoomAccountUsersPage> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const token = await this.getAccessToken();
+    const params: Record<string, string | number> = {
+      page_size: opts?.pageSize ?? 300,
+      status: opts?.status ?? 'active',
+    };
+    if (opts?.nextPageToken?.trim()) {
+      params.next_page_token = opts.nextPageToken.trim();
+    }
+
+    const data = await this.zoomGetWithRetry<ZoomUsersApiResponse>(
+      'https://api.zoom.us/v2/users',
+      {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+
+    return {
+      nextPageToken: data.next_page_token?.trim() || undefined,
+      totalRecords: data.total_records,
+      users: (data.users || [])
+        .map((u) => ({
+          id: typeof u.id === 'string' ? u.id.trim() : String(u.id ?? '').trim(),
+          email: typeof u.email === 'string' ? u.email.trim() : '',
+          status: typeof u.status === 'string' ? u.status : undefined,
+        }))
+        .filter((u) => u.id.length > 0),
+    };
+  }
+
+  /** All account users matching status (paginated). Dedupes by user id. */
+  async listAllAccountUsers(opts?: {
+    status?: 'active' | 'inactive' | 'pending';
+    pageSize?: number;
+  }): Promise<ZoomAccountUser[]> {
+    const users: ZoomAccountUser[] = [];
+    const seen = new Set<string>();
+    let nextPageToken: string | undefined;
+    do {
+      const page = await this.listAccountUsersPage({
+        status: opts?.status,
+        pageSize: opts?.pageSize,
+        nextPageToken,
+      });
+      for (const user of page.users) {
+        if (seen.has(user.id)) continue;
+        seen.add(user.id);
+        users.push(user);
+      }
+      nextPageToken = page.nextPageToken;
+    } while (nextPageToken);
+    return users;
+  }
+
+  /**
+   * One page of a host's cloud recordings for a date window (max ~1 month).
+   * Requires cloud_recording:read:list_user_recordings:admin.
+   * This is the Sync inventory path (account-wide GET /accounts/{id}/recordings
+   * needs a Zoom Master Account plan and returns 4711 without it).
+   */
+  async listUserRecordingsPage(opts: {
+    userId: string;
+    from: string;
+    to: string;
+    pageSize?: number;
+    nextPageToken?: string;
+  }): Promise<ZoomAccountRecordingsPage> {
+    if (!this.isConfigured()) {
+      throw new Error('Zoom API is not configured');
+    }
+    const userId = opts.userId.trim();
+    if (!userId) {
+      throw new Error('Zoom user id is required');
+    }
+
+    const token = await this.getAccessToken();
+    const params: Record<string, string | number> = {
+      from: opts.from,
+      to: opts.to,
+      page_size: opts.pageSize ?? 300,
+    };
+    if (opts.nextPageToken?.trim()) {
+      params.next_page_token = opts.nextPageToken.trim();
+    }
+
+    const data = await this.zoomGetWithRetry<ZoomAccountRecordingsApiResponse>(
+      `https://api.zoom.us/v2/users/${encodeURIComponent(userId)}/recordings`,
+      {
+        params,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    );
+
+    return {
+      from: data.from ?? opts.from,
+      to: data.to ?? opts.to,
+      nextPageToken: data.next_page_token?.trim() || undefined,
+      totalRecords: data.total_records,
+      sessions: (data.meetings || []).map((m) => this.mapAccountRecordingSession(m)),
+    };
+  }
+
+  /**
+   * Fetch all cloud recording sessions for one host in a date window.
+   */
+  async listUserRecordingsInRange(opts: {
+    userId: string;
+    from: string;
+    to: string;
+    pageSize?: number;
+  }): Promise<ZoomAccountRecordingSessionSummary[]> {
+    const sessions: ZoomAccountRecordingSessionSummary[] = [];
+    let nextPageToken: string | undefined;
+
+    do {
+      const page = await this.listUserRecordingsPage({
+        userId: opts.userId,
+        from: opts.from,
+        to: opts.to,
+        pageSize: opts.pageSize,
+        nextPageToken,
+      });
+      sessions.push(...page.sessions);
+      nextPageToken = page.nextPageToken;
+    } while (nextPageToken);
+
+    return sessions;
+  }
+
+  /**
    * One page of account cloud recordings for a date window (max ~1 month).
-   * Requires cloud_recording:read:list_account_recordings:admin.
+   * Requires cloud_recording:read:list_account_recordings:admin **and** a Zoom
+   * Master Account plan. Unused by Sync (see {@link listUserRecordingsPage}).
    */
   async listAccountRecordingsPage(opts: {
     from: string;
@@ -1331,6 +1529,18 @@ export type ZoomAccountRecordingsPage = {
   sessions: ZoomAccountRecordingSessionSummary[];
 };
 
+export type ZoomAccountUser = {
+  id: string;
+  email: string;
+  status?: string;
+};
+
+export type ZoomAccountUsersPage = {
+  nextPageToken?: string;
+  totalRecords?: number;
+  users: ZoomAccountUser[];
+};
+
 export type ZoomReportParticipant = {
   id: string | null;
   userId?: string;
@@ -1421,4 +1631,14 @@ type ZoomAccountRecordingsApiResponse = {
   total_records?: number;
   next_page_token?: string;
   meetings?: ZoomAccountRecordingsApiMeeting[];
+};
+
+type ZoomUsersApiResponse = {
+  next_page_token?: string;
+  total_records?: number;
+  users?: Array<{
+    id?: string;
+    email?: string;
+    status?: string;
+  }>;
 };
