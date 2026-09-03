@@ -10,6 +10,7 @@ import PublicLayout from './layouts/PublicLayout';
 import Layout from './components/layout/Layout';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import HoldTestappPublicHome from './components/HoldTestappPublicHome';
 import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
@@ -139,10 +140,25 @@ function App() {
                 ======================= */}
             <Route element={<PublicLayout />}>
               <Route path="/" element={<Navigate to="/home" replace />} />
-              {/* The homepage is order C: seven sections folded into five. */}
-              <Route path="/home" element={<HomeBento />} />
+              {/* The homepage is order C: seven sections folded into five.
+                  On testapp this is held behind login until public launch. */}
+              <Route
+                path="/home"
+                element={
+                  <HoldTestappPublicHome>
+                    <HomeBento />
+                  </HoldTestappPublicHome>
+                }
+              />
               {/* Order B, kept for comparison. Not linked from the nav. */}
-              <Route path="/home-tame" element={<Home />} />
+              <Route
+                path="/home-tame"
+                element={
+                  <HoldTestappPublicHome>
+                    <Home />
+                  </HoldTestappPublicHome>
+                }
+              />
               <Route path="/catalog/clip/:id" element={<ClipDetail />} />
               <Route path="/catalog/playlist/:playlistId" element={<PlaylistDetail />} />
               <Route path="/catalog/playlist/series/:playlistId" element={<PlaylistDetail />} />
