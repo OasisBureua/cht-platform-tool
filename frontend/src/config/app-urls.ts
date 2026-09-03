@@ -1,6 +1,11 @@
 /** Hosts where frontend + API share one origin (/api on same domain). */
 const SAME_ORIGIN_API_SUFFIX = 'testapp.communityhealth.media';
 
+/** Platform / testapp host (not devapp). Used to hold the public marketing home until launch. */
+export function isTestappHost(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
+  return hostname === SAME_ORIGIN_API_SUFFIX || hostname.endsWith(`.${SAME_ORIGIN_API_SUFFIX}`);
+}
+
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
 }
