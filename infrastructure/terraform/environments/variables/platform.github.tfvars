@@ -80,3 +80,6 @@ contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 # Redis cache for upstream Content Hub reads (4h TTL in app)
 enable_elasticache    = true
 elasticache_node_type = "cache.t3.medium"
+
+# Production: keep one NAT Gateway per AZ.
+single_nat_gateway = false

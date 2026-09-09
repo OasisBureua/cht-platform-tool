@@ -8,6 +8,12 @@ variable "environment" {
   type        = string
 }
 
+variable "single_nat_gateway" {
+  description = "Use one NAT Gateway for all private subnets. False (default) keeps one NAT per AZ."
+  type        = bool
+  default     = false
+}
+
 variable "domain_name" {
   description = "Domain name"
   type        = string
