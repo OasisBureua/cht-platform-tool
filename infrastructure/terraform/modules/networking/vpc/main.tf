@@ -1,5 +1,6 @@
 locals {
-  prefix = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  prefix    = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
+  nat_count = var.enable_nat_gateway ? (var.single_nat_gateway ? 1 : length(var.availability_zones)) : 0
 }
 
 resource "aws_vpc" "main" {
@@ -52,9 +53,9 @@ resource "aws_subnet" "private" {
   }
 }
 
-# NAT Gateways (one per AZ for high availability)
+# NAT Gateways: one per AZ unless single_nat_gateway (keeps count index 0 stable).
 resource "aws_eip" "nat" {
-  count  = var.enable_nat_gateway ? length(var.availability_zones) : 0
+  count  = local.nat_count
   domain = "vpc"
 
   tags = {
@@ -66,7 +67,7 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "main" {
-  count         = var.enable_nat_gateway ? length(var.availability_zones) : 0
+  count         = local.nat_count
   subnet_id     = aws_subnet.public[count.index].id
   allocation_id = aws_eip.nat[count.index].id
 
@@ -102,7 +103,7 @@ resource "aws_route_table" "private" {
     for_each = var.enable_nat_gateway ? [1] : []
     content {
       cidr_block     = "0.0.0.0/0"
-      nat_gateway_id = aws_nat_gateway.main[count.index].id
+      nat_gateway_id = aws_nat_gateway.main[var.single_nat_gateway ? 0 : count.index].id
     }
   }
 

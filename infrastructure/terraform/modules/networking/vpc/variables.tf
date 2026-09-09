@@ -25,6 +25,12 @@ variable "enable_nat_gateway" {
   default     = true
 }
 
+variable "single_nat_gateway" {
+  description = "Use one NAT Gateway for all private subnets. Default false keeps one NAT per AZ (production). Set true for non-prod."
+  type        = bool
+  default     = false
+}
+
 variable "enable_flow_logs" {
   description = "Enable VPC Flow Logs"
   type        = bool

@@ -20,12 +20,17 @@ output "private_subnet_ids" {
 
 output "nat_gateway_ids" {
   description = "NAT Gateway IDs"
-  value       = var.enable_nat_gateway ? aws_nat_gateway.main[*].id : []
+  value       = aws_nat_gateway.main[*].id
+}
+
+output "nat_gateway_count" {
+  description = "Number of NAT Gateways in this VPC"
+  value       = local.nat_count
 }
 
 output "nat_gateway_public_ips" {
   description = "NAT gateway Elastic IPs: whitelist on Content Hub ALB SG for ECS egress (Option 1)"
-  value       = var.enable_nat_gateway ? aws_eip.nat[*].public_ip : []
+  value       = aws_eip.nat[*].public_ip
 }
 
 output "internet_gateway_id" {

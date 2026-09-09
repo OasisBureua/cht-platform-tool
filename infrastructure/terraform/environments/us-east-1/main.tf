@@ -84,6 +84,7 @@ module "vpc" {
   vpc_cidr               = "10.0.0.0/16"
   availability_zones     = ["us-east-1a", "us-east-1b"]
   enable_nat_gateway     = true
+  single_nat_gateway     = var.single_nat_gateway
   enable_flow_logs       = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
   log_retention_days     = local.log_retention_days
