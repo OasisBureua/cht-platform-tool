@@ -560,3 +560,23 @@ variable "cognito_mrr_associate_waf_replica" {
   type        = bool
   default     = false
 }
+
+variable "companion_base_url" {
+  description = "cht-companion Service Connect URL for Nest BFF (empty disables). Dev: http://cht-companion:8080"
+  type        = string
+  default     = ""
+}
+
+variable "companion_internal_secret" {
+  description = "Shared X-BFF-Auth secret for Nest → cht-companion"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Cloud Map HTTP namespace for ECS Service Connect client (e.g. cht-dev.local). Empty disables."
+  type        = string
+  default     = ""
+}
+

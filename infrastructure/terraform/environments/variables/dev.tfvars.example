@@ -64,3 +64,9 @@ cognito_mrr_associate_waf_replica     = false
 # contenthub_api_key   = ""   # required for WordPress catalog on devapp
 # youtube_api_key      = ""
 # zoom_* / jotform_* / bill_* / hubspot_* / recaptcha_* / internal_cache_secret
+
+# CHT Companion (SSE chat BFF) — enable when cht-companion is on Service Connect
+# service_connect_namespace = "cht-dev.local"
+# companion_base_url = "http://cht-companion:8080"
+# companion_internal_secret = ""
+

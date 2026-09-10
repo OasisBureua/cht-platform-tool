@@ -1,9 +1,30 @@
 /** Hosts where frontend + API share one origin (/api on same domain). */
 const SAME_ORIGIN_API_SUFFIX = 'testapp.communityhealth.media';
 
+const DEVAPP_HOST = 'devapp.communityhealth.media';
+
 /** Platform / testapp host (not devapp). Used to hold the public marketing home until launch. */
 export function isTestappHost(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
   return hostname === SAME_ORIGIN_API_SUFFIX || hostname.endsWith(`.${SAME_ORIGIN_API_SUFFIX}`);
+}
+
+/** Dev environment host (Companion nav/UI gated here for now). */
+export function isDevappHost(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
+  return hostname === DEVAPP_HOST || hostname.endsWith(`.${DEVAPP_HOST}`);
+}
+
+/**
+ * Companion (chatbot) is enabled on devapp, and locally for Vite DEV.
+ * Hidden on testapp / prod until cutover.
+ */
+export function isCompanionEnabled(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  if (isDevappHost(hostname)) return true;
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+  }
+  return false;
 }
 
 function trimTrailingSlash(url: string): string {

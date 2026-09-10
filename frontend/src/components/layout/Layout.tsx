@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, Search } from 'lucide-react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
-import { APP_NAV_ITEMS } from '../navigation/appNavItems';
+import { getAppNavItems } from '../navigation/appNavItems';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
@@ -62,6 +62,8 @@ export default function Layout() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  const navItems = getAppNavItems();
+
   return (
     <div className="app-shell flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
       <AppSidebar />
@@ -95,11 +97,13 @@ export default function Layout() {
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
-            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
+            {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (
               <li key={to}>
                 <NavLink
                   to={to}
                   end={end}
+                  title={title ?? label}
+                  aria-label={title ?? label}
                   onClick={() => setMobileDrawerOpen(false)}
                   className={({ isActive }) =>
                     [

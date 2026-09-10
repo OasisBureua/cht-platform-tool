@@ -320,6 +320,7 @@ module "secrets" {
   hubspot_access_token                      = var.hubspot_access_token
   recaptcha_secret_key                      = var.recaptcha_secret_key
   internal_cache_secret                     = var.internal_cache_secret
+  companion_internal_secret                 = var.companion_internal_secret
 }
 
 # ============================================
@@ -445,6 +446,8 @@ module "ecs_backend" {
   appconfig_application          = module.appconfig.application_name
   appconfig_environment          = module.appconfig.environment_name
   appconfig_profile              = module.appconfig.auth_features_profile_name
+  companion_base_url             = var.companion_base_url
+  service_connect_namespace      = var.service_connect_namespace
   # Always apply Prisma migrations on backend boot (primary/writer).
   run_db_migrations = true
 }

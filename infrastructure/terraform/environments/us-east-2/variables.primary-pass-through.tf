@@ -353,3 +353,23 @@ variable "cognito_mrr_associate_waf_replica" {
   type        = bool
   default     = false
 }
+
+variable "companion_base_url" {
+  description = "Primary only: companion Service Connect URL (unused in replica)."
+  type        = string
+  default     = ""
+}
+
+variable "companion_internal_secret" {
+  description = "Primary only: companion X-BFF-Auth secret (unused in replica)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Primary only: Service Connect namespace (unused in replica)."
+  type        = string
+  default     = ""
+}
+

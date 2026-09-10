@@ -276,6 +276,7 @@ jobs:
           RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
           CONTENTHUB_API_KEY: ${{ secrets.CONTENTHUB_API_KEY }}
           INTERNAL_CACHE_SECRET: ${{ secrets.INTERNAL_CACHE_SECRET }}
+          COMPANION_INTERNAL_SECRET: ${{ secrets.COMPANION_INTERNAL_SECRET }}
         run: ./scripts/verify-github-env-secrets.sh development
 
       - name: Terraform Init
@@ -335,6 +336,7 @@ jobs:
           TF_VAR_recaptcha_secret_key: ${{ secrets.RECAPTCHA_SECRET_KEY }}
           TF_VAR_contenthub_api_key: ${{ secrets.CONTENTHUB_API_KEY }}
           TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
+          TF_VAR_companion_internal_secret: ${{ secrets.COMPANION_INTERNAL_SECRET }}
 
       - name: Plan summary
         if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'

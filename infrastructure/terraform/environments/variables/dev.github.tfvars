@@ -63,3 +63,7 @@ enable_cognito_mrr                    = true
 cognito_mrr_replica_region            = "us-east-2"
 cognito_mrr_associate_waf_replica     = false
 
+# CHT Companion (Service Connect client on backend → cht-companion:8080)
+service_connect_namespace = "cht-dev.local"
+companion_base_url        = "http://cht-companion:8080"
+

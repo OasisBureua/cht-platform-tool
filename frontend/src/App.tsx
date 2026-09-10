@@ -65,6 +65,7 @@ const Settings              = lazy(() => import('./pages/Settings'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
+const CompanionChat         = lazy(() => import('./pages/CompanionChat'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -272,6 +273,7 @@ function App() {
                 <Route path="catalog" element={<VideosPage />} />
 
                 <Route path="earnings" element={<Earnings />} />
+                <Route path="chatbot" element={<CompanionChat />} />
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
 

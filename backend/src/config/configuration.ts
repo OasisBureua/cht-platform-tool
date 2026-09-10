@@ -336,4 +336,10 @@ export default () => ({
     environment: process.env.APPCONFIG_ENVIRONMENT?.trim() || '',
     profile: process.env.APPCONFIG_PROFILE?.trim() || '',
   },
+
+  /** CHT Companion (SSE RAG chat) — BFF proxies browser → Service Connect. */
+  companion: {
+    baseUrl: (process.env.COMPANION_BASE_URL || '').replace(/\/$/, ''),
+    internalSecret: process.env.COMPANION_INTERNAL_SECRET?.trim() || '',
+  },
 });

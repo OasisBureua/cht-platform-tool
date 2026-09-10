@@ -1,8 +1,9 @@
 import { NavLink, Link } from 'react-router-dom';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
-import { APP_NAV_ITEMS } from './appNavItems';
+import { getAppNavItems } from './appNavItems';
 
 export default function AppSidebar() {
+  const navItems = getAppNavItems();
   return (
     <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col bg-white/70 shadow-[6px_0_36px_-20px_rgba(0,0,0,0.09)] backdrop-blur-xl backdrop-saturate-150 md:flex /85 dark:shadow-[8px_0_40px_-22px_rgba(0,0,0,0.55)]">
       <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-zinc-200/25 /60">
@@ -20,11 +21,13 @@ export default function AppSidebar() {
         className="app-sidebar-nav flex min-h-0 flex-[3] flex-col items-center justify-between overflow-y-auto overflow-x-hidden px-1.5 py-4"
         aria-label="Primary"
       >
-        {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
+        {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            title={title ?? label}
+            aria-label={title ?? label}
             className={({ isActive }) =>
               [
                 'flex h-[4.5rem] w-[88px] shrink-0 flex-col items-center justify-center gap-2 rounded-card px-1.5 py-2 text-center transition-[color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',

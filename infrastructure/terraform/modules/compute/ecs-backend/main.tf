@@ -142,6 +142,7 @@ resource "aws_ecs_task_definition" "backend" {
               { name = "APPCONFIG_PROFILE", value = var.appconfig_profile },
             ]
             : [],
+            var.companion_base_url != "" ? [{ name = "COMPANION_BASE_URL", value = var.companion_base_url }] : [],
           )
         )
 
@@ -249,6 +250,10 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name      = "INTERNAL_CACHE_SECRET"
             valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
+          },
+          {
+            name      = "COMPANION_INTERNAL_SECRET"
+            valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
           }
         ]
 
@@ -333,6 +338,16 @@ resource "aws_ecs_service" "backend" {
   force_new_deployment = true
 
   enable_execute_command = true
+
+  # Client-only Service Connect: join companion's Cloud Map namespace so
+  # http://cht-companion:8080 resolves inside the task (no port published).
+  dynamic "service_connect_configuration" {
+    for_each = var.service_connect_namespace != "" ? [1] : []
+    content {
+      enabled   = true
+      namespace = var.service_connect_namespace
+    }
+  }
 
   tags = {
     Name        = "${local.prefix}-backend-service"

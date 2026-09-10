@@ -230,3 +230,9 @@ variable "internal_cache_secret" {
   sensitive   = true
   default     = ""
 }
+variable "companion_internal_secret" {
+  description = "Shared X-BFF-Auth secret for Nest → cht-companion chat proxy"
+  type        = string
+  sensitive   = true
+  default     = ""
+}

@@ -114,4 +114,8 @@ export const validationSchema = Joi.object({
   APPCONFIG_APPLICATION: Joi.string().allow('').optional(),
   APPCONFIG_ENVIRONMENT: Joi.string().allow('').optional(),
   APPCONFIG_PROFILE: Joi.string().allow('').optional(),
+
+  // CHT Companion (optional until service is deployed)
+  COMPANION_BASE_URL: Joi.string().allow('').optional(),
+  COMPANION_INTERNAL_SECRET: Joi.string().allow('').optional(),
 });
