@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -64,6 +64,10 @@ export default function AdminZoomRecordingDetail() {
   const [attendanceSearchInput, setAttendanceSearchInput] = useState('');
   const [attendanceSearchQuery, setAttendanceSearchQuery] = useState('');
   const [reportDownloading, setReportDownloading] = useState(false);
+  const [pullIsRefresh, setPullIsRefresh] = useState(false);
+  const [pullingFileId, setPullingFileId] = useState<string | null>(null);
+  const pullIsRefreshRef = useRef(false);
+  const filesSectionRef = useRef<HTMLDivElement | null>(null);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['admin', 'zoom-recordings', 'session', sessionId],
@@ -142,12 +146,25 @@ export default function AdminZoomRecordingDetail() {
 
   const pullMut = useMutation({
     mutationFn: () => adminApi.pullZoomRecordingSession(sessionId!),
+    onMutate: () => {
+      setPullMessage(null);
+      setActionError(null);
+      // Keep the files section in view so status changes are obvious.
+      filesSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    },
     onSuccess: (res) => {
       setActionError(null);
+      const errorCount = res.errors?.length ?? 0;
+      const wasRefresh = pullIsRefreshRef.current;
       setPullMessage(
-        `Pulled ${res.pulledCount} file${res.pulledCount === 1 ? '' : 's'} into S3` +
-          (res.errors?.length ? ` (${res.errors.length} error(s))` : ''),
+        errorCount > 0
+          ? `Pull finished: ${res.pulledCount} file${res.pulledCount === 1 ? '' : 's'} uploaded to S3, ${errorCount} failed.`
+          : wasRefresh
+            ? `Refresh complete: ${res.pulledCount} file${res.pulledCount === 1 ? '' : 's'} re-checked and stored in S3.`
+            : `Pull complete: ${res.pulledCount} file${res.pulledCount === 1 ? '' : 's'} uploaded to S3. View and Download are ready.`,
       );
+      pullIsRefreshRef.current = false;
+      setPullIsRefresh(false);
       void queryClient.invalidateQueries({
         queryKey: ['admin', 'zoom-recordings', 'session', sessionId],
       });
@@ -155,9 +172,58 @@ export default function AdminZoomRecordingDetail() {
     },
     onError: (err) => {
       setPullMessage(null);
+      pullIsRefreshRef.current = false;
+      setPullIsRefresh(false);
       setActionError(getApiErrorMessage(err, 'Could not pull recordings'));
     },
   });
+
+  const pullFileMut = useMutation({
+    mutationFn: (file: { id: string; zoomRecordingFileId: string; fileType: string }) =>
+      adminApi.pullZoomRecordingSession(sessionId!, {
+        zoomRecordingFileIds: [file.zoomRecordingFileId],
+      }),
+    onMutate: (file) => {
+      setPullingFileId(file.id);
+      setPullMessage(null);
+      setActionError(null);
+    },
+    onSuccess: (res, file) => {
+      setPullingFileId(null);
+      setActionError(null);
+      const errorCount = res.errors?.length ?? 0;
+      setPullMessage(
+        errorCount > 0
+          ? `Could not pull ${file.fileType}: ${res.errors?.[0] ?? 'upload failed'}`
+          : `${file.fileType} pulled to S3.`,
+      );
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'zoom-recordings', 'session', sessionId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'zoom-recordings'] });
+    },
+    onError: (err) => {
+      setPullingFileId(null);
+      setPullMessage(null);
+      setActionError(getApiErrorMessage(err, 'Could not pull this file'));
+    },
+  });
+
+  const pullInFlight = pullMut.isPending || pullFileMut.isPending;
+
+  // While Pull is running, poll session detail so file rows flip to
+  // "Uploading to S3" / "Upload completed" as the backend marks each file.
+  useEffect(() => {
+    if (!pullInFlight || !sessionId) return;
+    const tick = () => {
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'zoom-recordings', 'session', sessionId],
+      });
+    };
+    tick();
+    const id = window.setInterval(tick, 2000);
+    return () => window.clearInterval(id);
+  }, [pullInFlight, sessionId, queryClient]);
 
   const linkMut = useMutation({
     mutationFn: (programId: string) =>
@@ -238,8 +304,9 @@ export default function AdminZoomRecordingDetail() {
   }
 
   const { session, files } = data;
-  const filesComplete =
-    session.filesInS3Count > 0 && session.filesInS3Count >= session.fileCount;
+  // Same rule as catalog list: file is "in S3" only when storedInS3 is true.
+  const filesReadyCount = files.filter((f) => f.storedInS3 === true).length;
+  const filesComplete = files.length > 0 && filesReadyCount >= files.length;
 
   return (
     <div className="space-y-5 md:space-y-6">
@@ -274,9 +341,13 @@ export default function AdminZoomRecordingDetail() {
                   <ZoomStatusBadge tone="success" icon={HardDrive}>
                     All files in S3
                   </ZoomStatusBadge>
+                ) : filesReadyCount > 0 ? (
+                  <ZoomStatusBadge tone="neutral" icon={HardDrive}>
+                    {filesReadyCount}/{files.length || session.fileCount} in S3
+                  </ZoomStatusBadge>
                 ) : session.fileCount > 0 ? (
                   <ZoomStatusBadge tone="neutral" icon={HardDrive}>
-                    {session.filesInS3Count}/{session.fileCount} in S3
+                    {session.fileCount} indexed
                   </ZoomStatusBadge>
                 ) : null}
               </div>
@@ -289,19 +360,23 @@ export default function AdminZoomRecordingDetail() {
                 </p>
               </div>
               <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
-                {session.filesInS3Count > 0 ? (
+                {filesReadyCount > 0 ? (
                   <>
-                    <strong className="font-medium text-foreground">{session.filesInS3Count}</strong> of{' '}
-                    {session.fileCount} files are stored in S3 and ready for view or download.
-                    {session.filesInS3Count < session.fileCount
-                      ? ' Pull from Zoom to fetch the remaining files.'
+                    <strong className="font-medium text-foreground">{filesReadyCount}</strong> of{' '}
+                    {files.length || session.fileCount} files are stored in S3 and ready for view or
+                    download.
+                    {!filesComplete
+                      ? ' Use Pull from Zoom to fetch the remaining files.'
                       : null}
                   </>
                 ) : (
                   <>
-                    <strong className="font-medium text-foreground">{session.fileCount}</strong> file
-                    {session.fileCount === 1 ? '' : 's'} indexed from Sync. Pull from Zoom to download
-                    into S3 before viewing or downloading.
+                    <strong className="font-medium text-foreground">
+                      {files.length || session.fileCount}
+                    </strong>{' '}
+                    file
+                    {(files.length || session.fileCount) === 1 ? '' : 's'} indexed from Sync. Pull
+                    from Zoom to download into S3 before viewing or downloading.
                   </>
                 )}
               </p>
@@ -312,18 +387,39 @@ export default function AdminZoomRecordingDetail() {
                 variant="solid"
                 size="sm"
                 onClick={() => {
-                  setPullMessage(null);
-                  setActionError(null);
+                  pullIsRefreshRef.current = filesComplete;
+                  setPullIsRefresh(filesComplete);
                   pullMut.mutate();
                 }}
-                disabled={pullMut.isPending}
+                disabled={
+                  pullInFlight ||
+                  data.zoomConfigured === false ||
+                  data.storageConfigured === false
+                }
+                title={
+                  pullMut.isPending
+                    ? pullIsRefresh
+                      ? 'Refresh in progress — existing files stay available'
+                      : 'Pull in progress — watch the Recording files section below'
+                    : pullFileMut.isPending
+                      ? 'Wait for the single-file pull to finish'
+                    : filesComplete
+                      ? 'Re-download all files from Zoom into S3 (refresh)'
+                      : 'Fetch transcripts and recordings from Zoom into S3'
+                }
               >
                 {pullMut.isPending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Download className="h-4 w-4" />
                 )}
-                {pullMut.isPending ? 'Pulling…' : 'Pull from Zoom'}
+                {pullMut.isPending
+                  ? pullIsRefresh
+                    ? 'Refreshing from Zoom…'
+                    : 'Pulling from Zoom…'
+                  : filesComplete
+                    ? 'Re-pull from Zoom'
+                    : 'Pull from Zoom'}
               </Button>
               <Button
                 variant="outline"
@@ -537,17 +633,109 @@ export default function AdminZoomRecordingDetail() {
         </div>
       </ZoomSectionCard>
 
-      <ZoomSectionCard
-        title="Recording files"
-        description="Cloud recording files indexed from Zoom. Pull stores them in S3 for view and download."
-      >
-        <ZoomRecordingFilesTable
-          recordings={files}
-          emptyMessage="No files indexed yet. Run Sync from Zoom on the catalog, then Pull here."
-          onView={(id) => void openRecording(id, 'view')}
-          onDownload={(id) => void openRecording(id, 'download')}
-        />
-      </ZoomSectionCard>
+      <div ref={filesSectionRef}>
+        <ZoomSectionCard
+          title="Recording files"
+          description={
+            filesComplete
+              ? 'Files are stored in S3. View and Download are available. Use Re-pull from Zoom only if you need to refresh from Zoom.'
+              : 'Cloud recording files indexed from Zoom. View and Download stay disabled until each file is pulled into S3.'
+          }
+        >
+          {pullMut.isPending ? (
+            <div className="mb-4">
+              {pullIsRefresh ? (
+                <ZoomAlert tone="info" title="Refreshing from Zoom">
+                  Re-downloading files from Zoom into S3. This can take several minutes for large
+                  MP4s. Files that are already uploaded stay available for View and Download while
+                  the refresh runs.
+                  {files.length > 0 ? (
+                    <>
+                      {' '}
+                      Progress:{' '}
+                      <strong className="font-medium text-foreground">
+                        {filesReadyCount}/{files.length}
+                      </strong>{' '}
+                      currently marked complete.
+                    </>
+                  ) : null}
+                </ZoomAlert>
+              ) : (
+                <ZoomAlert tone="info" title="Pull in progress">
+                  Fetching files from Zoom and uploading them to S3. Large MP4s can take several
+                  minutes. Status for each file updates below — keep this page open until the pull
+                  finishes.
+                  {files.length > 0 ? (
+                    <>
+                      {' '}
+                      Progress:{' '}
+                      <strong className="font-medium text-foreground">
+                        {filesReadyCount}/{files.length}
+                      </strong>{' '}
+                      in S3.
+                    </>
+                  ) : null}
+                </ZoomAlert>
+              )}
+            </div>
+          ) : null}
+
+          {pullFileMut.isPending ? (
+            <div className="mb-4">
+              <ZoomAlert tone="info" title="Pulling one file">
+                Fetching a single file from Zoom into S3. Other files are unchanged. View and
+                Download stay available for files already uploaded.
+              </ZoomAlert>
+            </div>
+          ) : null}
+
+          {!pullInFlight && filesComplete ? (
+            <div className="mb-4">
+              <ZoomAlert tone="success" title="All files in S3">
+                {filesReadyCount}/{files.length} files are stored. You can view or download them
+                below. Re-run Pull from Zoom if you need to refresh from Zoom.
+              </ZoomAlert>
+            </div>
+          ) : null}
+
+          {!pullInFlight && files.length > 0 && !filesComplete ? (
+            <div className="mb-4">
+              <ZoomAlert tone="warning" title="Files not ready to view yet">
+                {filesReadyCount > 0 ? (
+                  <>
+                    {filesReadyCount}/{files.length} files are in S3. Click{' '}
+                    <strong>Pull from Zoom</strong> at the top to fetch the remaining files.
+                    View and Download are available for files that already show Upload completed.
+                  </>
+                ) : (
+                  <>
+                    Sync only indexes metadata. Click <strong>Pull from Zoom</strong> at the top
+                    of this page to fetch transcripts, recordings, and related files into S3.
+                    After a successful pull, View and Download become available for each uploaded
+                    file.
+                  </>
+                )}
+              </ZoomAlert>
+            </div>
+          ) : null}
+
+          <ZoomRecordingFilesTable
+            recordings={files}
+            isPulling={pullMut.isPending}
+            pullingFileId={pullingFileId}
+            emptyMessage="No files indexed yet. Run Sync from Zoom on the catalog, then open this session and click Pull from Zoom."
+            onView={(id) => void openRecording(id, 'view')}
+            onDownload={(id) => void openRecording(id, 'download')}
+            onPullFile={(file) =>
+              pullFileMut.mutate({
+                id: file.id,
+                zoomRecordingFileId: file.zoomRecordingFileId,
+                fileType: file.fileType,
+              })
+            }
+          />
+        </ZoomSectionCard>
+      </div>
     </div>
   );
 }

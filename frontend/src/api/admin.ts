@@ -283,6 +283,7 @@ export type ProgramZoomRecordingRow = {
   pulledAt: string | null;
   pulledByUserId?: string | null;
   pullStatus?: string;
+  pullError?: string | null;
   storedInS3?: boolean;
 };
 
@@ -1361,7 +1362,7 @@ export const adminApi = {
 
   pullZoomRecordingSession: async (
     sessionId: string,
-    body?: { fileTypes?: string[] },
+    body?: { fileTypes?: string[]; zoomRecordingFileIds?: string[] },
   ) => {
     const { data } = await apiClient.post(
       `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/pull`,
