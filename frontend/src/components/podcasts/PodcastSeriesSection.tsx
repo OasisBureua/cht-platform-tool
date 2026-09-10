@@ -9,7 +9,6 @@ import {
   type PodcastShow,
 } from '../../data/podcastsCatalog';
 import { usePodcastEpisodes } from '../../hooks/usePodcastYouTubeEpisodes';
-import { formatViewCount } from '../../utils/youtubeDuration';
 import type { PodcastEpisodeSort } from '../../utils/podcastYouTube';
 import { podcastsApi } from '../../api/podcasts';
 import { mapPodcastEpisodesToUi } from '../../utils/podcastYouTube';
@@ -67,12 +66,6 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
               <span className="text-muted-foreground">|</span> {ep.duration}
             </>
           ) : null}
-          {ep.viewCount ? (
-            <>
-              {' '}
-              <span className="text-muted-foreground">|</span> {formatViewCount(ep.viewCount)}
-            </>
-          ) : null}
         </p>
       </div>
       <div className="hidden shrink-0 flex-col items-end justify-center gap-1 text-right sm:flex">
@@ -81,7 +74,6 @@ function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
         </time>
         <span className="text-xs font-semibold text-accent-700 tabular-nums dark:text-accent-300">
           {ep.duration}
-          {ep.viewCount ? ` · ${formatViewCount(ep.viewCount)}` : ''}
         </span>
       </div>
       <ChevronRight

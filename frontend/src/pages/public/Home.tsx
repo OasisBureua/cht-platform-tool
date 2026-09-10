@@ -607,7 +607,7 @@ export default function Home() {
                                   {v.youtubeUrl ? 'YouTube' : 'Conversation'}
                                 </li>
                               </ul>
-                              <p className="meta mt-auto pt-4 tabular-nums text-faint">Full session</p>
+                              <p className="mt-auto pt-4 text-[0.8125rem] tabular-nums text-faint">Full session</p>
                             </div>
                           </Link>
                         ) : (
@@ -746,7 +746,7 @@ export default function Home() {
                         <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
                           {s.tagline}
                         </p>
-                        <p className="meta mt-3 text-faint">
+                        <p className="mt-3 text-[0.8125rem] text-faint">
                           {s.episodes} episodes · {s.hosts}
                         </p>
                       </div>

@@ -322,7 +322,7 @@ function PlaylistCard({ item, href }: { item: CatalogItem; href: string }) {
           {title}
         </h3>
         {faculty ? (
-          <p className="meta mt-auto line-clamp-1 pt-3 text-faint">{faculty}</p>
+          <p className="mt-auto line-clamp-1 pt-3 text-[0.8125rem] text-faint">{faculty}</p>
         ) : null}
       </div>
     </Link>
@@ -430,7 +430,7 @@ function FeaturedCarousel({
                 {active.title}
               </span>
               {lead ? (
-                <span className="meta mt-2 flex items-center gap-2 text-faint">
+                <span className="mt-2 flex items-center gap-2 text-[0.8125rem] text-faint">
                   {lead}
                   <ArrowRight
                     className="size-3.5 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1"
@@ -1096,7 +1096,7 @@ export default function VideosPage() {
                     </div>
                     <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
                       <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
-                      <p className="meta mt-auto pt-5 text-faint">{lead}</p>
+                      <p className="mt-auto pt-5 text-[0.8125rem] text-faint">{lead}</p>
                     </div>
                   </Link>
                 </li>

@@ -29,9 +29,7 @@ export function ConversationsClipCard({ item, href }: ConversationsClipCardProps
     (/^[a-zA-Z0-9_-]{11}$/.test(getShortClipId(item.id)) ? getShortClipId(item.id) : null);
   const [thumbSrc, setThumbSrc] = useState(() => getMediaHubThumbnail(item));
   const [hidden, setHidden] = useState(false);
-  const desc =
-    clipStripeSubtitle(item)?.trim() ||
-    (item.view_count != null ? `${item.view_count.toLocaleString()} views` : '');
+  const desc = clipStripeSubtitle(item)?.trim() || '';
 
   useEffect(() => {
     setThumbSrc(getMediaHubThumbnail(item));

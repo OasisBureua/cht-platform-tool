@@ -8,7 +8,6 @@ import {
 } from '../data/podcastsCatalog';
 import { usePodcastEpisodes } from '../hooks/usePodcastYouTubeEpisodes';
 import { YouTubePlayer } from '../components/YouTubePlayer';
-import { formatViewCount } from '../utils/youtubeDuration';
 import { podcastEpisodeWatchPath, podcastShowPath } from '../utils/podcastRoutes';
 import { ChmMark } from '../components/brand/ChmMark';
 import { Button, Chip, chipKind, Thumb } from '../components/ui';
@@ -162,7 +161,6 @@ export default function PodcastEpisodeWatch() {
   const guests = splitGuests(episode.guests, show.title);
   const categories = show.category.split('·').map((c) => c.trim()).filter(Boolean);
   const listenOn = show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS;
-  const views = formatViewCount(episode.viewCount);
 
   return (
     <div className="pb-24 md:pb-16">
@@ -211,11 +209,10 @@ export default function PodcastEpisodeWatch() {
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               {/* What is playing is carried by the label, not only by the
                   frame: audio first, because that is what this is. */}
-              <p className="meta text-muted2">
+              <p className="text-[0.8125rem] text-muted2">
                 Audio · {episode.num}
-                {views ? ` · ${views}` : ''}
               </p>
-              <p className="meta tabular-nums text-muted2">{episode.duration}</p>
+              <p className="text-[0.8125rem] tabular-nums text-muted2">{episode.duration}</p>
             </div>
 
             {queue.length > 0 ? (
@@ -230,7 +227,7 @@ export default function PodcastEpisodeWatch() {
                         to={podcastEpisodeWatchPath(showId, q.videoId!)}
                         className="press group flex items-center gap-3 rounded-[6px] p-2 hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
-                        <span className="meta w-5 shrink-0 tabular-nums text-faint">
+                        <span className="w-5 shrink-0 text-[0.75rem] tabular-nums text-faint">
                           {String(i + 1).padStart(2, '0')}
                         </span>
                         <span className="img-ring relative block h-12 w-[5.25rem] shrink-0 overflow-hidden rounded-[6px] bg-surface-2">
@@ -243,10 +240,10 @@ export default function PodcastEpisodeWatch() {
                           />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-body-s text-dim group-hover:text-text">
+                          <span className="block truncate text-body-s font-medium text-text">
                             {q.title}
                           </span>
-                          <span className="meta mt-0.5 block tabular-nums text-faint">
+                          <span className="mt-0.5 block text-[0.75rem] tabular-nums text-faint">
                             {q.num} · {q.duration}
                           </span>
                         </span>
@@ -281,7 +278,7 @@ export default function PodcastEpisodeWatch() {
               >
                 {show.title}
               </Link>
-              <p className="meta mt-0.5 truncate text-faint">{show.updateNote}</p>
+              <p className="mt-0.5 truncate text-[0.75rem] text-faint">{show.updateNote}</p>
             </div>
           </div>
 
@@ -294,11 +291,10 @@ export default function PodcastEpisodeWatch() {
             ) : null}
 
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span className="meta text-faint">{episode.date}</span>
+              <span className="text-[0.8125rem] text-faint">{episode.date}</span>
               {episode.duration ? (
-                <span className="meta tabular-nums text-faint">{episode.duration}</span>
+                <span className="text-[0.8125rem] tabular-nums text-faint">{episode.duration}</span>
               ) : null}
-              {views ? <span className="meta tabular-nums text-faint">{views}</span> : null}
             </div>
 
             {categories.length > 0 ? (

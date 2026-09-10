@@ -218,7 +218,7 @@ function Player({
                   state={{ clip: q }}
                   className="press group flex items-center gap-3 rounded-[6px] p-2 hover:bg-wash focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
-                  <span className="meta w-5 shrink-0 tabular-nums text-faint">
+                  <span className="w-5 shrink-0 text-[0.75rem] tabular-nums text-faint">
                     {String(i + 1).padStart(2, '0')}
                   </span>
                   <ClipThumb clip={q} className="h-12 w-[5.25rem] shrink-0" />
@@ -226,7 +226,7 @@ function Player({
                     <span className="block truncate text-body-s text-dim group-hover:text-text">
                       {q.title}
                     </span>
-                    <span className="meta mt-0.5 block tabular-nums text-faint">
+                    <span className="mt-0.5 block text-[0.75rem] tabular-nums text-faint">
                       {runtimeOf(q.duration_seconds) ??
                         (q.doctors?.[0] ? doctorLabelFromSlug(q.doctors[0]) : 'Full session')}
                     </span>
@@ -554,9 +554,6 @@ export default function ClipDetail() {
               {posted && isValid(posted) ? (
                 <span className="meta text-faint">{format(posted, 'd MMM yyyy')}</span>
               ) : null}
-              <span className="meta tabular-nums text-faint">
-                {formatCount(meta.viewCount)} views
-              </span>
             </div>
 
             {/* Tags are filters: each one opens the library narrowed to
@@ -612,7 +609,7 @@ export default function ClipDetail() {
                             {name}
                           </span>
                           {sessions > 0 ? (
-                            <span className="meta mt-0.5 block tabular-nums text-muted2">
+                            <span className="mt-0.5 block text-[0.75rem] tabular-nums text-muted2">
                               {sessions} {sessions === 1 ? 'session' : 'sessions'}
                             </span>
                           ) : null}
@@ -720,7 +717,7 @@ export default function ClipDetail() {
                           ))}
                         </ul>
                       ) : null}
-                      <p className="meta mt-auto pt-4 text-faint">{lead ?? 'Full session'}</p>
+                      <p className="mt-auto pt-4 text-[0.8125rem] text-faint">{lead ?? 'Full session'}</p>
                     </div>
                   </Link>
                 </Reveal>

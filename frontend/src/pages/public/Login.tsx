@@ -161,7 +161,7 @@ export default function Login() {
 
   return (
     <AuthLayout
-      heading="Welcome back"
+      heading="Community Health Media"
       sub="Your clinical library is waiting."
       footer={
         <>

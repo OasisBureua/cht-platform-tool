@@ -102,13 +102,8 @@ function getNextUpcomingWebinar(webinars: WebinarItem[]): WebinarItem | null {
   )[0];
 }
 
-function clipMetaString(c: MediaHubClip, kind: 'recent' | 'views'): string {
-  const stripe = clipStripeSubtitle(c);
-  if (stripe) return stripe;
-  if (kind === 'views' && c.view_count != null) {
-    return `${c.view_count.toLocaleString()} views`;
-  }
-  return '';
+function clipMetaString(c: MediaHubClip): string {
+  return clipStripeSubtitle(c) || '';
 }
 
 const CLIP_LIMIT = 14;
@@ -288,7 +283,7 @@ export default function Dashboard() {
         id: 'featured-conversation',
         eyebrow: 'Featured conversation',
         title: c.title,
-        description: clipMetaString(c, 'recent') || 'Watch this newly released clinical conversation.',
+        description: clipMetaString(c) || 'Watch this newly released clinical conversation.',
         imageUrl: getMediaHubThumbnail(c),
         thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
@@ -810,7 +805,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      description={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c)}
                     />
                   ))}
                 </ConversationRow>
@@ -839,7 +834,7 @@ export default function Dashboard() {
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
                       imageUrl={getMediaHubThumbnail(c)}
-                      description={clipMetaString(c, 'recent')}
+                      description={clipMetaString(c)}
                     />
                   ))}
                 </ConversationRow>

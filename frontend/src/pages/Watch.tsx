@@ -411,9 +411,6 @@ export default function Watch() {
 
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
               {postedLabel ? <span className="meta text-faint">{postedLabel}</span> : null}
-              <span className="meta tabular-nums text-faint">
-                {(clip.view_count ?? 0).toLocaleString()} views
-              </span>
             </div>
 
             {/* Tags are filters: each one opens the library narrowed to
