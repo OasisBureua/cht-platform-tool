@@ -9,8 +9,14 @@ variable "environment" {
 }
 
 variable "domain_name" {
-  description = "Domain name"
+  description = "Primary domain name (CloudFront alias + Route53 zone)"
   type        = string
+}
+
+variable "extra_cloudfront_aliases" {
+  description = "Additional CloudFront aliases (e.g. app.communityhealth.media). Must be covered by cloudfront_certificate_arn."
+  type        = list(string)
+  default     = []
 }
 
 variable "secondary_api_origin_domain" {

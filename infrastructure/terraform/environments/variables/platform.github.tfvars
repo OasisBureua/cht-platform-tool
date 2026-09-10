@@ -7,6 +7,8 @@ project     = "cht-platform"
 environment = "platform"
 
 domain_name = "testapp.communityhealth.media"
+# Public brand alias (Login CTA); requires CloudFront cert SANs covering this name.
+extra_cloudfront_aliases = ["app.communityhealth.media"]
 
 # Images overridden per deploy by workflow (-var backend_image / worker_image)
 backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
@@ -36,8 +38,9 @@ worker_desired_count = 2
 worker_min_capacity  = 2
 worker_max_capacity  = 2
 
-acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
-cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/3d4f17ef-46f3-45a2-84a0-c61fb94769bb"
+# Combined cert: testapp + *.testapp + app (CloudFront can attach only one ACM cert)
+acm_certificate_arn        = "arn:aws:acm:us-east-1:233636046512:certificate/1b14a74c-35aa-4ee6-b1dd-2d68892e9d3d"
+cloudfront_certificate_arn = "arn:aws:acm:us-east-1:233636046512:certificate/1b14a74c-35aa-4ee6-b1dd-2d68892e9d3d"
 dr_acm_certificate_arn     = "arn:aws:acm:us-east-2:233636046512:certificate/e99c8853-8cac-4733-80dc-f1515335b804"
 
 secrets_replica_regions     = ["us-east-2"]

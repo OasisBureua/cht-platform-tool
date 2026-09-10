@@ -229,7 +229,10 @@ module "s3_certificates" {
   project         = var.project
   environment     = var.environment
   kms_key_id      = module.kms.s3_kms_key_id
-  allowed_origins = ["https://${var.domain_name}"]
+  allowed_origins = distinct(concat(
+    ["https://${var.domain_name}"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 module "s3_session_assets" {
@@ -238,13 +241,16 @@ module "s3_session_assets" {
   project     = var.project
   environment = var.environment
   aws_region  = "us-east-1"
-  cors_allowed_origins = distinct([
-    "https://${var.domain_name}",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-  ])
+  cors_allowed_origins = distinct(concat(
+    [
+      "https://${var.domain_name}",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 # ============================================
@@ -537,7 +543,7 @@ module "cloudfront" {
   s3_bucket_domain_name       = module.s3_frontend.bucket_domain_name
   cloudfront_oai_path         = module.s3_frontend.cloudfront_oai_path
   certificate_arn             = var.cloudfront_certificate_arn
-  domain_aliases              = [var.domain_name]
+  domain_aliases              = concat([var.domain_name], var.extra_cloudfront_aliases)
   api_origin_domain           = module.alb.alb_dns_name
   secondary_api_origin_domain = var.secondary_api_origin_domain
   route_api_to_secondary      = var.route_api_to_secondary
@@ -608,8 +614,14 @@ module "cognito" {
   environment   = var.environment
   domain_prefix = var.cognito_domain_prefix
 
-  callback_urls = ["https://${var.domain_name}/auth/callback"]
-  logout_urls   = ["https://${var.domain_name}"]
+  callback_urls = distinct(concat(
+    ["https://${var.domain_name}/auth/callback"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}/auth/callback"],
+  ))
+  logout_urls = distinct(concat(
+    ["https://${var.domain_name}"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 
   mfa_configuration    = var.cognito_mfa_configuration
   user_pool_tier       = var.cognito_user_pool_tier

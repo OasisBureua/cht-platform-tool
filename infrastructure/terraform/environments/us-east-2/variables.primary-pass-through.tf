@@ -38,6 +38,12 @@ variable "cloudfront_certificate_arn" {
   default     = ""
 }
 
+variable "extra_cloudfront_aliases" {
+  description = "Primary only: additional CloudFront aliases (e.g. app.communityhealth.media)."
+  type        = list(string)
+  default     = []
+}
+
 variable "secrets_replica_regions" {
   description = "Primary only: Secrets Manager replica regions."
   type        = list(string)

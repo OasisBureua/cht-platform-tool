@@ -77,6 +77,7 @@ async function bootstrap() {
   const corsOrigins = [
     'https://testapp.communityhealth.media',
     'https://staging.testapp.communityhealth.media',
+    'https://app.communityhealth.media',
     'https://communityhealth.media',
     'https://www.communityhealth.media',
     'http://localhost:5173',

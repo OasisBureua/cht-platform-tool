@@ -156,7 +156,10 @@ module "s3_certificates" {
   project         = local.dr_project
   environment     = var.environment
   kms_key_id      = module.kms.s3_kms_key_id
-  allowed_origins = ["https://${var.domain_name}"]
+  allowed_origins = distinct(concat(
+    ["https://${var.domain_name}"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 module "s3_session_assets" {
@@ -165,13 +168,16 @@ module "s3_session_assets" {
   project     = local.dr_project
   environment = var.environment
   aws_region  = "us-east-2"
-  cors_allowed_origins = distinct([
-    "https://${var.domain_name}",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-  ])
+  cors_allowed_origins = distinct(concat(
+    [
+      "https://${var.domain_name}",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 # ============================================
