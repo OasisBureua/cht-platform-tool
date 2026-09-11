@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ZoomRecordingPullStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomRecordingsPullService } from './zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from './zoom-recordings-storage.service';
@@ -68,8 +67,10 @@ export class ZoomRecordingsCatalogService {
             by: ['sessionId'],
             where: {
               sessionId: { in: sessionIds },
-              pullStatus: ZoomRecordingPullStatus.COMPLETED,
+              // Match detail/UI: an object in S3 is countable even if pullStatus
+              // was left IN_PROGRESS/FAILED after a refresh attempt.
               s3Key: { not: null },
+              s3Bucket: { not: null },
             },
             _count: { _all: true },
           })
@@ -116,7 +117,7 @@ export class ZoomRecordingsCatalogService {
     if (!session) throw new NotFoundException('Zoom recording session not found');
 
     const filesInS3Count = session.files.filter(
-      (f) => f.pullStatus === ZoomRecordingPullStatus.COMPLETED && f.s3Key,
+      (f) => !!f.s3Key && !!f.s3Bucket,
     ).length;
 
     const importCountMap = await loadSessionAttendeeImportCounts(this.prisma, [
