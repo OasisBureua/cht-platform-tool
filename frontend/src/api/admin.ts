@@ -155,6 +155,7 @@ export interface AdminUser {
   city?: string | null;
   /** Organization / institution from profile */
   institution?: string | null;
+  npiNumber?: string | null;
   createdAt: string;
 }
 

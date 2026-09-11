@@ -57,3 +57,8 @@ export const registrationInviteUserSelect = {
   institution: true,
   createdAt: true,
 } satisfies Prisma.UserSelect;
+
+export const adminUserListSelect = {
+  ...registrationInviteUserSelect,
+  npiNumber: true,
+} satisfies Prisma.UserSelect;

@@ -14,10 +14,39 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const [pendingDeleteUser, setPendingDeleteUser] = useState<AdminUser | null>(null);
+  const [search, setSearch] = useState('');
+  const [sortKey, setSortKey] = useState<'name' | 'email' | 'npi' | 'role'>('name');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
   const { data: users = [], isLoading } = useQuery({
-    queryKey: ['admin', 'users'],
-    queryFn: () => adminApi.getUsers(),
+    queryKey: ['admin', 'users', search],
+    queryFn: () => adminApi.getUsers(search.trim() ? { q: search.trim() } : undefined),
   });
+
+  const sortedUsers = [...users].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    const nameOf = (u: AdminUser) => [u.firstName, u.lastName].filter(Boolean).join(' ') || u.email;
+    switch (sortKey) {
+      case 'email':
+        return a.email.localeCompare(b.email) * dir;
+      case 'npi':
+        return (a.npiNumber ?? '').localeCompare(b.npiNumber ?? '') * dir;
+      case 'role':
+        return a.role.localeCompare(b.role) * dir;
+      case 'name':
+      default:
+        return nameOf(a).localeCompare(nameOf(b)) * dir;
+    }
+  });
+
+  function toggleSort(key: typeof sortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDir('asc');
+    }
+  }
 
   const updateRole = useMutation({
     mutationFn: ({ userId, role }: { userId: string; role: 'HCP' | 'KOL' | 'ADMIN' }) =>
@@ -52,23 +81,36 @@ export default function AdminUsers() {
           <h2 className="text-lg font-semibold text-foreground">All Users</h2>
         </div>
 
+        <div className="mb-4">
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, email, or NPI..."
+            className="w-full max-w-sm rounded-lg border border-border px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+          />
+        </div>
+
         {isLoading ? (
           <div className="py-8 text-center text-muted-foreground">Loading users...</div>
-        ) : users.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">No users yet.</div>
+        ) : sortedUsers.length === 0 ? (
+          <div className="py-8 text-center text-muted-foreground">
+            {search.trim() ? 'No users match your search.' : 'No users yet.'}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-border">
               <thead>
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Name</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Email</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Role</th>
+                  <SortableHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+                  <SortableHeader label="Email" sortKey="email" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+                  <SortableHeader label="NPI" sortKey="npi" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
+                  <SortableHeader label="Role" sortKey="role" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
                   <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {users.map((user) => (
+                {sortedUsers.map((user) => (
                   <UserRow
                     key={user.id}
                     user={user}
@@ -132,6 +174,34 @@ export default function AdminUsers() {
   );
 }
 
+function SortableHeader<K extends string>({
+  label,
+  sortKey,
+  activeKey,
+  dir,
+  onClick,
+}: {
+  label: string;
+  sortKey: K;
+  activeKey: K;
+  dir: 'asc' | 'desc';
+  onClick: (key: K) => void;
+}) {
+  const isActive = activeKey === sortKey;
+  return (
+    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+      <button
+        type="button"
+        onClick={() => onClick(sortKey)}
+        className="inline-flex items-center gap-1 hover:text-foreground"
+      >
+        {label}
+        <span className="text-muted-foreground">{isActive ? (dir === 'asc' ? '↑' : '↓') : ''}</span>
+      </button>
+    </th>
+  );
+}
+
 function UserRow({
   user,
   onRoleChange,
@@ -154,6 +224,9 @@ function UserRow({
     <tr>
       <td className="px-4 py-3 text-sm font-medium text-foreground">{name}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground max-w-[8rem] truncate" title={user.npiNumber ?? undefined}>
+        {user.npiNumber || '—'}
+      </td>
       <td className="px-4 py-3">
         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'}`}>
           {user.role}
