@@ -20,6 +20,7 @@ import { adminApi } from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import { ZoomRecordingFilesTable } from '../../components/admin/ZoomRecordingFilesTable';
 import { ZoomAttendanceTable } from '../../components/admin/ZoomAttendanceTable';
+import { ZoomSessionSurveysSection } from '../../components/admin/ZoomSessionSurveysSection';
 import {
   Button,
   ZoomAlert,
@@ -236,6 +237,9 @@ export default function AdminZoomRecordingDetail() {
         queryKey: ['admin', 'zoom-recordings', 'session', sessionId],
       });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'zoom-recordings'] });
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'zoom-recordings', 'session', sessionId, 'surveys'],
+      });
       void refetchAttendance();
     },
     onError: (err) => {
@@ -632,6 +636,13 @@ export default function AdminZoomRecordingDetail() {
           />
         </div>
       </ZoomSectionCard>
+
+      <ZoomSessionSurveysSection
+        sessionId={sessionId!}
+        linked={session.linked}
+        programId={session.programId}
+        programTitle={session.programTitle}
+      />
 
       <div ref={filesSectionRef}>
         <ZoomSectionCard

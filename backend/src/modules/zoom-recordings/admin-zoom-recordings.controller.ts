@@ -323,6 +323,16 @@ export class AdminZoomRecordingsController {
     });
   }
 
+  @Get('sessions/:sessionId/surveys')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary:
+      'List CHT surveys for a catalog session (via linked Program). Unlinked sessions return canFetchSurveys=false.',
+  })
+  async listSessionSurveys(@Param('sessionId') sessionId: string) {
+    return this.catalog.listSessionSurveys(sessionId);
+  }
+
   @Get('sessions/:sessionId/attendance/report/download-url')
   @ApiOperation({
     summary: 'Presigned S3 GET URL for the session attendee report CSV',
