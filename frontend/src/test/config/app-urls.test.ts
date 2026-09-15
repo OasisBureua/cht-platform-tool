@@ -39,10 +39,22 @@ describe('app-urls', () => {
     expect(resolveAppBaseUrl()).toBe('https://staging.testapp.communityhealth.media');
   });
 
-  it('treats testapp and staging.testapp as platform hosts', () => {
+  it('treats testapp, staging.testapp, and app. as platform hosts', () => {
     expect(isTestappHost('testapp.communityhealth.media')).toBe(true);
     expect(isTestappHost('staging.testapp.communityhealth.media')).toBe(true);
+    expect(isTestappHost('app.communityhealth.media')).toBe(true);
     expect(isTestappHost('devapp.communityhealth.media')).toBe(false);
+  });
+
+  it('falls back to same-origin /api on app. host when env unset', () => {
+    vi.stubEnv('VITE_API_URL', '');
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://app.communityhealth.media',
+        hostname: 'app.communityhealth.media',
+      },
+    } as Window & typeof globalThis);
+    expect(resolveApiBaseUrl()).toBe('https://app.communityhealth.media/api');
   });
 
   it('does not map staging host to platform OAuth URL', () => {
