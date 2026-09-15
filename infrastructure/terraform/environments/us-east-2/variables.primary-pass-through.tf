@@ -44,6 +44,12 @@ variable "cloudfront_certificate_arn" {
   default     = ""
 }
 
+variable "extra_cloudfront_aliases" {
+  description = "Primary only: additional CloudFront aliases (e.g. app.communityhealth.media)."
+  type        = list(string)
+  default     = []
+}
+
 variable "secrets_replica_regions" {
   description = "Primary only: Secrets Manager replica regions."
   type        = list(string)
@@ -272,6 +278,12 @@ variable "cognito_mfa_configuration" {
   description = "Primary only: Cognito MFA configuration."
   type        = string
   default     = "OPTIONAL"
+}
+
+variable "enable_cognito_sms_mfa" {
+  description = "Primary only: provision Cognito→SNS IAM role for SMS MFA."
+  type        = bool
+  default     = true
 }
 
 variable "cognito_user_pool_tier" {

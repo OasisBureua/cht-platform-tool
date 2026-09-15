@@ -9,7 +9,7 @@ import {
   SCHEDULER_TIMEZONES,
   formatTimezoneLabel,
 } from '../../utils/timezoneOptions';
-import { BillComMark } from '../../components/branding/BillComMark';
+import { StripeMark } from '../../components/branding/StripeMark';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 import ZoomWebinarSettingsFields, {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
@@ -171,7 +171,7 @@ export default function AdminWebinarScheduler({
               Creates a Zoom Webinar and publishes it. The server automatically creates native registration intake and
               post-event surveys for this program. Learners complete intake before approval; post-event steps appear
               after the session. Honorarium payouts use{' '}
-              <BillComMark size="sm" className="translate-y-px" />.
+              <StripeMark size="sm" className="translate-y-px" />.
             </>
           ) : (
             'Creates Office Hours as a Zoom Meeting (type MEETING: conversational Q&A, waiting room). Registrations require admin approval before learners can join. Pair with Program hub time slots when you split the hour.'
@@ -490,7 +490,7 @@ export default function AdminWebinarScheduler({
               />
               <p className="mt-1 text-xs text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
                 Learners can request this amount after post-event steps; admins pay via{' '}
-                <BillComMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
+                <StripeMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
               </p>
             </div>
           ) : null}

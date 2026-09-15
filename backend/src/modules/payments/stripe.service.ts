@@ -1,0 +1,279 @@
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
+
+export type StripeAccountSummary = {
+  id: string;
+  payoutsEnabled: boolean;
+  detailsSubmitted: boolean;
+  chargesEnabled: boolean;
+  currentlyDue: string[];
+  /** Tax/identity requirements considered complete for our W-9 gate. */
+  taxComplete: boolean;
+  status: string;
+  bankAccountLast4: string | null;
+};
+
+@Injectable()
+export class StripeService {
+  private readonly logger = new Logger(StripeService.name);
+  private client: Stripe | null = null;
+
+  constructor(private readonly configService: ConfigService) {}
+
+  /** True when STRIPE_SECRET_KEY is set — payments happy path uses Stripe. */
+  isConfigured(): boolean {
+    return !!this.getSecretKey();
+  }
+
+  getPublishableKey(): string {
+    return this.configService.get<string>('stripe.publishableKey') || '';
+  }
+
+  private getSecretKey(): string {
+    return this.configService.get<string>('stripe.secretKey') || '';
+  }
+
+  private getWebhookSecrets(): string[] {
+    const primary =
+      this.configService.get<string>('stripe.webhookSecret') || '';
+    const connect =
+      this.configService.get<string>('stripe.connectWebhookSecret') || '';
+    return [primary, connect].map((s) => s.trim()).filter(Boolean);
+  }
+
+  getClient(): Stripe {
+    const key = this.getSecretKey();
+    if (!key) {
+      throw new ServiceUnavailableException(
+        'Stripe is not configured (STRIPE_SECRET_KEY missing).',
+      );
+    }
+    if (!this.client) {
+      this.client = new Stripe(key, {
+        apiVersion: '2026-08-26.dahlia',
+        typescript: true,
+      });
+    }
+    return this.client;
+  }
+
+  /**
+   * Create a Connect recipient account via Accounts v2.
+   * New Connect platforms cannot use Accounts v1 `accounts.create` (Express)
+   * without enabling a Dashboard compatibility flag — use `/v2/core/accounts`.
+   * @see https://docs.stripe.com/connect/accounts-v2/account-creation
+   */
+  async createExpressAccount(input: {
+    email: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    userId: string;
+  }): Promise<{ id: string }> {
+    const stripe = this.getClient();
+    const displayName =
+      [input.firstName, input.lastName].filter(Boolean).join(' ').trim() ||
+      input.email;
+
+    const account = await stripe.v2.core.accounts.create({
+      contact_email: input.email,
+      display_name: displayName,
+      // Express-style dashboard; requires application fee/loss responsibility.
+      dashboard: 'express',
+      identity: {
+        country: 'us',
+        entity_type: 'individual',
+        individual: {
+          email: input.email,
+          ...(input.firstName ? { given_name: input.firstName } : {}),
+          ...(input.lastName ? { surname: input.lastName } : {}),
+        },
+      },
+      configuration: {
+        recipient: {
+          capabilities: {
+            stripe_balance: {
+              // Replaces v1 `transfers` — receive platform → connected transfers.
+              stripe_transfers: { requested: true },
+            },
+          },
+        },
+      },
+      defaults: {
+        currency: 'usd',
+        locales: ['en-US'],
+        responsibilities: {
+          fees_collector: 'application',
+          losses_collector: 'application',
+        },
+      },
+      metadata: { userId: input.userId },
+      include: ['configuration.recipient', 'identity', 'requirements'],
+    });
+
+    this.logger.log(
+      `Created Stripe v2 recipient account ${account.id} for user ${input.userId}`,
+    );
+    return { id: account.id };
+  }
+
+  async createAccountLink(
+    accountId: string,
+    urls: { refreshUrl: string; returnUrl: string },
+  ): Promise<{ url: string }> {
+    const stripe = this.getClient();
+    const link = await stripe.v2.core.accountLinks.create({
+      account: accountId,
+      use_case: {
+        type: 'account_onboarding',
+        account_onboarding: {
+          configurations: ['recipient'],
+          refresh_url: urls.refreshUrl,
+          return_url: urls.returnUrl,
+        },
+      },
+    });
+    if (!link.url) {
+      throw new BadRequestException('Stripe did not return an Account Link URL');
+    }
+    return { url: link.url };
+  }
+
+  /**
+   * Account Session for Connect Embedded Components (account_onboarding).
+   */
+  async createAccountSession(accountId: string): Promise<{
+    clientSecret: string;
+    expiresAt: number;
+  }> {
+    const stripe = this.getClient();
+    // Do not set disable_stripe_user_authentication — that feature is only valid
+    // when the platform owns requirements collection (Custom). Express / Stripe-
+    // collected recipient accounts reject it with a 400.
+    const session = await stripe.accountSessions.create({
+      account: accountId,
+      components: {
+        account_onboarding: {
+          enabled: true,
+        },
+      },
+    });
+    return {
+      clientSecret: session.client_secret,
+      expiresAt: session.expires_at,
+    };
+  }
+
+  async retrieveAccount(accountId: string): Promise<Stripe.Account> {
+    return this.getClient().accounts.retrieve(accountId);
+  }
+
+  summarizeAccount(account: Stripe.Account): StripeAccountSummary {
+    const currentlyDue = account.requirements?.currently_due ?? [];
+    const pastDue = account.requirements?.past_due ?? [];
+    const outstanding = [...new Set([...currentlyDue, ...pastDue])];
+
+    const isTaxRequirement = (r: string) =>
+      /tax|ssn|id_number|individual\.verification|company\.tax|ein/i.test(r);
+
+    const taxOutstanding = outstanding.filter(isTaxRequirement);
+    // PAY-4: no Stripe Tax Forms product — derive W-9/tax gate from Express requirements.
+    // Tax is complete when details are submitted and nothing tax-related is currently/past due.
+    const taxComplete =
+      account.details_submitted === true &&
+      taxOutstanding.length === 0 &&
+      (outstanding.length === 0 || !!account.payouts_enabled);
+
+    let status = 'onboarding_incomplete';
+    if (account.payouts_enabled && account.details_submitted) {
+      status = 'active';
+    } else if (account.requirements?.disabled_reason) {
+      status = 'restricted';
+    } else if (account.details_submitted) {
+      status = 'pending';
+    }
+
+    const ext = account.external_accounts?.data?.[0] as
+      | Stripe.BankAccount
+      | undefined;
+    const bankAccountLast4 =
+      ext && 'last4' in ext && typeof ext.last4 === 'string' ? ext.last4 : null;
+
+    return {
+      id: account.id,
+      payoutsEnabled: !!account.payouts_enabled,
+      detailsSubmitted: !!account.details_submitted,
+      chargesEnabled: !!account.charges_enabled,
+      currentlyDue: outstanding.length ? outstanding : currentlyDue,
+      taxComplete,
+      status,
+      bankAccountLast4,
+    };
+  }
+
+  async createTransfer(input: {
+    amountCents: number;
+    destinationAccountId: string;
+    paymentId: string;
+    userId: string;
+    description?: string;
+  }): Promise<Stripe.Transfer> {
+    const stripe = this.getClient();
+    if (input.amountCents < 1) {
+      throw new BadRequestException('Transfer amount must be at least 1 cent');
+    }
+    return stripe.transfers.create(
+      {
+        amount: input.amountCents,
+        currency: 'usd',
+        destination: input.destinationAccountId,
+        description: input.description,
+        transfer_group: input.paymentId,
+        metadata: {
+          paymentId: input.paymentId,
+          userId: input.userId,
+        },
+      },
+      { idempotencyKey: `cht-payment-${input.paymentId}` },
+    );
+  }
+
+  /**
+   * Verify Stripe-Signature against platform and/or Connect webhook secrets.
+   */
+  constructEvent(rawBody: string | Buffer, signature: string): Stripe.Event {
+    const stripe = this.getClient();
+    const secrets = this.getWebhookSecrets();
+    if (!secrets.length) {
+      throw new BadRequestException(
+        'Stripe webhook secrets not configured (STRIPE_WEBHOOK_SECRET / STRIPE_CONNECT_WEBHOOK_SECRET).',
+      );
+    }
+    if (!signature) {
+      throw new BadRequestException('Missing Stripe-Signature header');
+    }
+    const body =
+      typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8');
+    let lastError: unknown;
+    for (const secret of secrets) {
+      try {
+        return stripe.webhooks.constructEvent(body, signature, secret);
+      } catch (err) {
+        lastError = err;
+      }
+    }
+    this.logger.warn(
+      `[Stripe webhook] signature verification failed for ${secrets.length} secret(s)`,
+    );
+    throw new BadRequestException(
+      lastError instanceof Error
+        ? `Webhook signature verification failed: ${lastError.message}`
+        : 'Webhook signature verification failed',
+    );
+  }
+}

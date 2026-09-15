@@ -7,6 +7,10 @@
  * table. When the same survey is loaded again (by the same user or a
  * different program), the questions can be pre-filled with the current
  * User field values.
+ *
+ * Questions without an explicit tag are still mapped when their id or
+ * prompt clearly matches a profile field (webinar intake templates use
+ * ids like `npi`, `organization`, `postal_code`).
  */
 
 import {
@@ -58,6 +62,114 @@ export type SyncableUserProfile = {
   zipCode: string | null;
 };
 
+type QuestionWithSync = NativeSurveyQuestion & {
+  syncToProfile?: unknown;
+  prompt?: unknown;
+};
+
+function normalizeKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+/**
+ * Infer a profile field from question id / prompt when syncToProfile is
+ * unset. Prefer explicit tags; keep heuristics conservative so free-text
+ * clinical questions are not remapped.
+ */
+export function inferSyncTargetFromQuestion(
+  q: NativeSurveyQuestion,
+): SyncTargetField | null {
+  const qid = typeof q.id === 'string' ? normalizeKey(q.id) : '';
+  const prompt =
+    typeof (q as QuestionWithSync).prompt === 'string'
+      ? String((q as QuestionWithSync).prompt).toLowerCase()
+      : '';
+  const promptKey = normalizeKey(prompt);
+
+  // Id aliases used by default webinar intake (and common admin copies).
+  const idAlias: Record<string, SyncTargetField> = {
+    firstname: 'firstName',
+    first_name: 'firstName',
+    lastname: 'lastName',
+    last_name: 'lastName',
+    specialty: 'specialty',
+    npi: 'npiNumber',
+    npinumber: 'npiNumber',
+    npi_number: 'npiNumber',
+    organization: 'institution',
+    organisation: 'institution',
+    institution: 'institution',
+    company: 'institution',
+    city: 'city',
+    state: 'state',
+    province: 'state',
+    zip: 'zipCode',
+    zipcode: 'zipCode',
+    zip_code: 'zipCode',
+    postal: 'zipCode',
+    postalcode: 'zipCode',
+    postal_code: 'zipCode',
+  };
+  if (qid && idAlias[qid]) return idAlias[qid];
+
+  // Prompt heuristics (order: more specific first).
+  if (/\bnpi\b/.test(prompt) || promptKey.includes('npinumber')) {
+    return 'npiNumber';
+  }
+  if (
+    /\b(first\s*name|given\s*name)\b/.test(prompt) ||
+    promptKey === 'firstname'
+  ) {
+    return 'firstName';
+  }
+  if (
+    /\b(last\s*name|surname|family\s*name)\b/.test(prompt) ||
+    promptKey === 'lastname'
+  ) {
+    return 'lastName';
+  }
+  if (/\bspecialty\b|\bspeciality\b/.test(prompt)) {
+    return 'specialty';
+  }
+  if (
+    /\b(organization|organisation|institution|company)\b/.test(prompt) &&
+    !/\b(address|street|website|url)\b/.test(prompt)
+  ) {
+    return 'institution';
+  }
+  if (/^\s*city\b/.test(prompt) || promptKey === 'city') {
+    return 'city';
+  }
+  if (
+    /^\s*state\b/.test(prompt) ||
+    /\bstate\s*\/\s*province\b/.test(prompt) ||
+    promptKey === 'state' ||
+    promptKey === 'stateprovince'
+  ) {
+    return 'state';
+  }
+  if (
+    /\b(postal|zip)\b/.test(prompt) ||
+    promptKey.includes('postal') ||
+    promptKey.includes('zip')
+  ) {
+    return 'zipCode';
+  }
+
+  return null;
+}
+
+/**
+ * Resolve the sync target for a question: explicit tag wins, else inference.
+ */
+export function resolveSyncTarget(
+  q: NativeSurveyQuestion,
+): SyncTargetField | null {
+  const sync = (q as QuestionWithSync).syncToProfile;
+  if (isSyncTargetField(sync)) return sync;
+  return inferSyncTargetFromQuestion(q);
+}
+
 /**
  * Read a flat list of `{ questionId, syncToProfile }` mappings from a
  * survey's questions JSON. Uses the shared native-survey flattener so it
@@ -68,13 +180,14 @@ export function extractProfileMappings(
   questions: unknown,
 ): Array<{ questionId: string; field: SyncTargetField }> {
   const out: Array<{ questionId: string; field: SyncTargetField }> = [];
+  const seen = new Set<string>();
   for (const q of listNativeSurveyQuestions(questions)) {
     const qid = typeof q.id === 'string' ? q.id : undefined;
-    const sync = (q as NativeSurveyQuestion & { syncToProfile?: unknown })
-      .syncToProfile;
-    if (qid && isSyncTargetField(sync)) {
-      out.push({ questionId: qid, field: sync });
-    }
+    if (!qid || seen.has(qid)) continue;
+    const field = resolveSyncTarget(q);
+    if (!field) continue;
+    seen.add(qid);
+    out.push({ questionId: qid, field });
   }
   return out;
 }

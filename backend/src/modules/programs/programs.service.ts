@@ -236,7 +236,7 @@ export class ProgramsService {
    */
   async getProgramById(
     programId: string,
-    opts?: { includeZoomHostLink?: boolean },
+    opts?: { includeZoomHostLink?: boolean; learnerView?: boolean },
   ): Promise<ProgramResponseDto> {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
@@ -248,6 +248,11 @@ export class ProgramsService {
     });
 
     if (!program) {
+      throw new NotFoundException('Program not found');
+    }
+
+    // HCP detail pages must match schedule list filters (published only).
+    if (opts?.learnerView && program.status !== 'PUBLISHED') {
       throw new NotFoundException('Program not found');
     }
 

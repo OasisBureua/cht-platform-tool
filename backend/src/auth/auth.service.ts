@@ -565,6 +565,7 @@ export class AuthService {
     city: string | null;
     state: string | null;
     zipCode: string | null;
+    phoneNumber: string | null;
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -577,9 +578,18 @@ export class AuthService {
         city: true,
         state: true,
         zipCode: true,
+        phoneNumber: true,
       },
     });
     return user;
+  }
+
+  /** Persist verified E.164 phone used for SMS MFA. */
+  async setPhoneNumber(userId: string, phoneE164: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneNumber: phoneE164 },
+    });
   }
 
   /**

@@ -189,6 +189,8 @@ export interface PendingPayment {
     firstName: string;
     lastName: string;
     billVendorId: string | null;
+    stripeAccountId?: string | null;
+    stripePayoutsEnabled?: boolean;
     w9Submitted?: boolean;
     preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
     bankAccountLast4?: string | null;

@@ -72,3 +72,18 @@ output "email_from_address" {
   description = "FROM address for Cognito emails (null when using COGNITO_DEFAULT)"
   value       = local.use_ses_email ? var.email_from_address : null
 }
+
+output "sms_mfa_enabled" {
+  description = "Whether the Cognito→SNS SMS IAM role is provisioned"
+  value       = var.enable_sms_mfa
+}
+
+output "sms_sns_caller_arn" {
+  description = "IAM role ARN Cognito assumes to send SMS (null when SMS MFA infra is off)"
+  value       = var.enable_sms_mfa ? aws_iam_role.cognito_sms[0].arn : null
+}
+
+output "sms_external_id" {
+  description = "sts:ExternalId Cognito must present when assuming the SMS role"
+  value       = var.enable_sms_mfa ? local.sms_external_id : null
+}

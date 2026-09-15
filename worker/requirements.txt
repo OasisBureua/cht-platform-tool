@@ -9,6 +9,10 @@ sqlalchemy==2.0.49
 # HTTP (for Bill.com API)
 requests>=2.34.2
 
+# PDF Generation (CME certificates)
+reportlab==4.0.9
+Pillow==10.1.0
+
 # Environment
 python-dotenv==1.2.2
 
