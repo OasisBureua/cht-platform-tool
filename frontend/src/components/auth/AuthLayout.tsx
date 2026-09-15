@@ -26,7 +26,7 @@ export function AuthLayout({
     <div className="grid min-h-[calc(100dvh-4rem)] bg-background lg:grid-cols-2">
       <div className="flex flex-col justify-start px-5 pb-12 pt-8 sm:px-10 sm:pt-10 lg:px-14 lg:pt-14 xl:px-20">
         <div className="mx-auto w-full max-w-[26rem]">
-          <h1 className="text-3xl font-semibold leading-tight tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold leading-tight tracking-tight text-foreground">
             {heading}
           </h1>
           {sub && <p className="mt-3 text-muted-foreground">{sub}</p>}

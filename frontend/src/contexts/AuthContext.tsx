@@ -25,12 +25,14 @@ export interface AuthUser {
   lastName?: string;
   role?: string;
   profileComplete?: boolean;
-  /** Cognito software-token MFA enabled for this user. */
+  /** Cognito software-token or SMS MFA enabled for this user. */
   mfaEnabled?: boolean;
   /** Soft gate: redirect to /mfa/setup when AppConfig mfa.enabled is on and user is not enrolled. */
   mfaEnrollmentRequired?: boolean;
   /** Server-driven MFA feature flag (AppConfig auth-features). */
   mfaFeature?: MfaFeatureFlags;
+  /** Verified E.164 phone when stored (SMS MFA). */
+  phoneNumber?: string | null;
 }
 
 function parseMfaFeature(
@@ -57,6 +59,8 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     mfaEnabled: Boolean(data.mfaEnabled),
     mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
     mfaFeature: parseMfaFeature(data),
+    phoneNumber:
+      typeof data.phoneNumber === 'string' ? data.phoneNumber : null,
   };
 }
 
@@ -75,7 +79,7 @@ interface AuthContextValue {
     recaptchaToken?: string,
   ) => Promise<{
     error?: AuthError;
-    mfa?: { session: string };
+    mfa?: { session: string; challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' };
     mfaSetup?: { session: string; secretCode: string; otpauthUri: string };
   }>;
   /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
@@ -84,11 +88,12 @@ interface AuthContextValue {
     redirectUri: string,
     codeVerifier: string,
   ) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
-  /** Complete Cognito SOFTWARE_TOKEN_MFA after login returns a challenge. */
+  /** Complete Cognito SOFTWARE_TOKEN_MFA or SMS_MFA after login returns a challenge. */
   completeMfaLogin: (
     email: string,
     session: string,
     code: string,
+    challenge?: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA',
   ) => Promise<{ error?: AuthError }>;
   /** Complete Cognito MFA_SETUP (enroll TOTP) after login returns a secret. */
   completeMfaSetupLogin: (
@@ -125,6 +130,13 @@ interface AuthContextValue {
     otpauthUri?: string;
   }>;
   verifyMfaSetup: (code: string) => Promise<{ error?: AuthError }>;
+  /** SMS MFA: set phone on Cognito and send verification SMS. */
+  beginSmsMfaSetup: (phoneNumber: string) => Promise<{
+    error?: AuthError;
+    phoneNumber?: string;
+  }>;
+  /** SMS MFA: verify phone code and enable preferred SMS MFA. */
+  verifySmsMfaSetup: (code: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
   getAuthHeaders: () => Promise<Record<string, string>>;
   refreshProfile: () => Promise<void>;
@@ -184,6 +196,8 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       }),
       beginMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       verifyMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      beginSmsMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      verifySmsMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       logout,
       getAuthHeaders,
       refreshProfile: async () => {},
@@ -384,8 +398,16 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         return { error: { message: data.error, code: data.code as string | undefined } };
       }
 
-      if (data.challenge === 'SOFTWARE_TOKEN_MFA' && data.session) {
-        return { mfa: { session: data.session as string } };
+      if (
+        (data.challenge === 'SOFTWARE_TOKEN_MFA' || data.challenge === 'SMS_MFA') &&
+        data.session
+      ) {
+        return {
+          mfa: {
+            session: data.session as string,
+            challenge: data.challenge as 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA',
+          },
+        };
       }
 
       if (
@@ -412,7 +434,12 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const completeMfaLogin = useCallback(
-    async (email: string, session: string, code: string) => {
+    async (
+      email: string,
+      session: string,
+      code: string,
+      challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' = 'SOFTWARE_TOKEN_MFA',
+    ) => {
       const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/mfa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -420,6 +447,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           email: (email || '').trim(),
           session,
           code: (code || '').trim(),
+          challenge,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -673,6 +701,48 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl, refreshProfile],
   );
 
+  const beginSmsMfaSetup = useCallback(
+    async (phoneNumber: string) => {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/phone/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: (phoneNumber || '').trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'Could not send verification SMS.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return { phoneNumber: data.phoneNumber as string | undefined };
+    },
+    [apiUrl],
+  );
+
+  const verifySmsMfaSetup = useCallback(
+    async (code: string) => {
+      const codeStr = (code || '').trim();
+      if (!codeStr) return { error: { message: 'Verification code is required.' } };
+
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/phone/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeStr }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'Phone verification failed.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      await refreshProfile();
+      return {};
+    },
+    [apiUrl, refreshProfile],
+  );
+
   const logout = useCallback(() => {
     const finishLogout = () => {
       setAuthMode(null);
@@ -727,6 +797,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     confirmPasswordReset,
     beginMfaSetup,
     verifyMfaSetup,
+    beginSmsMfaSetup,
+    verifySmsMfaSetup,
     logout,
     getAuthHeaders,
     refreshProfile,

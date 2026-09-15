@@ -277,7 +277,7 @@ describe('CognitoService password login challenges', () => {
     });
   });
 
-  it('throws CognitoUnhandledChallengeError with the challenge name', async () => {
+  it('returns SMS_MFA when Cognito challenges with SMS', async () => {
     send.mockResolvedValue({
       ChallengeName: 'SMS_MFA',
       Session: 'sms-session',
@@ -285,10 +285,11 @@ describe('CognitoService password login challenges', () => {
 
     await expect(
       service.loginWithPassword('user@example.com', 'password1!'),
-    ).rejects.toBeInstanceOf(CognitoUnhandledChallengeError);
-    await expect(
-      service.loginWithPassword('user@example.com', 'password1!'),
-    ).rejects.toMatchObject({ challengeName: 'SMS_MFA' });
+    ).resolves.toEqual({
+      kind: 'mfa',
+      challenge: 'SMS_MFA',
+      session: 'sms-session',
+    });
   });
 
   it('completeMfaSetupChallenge verifies TOTP then returns tokens', async () => {

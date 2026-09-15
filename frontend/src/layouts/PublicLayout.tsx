@@ -12,6 +12,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { useTheme } from '../contexts/ThemeContext';
+import { isTestappHost } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
 import { CHM_PODCAST_PLATFORM_LINKS, PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { ChmMark } from '../components/brand/ChmMark';
@@ -119,8 +120,13 @@ export default function PublicLayout() {
     (r) => pathname === r || pathname.startsWith(r + '/'),
   );
 
+  /* testapp /login only: hold marketing IA until the public homepage ships. */
+  const hidePrelaunchNav =
+    isTestappHost() && (pathname === '/login' || pathname.startsWith('/login/'));
+  const primaryNav = hidePrelaunchNav ? [] : nav;
+
   const drawerLinks = [
-    ...nav,
+    ...(hidePrelaunchNav ? [] : nav),
     { to: '/for-hcps', label: 'For HCPs' },
     { to: '/contact', label: 'Contact' },
     { to: '/login', label: 'Log in' },
@@ -170,7 +176,7 @@ export default function PublicLayout() {
             </Link>
 
             <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 lg:flex">
-              {nav.map((n) => (
+              {primaryNav.map((n) => (
                 <NavLink
                   key={n.to}
                   to={n.to}
@@ -183,11 +189,13 @@ export default function PublicLayout() {
                   {n.label}
                 </NavLink>
               ))}
-              <DiseaseMenu
-                open={diseaseOpen}
-                setOpen={setDiseaseOpen}
-                active={pathname.startsWith('/catalog/')}
-              />
+              {!hidePrelaunchNav ? (
+                <DiseaseMenu
+                  open={diseaseOpen}
+                  setOpen={setDiseaseOpen}
+                  active={pathname.startsWith('/catalog/')}
+                />
+              ) : null}
             </nav>
 
             <div className="ms-auto flex shrink-0 items-center gap-2">
@@ -255,19 +263,23 @@ export default function PublicLayout() {
                     {n.label}
                   </Link>
                 ))}
-                <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
-                <div className="flex flex-wrap gap-2 px-1 pb-1">
-                  {DISEASE_AREAS.map((a) => (
-                    <Link
-                      key={a.slug}
-                      to={`/catalog/${a.slug}`}
-                      onClick={() => setDrawerOpen(false)}
-                      className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
-                    >
-                      {a.title}
-                    </Link>
-                  ))}
-                </div>
+                {!hidePrelaunchNav ? (
+                  <>
+                    <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
+                    <div className="flex flex-wrap gap-2 px-1 pb-1">
+                      {DISEASE_AREAS.map((a) => (
+                        <Link
+                          key={a.slug}
+                          to={`/catalog/${a.slug}`}
+                          onClick={() => setDrawerOpen(false)}
+                          className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
+                        >
+                          {a.title}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
               </nav>
             </div>
           ) : null}

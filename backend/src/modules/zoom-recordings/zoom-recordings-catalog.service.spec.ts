@@ -8,13 +8,19 @@ import { ZoomRecordingsPullService } from './zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from './zoom-recordings-storage.service';
 
 describe('ZoomRecordingsCatalogService', () => {
-  let prisma: { zoomRecordingSession: { findUnique: jest.Mock } };
+  let prisma: {
+    zoomRecordingSession: { findUnique: jest.Mock };
+    survey: { findMany: jest.Mock };
+  };
   let storage: { createPresignedObjectDownloadUrl: jest.Mock };
   let config: { get: jest.Mock };
   let service: ZoomRecordingsCatalogService;
 
   beforeEach(() => {
-    prisma = { zoomRecordingSession: { findUnique: jest.fn() } };
+    prisma = {
+      zoomRecordingSession: { findUnique: jest.fn() },
+      survey: { findMany: jest.fn() },
+    };
     storage = {
       createPresignedObjectDownloadUrl: jest.fn().mockResolvedValue({
         url: 'https://s3.example/presigned',
@@ -35,6 +41,86 @@ describe('ZoomRecordingsCatalogService', () => {
       {} as ZoomRecordingsPullService,
       {} as ZoomAttendanceImportService,
     );
+  });
+
+  describe('listSessionSurveys', () => {
+    it('returns disabled payload when the session is not linked to a Program', async () => {
+      prisma.zoomRecordingSession.findUnique.mockResolvedValue({
+        id: 'sess-1',
+        programId: null,
+        program: null,
+      });
+
+      const result = await service.listSessionSurveys('sess-1');
+
+      expect(result).toMatchObject({
+        linked: false,
+        canFetchSurveys: false,
+        reason: 'Link this session to a Program to fetch and view surveys.',
+        surveys: [],
+        legacyForms: [],
+      });
+      expect(prisma.survey.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns surveys for a linked Program', async () => {
+      prisma.zoomRecordingSession.findUnique.mockResolvedValue({
+        id: 'sess-1',
+        programId: 'prog-1',
+        program: {
+          id: 'prog-1',
+          title: 'Demo Webinar',
+          jotformIntakeFormUrl: null,
+          jotformSurveyUrl: null,
+        },
+      });
+      prisma.survey.findMany.mockResolvedValue([
+        {
+          id: 'survey-1',
+          title: 'Intake',
+          type: 'INTAKE',
+          jotformFormId: null,
+          isCustomized: false,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          _count: { responses: 3 },
+          responses: [{ submittedAt: new Date('2026-01-02T00:00:00.000Z') }],
+        },
+        {
+          id: 'survey-2',
+          title: 'Feedback',
+          type: 'FEEDBACK',
+          jotformFormId: 'abc123',
+          isCustomized: true,
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          _count: { responses: 0 },
+          responses: [],
+        },
+      ]);
+
+      const result = await service.listSessionSurveys('sess-1');
+
+      expect(result.linked).toBe(true);
+      expect(result.canFetchSurveys).toBe(true);
+      expect(result.programId).toBe('prog-1');
+      expect(result.surveys).toHaveLength(2);
+      expect(result.surveys[0]).toMatchObject({
+        id: 'survey-1',
+        source: 'native',
+        responseCount: 3,
+      });
+      expect(result.surveys[1]).toMatchObject({
+        id: 'survey-2',
+        source: 'jotform',
+        jotformFormUrl: 'https://communityhealthmedia.jotform.com/abc123',
+      });
+    });
+
+    it('throws when the session is not found', async () => {
+      prisma.zoomRecordingSession.findUnique.mockResolvedValue(null);
+      await expect(service.listSessionSurveys('missing')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
   });
 
   describe('createAttendanceReportDownloadUrl', () => {

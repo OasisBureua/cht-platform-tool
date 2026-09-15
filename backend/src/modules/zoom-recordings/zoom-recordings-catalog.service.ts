@@ -1,6 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ZoomRecordingPullStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomRecordingsPullService } from './zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from './zoom-recordings-storage.service';
@@ -68,8 +67,10 @@ export class ZoomRecordingsCatalogService {
             by: ['sessionId'],
             where: {
               sessionId: { in: sessionIds },
-              pullStatus: ZoomRecordingPullStatus.COMPLETED,
+              // Match detail/UI: an object in S3 is countable even if pullStatus
+              // was left IN_PROGRESS/FAILED after a refresh attempt.
               s3Key: { not: null },
+              s3Bucket: { not: null },
             },
             _count: { _all: true },
           })
@@ -116,7 +117,7 @@ export class ZoomRecordingsCatalogService {
     if (!session) throw new NotFoundException('Zoom recording session not found');
 
     const filesInS3Count = session.files.filter(
-      (f) => f.pullStatus === ZoomRecordingPullStatus.COMPLETED && f.s3Key,
+      (f) => !!f.s3Key && !!f.s3Bucket,
     ).length;
 
     const importCountMap = await loadSessionAttendeeImportCounts(this.prisma, [
@@ -315,5 +316,129 @@ export class ZoomRecordingsCatalogService {
     opts?: { page?: number; pageSize?: number; search?: string },
   ) {
     return this.attendance.listSessionAttendees(sessionId, opts);
+  }
+
+  /**
+   * Surveys for a catalog session — resolved via linked Program (Postgres),
+   * not Zoom. Unlinked sessions return canFetchSurveys=false with an empty list.
+   */
+  async listSessionSurveys(sessionId: string) {
+    const session = await this.prisma.zoomRecordingSession.findUnique({
+      where: { id: sessionId },
+      select: {
+        id: true,
+        programId: true,
+        program: {
+          select: {
+            id: true,
+            title: true,
+            jotformIntakeFormUrl: true,
+            jotformSurveyUrl: true,
+          },
+        },
+      },
+    });
+    if (!session) throw new NotFoundException('Zoom recording session not found');
+
+    const linked = !!session.programId && !!session.program;
+    if (!linked || !session.program) {
+      return {
+        linked: false,
+        canFetchSurveys: false,
+        reason:
+          'Link this session to a Program to fetch and view surveys.',
+        programId: null as string | null,
+        programTitle: null as string | null,
+        surveys: [] as Array<{
+          id: string;
+          title: string;
+          type: string;
+          source: 'native' | 'jotform';
+          jotformFormId: string | null;
+          jotformFormUrl: string | null;
+          responseCount: number;
+          lastResponseAt: string | null;
+          isCustomized: boolean;
+          createdAt: string;
+        }>,
+        legacyForms: [] as Array<{
+          kind: 'intake' | 'post_event';
+          label: string;
+          url: string;
+        }>,
+      };
+    }
+
+    const program = session.program;
+    const surveyRows = await this.prisma.survey.findMany({
+      where: { programId: program.id },
+      orderBy: [{ type: 'asc' }, { createdAt: 'desc' }],
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        jotformFormId: true,
+        isCustomized: true,
+        createdAt: true,
+        _count: { select: { responses: true } },
+        responses: {
+          orderBy: { submittedAt: 'desc' },
+          take: 1,
+          select: { submittedAt: true },
+        },
+      },
+    });
+
+    const surveys = surveyRows.map((s) => {
+      const jotformFormId = s.jotformFormId?.trim() || null;
+      return {
+        id: s.id,
+        title: s.title,
+        type: s.type,
+        source: (jotformFormId ? 'jotform' : 'native') as 'native' | 'jotform',
+        jotformFormId,
+        jotformFormUrl: jotformFormId
+          ? `https://communityhealthmedia.jotform.com/${jotformFormId}`
+          : null,
+        responseCount: s._count.responses,
+        lastResponseAt: s.responses[0]?.submittedAt?.toISOString() ?? null,
+        isCustomized: s.isCustomized,
+        createdAt: s.createdAt.toISOString(),
+      };
+    });
+
+    const hasIntake = surveys.some((s) => s.type === 'INTAKE');
+    const hasFeedback = surveys.some((s) => s.type === 'FEEDBACK');
+    const legacyForms: Array<{
+      kind: 'intake' | 'post_event';
+      label: string;
+      url: string;
+    }> = [];
+    const intakeUrl = program.jotformIntakeFormUrl?.trim();
+    const postUrl = program.jotformSurveyUrl?.trim();
+    if (intakeUrl && !hasIntake) {
+      legacyForms.push({
+        kind: 'intake',
+        label: 'Legacy Jotform intake (no Survey row)',
+        url: intakeUrl,
+      });
+    }
+    if (postUrl && !hasFeedback) {
+      legacyForms.push({
+        kind: 'post_event',
+        label: 'Legacy Jotform post-event (no Survey row)',
+        url: postUrl,
+      });
+    }
+
+    return {
+      linked: true,
+      canFetchSurveys: true,
+      reason: null as string | null,
+      programId: program.id,
+      programTitle: program.title,
+      surveys,
+      legacyForms,
+    };
   }
 }

@@ -1,19 +1,30 @@
-# Cognito MFA (authenticator apps)
+# Cognito MFA (authenticator apps + SMS)
 
-**Last updated:** August 2026
+**Last updated:** September 2026
 
-## Pool settings (console)
+## Pool settings (console / Terraform)
 
 | Environment | User pool | MFA enforcement | Methods |
 |-------------|-----------|-----------------|---------|
-| **dev** (`devapp`) | `cht-dev-users` | **Optional MFA** | Authenticator apps |
-| **platform** (`testapp`) | platform pool | **Optional MFA** for now | Authenticator apps |
+| **dev** (`devapp`) | `cht-dev-users` | **Optional MFA** | Authenticator apps + SMS (when wired) |
+| **platform** (`testapp`) | platform pool | **Optional MFA** for now | Authenticator apps + SMS (when wired) |
 
-Keep platform on **Optional** until enrollment works for existing users. Flip to **Require MFA** only after admins (then all users) have enrolled — otherwise Cognito blocks sign-in for users without TOTP.
+Keep platform on **Optional** until enrollment works for existing users. Flip to **Require MFA** only after admins (then all users) have enrolled — otherwise Cognito blocks sign-in for users without a second factor.
 
-Do **not** rely on passkeys / WebAuthn for the first rollout; software TOTP is what the app implements today. SMS MFA via Cognito is planned after 10DLC / originator setup.
+Terraform:
+- `cognito_mfa_configuration = "OPTIONAL"`
+- `enable_cognito_sms_mfa = true` → creates the Cognito→SNS IAM role (`cognito_sms_sns_caller_arn` + `cognito_sms_external_id` outputs)
+- `software_token_mfa` enabled
 
-Terraform sets `cognito_mfa_configuration = "OPTIONAL"` and enables `software_token_mfa`. Some pool fields are ignored by Terraform lifecycle; if console and code diverge, use the Cognito sync script or console Edit.
+Pool MFA / SMS wiring for existing (MRR) pools is applied by:
+
+```bash
+./scripts/cognito-sync-pool-config.sh platform   # or dev
+```
+
+That script calls `UpdateUserPool` (email/SMS config) and `SetUserPoolMfaConfig` (TOTP + SMS MFA). Your End User Messaging / SNS origination number must already be ready in the account; Cognito publishes through SNS using the IAM role.
+
+If you prefer the console: Cognito → MFA → **Configure SMS** using the Terraform role ARN and ExternalId outputs.
 
 ## AppConfig master switch
 
@@ -32,46 +43,43 @@ Hosted profile **`auth-features`** (JSON):
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `mfa.enabled` | `false` | When `false`, no `mfaEnrollmentRequired`, no `/mfa/setup` redirect, Settings hides TOTP enrollment, and `POST /auth/mfa/setup` / `POST /auth/mfa/verify` return 403. |
-| `mfa.method` | `"sms"` | Intended MFA method when the gate is turned on (`"sms"` or `"totp"`). SMS login/enroll is not implemented yet; this avoids a code change when SMS is ready. |
+| `mfa.enabled` | `false` | When `false`, no `mfaEnrollmentRequired`, no `/mfa/setup` redirect, Settings hides enrollment, and MFA setup APIs return 403. |
+| `mfa.method` | `"sms"` | `"sms"` → phone collect/verify UI; `"totp"` → authenticator QR UI. Login still accepts whichever challenge Cognito returns (`SMS_MFA` or `SOFTWARE_TOKEN_MFA`). |
 
-**Local / missing AppConfig:** backend treats MFA as **disabled** (same as `enabled: false`).
+**Local / missing AppConfig:** backend treats MFA as **disabled**.
 
-**Enable after SMS is live:** in the AppConfig console, edit the hosted configuration for the environment and set `"enabled": true`. Deploy immediately (Terraform uses an immediate deployment strategy). No app redeploy required.
+**Enable after SMS is live:** set `"enabled": true` in AppConfig and deploy the configuration. No app redeploy required.
 
-Terraform creates per-environment AppConfig application + environment + `auth-features` profile. ECS backend receives `APPCONFIG_APPLICATION`, `APPCONFIG_ENVIRONMENT`, and `APPCONFIG_PROFILE`; the task role may call `appconfig:StartConfigurationSession` and `appconfig:GetLatestConfiguration`.
+## Phone numbers
+
+SMS MFA requires a **verified Cognito `phone_number`** (E.164). The app:
+
+1. Collects a US mobile on `/mfa/setup` when `method` is `sms`
+2. Calls Cognito `UpdateUserAttributes` + attribute verification SMS
+3. On verify, enables preferred **SMS MFA** and stores `User.phoneNumber` in Postgres for profile/display
+
+Cognito remains the source of truth at challenge time. Postgres is a mirror for Settings / future intake autofill.
 
 ## App behavior
 
-1. **Login challenge (already enrolled)** — If the user already has software MFA, Cognito returns `SOFTWARE_TOKEN_MFA`; client completes via `POST /auth/cognito/mfa`. Still works when `mfa.enabled` is `false`.
-2. **Login challenge (MFA required, not enrolled)** — If the pool is **Require MFA** (`ON`) and the user has no TOTP, Cognito returns `MFA_SETUP` (no tokens). `POST /auth/cognito/login` associates a software token and returns a QR secret; the client finishes via `POST /auth/cognito/mfa/setup`. Blocked when AppConfig `mfa.enabled` is `false`.
-3. **Enrollment after login (pool Optional)** — When AppConfig `mfa.enabled` is `true`, signed-in user calls `POST /auth/mfa/setup` → secret + `otpauth://` URI, then `POST /auth/mfa/verify` with a 6-digit code. Cognito `AssociateSoftwareToken` → `VerifySoftwareToken` → `SetUserMFAPreference`.
-4. **Soft enrollment gate** — When AppConfig `mfa.enabled` is `true`, `/auth/me` and Cognito login responses include `mfaEnabled`, `mfaEnrollmentRequired`, and `mfaFeature: { enabled, method }`. Protected routes redirect to `/mfa/setup` until enrolled.
-5. **Settings** — Security tab shows TOTP setup only when `mfaFeature.enabled` is true and the user is not yet enrolled. When off, copy explains SMS MFA is not required yet.
-
-Unhandled Cognito challenges and SDK exceptions are mapped to user-facing copy. Server logs include the exception name and `ChallengeName` so new Cognito states are visible without reproducing from the UI.
-
-## OAuth scope for enrollment
-
-Hosted UI / Google access tokens must include `aws.cognito.signin.user.admin` or Cognito returns *Access Token does not have required scopes* on AssociateSoftwareToken / VerifySoftwareToken. Email/password (`USER_PASSWORD_AUTH`) tokens already include it.
-
-Configured on the Cognito app client and requested in `buildCognitoAuthorizeUrl`. After changing scopes, users must **sign out and sign in again** so `Session.accessToken` is replaced — an old cookie keeps the previous token without the scope.
-
-`/auth/me` MFA status uses AdminGetUser (IAM) and does not need that scope.
+1. **Login (already enrolled)** — Cognito returns `SOFTWARE_TOKEN_MFA` or `SMS_MFA`; client completes via `POST /auth/cognito/mfa` with `challenge`.
+2. **Login (Require MFA, not enrolled)** — `MFA_SETUP` → TOTP associate path (unchanged).
+3. **Enrollment (Optional + AppConfig on)**  
+   - SMS: `POST /auth/mfa/phone/start` → `POST /auth/mfa/phone/verify`  
+   - TOTP: `POST /auth/mfa/setup` → `POST /auth/mfa/verify`
+4. Soft enrollment gate + Settings copy follow AppConfig `mfa.enabled` / `mfa.method`.
 
 ## When to enable MFA (AppConfig + Cognito)
 
-1. Complete SMS originator / 10DLC and configure Cognito SMS MFA (out of scope for the AppConfig flag work).
-2. Set AppConfig `mfa.enabled` to `true` and deploy the configuration.
-3. Have admins enroll (TOTP today; SMS when implemented).
-4. Optionally enroll HCPs (or communicate a deadline).
-5. When ready for hard enforcement: Cognito console (or sync) → **MFA enforcement → Require MFA**.
-6. Leave **dev** on Optional / AppConfig off if you want easy local/dev accounts.
+1. Apply Terraform (`enable_cognito_sms_mfa`) and run `cognito-sync-pool-config.sh`.
+2. Confirm SMS sends (sandbox / production spend limit / 10DLC as required by AWS).
+3. Set AppConfig `mfa.enabled` to `true`.
+4. Have users enroll (SMS by default).
+5. When ready for hard enforcement: Cognito → **Require MFA**.
 
 ## Related
 
-- `infrastructure/terraform/modules/config/appconfig/` — AppConfig application, environment, `auth-features` profile
-- `backend/src/feature-flags/feature-flags.service.ts` — AppConfig poller (~45s), in-memory cache
-- `backend/src/auth/cognito.service.ts` — Associate / Verify / preference helpers; `MFA_SETUP` login
-- `backend/src/auth/auth.controller.ts` — `/auth/cognito/login`, `/auth/cognito/mfa`, `/auth/cognito/mfa/setup`, `/auth/mfa/setup`, `/auth/mfa/verify`, `/auth/me`
-- `frontend/src/pages/public/Login.tsx`, `MfaSetup.tsx`, `ProtectedRoute.tsx`, `Settings.tsx`
+- `infrastructure/terraform/modules/security/cognito/sms.tf` — Cognito→SNS IAM role
+- `scripts/cognito-sync-pool-config.sh` — MRR-safe pool MFA/SMS sync
+- `backend/src/auth/cognito.service.ts` — SMS + TOTP challenge/enrollment
+- `frontend/src/pages/public/MfaSetup.tsx`, `Login.tsx`

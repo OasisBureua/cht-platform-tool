@@ -18,7 +18,7 @@ export function ZoomStatusBadge({
   icon: Icon,
   className,
 }: {
-  tone: 'success' | 'warning' | 'neutral' | 'info';
+  tone: 'success' | 'warning' | 'neutral' | 'info' | 'error';
   children: ReactNode;
   icon?: LucideIcon;
   className?: string;
@@ -30,6 +30,8 @@ export function ZoomStatusBadge({
       'border-amber-200/80 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/80 dark:text-amber-100',
     neutral: 'border-border bg-muted/60 text-muted-foreground',
     info: 'border-blue-200/80 bg-blue-50 text-blue-950 dark:border-blue-900/60 dark:bg-blue-950/80 dark:text-blue-100',
+    error:
+      'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40',
   };
   return (
     <span

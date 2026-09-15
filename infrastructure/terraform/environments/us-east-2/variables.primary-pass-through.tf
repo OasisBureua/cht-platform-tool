@@ -8,6 +8,12 @@ variable "secondary_api_origin_domain" {
   default     = ""
 }
 
+variable "single_nat_gateway" {
+  description = "Primary only: NAT count flag for us-east-1. This DR stack does not consume it."
+  type        = bool
+  default     = false
+}
+
 variable "rds_instance_class" {
   description = "Primary only: RDS instance class in us-east-1."
   type        = string
@@ -36,6 +42,12 @@ variable "cloudfront_certificate_arn" {
   description = "Primary only: ACM certificate for CloudFront (us-east-1)."
   type        = string
   default     = ""
+}
+
+variable "extra_cloudfront_aliases" {
+  description = "Primary only: additional CloudFront aliases (e.g. app.communityhealth.media)."
+  type        = list(string)
+  default     = []
 }
 
 variable "secrets_replica_regions" {
@@ -266,6 +278,12 @@ variable "cognito_mfa_configuration" {
   description = "Primary only: Cognito MFA configuration."
   type        = string
   default     = "OPTIONAL"
+}
+
+variable "enable_cognito_sms_mfa" {
+  description = "Primary only: provision Cognito→SNS IAM role for SMS MFA."
+  type        = bool
+  default     = true
 }
 
 variable "cognito_user_pool_tier" {

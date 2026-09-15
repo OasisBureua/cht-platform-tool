@@ -69,7 +69,7 @@ export function BillVendorSetupForm(props: {
     mutationFn: () => {
       if (!paymentMethod) throw new Error('Select ACH or Check.');
       const zipDigits = form.zipCode.replace(/\D/g, '');
-      return paymentsApi.createConnectAccount(userId, {
+      return paymentsApi.createBillVendor(userId, {
         payeeName: form.payeeName.trim(),
         addressLine1: form.addressLine1.trim(),
         city: form.city.trim(),

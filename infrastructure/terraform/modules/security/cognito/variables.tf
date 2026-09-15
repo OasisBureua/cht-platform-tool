@@ -51,6 +51,12 @@ variable "mfa_configuration" {
   }
 }
 
+variable "enable_sms_mfa" {
+  description = "Provision the Cognito→SNS IAM role for SMS MFA / phone verification (wire via cognito-sync-pool-config.sh)"
+  type        = bool
+  default     = true
+}
+
 variable "google_client_id" {
   description = "Google OAuth client ID for Cognito identity provider federation (leave empty to skip)"
   type        = string

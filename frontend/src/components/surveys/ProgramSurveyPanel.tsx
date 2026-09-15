@@ -53,7 +53,7 @@ export function ProgramSurveyPanel({
     enabled: Boolean(surveyId && userId),
   });
 
-  // SCRUM-186: fetch pre-fill for questions with syncToProfile. Auth-only.
+  // SCRUM-186: profile pre-fill (tagged syncToProfile or inferred intake fields).
   const { data: profilePrefill } = useQuery({
     queryKey: ['survey', surveyId, 'profile-prefill'],
     queryFn: () => surveysApi.getProfilePrefill(surveyId),
