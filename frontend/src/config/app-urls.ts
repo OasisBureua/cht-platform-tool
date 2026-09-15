@@ -1,9 +1,23 @@
 /** Hosts where frontend + API share one origin (/api on same domain). */
-const SAME_ORIGIN_API_SUFFIX = 'testapp.communityhealth.media';
+const SAME_ORIGIN_API_HOSTS = [
+  'testapp.communityhealth.media',
+  'app.communityhealth.media',
+] as const;
 
-/** Platform / testapp host (not devapp). Used to hold the public marketing home until launch. */
-export function isTestappHost(hostname = typeof window !== 'undefined' ? window.location.hostname : ''): boolean {
-  return hostname === SAME_ORIGIN_API_SUFFIX || hostname.endsWith(`.${SAME_ORIGIN_API_SUFFIX}`);
+function isSameOriginApiHost(hostname: string): boolean {
+  return SAME_ORIGIN_API_HOSTS.some(
+    (host) => hostname === host || hostname.endsWith(`.${host}`),
+  );
+}
+
+/**
+ * Platform hosts that hold the public marketing homepage until launch
+ * (testapp + branded app. alias). Not devapp.
+ */
+export function isTestappHost(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  return isSameOriginApiHost(hostname);
 }
 
 function trimTrailingSlash(url: string): string {
@@ -15,14 +29,11 @@ function sameOriginApiBase(): string {
   return `${window.location.origin}/api`;
 }
 
-/** Backend API base URL: build-time VITE_API_URL, else same-origin /api on testapp hosts. */
+/** Backend API base URL: build-time VITE_API_URL, else same-origin /api on platform hosts. */
 export function resolveApiBaseUrl(): string {
   const fromEnv = import.meta.env.VITE_API_URL?.trim();
   if (fromEnv) return trimTrailingSlash(fromEnv);
-  if (
-    typeof window !== 'undefined' &&
-    window.location.hostname.endsWith(SAME_ORIGIN_API_SUFFIX)
-  ) {
+  if (typeof window !== 'undefined' && isSameOriginApiHost(window.location.hostname)) {
     return sameOriginApiBase();
   }
   return '/api';
