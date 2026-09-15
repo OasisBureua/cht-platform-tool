@@ -60,6 +60,21 @@ export default function PublicLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState('');
 
+  /* Auth pages are a single decision on one screen. A footer under
+     them adds a scroll to a page that is meant to fit the frame, and
+     offers twenty exits from a form we just asked someone to finish. */
+  const AUTH_ROUTES = [
+    '/login', '/join', '/admin/login', '/forgot-password',
+    '/reset-password/confirm', '/mfa/setup', '/verify-email',
+    '/complete-profile', '/auth/callback',
+  ];
+  const isAuthRoute = AUTH_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + '/'),
+  );
+
+  /* Platform (testapp / app.) auth chrome: hold marketing IA until homepage ships. */
+  const hidePrelaunchNav = isTestappHost() && isAuthRoute;
+
   /* One navigation closes every transient surface. Adjusting during
      render rather than in an effect means the panel is never painted
      open on the page it just left. */
@@ -72,6 +87,7 @@ export default function PublicLayout() {
   }
 
   useEffect(() => {
+    if (hidePrelaunchNav) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -80,7 +96,7 @@ export default function PublicLayout() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [hidePrelaunchNav]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -107,31 +123,20 @@ export default function PublicLayout() {
     else navigate('/catalog');
   };
 
-
-  /* Auth pages are a single decision on one screen. A footer under
-     them adds a scroll to a page that is meant to fit the frame, and
-     offers twenty exits from a form we just asked someone to finish. */
-  const AUTH_ROUTES = [
-    '/login', '/join', '/admin/login', '/forgot-password',
-    '/reset-password/confirm', '/mfa/setup', '/verify-email',
-    '/complete-profile', '/auth/callback',
-  ];
-  const isAuthRoute = AUTH_ROUTES.some(
-    (r) => pathname === r || pathname.startsWith(r + '/'),
-  );
-
-  /* testapp /login only: hold marketing IA until the public homepage ships. */
-  const hidePrelaunchNav =
-    isTestappHost() && (pathname === '/login' || pathname.startsWith('/login/'));
   const primaryNav = hidePrelaunchNav ? [] : nav;
 
-  const drawerLinks = [
-    ...(hidePrelaunchNav ? [] : nav),
-    { to: '/for-hcps', label: 'For HCPs' },
-    { to: '/contact', label: 'Contact' },
-    { to: '/login', label: 'Log in' },
-    { to: '/join', label: 'Get started' },
-  ];
+  const drawerLinks = hidePrelaunchNav
+    ? [
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ]
+    : [
+        ...nav,
+        { to: '/for-hcps', label: 'For HCPs' },
+        { to: '/contact', label: 'Contact' },
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ];
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-ground text-text">
@@ -199,14 +204,16 @@ export default function PublicLayout() {
             </nav>
 
             <div className="ms-auto flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search the library"
-                className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
-              >
-                <Search className="size-[18px]" strokeWidth={1.5} />
-              </button>
+              {!hidePrelaunchNav ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Search the library"
+                  className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
+                >
+                  <Search className="size-[18px]" strokeWidth={1.5} />
+                </button>
+              ) : null}
 
               <ThemeControl />
 
@@ -297,7 +304,7 @@ export default function PublicLayout() {
 
       {!isAuthRoute && <SiteFooter />}
 
-      {searchOpen ? (
+      {searchOpen && !hidePrelaunchNav ? (
         <SearchDialog
           q={headerQuery}
           setQ={setHeaderQuery}

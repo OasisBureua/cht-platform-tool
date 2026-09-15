@@ -4,7 +4,7 @@ import { isTestappHost } from '../config/app-urls';
 import { useAuth } from '../contexts/AuthContext';
 
 /**
- * On testapp, keep the public marketing home off until launch.
+ * On platform hosts (testapp / app.), keep the public marketing home off until launch.
  * Signed-in users go to the HCP home; everyone else goes to login.
  * Remove this wrapper when the public site is ready to ship.
  */

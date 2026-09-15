@@ -31,14 +31,13 @@ export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
  * Primary app destinations: desktop sidebar + mobile slide-reveal drawer
  * (Search lives in header).
  *
- * `iconTone` runs coral → purple → cyan → pink → blue → green down the rail.
- * Destinations that also exist in the admin shell keep the same hue there.
+ * Icons are black by default; LIVE is red and Earnings is green.
  */
 export const APP_NAV_ITEMS: AppNavItem[] = [
-  { to: '/app/live', label: 'LIVE', icon: Radio, iconTone: 'text-ink-coral', end: false },
-  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, iconTone: 'text-ink-purple', end: false },
-  { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, iconTone: 'text-ink-cyan', end: false },
-  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, iconTone: 'text-ink-pink', end: false },
-  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-anchor', end: false },
-  { to: '/app/earnings', label: 'Earnings', icon: Banknote, iconTone: 'text-ink-green', end: false },
+  { to: '/app/live', label: 'LIVE', icon: Radio, iconTone: 'text-red-600', end: false },
+  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, iconTone: 'text-foreground', end: false },
+  { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, iconTone: 'text-foreground', end: false },
+  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, iconTone: 'text-foreground', end: false },
+  { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-foreground', end: false },
+  { to: '/app/earnings', label: 'Earnings', icon: Banknote, iconTone: 'text-green-600', end: false },
 ];
