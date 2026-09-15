@@ -68,6 +68,7 @@ import {
   buildUserRecipientWhere,
   parseCsvQueryParam,
   registrationInviteUserSelect,
+  adminUserListSelect,
 } from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
@@ -838,9 +839,15 @@ export class AdminController {
         : {}),
     });
 
+    // Also match on NPI — admin-users-specific, not part of the shared
+    // registration-invite recipient search (which has no NPI use case).
+    if (q?.trim() && where.OR) {
+      where.OR = [...where.OR, { npiNumber: { contains: q.trim() } }];
+    }
+
     const users = await this.prisma.user.findMany({
       where,
-      select: registrationInviteUserSelect,
+      select: adminUserListSelect,
       orderBy: { createdAt: 'desc' },
       take,
     });
