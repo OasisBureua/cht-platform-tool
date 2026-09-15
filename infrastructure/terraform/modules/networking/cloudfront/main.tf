@@ -238,6 +238,10 @@ resource "aws_cloudfront_distribution" "frontend" {
 
     forwarded_values {
       query_string = false
+      # Never forward Host to S3 — CloudFront would send Host: <app domain>,
+      # S3 then looks for that bucket and returns XML NotFound
+      # ("The resource you requested does not exist"), which breaks the Zoom iframe.
+      headers = []
       cookies {
         forward = "none"
       }

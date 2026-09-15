@@ -629,6 +629,7 @@ module "cognito" {
   ))
 
   mfa_configuration    = var.cognito_mfa_configuration
+  enable_sms_mfa       = var.enable_cognito_sms_mfa
   user_pool_tier       = var.cognito_user_pool_tier
   google_client_id     = var.cognito_google_client_id
   google_client_secret = var.cognito_google_client_secret

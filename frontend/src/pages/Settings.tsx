@@ -401,7 +401,9 @@ export default function Settings() {
                     {user?.mfaEnabled
                       ? 'Multi-factor authentication is enabled on your account.'
                       : user?.mfaFeature?.enabled
-                        ? 'Add an authenticator app for an extra sign-in step.'
+                        ? user?.mfaFeature?.method === 'totp'
+                          ? 'Add an authenticator app for an extra sign-in step.'
+                          : 'Add a mobile number so we can text you a sign-in code.'
                         : 'SMS multi-factor authentication is not required yet. You can sign in with your password as usual.'}
                   </p>
                   {!user?.mfaEnabled && user?.mfaFeature?.enabled && (

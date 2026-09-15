@@ -52,6 +52,7 @@ enable_cognito_pools                  = true
 cognito_domain_prefix                 = "chm-dev"
 cognito_user_pool_tier                = "ESSENTIALS"
 cognito_mfa_configuration             = "OPTIONAL"
+enable_cognito_sms_mfa                = true
 cognito_email_sending_account         = "DEVELOPER"
 cognito_email_from                    = "noreply@communityhealth.media"
 cognito_email_reply_to                = "info@communityhealth.media"

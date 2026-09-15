@@ -48,6 +48,17 @@ resource "aws_cognito_user_pool" "main" {
     enabled = true
   }
 
+  # SMS MFA / phone verification. Existing pools are updated via
+  # scripts/cognito-sync-pool-config.sh (lifecycle ignores in-place pool MFA drift).
+  dynamic "sms_configuration" {
+    for_each = var.enable_sms_mfa ? [1] : []
+    content {
+      external_id    = local.sms_external_id
+      sns_caller_arn = aws_iam_role.cognito_sms[0].arn
+      sns_region     = data.aws_region.current.name
+    }
+  }
+
   # COGNITO_DEFAULT → no-reply@verificationemail.com (dev only).
   # DEVELOPER → verified SES identity in us-east-1 (recommended for dev + platform).
   dynamic "email_configuration" {
@@ -117,6 +128,7 @@ resource "aws_cognito_user_pool" "main" {
       admin_create_user_config,
       verification_message_template,
       software_token_mfa_configuration,
+      sms_configuration,
       user_pool_tier,
     ]
   }

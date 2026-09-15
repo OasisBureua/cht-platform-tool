@@ -31,6 +31,9 @@ model User {
   city            String?
   zipCode         String?
 
+  /// E.164 mobile for SMS MFA (Cognito phone_number is source of truth at challenge time).
+  phoneNumber     String?
+
   // Role and status
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)

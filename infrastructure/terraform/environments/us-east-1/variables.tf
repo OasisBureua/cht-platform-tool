@@ -491,6 +491,12 @@ variable "cognito_mfa_configuration" {
   default     = "OPTIONAL"
 }
 
+variable "enable_cognito_sms_mfa" {
+  description = "Provision Cognito→SNS IAM role for SMS MFA / phone verification (pool wiring via cognito-sync-pool-config.sh)"
+  type        = bool
+  default     = true
+}
+
 variable "cognito_user_pool_tier" {
   description = "Cognito user pool tier (LITE/ESSENTIALS/PLUS). Use ESSENTIALS or PLUS for multi-region replication add-on."
   type        = string

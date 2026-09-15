@@ -69,6 +69,7 @@ cognito_user_pool_tier              = "ESSENTIALS"
 # Keep Cognito OPTIONAL while app soft-gates enrollment for all roles.
 # Flip to ON in Cognito/Terraform after platform/prod deploy + users enroll.
 cognito_mfa_configuration           = "OPTIONAL"
+enable_cognito_sms_mfa              = true
 cognito_email_sending_account       = "DEVELOPER"
 cognito_email_from                  = "noreply@communityhealth.media"
 cognito_email_reply_to              = "info@communityhealth.media"

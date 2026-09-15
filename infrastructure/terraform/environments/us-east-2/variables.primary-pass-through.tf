@@ -280,6 +280,12 @@ variable "cognito_mfa_configuration" {
   default     = "OPTIONAL"
 }
 
+variable "enable_cognito_sms_mfa" {
+  description = "Primary only: provision Cognito→SNS IAM role for SMS MFA."
+  type        = bool
+  default     = true
+}
+
 variable "cognito_user_pool_tier" {
   description = "Primary only: Cognito user pool tier."
   type        = string
