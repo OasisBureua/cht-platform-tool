@@ -8,6 +8,12 @@ variable "secondary_api_origin_domain" {
   default     = ""
 }
 
+variable "single_nat_gateway" {
+  description = "Primary only: NAT count flag for us-east-1. This DR stack does not consume it."
+  type        = bool
+  default     = false
+}
+
 variable "rds_instance_class" {
   description = "Primary only: RDS instance class in us-east-1."
   type        = string

@@ -36,7 +36,7 @@ export function syncWindowFromMonthsBack(
 
 /**
  * Split an inclusive date range into ≤1-month windows for
- * GET /accounts/{accountId}/recordings (Zoom max ~31 days per request).
+ * GET /users/{userId}/recordings (Zoom max ~31 days per request).
  */
 export function buildMonthWindows(
   fromDate: Date,

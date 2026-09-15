@@ -1,6 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
-import { of } from 'rxjs';
+import { of, throwError } from 'rxjs';
 import {
   ZoomService,
   type ZoomAccountRecordingsPage,
@@ -42,6 +42,10 @@ describe('ZoomService account recordings', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it('listAccountRecordingsPage calls account recordings API', async () => {
@@ -144,6 +148,209 @@ describe('ZoomService account recordings', () => {
     expect(sessions).toHaveLength(2);
     expect(get).toHaveBeenCalledTimes(2);
     expect(get.mock.calls[1][1].params.next_page_token).toBe('tok-2');
+  });
+
+  it('listUserRecordingsPage calls per-user recordings API', async () => {
+    const get = jest.fn().mockReturnValue(
+      of({
+        data: {
+          from: '2026-07-01',
+          to: '2026-07-31',
+          next_page_token: 'page-2',
+          total_records: 1,
+          meetings: [
+            {
+              id: 83768449108,
+              uuid: 'uuid-1',
+              topic: 'Test Webinar',
+              host_email: 'host@example.com',
+              start_time: '2026-07-15T18:00:00Z',
+              duration: 60,
+              recording_files: [
+                {
+                  id: 'file-1',
+                  file_type: 'TRANSCRIPT',
+                  download_url: 'https://zoom.example/t.vtt',
+                  status: 'completed',
+                },
+              ],
+            },
+          ],
+        },
+      }),
+    );
+
+    const svc = makeService(get);
+    const result = await svc.listUserRecordingsPage({
+      userId: 'host-user-1',
+      from: '2026-07-01',
+      to: '2026-07-31',
+    });
+
+    expect(result.sessions).toHaveLength(1);
+    expect(result.sessions[0]?.id).toBe('83768449108');
+    expect(result.sessions[0]?.hostEmail).toBe('host@example.com');
+    expect(get).toHaveBeenCalledWith(
+      'https://api.zoom.us/v2/users/host-user-1/recordings',
+      expect.objectContaining({
+        params: { from: '2026-07-01', to: '2026-07-31', page_size: 300 },
+        headers: { Authorization: 'Bearer zoom-token' },
+      }),
+    );
+  });
+
+  it('listUserRecordingsInRange paginates until next_page_token is empty', async () => {
+    const get = jest
+      .fn()
+      .mockReturnValueOnce(
+        of({
+          data: {
+            meetings: [{ id: 1, recording_files: [] }],
+            next_page_token: 'tok-2',
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        of({
+          data: {
+            meetings: [{ id: 2, recording_files: [] }],
+            next_page_token: '',
+          },
+        }),
+      );
+
+    const svc = makeService(get);
+    const sessions = await svc.listUserRecordingsInRange({
+      userId: 'host-user-1',
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
+
+    expect(sessions).toHaveLength(2);
+    expect(get).toHaveBeenCalledTimes(2);
+    expect(get.mock.calls[1][1].params.next_page_token).toBe('tok-2');
+  });
+
+  it('listAllAccountUsers paginates GET /users', async () => {
+    const get = jest
+      .fn()
+      .mockReturnValueOnce(
+        of({
+          data: {
+            users: [{ id: 'u1', email: 'one@chm.example', status: 'active' }],
+            next_page_token: 'n2',
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        of({
+          data: {
+            users: [{ id: 'u2', email: 'two@chm.example', status: 'active' }],
+            next_page_token: '',
+          },
+        }),
+      );
+
+    const svc = makeService(get);
+    const users = await svc.listAllAccountUsers({ status: 'active' });
+
+    expect(users.map((u) => u.id)).toEqual(['u1', 'u2']);
+    expect(get).toHaveBeenCalledWith(
+      'https://api.zoom.us/v2/users',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          status: 'active',
+          page_size: 300,
+        }),
+      }),
+    );
+    expect(get.mock.calls[1][1].params.next_page_token).toBe('n2');
+  });
+
+  it('listAllAccountUsers skips blank ids and dedupes overlapping pages', async () => {
+    const get = jest
+      .fn()
+      .mockReturnValueOnce(
+        of({
+          data: {
+            users: [
+              { id: '', email: 'blank@chm.example' },
+              { id: 'u1', email: 'one@chm.example' },
+            ],
+            next_page_token: 'n2',
+          },
+        }),
+      )
+      .mockReturnValueOnce(
+        of({
+          data: {
+            users: [
+              { id: 'u1', email: 'one@chm.example' },
+              { id: 'u2', email: 'two@chm.example' },
+            ],
+            next_page_token: '',
+          },
+        }),
+      );
+
+    const svc = makeService(get);
+    const users = await svc.listAllAccountUsers({ status: 'active' });
+
+    expect(users.map((u) => u.id)).toEqual(['u1', 'u2']);
+  });
+
+  it('listUserRecordingsPage encodes user id in the path', async () => {
+    const get = jest.fn().mockReturnValue(
+      of({ data: { meetings: [], next_page_token: '' } }),
+    );
+    const svc = makeService(get);
+    await svc.listUserRecordingsPage({
+      userId: 'host@example.com',
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
+    expect(get).toHaveBeenCalledWith(
+      'https://api.zoom.us/v2/users/host%40example.com/recordings',
+      expect.any(Object),
+    );
+  });
+
+  it('listUserRecordingsPage rejects a blank user id', async () => {
+    const svc = makeService(jest.fn());
+    await expect(
+      svc.listUserRecordingsPage({
+        userId: '  ',
+        from: '2026-08-01',
+        to: '2026-08-31',
+      }),
+    ).rejects.toThrow('Zoom user id is required');
+  });
+
+  it('retries listUserRecordingsPage on HTTP 429', async () => {
+    jest.useFakeTimers();
+    const err429 = {
+      message: 'Rate limited',
+      response: { status: 429, headers: { 'retry-after': '1' } },
+    };
+    const get = jest
+      .fn()
+      .mockReturnValueOnce(throwError(() => err429))
+      .mockReturnValueOnce(
+        of({ data: { meetings: [{ id: 9, recording_files: [] }] } }),
+      );
+    const svc = makeService(get);
+
+    const resultPromise = svc.listUserRecordingsPage({
+      userId: 'host-1',
+      from: '2026-08-01',
+      to: '2026-08-31',
+    });
+    await jest.advanceTimersByTimeAsync(1000);
+    const result = await resultPromise;
+
+    expect(result.sessions).toHaveLength(1);
+    expect(get).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 
   it('downloadRecordingFileStream uses responseType stream', async () => {

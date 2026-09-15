@@ -334,6 +334,10 @@ export type ZoomRecordingCatalogDetail = {
 export type ZoomSyncJobProgress = {
   monthsTotal: number;
   monthsDone: number;
+  usersTotal?: number;
+  usersDone?: number;
+  windowsTotal?: number;
+  windowsDone?: number;
   sessionsUpserted: number;
   fileStubsUpserted: number;
   errors: string[];
