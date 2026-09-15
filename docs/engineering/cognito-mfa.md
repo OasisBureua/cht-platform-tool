@@ -24,7 +24,13 @@ Pool MFA / SMS wiring for existing (MRR) pools is applied by:
 
 That script calls `UpdateUserPool` (email/SMS config) and `SetUserPoolMfaConfig` (TOTP + SMS MFA). Your End User Messaging / SNS origination number must already be ready in the account; Cognito publishes through SNS using the IAM role.
 
-If you prefer the console: Cognito → MFA → **Configure SMS** using the Terraform role ARN and ExternalId outputs.
+The Cognito→SNS IAM role must allow both:
+- `sns:Publish` (SNS SMS path)
+- `sms-voice:SendTextMessage` (direct **AWS End User Messaging SMS** path — console default)
+
+Missing `sms-voice:SendTextMessage` causes `InvalidSmsRoleAccessPolicyException` when Configure SMS uses End User Messaging.
+
+If you prefer the console: Cognito → MFA → **Configure SMS** using the Terraform role ARN and ExternalId outputs (`cht-platform-cognito-sms`).
 
 ## AppConfig master switch
 

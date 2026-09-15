@@ -95,6 +95,13 @@ export class StripeService {
         },
       },
       configuration: {
+        // Platform rule (Stripe): stripe_transfers on recipient requires
+        // merchant.card_payments to also be requested on the v2 account.
+        merchant: {
+          capabilities: {
+            card_payments: { requested: true },
+          },
+        },
         recipient: {
           capabilities: {
             stripe_balance: {
@@ -113,7 +120,12 @@ export class StripeService {
         },
       },
       metadata: { userId: input.userId },
-      include: ['configuration.recipient', 'identity', 'requirements'],
+      include: [
+        'configuration.merchant',
+        'configuration.recipient',
+        'identity',
+        'requirements',
+      ],
     });
 
     this.logger.log(
