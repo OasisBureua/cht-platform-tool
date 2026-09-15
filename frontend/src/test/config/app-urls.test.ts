@@ -34,8 +34,14 @@ describe('app-urls', () => {
     expect(resolveApiBaseUrl()).toBe('https://testapp.communityhealth.media/api');
   });
 
-  it('uses VITE_APP_URL for OAuth when set', () => {
+  it('uses VITE_APP_URL for OAuth when set on non-platform hosts', () => {
     vi.stubEnv('VITE_APP_URL', 'https://staging.testapp.communityhealth.media');
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'http://localhost:5173',
+        hostname: 'localhost',
+      },
+    } as Window & typeof globalThis);
     expect(resolveAppBaseUrl()).toBe('https://staging.testapp.communityhealth.media');
   });
 
@@ -55,6 +61,28 @@ describe('app-urls', () => {
       },
     } as Window & typeof globalThis);
     expect(resolveApiBaseUrl()).toBe('https://app.communityhealth.media/api');
+  });
+
+  it('prefers current origin over VITE_APP_URL on app. (PKCE)', () => {
+    vi.stubEnv('VITE_APP_URL', 'https://testapp.communityhealth.media');
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://app.communityhealth.media',
+        hostname: 'app.communityhealth.media',
+      },
+    } as Window & typeof globalThis);
+    expect(resolveAppBaseUrl()).toBe('https://app.communityhealth.media');
+  });
+
+  it('prefers current origin over VITE_APP_URL on testapp (PKCE)', () => {
+    vi.stubEnv('VITE_APP_URL', 'https://testapp.communityhealth.media');
+    vi.stubGlobal('window', {
+      location: {
+        origin: 'https://testapp.communityhealth.media',
+        hostname: 'testapp.communityhealth.media',
+      },
+    } as Window & typeof globalThis);
+    expect(resolveAppBaseUrl()).toBe('https://testapp.communityhealth.media');
   });
 
   it('does not map staging host to platform OAuth URL', () => {
