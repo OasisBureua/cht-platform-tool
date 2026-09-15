@@ -39,8 +39,17 @@ export function resolveApiBaseUrl(): string {
   return '/api';
 }
 
-/** App origin for OAuth redirects: build-time VITE_APP_URL, else current origin. */
+/**
+ * App origin for OAuth redirects / logout.
+ * On platform aliases (testapp + app.), always use the current browser origin so
+ * Cognito redirect_uri matches the host where the PKCE verifier was stored in
+ * sessionStorage. A baked-in VITE_APP_URL (e.g. testapp) would otherwise send
+ * app. users to a different origin and fail with "Missing PKCE verifier".
+ */
 export function resolveAppBaseUrl(): string {
+  if (typeof window !== 'undefined' && isSameOriginApiHost(window.location.hostname)) {
+    return window.location.origin;
+  }
   const fromEnv = import.meta.env.VITE_APP_URL?.trim();
   if (fromEnv) return trimTrailingSlash(fromEnv);
   if (typeof window !== 'undefined') {
