@@ -52,8 +52,9 @@ describe('post-event-survey helpers', () => {
       ).toBe(true);
     });
 
-    it('locks webinars until scheduled end when webhook end time is missing', () => {
+    it('locks webinars until scheduled end plus buffer when webhook end time is missing', () => {
       vi.useFakeTimers();
+      // start 14:00, duration 60 → scheduled end 15:00, unlock at 15:15 (+15m buffer)
       vi.setSystemTime(new Date('2026-05-20T14:30:00Z'));
       expect(
         isPostEventSurveyUnlocked({
@@ -64,6 +65,15 @@ describe('post-event-survey helpers', () => {
       ).toBe(false);
 
       vi.setSystemTime(new Date('2026-05-20T15:05:00Z'));
+      expect(
+        isPostEventSurveyUnlocked({
+          zoomSessionType: 'WEBINAR',
+          startDate: '2026-05-20T14:00:00Z',
+          duration: 60,
+        }),
+      ).toBe(false);
+
+      vi.setSystemTime(new Date('2026-05-20T15:15:00Z'));
       expect(
         isPostEventSurveyUnlocked({
           zoomSessionType: 'WEBINAR',
