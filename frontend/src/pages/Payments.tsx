@@ -10,10 +10,6 @@ import { format } from 'date-fns';
 import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
 import { StripeMark } from '../components/branding/StripeMark';
 
-function formatMoney(value: number) {
-  return `$${value.toFixed(2)}`;
-}
-
 function statusChip(status: PaymentStatus) {
   const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
   if (status === 'PAID') return `${base} border-success/25 bg-success/10 text-success`;
@@ -52,14 +48,17 @@ export default function Payments() {
     enabled: !!userId,
   });
 
-  const totalThisMonth = (history || []).reduce((sum, i) => {
+  const pendingCount = (history || []).filter((i) => i.status === 'PENDING' || i.status === 'PROCESSING').length;
+  const paidCount = (history || []).filter((i) => i.status === 'PAID').length;
+  const paidThisMonthCount = (history || []).filter((i) => {
     const d = new Date(i.date);
     const now = new Date();
-    if (d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && i.status === 'PAID') {
-      return sum + i.amount;
-    }
-    return sum;
-  }, 0);
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      i.status === 'PAID'
+    );
+  }).length;
 
   const payoutsReady = !!(accountStatus?.hasAccount && accountStatus?.payoutsEnabled);
   const needsSetup = !payoutsReady;
@@ -145,9 +144,9 @@ export default function Payments() {
       )}
 
       <section className="grid gap-6 md:grid-cols-3">
-        <StatCard label="Total paid" value={formatMoney(summary?.availableBalance ?? 0)} sub="Lifetime earnings" />
-        <StatCard label="Pending" value={formatMoney(summary?.pendingBalance ?? 0)} sub="Awaiting payout" />
-        <StatCard label="This month" value={formatMoney(totalThisMonth)} sub="Paid this month" />
+        <StatCard label="Paid payouts" value={String(paidCount)} sub="Lifetime completed" />
+        <StatCard label="Pending" value={String(pendingCount)} sub="Awaiting admin payout" />
+        <StatCard label="This month" value={String(paidThisMonthCount)} sub="Paid this month" />
       </section>
 
       <section className="rounded-card border border-border bg-card p-6 min-w-0 overflow-hidden">
@@ -222,7 +221,6 @@ function HistoryRow({ item }: { item: PaymentItem }) {
         </p>
       </div>
       <div className="shrink-0 flex items-center gap-3">
-        <span className="text-sm font-semibold text-foreground">{formatMoney(item.amount)}</span>
         <span className={statusChip(item.status)}>
           {statusIcon(item.status)}
           {item.status}

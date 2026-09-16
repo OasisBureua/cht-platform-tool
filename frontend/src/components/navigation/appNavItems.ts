@@ -27,6 +27,9 @@ export const APP_CATALOG_CLIPS_GRID = '/app/catalog?view=clips';
 /** Breadcrumb / back from playlist detail → playlists browse UI. */
 export const APP_CATALOG_PLAYLISTS_BROWSE = '/app/catalog?view=playlists';
 
+/** Breadcrumb / back from a WordPress series page → series browse UI. */
+export const APP_CATALOG_SERIES_BROWSE = '/app/catalog?view=series';
+
 /**
  * Primary app destinations: desktop sidebar + mobile slide-reveal drawer
  * (Search lives in header).

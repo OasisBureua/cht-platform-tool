@@ -49,6 +49,8 @@ export interface AdminWebinar {
   creditAmount: number;
   /** USD; webinars only (Office Hours sessions omit this). */
   honorariumAmount?: number;
+  /** Admin-only internal nomenclature / CHM Content ID. */
+  chmProgramId?: string | null;
   createdAt: string;
   /** Persisted panelist join URLs (Host + Speakers + CHM Staff). Available in list after creation. */
   zoomPanelistLinks?: ZoomPanelistLink[];
@@ -95,6 +97,8 @@ export interface CreateWebinarPayload {
   sessionDisclaimer?: string;
   /** Optional HTTPS image URL for session branding. */
   sessionHeroImageUrl?: string;
+  /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+  chmProgramId?: string;
   /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
   zoomSettings?: ZoomWebinarSettings;
 }
@@ -115,6 +119,8 @@ export interface UpdateWebinarPayload {
   speakers?: string[];
   sessionDisclaimer?: string | null;
   sessionHeroImageUrl?: string | null;
+  /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+  chmProgramId?: string | null;
   /** WEBINAR only. Written to the linked Zoom webinar. */
   zoomSettings?: ZoomWebinarSettings;
 }
@@ -155,6 +161,7 @@ export interface AdminUser {
   city?: string | null;
   /** Organization / institution from profile */
   institution?: string | null;
+  npiNumber?: string | null;
   createdAt: string;
 }
 

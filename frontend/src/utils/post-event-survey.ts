@@ -1,3 +1,5 @@
+import { scheduledPostEventUnlockAt } from './live-session-timing';
+
 /** Post-event Jotform embed. Prefer native survey submit; legacyAttribution adds URL params for Jotform webhooks only. */
 export function buildPostEventSurveyEmbedSrc(
   formUrl: string,
@@ -24,7 +26,7 @@ export function buildPostEventSurveyEmbedSrc(
 
 /**
  * Post-event Jotform should appear only after the live session is over.
- * Prefer `zoomSessionEndedAt` from Zoom meeting.ended / webinar.ended webhooks; otherwise scheduled end (webinars only).
+ * Prefer `zoomSessionEndedAt` from Zoom meeting.ended / webinar.ended webhooks; otherwise scheduled end + buffer (webinars only).
  */
 export const POST_EVENT_SURVEY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -48,8 +50,7 @@ export function getPostEventSurveyUnlockMs(program: {
   if (Number.isNaN(start)) {
     return null;
   }
-  const durMin = program.duration ?? 60;
-  return start + durMin * 60 * 1000;
+  return scheduledPostEventUnlockAt(program.startDate, program.duration).getTime();
 }
 
 export function isPostEventSurveyUnlocked(program: {
