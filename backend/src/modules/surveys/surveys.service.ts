@@ -90,10 +90,14 @@ export class SurveysService {
         id: string;
         title: string;
         sponsorName: string | null;
-        honorariumAmount: number | null;
+        /** Present for admins; omitted for learners (use hasHonorarium). */
+        honorariumAmount?: number | null;
+        hasHonorarium?: boolean;
         creditAmount: number;
         zoomSessionType: string;
         startDate: Date | null;
+        duration?: number | null;
+        zoomSessionEndedAt?: Date | null;
       };
     }>;
     completed: Array<{
@@ -114,10 +118,13 @@ export class SurveysService {
         id: string;
         title: string;
         sponsorName: string | null;
-        honorariumAmount: number | null;
+        honorariumAmount?: number | null;
+        hasHonorarium?: boolean;
         creditAmount: number;
         zoomSessionType: string;
         startDate: Date | null;
+        duration?: number | null;
+        zoomSessionEndedAt?: Date | null;
       };
     }>;
   }> {
