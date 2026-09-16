@@ -4,10 +4,6 @@ import { Link } from 'react-router-dom';
 import { programsApi, type ProgramRegistrationState } from '../../api/programs';
 import { StripeMark } from '../branding/StripeMark';
 
-function formatMoneyFromCents(cents: number) {
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
 export function PostEventAttendanceMessage(props: {
   myRegistration: ProgramRegistrationState | null | undefined;
 }) {
@@ -234,7 +230,7 @@ export function PostEventFeedbackLearnerActions(props: {
               </li>
               <li>
                 <span className="font-medium text-foreground">Honorarium: </span>
-                {formatMoneyFromCents(preview.honorariumAmountCents)}
+                Eligible (amount set by admin)
               </li>
               <li>
                 <span className="font-medium text-foreground">Legal name / business: </span>

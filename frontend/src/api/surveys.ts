@@ -46,8 +46,9 @@ export interface Survey {
     id: string;
     title: string;
     sponsorName?: string;
-    /** Cents in DB / surveys API (same as Prisma). */
+    /** Cents in DB / surveys API for admins; omitted for learners. */
     honorariumAmount?: number | null;
+    hasHonorarium?: boolean;
     creditAmount?: number | null;
     zoomSessionType?: string;
     startDate?: string | null;

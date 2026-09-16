@@ -25,7 +25,9 @@ export interface Program {
   status: string;
   sponsorName: string;
   sponsorLogo?: string;
+  /** Dollar amount may be omitted for learners; use hasHonorarium. */
   honorariumAmount?: number;
+  hasHonorarium?: boolean;
   videos: Video[];
   zoomSessionType?: 'WEBINAR' | 'MEETING';
   zoomJoinUrl?: string;
@@ -101,7 +103,9 @@ export interface ProgramRegistrationState {
 
 export type HonorariumProgramPreview = {
   programTitle: string;
-  honorariumAmountCents: number;
+  hasHonorarium?: boolean;
+  /** @deprecated Amount is admin-only; omitted for learners. */
+  honorariumAmountCents?: number;
   payeeDisplayName: string;
   maskedBankLast4: string | null;
   addressSummary: string | null;

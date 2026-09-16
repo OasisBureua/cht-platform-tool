@@ -11,6 +11,7 @@ import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { isRegistrationClosed } from '../utils/live-session-timing';
+import { programHasHonorarium } from '../utils/program-has-honorarium';
 import {
   isApiNotFoundError,
   removeSessionFromLiveListCaches,
@@ -304,7 +305,7 @@ export default function OfficeHoursDetail() {
 
         {enrolled &&
         program &&
-        (program.jotformSurveyUrl?.trim() || program.honorariumAmount) &&
+        (program.jotformSurveyUrl?.trim() || programHasHonorarium(program)) &&
         !isPostEventSurveyUnlocked(program) ? (
           <div className="border-t border-border pt-6 text-sm text-muted-foreground">
             <p className="font-medium text-foreground">Post-event steps</p>

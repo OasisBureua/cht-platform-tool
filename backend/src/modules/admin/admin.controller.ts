@@ -1024,6 +1024,7 @@ export class AdminController {
           p.zoomSessionType === 'WEBINAR' && p.honorariumAmount != null
             ? p.honorariumAmount / 100
             : undefined,
+        chmProgramId: p.chmProgramId ?? null,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks:
           (p.zoomPanelistLinks as Array<{
@@ -1184,6 +1185,8 @@ export class AdminController {
       sessionDisclaimer?: string;
       /** Optional. Banner image URL for learners (HTTPS). */
       sessionHeroImageUrl?: string;
+      /** Optional. Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string;
       /** Optional. Zoom webinar settings (Q&A, Backstage, HD, recording). Ignored for MEETING. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -1329,6 +1332,9 @@ export class AdminController {
         : {}),
       ...(body.sessionHeroImageUrl?.trim()
         ? { sessionHeroImageUrl: body.sessionHeroImageUrl.trim() }
+        : {}),
+      ...(body.chmProgramId !== undefined
+        ? { chmProgramId: body.chmProgramId?.trim() || null }
         : {}),
     });
 
@@ -2378,6 +2384,8 @@ export class AdminController {
       speakers?: string[];
       sessionDisclaimer?: string | null;
       sessionHeroImageUrl?: string | null;
+      /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string | null;
       /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -2521,6 +2529,11 @@ export class AdminController {
         body.sessionHeroImageUrl === null || body.sessionHeroImageUrl === ''
           ? null
           : body.sessionHeroImageUrl.trim() || null;
+    if (body.chmProgramId !== undefined)
+      updateData.chmProgramId =
+        body.chmProgramId === null || body.chmProgramId === ''
+          ? null
+          : body.chmProgramId.trim() || null;
 
     if (
       speakersChanged &&
