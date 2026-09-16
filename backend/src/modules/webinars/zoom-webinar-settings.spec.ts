@@ -11,10 +11,10 @@ describe('Zoom webinar settings mapping', () => {
   it('uses ticket defaults for new webinars', () => {
     expect(DEFAULT_ZOOM_WEBINAR_SETTINGS).toEqual({
       questionAndAnswer: true,
-      backstage: false,
+      backstage: true,
       hdVideoScreenShare: true,
-      hdVideo1080p: false,
-      emailInAttendeeReport: false,
+      hdVideo1080p: true,
+      emailInAttendeeReport: true,
       autoRecordCloud: true,
     });
   });
@@ -27,8 +27,8 @@ describe('Zoom webinar settings mapping', () => {
     expect(api.practice_session).toBe(true);
     expect(api.question_and_answer).toEqual({ enable: true });
     expect(api.hd_video).toBe(true);
-    expect(api.send_1080p_video_to_attendees).toBe(false);
-    expect(api.email_in_attendee_report).toBe(false);
+    expect(api.send_1080p_video_to_attendees).toBe(true);
+    expect(api.email_in_attendee_report).toBe(true);
     expect(api.auto_recording).toBe('cloud');
   });
 
@@ -71,8 +71,8 @@ describe('Zoom webinar settings mapping', () => {
       toZoomWebinarSettingsApi(DEFAULT_ZOOM_WEBINAR_SETTINGS),
     );
     expect(stripped).toEqual({
-      practice_session: false,
-      email_in_attendee_report: false,
+      practice_session: true,
+      email_in_attendee_report: true,
       question_and_answer: { enable: true },
     });
     expect(stripped).not.toHaveProperty('auto_recording');

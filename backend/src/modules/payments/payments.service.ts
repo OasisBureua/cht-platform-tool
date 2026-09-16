@@ -65,7 +65,7 @@ export class PaymentsService {
     programId: string,
   ): Promise<{
     programTitle: string;
-    honorariumAmountCents: number;
+    hasHonorarium: boolean;
     payeeDisplayName: string;
     maskedBankLast4: string | null;
     addressSummary: string | null;
@@ -141,7 +141,7 @@ export class PaymentsService {
 
     return {
       programTitle: program.title,
-      honorariumAmountCents: program.honorariumAmount,
+      hasHonorarium: true,
       payeeDisplayName,
       maskedBankLast4,
       addressSummary,

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, ClipboardList, AlertCircle, Loader2, ClipboardCheck, CheckCircle2 } from 'lucide-react';
 import { surveysApi, type Survey, type SurveyType } from '../api/surveys';
 import { getPostEventSurveyRemainingDays } from '../utils/post-event-survey';
+import { programHasHonorarium } from '../utils/program-has-honorarium';
 
 const CARD_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -14,17 +15,6 @@ const CARD_IMAGES = [
   '/images/iStock-2036497889-fae3ed6e-9859-4983-b3ec-7a489bb6fb95.png',
   '/images/iStock-1344792109-f418c5f0-d729-4965-8b2a-bfff4368cea3.png',
 ] as const;
-
-function honorariumCentsToDollars(cents?: number | null): number {
-  if (cents == null || cents <= 0) return 0;
-  return cents / 100;
-}
-
-function formatHonorarium(cents?: number | null) {
-  const dollars = honorariumCentsToDollars(cents);
-  if (dollars <= 0) return null;
-  return `$${dollars.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
-}
 
 function typeBadge(type: SurveyType) {
   if (type === 'FEEDBACK') return { label: 'Post-event', className: 'bg-orange-100 text-orange-950 dark:bg-orange-950/50 dark:text-orange-100' };
@@ -62,11 +52,8 @@ export default function Surveys() {
     () => activeSurveys.filter((s) => getRemainingDays(s) <= 2).length,
     [activeSurveys],
   );
-  const availableToEarn = useMemo(
-    () =>
-      activeSurveys
-        .filter((s) => s.type === 'FEEDBACK')
-        .reduce((sum, s) => sum + honorariumCentsToDollars(s.program?.honorariumAmount ?? null), 0),
+  const honorariumEligibleCount = useMemo(
+    () => activeSurveys.filter((s) => s.type === 'FEEDBACK' && programHasHonorarium(s.program)).length,
     [activeSurveys],
   );
 
@@ -113,10 +100,10 @@ export default function Surveys() {
           <StatChip label="Active surveys" value={activeCount} />
           <StatChip label="Completed" value={completedCount} />
           <StatChip label="Expiring" value={expiringCount} />
-          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-[6px] bg-orange-50 px-5 py-2 text-sm font-semibold text-steel-800 tabular-nums dark:bg-orange-950/45 dark:text-steel-200 sm:ml-2">
-            {availableToEarn > 0
-              ? `$${availableToEarn.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })} available to earn`
-              : 'Honorarium set per webinar'}
+          <div className="ml-0 inline-flex min-h-[44px] items-center rounded-[6px] bg-orange-50 px-5 py-2 text-sm font-semibold text-steel-800 dark:bg-orange-950/45 dark:text-steel-200 sm:ml-2">
+            {honorariumEligibleCount > 0
+              ? `${honorariumEligibleCount} honorarium-eligible survey${honorariumEligibleCount === 1 ? '' : 's'}`
+              : 'Honorarium eligibility set per webinar'}
           </div>
         </div>
 
@@ -173,9 +160,7 @@ function StatChip({ label, value }: { label: string; value: number }) {
 }
 
 function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
-  const showHonorarium = survey.type === 'FEEDBACK';
-  const honorarium = showHonorarium ? formatHonorarium(survey.program?.honorariumAmount ?? null) : null;
-  const payoutLabel = honorarium ?? '-';
+  const showHonorarium = survey.type === 'FEEDBACK' && programHasHonorarium(survey.program);
   const remainingDays = getRemainingDays(survey);
   const badge = typeBadge(survey.type);
 
@@ -198,7 +183,9 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         <div className="flex items-start justify-between gap-2">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
           {showHonorarium ? (
-            <span className="tabular-nums inline-flex items-center text-base font-extrabold text-foreground">{payoutLabel}</span>
+            <span className="inline-flex items-center text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
+              Eligible
+            </span>
           ) : null}
         </div>
 
@@ -208,9 +195,9 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
         {survey.program?.title ? (
           <p className="line-clamp-1 text-left text-[11px] text-muted-foreground">{survey.program.title}</p>
         ) : null}
-        {honorarium ? (
+        {showHonorarium ? (
           <p className="text-[10px] font-medium leading-snug text-muted-foreground">
-            Listed honorarium (after completion). Payouts require a completed W-9 under Payments.
+            Honorarium after completion. Payouts require a completed W-9 under Payments.
           </p>
         ) : null}
 
@@ -236,7 +223,7 @@ function SurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string
 }
 
 function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUrl: string }) {
-  const honorarium = formatHonorarium(survey.program?.honorariumAmount ?? null);
+  const showHonorarium = programHasHonorarium(survey.program);
   const badge = typeBadge(survey.type);
 
   return (
@@ -257,8 +244,8 @@ function CompletedSurveyGridCard({ survey, imageUrl }: { survey: Survey; imageUr
       <div className="space-y-2.5 p-3">
         <div className="flex items-start justify-between gap-2">
           <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>{badge.label}</span>
-          {honorarium ? (
-            <span className="tabular-nums text-sm font-bold text-muted-foreground">{honorarium}</span>
+          {showHonorarium ? (
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Eligible</span>
           ) : null}
         </div>
 

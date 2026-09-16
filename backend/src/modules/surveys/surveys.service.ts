@@ -48,6 +48,7 @@ import {
   validateNativeSurveySchema,
   withNativeSchemaVersion,
 } from '../../utils/survey-schema';
+import { learnerHonorariumFlags } from '../../utils/learner-honorarium';
 
 @Injectable()
 export class SurveysService {
@@ -144,24 +145,42 @@ export class SurveysService {
       },
       orderBy: { createdAt: 'desc' },
     });
-    const mapped = surveys.map((s) => ({
-      id: s.id,
-      programId: s.programId,
-      title: s.title,
-      description: s.description,
-      type: s.type,
-      required: s.required,
-      isCustomized: s.isCustomized,
-      schemaVersion: s.schemaVersion,
-      ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
-      jotformFormId: s.jotformFormId,
-      jotformFormUrl: s.jotformFormId
-        ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
-        : null,
-      createdAt: s.createdAt.toISOString(),
-      updatedAt: s.updatedAt.toISOString(),
-      program: s.program,
-    }));
+    const mapped = surveys.map((s) => {
+      const program =
+        role === UserRole.ADMIN
+          ? s.program
+          : s.program
+            ? {
+                id: s.program.id,
+                title: s.program.title,
+                sponsorName: s.program.sponsorName,
+                creditAmount: s.program.creditAmount,
+                zoomSessionType: s.program.zoomSessionType,
+                startDate: s.program.startDate,
+                duration: s.program.duration,
+                zoomSessionEndedAt: s.program.zoomSessionEndedAt,
+                ...learnerHonorariumFlags(s.program.honorariumAmount),
+              }
+            : s.program;
+      return {
+        id: s.id,
+        programId: s.programId,
+        title: s.title,
+        description: s.description,
+        type: s.type,
+        required: s.required,
+        isCustomized: s.isCustomized,
+        schemaVersion: s.schemaVersion,
+        ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
+        jotformFormId: s.jotformFormId,
+        jotformFormUrl: s.jotformFormId
+          ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
+          : null,
+        createdAt: s.createdAt.toISOString(),
+        updatedAt: s.updatedAt.toISOString(),
+        program,
+      };
+    });
     if (role === UserRole.ADMIN) {
       return { active: mapped, completed: [] };
     }

@@ -14,6 +14,7 @@ import { programCoverImageUrl } from '../../utils/session-hero-url';
 import { resolveLiveJoinWindow } from '../../utils/session-join-window';
 import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { SurveyType } from '@prisma/client';
+import { learnerHonorariumFlags } from '../../utils/learner-honorarium';
 
 export interface MeetingSdkAuthDto {
   signature: string;
@@ -60,8 +61,8 @@ export interface WebinarItem {
   intakeSurveyId?: string;
   hasIntakeSurvey?: boolean;
   registrationRequiresApproval?: boolean;
-  /** Honorarium in whole dollars when configured on the program (stored as cents in DB). */
-  honorariumAmount?: number;
+  /** True when an honorarium is configured; dollar amount is admin-only. */
+  hasHonorarium?: boolean;
 }
 
 /**
@@ -181,9 +182,7 @@ export class WebinarsService {
         intakeSurveyId,
         hasIntakeSurvey: !!intakeSurveyId,
         registrationRequiresApproval: p.registrationRequiresApproval,
-        honorariumAmount: p.honorariumAmount
-          ? p.honorariumAmount / 100
-          : undefined,
+        ...learnerHonorariumFlags(p.honorariumAmount),
       });
     }
 
@@ -266,9 +265,7 @@ export class WebinarsService {
         intakeSurveyId,
         hasIntakeSurvey: !!intakeSurveyId,
         registrationRequiresApproval: p.registrationRequiresApproval,
-        honorariumAmount: p.honorariumAmount
-          ? p.honorariumAmount / 100
-          : undefined,
+        ...learnerHonorariumFlags(p.honorariumAmount),
       });
     }
     return items;
@@ -321,9 +318,7 @@ export class WebinarsService {
       intakeSurveyId,
       hasIntakeSurvey: !!intakeSurveyId,
       registrationRequiresApproval: program.registrationRequiresApproval,
-      honorariumAmount: program.honorariumAmount
-        ? program.honorariumAmount / 100
-        : undefined,
+      ...learnerHonorariumFlags(program.honorariumAmount),
     };
   }
 
@@ -358,9 +353,7 @@ export class WebinarsService {
       intakeSurveyId,
       hasIntakeSurvey: !!intakeSurveyId,
       registrationRequiresApproval: program.registrationRequiresApproval,
-      honorariumAmount: program.honorariumAmount
-        ? program.honorariumAmount / 100
-        : undefined,
+      ...learnerHonorariumFlags(program.honorariumAmount),
     };
   }
 

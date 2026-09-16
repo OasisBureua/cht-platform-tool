@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   CheckCircle2,
   Circle,
-  DollarSign,
   ExternalLink,
   MonitorPlay,
   Video,
@@ -29,11 +28,7 @@ import {
   removeSessionFromLiveListCaches,
 } from '../utils/live-session-list-query';
 import { getApiErrorMessage } from '../api/client';
-
-function formatMoney(value?: number | null) {
-  if (!value) return '$0';
-  return `$${value.toLocaleString()}`;
-}
+import { programHasHonorarium } from '../utils/program-has-honorarium';
 
 function formatEventDate(iso?: string | null) {
   if (!iso) return null;
@@ -317,7 +312,7 @@ export default function WebinarDetail() {
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
   const wantsPostEventExtras =
-    hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
+    hasPostEventSurvey || programHasHonorarium(program);
   const attendanceAllowsPostEvent =
     myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
     myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
@@ -486,10 +481,9 @@ export default function WebinarDetail() {
                   {program.creditAmount} CME Credits
                 </span>
               ) : null}
-              {program.honorariumAmount ? (
+              {programHasHonorarium(program) ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-success/10 border border-success/25 rounded-[6px] px-2.5 py-1">
-                  <DollarSign className="h-3.5 w-3.5" aria-hidden />
-                  {program.honorariumAmount.toLocaleString()} honorarium
+                  Honorarium eligible
                 </span>
               ) : null}
             </div>
@@ -717,7 +711,7 @@ export default function WebinarDetail() {
         </section>
       ) : null}
 
-      {enrolled && program.honorariumAmount ? (
+      {enrolled && programHasHonorarium(program) ? (
         <section className="bg-card border border-border rounded-card p-6 space-y-3">
           <h2 className="text-base font-semibold text-foreground">Payments and honorarium</h2>
           <p className="text-sm text-muted-foreground">
@@ -802,7 +796,7 @@ export default function WebinarDetail() {
           <div className="min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">{program.title}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {program.honorariumAmount ? `${formatMoney(program.honorariumAmount)} honorarium` : 'Honorarium available'} •{' '}
+              {programHasHonorarium(program) ? 'Honorarium available' : 'Live session'} •{' '}
               {program.creditAmount != null && program.creditAmount > 0 ? `${program.creditAmount} CME` : 'Live session'}
             </p>
           </div>
