@@ -53,7 +53,7 @@ export default function PublicOfficeHoursDetail() {
           <h2 className="text-xl font-bold text-foreground">Session not found</h2>
           <p className="mt-2 text-sm text-muted-foreground">That link may be invalid or expired.</p>
           <Link
-            to="/chm-office-hours"
+            to="/office-hours"
             className="mt-6 inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -65,7 +65,7 @@ export default function PublicOfficeHoursDetail() {
   }
 
   if (isAuthenticated && user && isProgram) {
-    navigate(`/app/chm-office-hours/${session.id}`, { replace: true });
+    navigate(`/app/office-hours/${session.id}`, { replace: true });
     return null;
   }
 
@@ -75,7 +75,7 @@ export default function PublicOfficeHoursDetail() {
     <div className="bg-card min-h-screen">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         <Link
-          to="/chm-office-hours"
+          to="/office-hours"
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -135,7 +135,7 @@ export default function PublicOfficeHoursDetail() {
                   <Link
                     to="/login"
                     state={{
-                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}/register` : `/chm-office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/office-hours/${session.id}/register` : `/office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
                   >
@@ -145,7 +145,7 @@ export default function PublicOfficeHoursDetail() {
                   <Link
                     to="/join"
                     state={{
-                      from: { pathname: isProgram ? `/app/chm-office-hours/${session.id}/register` : `/chm-office-hours/${id}` },
+                      from: { pathname: isProgram ? `/app/office-hours/${session.id}/register` : `/office-hours/${id}` },
                     }}
                     className="inline-flex items-center gap-2 rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
                   >

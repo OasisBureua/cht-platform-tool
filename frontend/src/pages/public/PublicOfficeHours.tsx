@@ -91,7 +91,7 @@ function SessionRow({ session: w, expired = false }: { session: WebinarItem; exp
 
   return (
     <Link
-      to={`/chm-office-hours/${w.id}`}
+      to={`/office-hours/${w.id}`}
       className="flex items-center gap-4 px-5 py-4 hover:bg-muted transition-colors group"
     >
       <div className="shrink-0 w-12 text-center">

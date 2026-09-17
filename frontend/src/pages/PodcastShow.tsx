@@ -11,7 +11,7 @@ export default function PodcastShow() {
   const show = PODCAST_SHOWS.find((s) => s.id === showId);
 
   if (!showId || !show) {
-    return <Navigate to="/app/podcasts" replace />;
+    return <Navigate to="/app/podcast-network" replace />;
   }
 
   if (legacyVideoId) {
@@ -22,7 +22,7 @@ export default function PodcastShow() {
     <div className="flex flex-col gap-6 pb-24 md:gap-8 md:pb-16">
       <div>
         <Link
-          to="/app/podcasts"
+          to="/app/podcast-network"
           className="inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-steel-700 transition-colors hover:text-steel-600 dark:text-steel-400 dark:hover:text-steel-300"
         >
           <ArrowLeft className="h-4 w-4 shrink-0" aria-hidden />

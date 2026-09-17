@@ -80,7 +80,7 @@ export default function ProgramRegisterWizard() {
     location.pathname.includes('/office-hours/') ||
     location.pathname.includes('/chm-office-hours/');
   const backHref = isOfficeHours
-    ? `/app/chm-office-hours/${id}`
+    ? `/app/office-hours/${id}`
     : `/app/live/${id}`;
 
   const { data: program, isLoading, isError } = useQuery({

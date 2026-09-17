@@ -68,6 +68,8 @@ const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 const CompanionChat         = lazy(() => import('./pages/CompanionChat'));
 const KolNetwork            = lazy(() => import('./pages/KolNetwork'));
+const PodcastNetwork        = lazy(() => import('./pages/public/PodcastNetwork'));
+const PodcastNetworkShow    = lazy(() => import('./pages/public/PodcastNetworkShow'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -142,17 +144,16 @@ function App() {
                 PUBLIC ROUTES
                 ======================= */}
             <Route element={<PublicLayout />}>
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              {/* The homepage is order C: seven sections folded into five.
-                  On testapp this is held behind login until public launch. */}
+              {/* Homepage at `/`; `/home` kept as a legacy alias. */}
               <Route
-                path="/home"
+                path="/"
                 element={
                   <HoldTestappPublicHome>
                     <HomeBento />
                   </HoldTestappPublicHome>
                 }
               />
+              <Route path="/home" element={<Navigate to="/" replace />} />
               {/* Order B, kept for comparison. Not linked from the nav. */}
               <Route
                 path="/home-tame"
@@ -184,26 +185,33 @@ function App() {
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
 
-
               <Route path="/search" element={<Search />} />
               <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />
               <Route path="/watch" element={<Navigate to="/catalog" replace />} />
               <Route path="/live" element={<PublicWebinars />} />
               <Route path="/live/:id" element={<PublicWebinarDetail />} />
               <Route path="/webinars" element={<Navigate to="/live" replace />} />
-              <Route path="/webinars/:id" element={<PublicWebinarDetail />} />
-              <Route path="/chm-office-hours/:id" element={<PublicOfficeHoursDetail />} />
-              <Route path="/chm-office-hours" element={<PublicOfficeHours />} />
-              <Route path="/office-hours/:id" element={<Navigate to="/chm-office-hours/:id" replace />} />
-              <Route path="/office-hours" element={<Navigate to="/chm-office-hours" replace />} />
+              <Route path="/webinars/:id" element={<LegacyWebinarDetailRedirect />} />
+              <Route path="/office-hours" element={<PublicOfficeHours />} />
+              <Route path="/office-hours/:id" element={<PublicOfficeHoursDetail />} />
+              {/* Legacy branded Office Hours paths */}
+              <Route path="/chm-office-hours" element={<Navigate to="/office-hours" replace />} />
+              <Route path="/chm-office-hours/:id" element={<LegacyOfficeHoursDetailRedirect />} />
               <Route path="/surveys" element={<PublicSurveys />} />
               <Route path="/for-hcps" element={<ForHCPs />} />
               {/* Merged into /about: one page for who we are and what we run. */}
               <Route path="/what-we-do" element={<Navigate to="/about" replace />} />
-              <Route path="/chm-docs" element={<Navigate to="/home" replace />} />
-              <Route path="/kol-network" element={<DolNetwork />} />
-              <Route path="/kol-network/profile/:kolId" element={<KolProfilePage />} />
-              <Route path="/kol-network/:regionSlug" element={<DolRegionDetail />} />
+              <Route path="/chm-docs" element={<Navigate to="/" replace />} />
+              {/* Clean public URLs: /kols, /kols/:slug, /kols/states/:code */}
+              <Route path="/kols" element={<DolNetwork />} />
+              <Route path="/kols/states/:regionSlug" element={<DolRegionDetail />} />
+              <Route path="/kols/:kolId" element={<KolProfilePage />} />
+              <Route path="/podcast-network" element={<PodcastNetwork />} />
+              <Route path="/podcast-network/:showId" element={<PodcastNetworkShow />} />
+              {/* Legacy KOL paths */}
+              <Route path="/kol-network" element={<Navigate to="/kols" replace />} />
+              <Route path="/kol-network/profile/:kolId" element={<LegacyKolProfileRedirect />} />
+              <Route path="/kol-network/:regionSlug" element={<LegacyKolRegionRedirect />} />
             </Route>
 
             {/* =======================
@@ -222,11 +230,11 @@ function App() {
               <Route path="live/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
               <Route path="webinars/:id/session" element={<ZoomSessionPage sessionKind="WEBINAR" />} />
               <Route
-                path="chm-office-hours/:id/session"
+                path="office-hours/:id/session"
                 element={<ZoomSessionPage sessionKind="MEETING" />}
               />
               <Route
-                path="office-hours/:id/session"
+                path="chm-office-hours/:id/session"
                 element={<ZoomSessionPage sessionKind="MEETING" />}
               />
 
@@ -241,15 +249,19 @@ function App() {
                 <Route path="live/:id/register" element={<ProgramRegisterWizard />} />
                 <Route path="live/:id" element={<WebinarDetail />} />
                 <Route path="webinars" element={<Navigate to="/app/live" replace />} />
-                <Route path="webinars/:id/register" element={<ProgramRegisterWizard />} />
-                <Route path="webinars/:id" element={<WebinarDetail />} />
+                <Route path="webinars/:id/register" element={<LegacyAppWebinarRegisterRedirect />} />
+                <Route path="webinars/:id" element={<LegacyAppWebinarDetailRedirect />} />
 
-                <Route path="chm-office-hours" element={<OfficeHours />} />
-                <Route path="chm-office-hours/:id/register" element={<ProgramRegisterWizard />} />
-                <Route path="chm-office-hours/:id" element={<OfficeHoursDetail />} />
-                <Route path="office-hours" element={<Navigate to="/app/chm-office-hours" replace />} />
+                <Route path="office-hours" element={<OfficeHours />} />
                 <Route path="office-hours/:id/register" element={<ProgramRegisterWizard />} />
                 <Route path="office-hours/:id" element={<OfficeHoursDetail />} />
+                {/* Legacy branded Office Hours paths */}
+                <Route path="chm-office-hours" element={<Navigate to="/app/office-hours" replace />} />
+                <Route
+                  path="chm-office-hours/:id/register"
+                  element={<LegacyAppOfficeHoursRegisterRedirect />}
+                />
+                <Route path="chm-office-hours/:id" element={<LegacyAppOfficeHoursDetailRedirect />} />
 
                 <Route path="chm-docs" element={<Navigate to="/app/home" replace />} />
                 <Route path="disease-areas" element={<Navigate to="/app/home" replace />} />
@@ -257,9 +269,16 @@ function App() {
                 <Route path="surveys" element={<Surveys />} />
                 <Route path="surveys/:id" element={<SurveyDetail />} />
 
-                <Route path="podcasts" element={<Podcasts />} />
-                <Route path="podcasts/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
-                <Route path="podcasts/:showId" element={<PodcastShow />} />
+                <Route path="podcast-network" element={<Podcasts />} />
+                <Route path="podcast-network/:showId/watch/:episodeId" element={<PodcastEpisodeWatch />} />
+                <Route path="podcast-network/:showId" element={<PodcastShow />} />
+                {/* Legacy in-app podcast paths */}
+                <Route path="podcasts" element={<Navigate to="/app/podcast-network" replace />} />
+                <Route
+                  path="podcasts/:showId/watch/:episodeId"
+                  element={<LegacyAppPodcastWatchRedirect />}
+                />
+                <Route path="podcasts/:showId" element={<LegacyAppPodcastShowRedirect />} />
 
                 <Route path="watch/:videoId" element={<WatchVideo />} />
                 <Route path="watch" element={<Navigate to={APP_CATALOG_CONVERSATIONS_HUB} replace />} />
@@ -274,9 +293,13 @@ function App() {
                 <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
                 <Route path="catalog" element={<VideosPage />} />
 
-                <Route path="kol-network" element={<KolNetwork />} />
-                <Route path="kol-network/profile/:kolId" element={<KolProfilePage />} />
-                <Route path="kol-network/:regionSlug" element={<DolRegionDetail />} />
+                <Route path="kols" element={<KolNetwork />} />
+                <Route path="kols/states/:regionSlug" element={<DolRegionDetail />} />
+                <Route path="kols/:kolId" element={<KolProfilePage />} />
+                {/* Legacy in-app KOL paths */}
+                <Route path="kol-network" element={<Navigate to="/app/kols" replace />} />
+                <Route path="kol-network/profile/:kolId" element={<LegacyAppKolProfileRedirect />} />
+                <Route path="kol-network/:regionSlug" element={<LegacyAppKolRegionRedirect />} />
 
                 <Route path="earnings" element={<Earnings />} />
                 {isCompanionEnabled() ? (
@@ -298,7 +321,7 @@ function App() {
             <Route path="/earnings" element={<Navigate to="/app/earnings" replace />} />
             <Route path="/payments" element={<Navigate to="/app/payments" replace />} />
             <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
-            <Route path="/programs" element={<Navigate to="/app/webinars" replace />} />
+            <Route path="/programs" element={<Navigate to="/app/live" replace />} />
 
             {/* =======================
                 ADMIN ROUTES
@@ -390,4 +413,104 @@ function AdminProgramHubRedirect() {
 function WatchVideoRedirect() {
   const { videoId } = useParams<{ videoId: string }>();
   return <Navigate to={videoId ? `/catalog/clip/${videoId}` : '/catalog'} replace />;
+}
+
+function LegacyKolProfileRedirect() {
+  const { kolId } = useParams<{ kolId: string }>();
+  return <Navigate to={kolId ? `/kols/${encodeURIComponent(kolId)}` : '/kols'} replace />;
+}
+
+function LegacyKolRegionRedirect() {
+  const { regionSlug } = useParams<{ regionSlug: string }>();
+  return (
+    <Navigate
+      to={regionSlug ? `/kols/states/${encodeURIComponent(regionSlug)}` : '/kols'}
+      replace
+    />
+  );
+}
+
+function LegacyAppKolProfileRedirect() {
+  const { kolId } = useParams<{ kolId: string }>();
+  return <Navigate to={kolId ? `/app/kols/${encodeURIComponent(kolId)}` : '/app/kols'} replace />;
+}
+
+function LegacyAppKolRegionRedirect() {
+  const { regionSlug } = useParams<{ regionSlug: string }>();
+  return (
+    <Navigate
+      to={regionSlug ? `/app/kols/states/${encodeURIComponent(regionSlug)}` : '/app/kols'}
+      replace
+    />
+  );
+}
+
+function LegacyWebinarDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/live/${encodeURIComponent(id)}` : '/live'} replace />;
+}
+
+function LegacyOfficeHoursDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <Navigate to={id ? `/office-hours/${encodeURIComponent(id)}` : '/office-hours'} replace />
+  );
+}
+
+function LegacyAppWebinarDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/app/live/${encodeURIComponent(id)}` : '/app/live'} replace />;
+}
+
+function LegacyAppWebinarRegisterRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <Navigate
+      to={id ? `/app/live/${encodeURIComponent(id)}/register` : '/app/live'}
+      replace
+    />
+  );
+}
+
+function LegacyAppOfficeHoursDetailRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <Navigate
+      to={id ? `/app/office-hours/${encodeURIComponent(id)}` : '/app/office-hours'}
+      replace
+    />
+  );
+}
+
+function LegacyAppOfficeHoursRegisterRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <Navigate
+      to={id ? `/app/office-hours/${encodeURIComponent(id)}/register` : '/app/office-hours'}
+      replace
+    />
+  );
+}
+
+function LegacyAppPodcastShowRedirect() {
+  const { showId } = useParams<{ showId: string }>();
+  return (
+    <Navigate
+      to={showId ? `/app/podcast-network/${encodeURIComponent(showId)}` : '/app/podcast-network'}
+      replace
+    />
+  );
+}
+
+function LegacyAppPodcastWatchRedirect() {
+  const { showId, episodeId } = useParams<{ showId: string; episodeId: string }>();
+  if (!showId || !episodeId) {
+    return <Navigate to="/app/podcast-network" replace />;
+  }
+  return (
+    <Navigate
+      to={`/app/podcast-network/${encodeURIComponent(showId)}/watch/${encodeURIComponent(episodeId)}`}
+      replace
+    />
+  );
 }

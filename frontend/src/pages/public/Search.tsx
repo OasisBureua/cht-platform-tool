@@ -59,7 +59,7 @@ const MOCK_RESULTS: SearchResult[] = [
     subtitle: 'Webinar • 1 CME Credit • Sponsor Name',
     type: 'Webinar',
     tag: 'Webinars',
-    href: '/webinars',
+    href: '/live',
   },
 ];
 

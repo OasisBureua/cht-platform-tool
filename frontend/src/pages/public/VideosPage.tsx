@@ -854,7 +854,7 @@ export default function VideosPage() {
                   <ArrowRight className="size-4" strokeWidth={1.75} />
                 </Button>
                 <Button
-                  to="/kol-network"
+                  to="/kols"
                   variant="outline"
                   className={`${BTN} bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
                 >
@@ -907,7 +907,7 @@ export default function VideosPage() {
               poster, so the faculty route lives beside the search. */}
           {isInApp ? (
             <Button
-              to="/kol-network"
+              to="/kols"
               variant="outline"
               className={`${BTN} h-14 shrink-0 bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
             >

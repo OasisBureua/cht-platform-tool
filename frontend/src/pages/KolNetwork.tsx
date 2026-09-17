@@ -10,7 +10,7 @@ import {
 import { useKolDirectory, type DolEntry, type DolRegion } from '../hooks/useKolDirectory';
 import { hasAiSummary, resolveKolDisplayBrief } from '../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../utils/kol-catalog-link';
-import { KOL_NETWORK_APP_BASE } from '../utils/kol-network-paths';
+import { KOL_NETWORK_APP_BASE, kolProfilePath, kolRegionPath } from '../utils/kol-network-paths';
 
 type FlatKol = DolEntry & {
   stateId: string;
@@ -62,7 +62,7 @@ const fieldClass =
   'focus-visible:ring-2 focus-visible:ring-steel-500/30';
 
 /**
- * Member-shell KOL directory — same data as public `/kol-network`,
+ * Member-shell KOL directory — same data as public `/kols`,
  * styled like LIVE / Surveys (icon title, chips, filter bar, card grid).
  */
 export default function KolNetwork() {
@@ -296,7 +296,7 @@ export default function KolNetwork() {
                   · {list.length} {list.length === 1 ? 'KOL' : 'KOLs'}
                 </span>
                 <Link
-                  to={`${KOL_NETWORK_APP_BASE}/${st}`}
+                  to={kolRegionPath(KOL_NETWORK_APP_BASE, st)}
                   className="ms-auto text-xs font-semibold text-steel-700 hover:underline dark:text-steel-400"
                 >
                   View state
@@ -361,7 +361,7 @@ function KolGrid({ list }: { list: FlatKol[] }) {
 }
 
 function KolCard({ k }: { k: FlatKol }) {
-  const profileHref = `${KOL_NETWORK_APP_BASE}/profile/${k.id}`;
+  const profileHref = kolProfilePath(KOL_NETWORK_APP_BASE, k.id);
   const catalogHref = kolCatalogBrowseHref(k).replace(/^\/catalog/, '/app/catalog');
   const inst = institutionHint(k);
 
