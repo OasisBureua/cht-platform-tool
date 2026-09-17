@@ -59,7 +59,7 @@ function KolRow({
           {kol.region_label ? ` · ${kol.region_label}` : ''}
         </div>
         <Link
-          to={`/kol-network/profile/${encodeURIComponent(slug)}`}
+          to={`/kols/${encodeURIComponent(slug)}`}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-400"

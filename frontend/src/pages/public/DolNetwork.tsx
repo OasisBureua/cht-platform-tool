@@ -137,7 +137,7 @@ function Chrome({ label }: { label: string }) {
 function KolPanel({ rows, count }: { rows: FlatKol[]; count: number }) {
   return (
     <HeroPanel>
-      <Chrome label="chm / kol-network" />
+      <Chrome label="chm / kols" />
       <div className="p-4">
         <div className="flex gap-2">
           <span className="flex h-9 flex-1 items-center rounded-[6px] bg-surface px-3 text-body-s text-faint">
@@ -213,6 +213,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
   const [sort, setSort] = useState<Sort>('state');
   const [newOnly, setNewOnly] = useState(false);
   const id = useId();
+  const basePath = embedded ? '/app/kols' : '/kols';
+  const catalogBase = embedded ? '/app/catalog' : '/catalog';
 
   // Search hits the API, so it waits for a pause in typing.
   useEffect(() => {
@@ -452,49 +454,73 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                     {list.length} {list.length === 1 ? 'KOL' : 'KOLs'}
                   </span>
                 </div>
-                <KolGrid list={list} />
+                <KolGrid list={list} basePath={basePath} catalogBase={catalogBase} />
               </section>
             ))}
           </div>
         ) : (
-          <KolGrid list={shown} />
+          <KolGrid list={shown} basePath={basePath} catalogBase={catalogBase} />
         )}
       </div>
 
-      <section>
-        <div className={`${rail} flex flex-wrap items-center justify-between gap-8 ${embedded ? 'py-10' : 'py-16'}`}>
-          <div>
-            <h2 className="display text-display-m text-text">Practising, and want to record?</h2>
-            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
-              CHM faculty are clinicians first. Sessions are recorded between clinics, in ninety
-              minutes, with no script approval.
-            </p>
+      {/* Public marketing CTA — omit inside the member app shell. */}
+      {!embedded ? (
+        <section>
+          <div className={`${rail} flex flex-wrap items-center justify-between gap-8 py-16`}>
+            <div>
+              <h2 className="display text-display-m text-text">Practising, and want to record?</h2>
+              <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+                CHM faculty are clinicians first. Sessions are recorded between clinics, in ninety
+                minutes, with no script approval.
+              </p>
+            </div>
+            <Button to="/contact" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+              Talk to the editorial team
+              <ArrowRight className="size-4" strokeWidth={1.75} />
+            </Button>
           </div>
-          <Button to="/contact" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
-            Talk to the editorial team
-            <ArrowRight className="size-4" strokeWidth={1.75} />
-          </Button>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }
 
-function KolGrid({ list }: { list: FlatKol[] }) {
+function KolGrid({
+  list,
+  basePath,
+  catalogBase,
+}: {
+  list: FlatKol[];
+  basePath: string;
+  catalogBase: string;
+}) {
   return (
     <ul className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {list.map((k, i) => (
         <Reveal as="li" key={`${k.stateId}-${k.id}`} delay={Math.min(i, 6) * 50}>
-          <KolCard k={k} />
+          <KolCard k={k} basePath={basePath} catalogBase={catalogBase} />
         </Reveal>
       ))}
     </ul>
   );
 }
 
-function KolCard({ k }: { k: FlatKol }) {
-  const profileHref = `/kol-network/profile/${k.id}`;
+function KolCard({
+  k,
+  basePath,
+  catalogBase,
+}: {
+  k: FlatKol;
+  basePath: string;
+  catalogBase: string;
+}) {
+  const profileHref = `${basePath}/${encodeURIComponent(k.id)}`;
   const inst = institutionHint(k);
+  const catalogHref = (() => {
+    const publicHref = kolCatalogBrowseHref(k);
+    if (catalogBase === '/catalog') return publicHref;
+    return publicHref.replace(/^\/catalog/, catalogBase);
+  })();
 
   return (
     /* The card is a container, not a link: it carries two
@@ -581,7 +607,7 @@ function KolCard({ k }: { k: FlatKol }) {
           <ArrowRight className="size-3.5" strokeWidth={1.75} />
         </Link>
         <Link
-          to={kolCatalogBrowseHref(k)}
+          to={catalogHref}
           className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           View content

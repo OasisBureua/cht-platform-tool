@@ -20,14 +20,11 @@ export function readIntakeSubmissionIdFromSearch(search: string): string | undef
  * (not the session detail page, which does not read submission ids).
  */
 export function buildProgramRegisterHref(programId: string, pathname: string): string {
-  if (pathname.includes('/chm-office-hours/')) {
-    return `/app/chm-office-hours/${programId}/register`;
-  }
-  if (pathname.includes('/office-hours/')) {
+  if (pathname.includes('/office-hours/') || pathname.includes('/chm-office-hours/')) {
     return `/app/office-hours/${programId}/register`;
   }
   if (pathname.includes('/webinars/')) {
-    return `/app/webinars/${programId}/register`;
+    return `/app/live/${programId}/register`;
   }
   return `/app/live/${programId}/register`;
 }

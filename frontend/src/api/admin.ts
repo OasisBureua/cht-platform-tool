@@ -1603,8 +1603,19 @@ export const adminApi = {
     return data as PostEventAttendanceAdminRow[];
   },
 
-  listSurveyResponses: async (surveyId: string) => {
-    const { data } = await apiClient.get(`/admin/surveys/${encodeURIComponent(surveyId)}/responses`);
+  listSurveyResponses: async (
+    surveyId: string,
+    params?: { page?: number; pageSize?: number },
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/responses`,
+      {
+        params: {
+          page: params?.page,
+          pageSize: params?.pageSize,
+        },
+      },
+    );
     return data as {
       survey: {
         id: string;
@@ -1630,6 +1641,11 @@ export const adminApi = {
           postEventAttendanceStatus: string;
         } | null;
       }>;
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+      };
     };
   },
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { isTestappHost, resolveApiBaseUrl, resolveAppBaseUrl } from '../../config/app-urls';
+import { isTestappHost, isDevappHost, isCompanionEnabled, resolveApiBaseUrl, resolveAppBaseUrl } from '../../config/app-urls';
 
 describe('app-urls', () => {
   afterEach(() => {
@@ -50,6 +50,20 @@ describe('app-urls', () => {
     expect(isTestappHost('staging.testapp.communityhealth.media')).toBe(true);
     expect(isTestappHost('app.communityhealth.media')).toBe(true);
     expect(isTestappHost('devapp.communityhealth.media')).toBe(false);
+  });
+
+  it('detects devapp hosts for Companion gating', () => {
+    expect(isDevappHost('devapp.communityhealth.media')).toBe(true);
+    expect(isDevappHost('preview.devapp.communityhealth.media')).toBe(true);
+    expect(isDevappHost('testapp.communityhealth.media')).toBe(false);
+  });
+
+  it('enables Companion only on devapp / local — never on app. or testapp', () => {
+    expect(isCompanionEnabled('devapp.communityhealth.media')).toBe(true);
+    expect(isCompanionEnabled('preview.devapp.communityhealth.media')).toBe(true);
+    expect(isCompanionEnabled('testapp.communityhealth.media')).toBe(false);
+    expect(isCompanionEnabled('staging.testapp.communityhealth.media')).toBe(false);
+    expect(isCompanionEnabled('app.communityhealth.media')).toBe(false);
   });
 
   it('falls back to same-origin /api on app. host when env unset', () => {

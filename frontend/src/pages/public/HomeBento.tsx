@@ -678,7 +678,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             id="shows-heading"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/catalog' }}
+            seeAll={{ noun: 'shows', to: '/podcast-network' }}
           />
           {showsBody}
         </Band>
@@ -739,7 +739,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
           <LatestTabs
             tracks={[
               { key: 'video', label: 'Video', panel: nowBody, more: { to: '/catalog', label: 'Browse the library' } },
-              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/catalog', label: 'Browse the library' } },
+              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/podcast-network', label: 'Browse the network' } },
               { key: 'editorial', label: 'Editorial', panel: articlesBody, more: { to: '/catalog', label: 'Browse the library' } },
             ]}
           />
@@ -754,7 +754,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             id="kol-heading"
             title="In conversation"
             sub="Practising specialists who bring their own audiences."
-            seeAll={{ noun: 'profiles', to: '/kol-network' }}
+            seeAll={{ noun: 'profiles', to: '/kols' }}
           />
           <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-6">
             {faculty.map((k, i) => (
@@ -767,7 +767,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
                 className={i < 3 ? 'sm:col-span-2' : 'sm:col-span-3'}
               >
                 <Link
-                  to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
+                  to={`/kols/${encodeURIComponent(k.id)}`}
                   className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {k.photoUrl ? (

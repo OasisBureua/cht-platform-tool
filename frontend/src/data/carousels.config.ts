@@ -66,14 +66,14 @@ export const ANON_CAROUSELS: CarouselConfig[] = [
   {
     id: 'anon-home-featured',
     label: 'Featured videos',
-    surface: '/home',
+    surface: '/',
     sort_by: 'views', // highest-watched stand-ins for "curated" until we have an is_featured flag
     limit: 6,
   },
   {
     id: 'anon-home-her2',
     label: 'HER2+',
-    surface: '/home',
+    surface: '/',
     tag: 'biomarker:HER2+',
     sort_by: 'recorded_at',
     limit: 12,
@@ -81,7 +81,7 @@ export const ANON_CAROUSELS: CarouselConfig[] = [
   {
     id: 'anon-home-hr',
     label: 'HR+',
-    surface: '/home',
+    surface: '/',
     tag: 'biomarker:HR+',
     sort_by: 'recorded_at',
     limit: 12,

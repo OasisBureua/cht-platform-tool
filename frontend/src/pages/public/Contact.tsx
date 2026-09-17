@@ -211,7 +211,7 @@ export default function Contact() {
                       Browse the library
                       <ArrowRight className="size-4" strokeWidth={1.75} />
                     </Button>
-                    <Button to="/home" variant="outline">
+                    <Button to="/" variant="outline">
                       Back to the homepage
                     </Button>
                   </div>
@@ -325,7 +325,7 @@ export default function Contact() {
           <h2 className="display max-w-[24ch] text-display-m text-text">
             Practising, and want to record with us?
           </h2>
-          <Button to="/kol-network" variant="outline">
+          <Button to="/kols" variant="outline">
             See the KOL network
             <ArrowRight className="size-4" strokeWidth={1.75} />
           </Button>

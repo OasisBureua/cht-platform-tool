@@ -4,6 +4,8 @@ const SAME_ORIGIN_API_HOSTS = [
   'app.communityhealth.media',
 ] as const;
 
+const DEVAPP_HOST = 'devapp.communityhealth.media';
+
 function isSameOriginApiHost(hostname: string): boolean {
   return SAME_ORIGIN_API_HOSTS.some(
     (host) => hostname === host || hostname.endsWith(`.${host}`),
@@ -18,6 +20,30 @@ export function isTestappHost(
   hostname = typeof window !== 'undefined' ? window.location.hostname : '',
 ): boolean {
   return isSameOriginApiHost(hostname);
+}
+
+/** Dev environment host (Companion nav/UI gated here for now). */
+export function isDevappHost(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  return hostname === DEVAPP_HOST || hostname.endsWith(`.${DEVAPP_HOST}`);
+}
+
+/**
+ * Companion (chatbot) — still in development.
+ * Allow: `devapp.communityhealth.media` (+ subdomains), and Vite DEV on localhost.
+ * Deny: `app.`, `testapp.`, and every other deployed host.
+ */
+export function isCompanionEnabled(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  // Platform / staging aliases must never show Companion until cutover.
+  if (isTestappHost(hostname)) return false;
+  if (isDevappHost(hostname)) return true;
+  if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
+    return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+  }
+  return false;
 }
 
 function trimTrailingSlash(url: string): string {

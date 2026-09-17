@@ -1,8 +1,9 @@
 import { NavLink, Link } from 'react-router-dom';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
-import { APP_NAV_ITEMS } from './appNavItems';
+import { getAppNavItems } from './appNavItems';
 
 export default function AppSidebar() {
+  const navItems = getAppNavItems();
   return (
     <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col bg-white/70 shadow-[6px_0_36px_-20px_rgba(0,0,0,0.09)] backdrop-blur-xl backdrop-saturate-150 md:flex /85 dark:shadow-[8px_0_40px_-22px_rgba(0,0,0,0.55)]">
       <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-zinc-200/25 /60">
@@ -15,19 +16,22 @@ export default function AppSidebar() {
         </Link>
       </div>
 
-      {/* Nav band uses ~3/4 of the space below the logo; remaining 1/4 stays empty. */}
+      {/* Pack items from the top so empty space stays below — scroll only if the
+          list truly exceeds the viewport (many more items than today). */}
       <nav
-        className="app-sidebar-nav flex min-h-0 flex-[3] flex-col items-center justify-between overflow-y-auto overflow-x-hidden px-1.5 py-4"
+        className="app-sidebar-nav flex min-h-0 flex-1 flex-col items-center gap-1 overflow-y-auto overflow-x-hidden px-1.5 py-3"
         aria-label="Primary"
       >
-        {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
+        {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (
           <NavLink
             key={to}
             to={to}
             end={end}
+            title={title ?? label}
+            aria-label={title ?? label}
             className={({ isActive }) =>
               [
-                'flex h-[4.5rem] w-[88px] shrink-0 flex-col items-center justify-center gap-2 rounded-card px-1.5 py-2 text-center transition-[color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',
+                'flex h-[4.25rem] w-[88px] shrink-0 flex-col items-center justify-center gap-1.5 rounded-card px-1.5 py-2 text-center transition-[color,background-color,transform,box-shadow] duration-200 ease-[cubic-bezier(0.2,0,0,1)] active:scale-[0.96]',
                 isActive
                   ? 'bg-steel-100 text-steel-950 shadow-[inset_0_0_0_1px_rgba(49,105,149,0.18),0_8px_24px_-12px_rgba(49,105,149,0.22)] ring-2 ring-steel-500/25 ring-offset-0 dark:bg-steel-600 dark:text-white dark:ring-steel-400/35 dark:shadow-[0_8px_28px_-12px_rgba(37,99,235,0.35)]'
                   : 'text-foreground hover:bg-steel-50/90 dark:hover:text-white',
@@ -56,7 +60,6 @@ export default function AppSidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="min-h-0 flex-1" aria-hidden />
     </aside>
   );
 }
