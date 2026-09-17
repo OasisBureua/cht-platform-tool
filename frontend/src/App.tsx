@@ -12,6 +12,7 @@ import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import HoldTestappPublicHome from './components/HoldTestappPublicHome';
 import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
+import { isCompanionEnabled } from './config/app-urls';
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home                  = lazy(() => import('./pages/public/Home'));
@@ -278,7 +279,11 @@ function App() {
                 <Route path="kol-network/:regionSlug" element={<DolRegionDetail />} />
 
                 <Route path="earnings" element={<Earnings />} />
-                <Route path="chatbot" element={<CompanionChat />} />
+                {isCompanionEnabled() ? (
+                  <Route path="chatbot" element={<CompanionChat />} />
+                ) : (
+                  <Route path="chatbot" element={<Navigate to="/app/home" replace />} />
+                )}
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
 

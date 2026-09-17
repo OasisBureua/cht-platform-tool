@@ -58,9 +58,12 @@ describe('app-urls', () => {
     expect(isDevappHost('testapp.communityhealth.media')).toBe(false);
   });
 
-  it('enables Companion on devapp only (not testapp)', () => {
+  it('enables Companion only on devapp / local — never on app. or testapp', () => {
     expect(isCompanionEnabled('devapp.communityhealth.media')).toBe(true);
+    expect(isCompanionEnabled('preview.devapp.communityhealth.media')).toBe(true);
     expect(isCompanionEnabled('testapp.communityhealth.media')).toBe(false);
+    expect(isCompanionEnabled('staging.testapp.communityhealth.media')).toBe(false);
+    expect(isCompanionEnabled('app.communityhealth.media')).toBe(false);
   });
 
   it('falls back to same-origin /api on app. host when env unset', () => {
