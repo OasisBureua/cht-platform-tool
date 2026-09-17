@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Patch,
   Post,
   Body,
@@ -591,13 +592,28 @@ export class AdminController {
   }
 
   @Get('surveys/:id/responses')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List all learner responses for a survey' })
+  @ApiOperation({ summary: 'List learner responses for a survey (paginated)' })
   @ApiParam({ name: 'id', description: 'Survey ID' })
-  listSurveyResponses(@Param('id') id: string) {
-    return this.surveysService.listResponsesForAdmin(id);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Default 10, max 100',
+  })
+  listSurveyResponses(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.surveysService.listResponsesForAdmin(id, {
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10,
+    });
   }
 
   @Get('surveys/:id/analytics')
