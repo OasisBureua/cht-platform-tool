@@ -12,6 +12,7 @@ import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import HoldTestappPublicHome from './components/HoldTestappPublicHome';
 import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
+import { isCompanionEnabled } from './config/app-urls';
 
 // ── Public pages (lazy) ───────────────────────────────────────────────────────
 const Home                  = lazy(() => import('./pages/public/Home'));
@@ -66,6 +67,7 @@ const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 const CompanionChat         = lazy(() => import('./pages/CompanionChat'));
+const KolNetwork            = lazy(() => import('./pages/KolNetwork'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -272,8 +274,16 @@ function App() {
                 <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
                 <Route path="catalog" element={<VideosPage />} />
 
+                <Route path="kol-network" element={<KolNetwork />} />
+                <Route path="kol-network/profile/:kolId" element={<KolProfilePage />} />
+                <Route path="kol-network/:regionSlug" element={<DolRegionDetail />} />
+
                 <Route path="earnings" element={<Earnings />} />
-                <Route path="chatbot" element={<CompanionChat />} />
+                {isCompanionEnabled() ? (
+                  <Route path="chatbot" element={<CompanionChat />} />
+                ) : (
+                  <Route path="chatbot" element={<Navigate to="/app/home" replace />} />
+                )}
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
 

@@ -7,9 +7,11 @@ import {
   ClipboardList,
   Banknote,
   MessagesSquare,
+  Stethoscope,
 } from 'lucide-react';
 import type { NavIconTone } from './navIconTones';
 import { isCompanionEnabled } from '../../config/app-urls';
+import { KOL_NETWORK_APP_BASE } from '../../utils/kol-network-paths';
 
 export type AppNavItem = {
   to: string;
@@ -47,6 +49,14 @@ const APP_NAV_ITEMS_CORE: AppNavItem[] = [
   { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, iconTone: 'text-ink-cyan', end: false },
   { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, iconTone: 'text-ink-pink', end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-anchor', end: false },
+  {
+    to: KOL_NETWORK_APP_BASE,
+    label: 'KOL Network',
+    title: 'KOL Network',
+    icon: Stethoscope,
+    iconTone: 'text-ink-purple',
+    end: false,
+  },
   { to: '/app/earnings', label: 'Earnings', icon: Banknote, iconTone: 'text-ink-green', end: false },
 ];
 

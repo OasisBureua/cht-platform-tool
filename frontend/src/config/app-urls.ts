@@ -30,12 +30,15 @@ export function isDevappHost(
 }
 
 /**
- * Companion (chatbot) is enabled on devapp, and locally for Vite DEV.
- * Hidden on testapp / prod until cutover.
+ * Companion (chatbot) — still in development.
+ * Allow: `devapp.communityhealth.media` (+ subdomains), and Vite DEV on localhost.
+ * Deny: `app.`, `testapp.`, and every other deployed host.
  */
 export function isCompanionEnabled(
   hostname = typeof window !== 'undefined' ? window.location.hostname : '',
 ): boolean {
+  // Platform / staging aliases must never show Companion until cutover.
+  if (isTestappHost(hostname)) return false;
   if (isDevappHost(hostname)) return true;
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {
     return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
