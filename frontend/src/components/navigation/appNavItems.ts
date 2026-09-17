@@ -45,9 +45,9 @@ export const APP_CATALOG_SERIES_BROWSE = '/app/catalog?view=series';
  */
 const APP_NAV_ITEMS_CORE: AppNavItem[] = [
   { to: '/app/live', label: 'LIVE', icon: Radio, iconTone: 'text-ink-coral', end: false },
-  { to: '/app/chm-office-hours', label: 'Office Hrs', icon: CalendarClock, iconTone: 'text-ink-purple', end: false },
+  { to: '/app/office-hours', label: 'Office Hrs', icon: CalendarClock, iconTone: 'text-ink-purple', end: false },
   { to: APP_CATALOG_CONVERSATIONS_HUB, label: 'Conversations', icon: MonitorPlay, iconTone: 'text-ink-cyan', end: false },
-  { to: '/app/podcasts', label: 'Podcasts', icon: Mic2, iconTone: 'text-ink-pink', end: false },
+  { to: '/app/podcast-network', label: 'Podcasts', icon: Mic2, iconTone: 'text-ink-pink', end: false },
   { to: '/app/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-anchor', end: false },
   {
     to: KOL_NETWORK_APP_BASE,

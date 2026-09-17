@@ -1,0 +1,129 @@
+import { Link } from 'react-router-dom';
+import { ArrowRight, ExternalLink } from 'lucide-react';
+import {
+  CHM_PODCAST_PLATFORM_LINKS,
+  PODCAST_SHOWS,
+  type PodcastShow,
+} from '../../data/podcastsCatalog';
+import { Button, Reveal } from '../../components/ui';
+
+/**
+ * Public Podcast Network hub — clean URL `/podcast-network`.
+ * Lists CHM shows and listen destinations; scales as shows are added to
+ * `PODCAST_SHOWS`. In-app listening stays under `/app/podcast-network`.
+ */
+export default function PodcastNetwork() {
+  return (
+    <div className="min-h-screen bg-ground">
+      <section className="rail pb-12 pt-14 md:pb-16 md:pt-16">
+        <p className="eyebrow text-muted2">Podcast network</p>
+        <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
+          Four shows, one network
+        </h1>
+        <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
+          Expert-led conversations in oncology and breast cancer — for clinicians,
+          patients, and caregivers. Pick a show, then listen on your platform of choice.
+        </p>
+        <div className="mt-9 flex flex-wrap gap-3">
+          <Button to="/join" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+            Join CHM
+            <ArrowRight className="size-4" strokeWidth={1.75} />
+          </Button>
+          <Button to="/kols" variant="outline">
+            Browse the KOL directory
+          </Button>
+        </div>
+      </section>
+
+      <section className="rail pb-16" aria-labelledby="podcast-shows-heading">
+        <h2 id="podcast-shows-heading" className="display text-display-s text-text">
+          Shows
+        </h2>
+        <ul className="mt-8 grid gap-4 md:grid-cols-2">
+          {PODCAST_SHOWS.map((show, i) => (
+            <Reveal as="li" key={show.id} delay={Math.min(i, 5) * 50}>
+              <ShowCard show={show} />
+            </Reveal>
+          ))}
+        </ul>
+      </section>
+
+      <section className="border-t border-hairline">
+        <div className="rail flex flex-wrap items-center justify-between gap-8 py-16">
+          <div>
+            <h2 className="display text-display-m text-text">Listen on any platform</h2>
+            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+              The CHM umbrella feed covers the network. Each series also has its own
+              listen destinations.
+            </p>
+          </div>
+          <ul className="flex flex-wrap gap-2">
+            {CHM_PODCAST_PLATFORM_LINKS.map((p) => (
+              <li key={p.href}>
+                <a
+                  href={p.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="press inline-flex h-10 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {p.label}
+                  <ExternalLink className="size-3.5" strokeWidth={1.75} aria-hidden />
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function ShowCard({ show }: { show: PodcastShow }) {
+  const listenHref = (show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS)[0]?.href;
+  const seriesPath = `/podcast-network/${encodeURIComponent(show.id)}`;
+
+  return (
+    <article className="lift card flex h-full flex-col gap-5 p-6 sm:flex-row sm:items-start">
+      <img
+        src={show.logo ?? show.image}
+        alt=""
+        className={[
+          'size-24 shrink-0 rounded-[6px] shadow-card sm:size-28',
+          show.logo ? 'object-contain bg-surface p-2' : 'object-cover',
+        ].join(' ')}
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <div className="min-w-0 flex-1">
+        <p className="eyebrow text-faint">{show.category}</p>
+        <h3 className="display mt-1 text-body-l text-text">
+          <Link to={seriesPath} className="press rounded outline-offset-4 hover:text-signature">
+            {show.title}
+          </Link>
+        </h3>
+        <p className="prose-lede mt-2 text-body-s text-muted2">{show.tagline}</p>
+        <p className="meta mt-3 text-faint">{show.updateNote}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link
+            to={seriesPath}
+            className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-signature px-4 text-body-s text-ground hover:brightness-[0.94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            View series
+            <ArrowRight className="size-3.5" strokeWidth={1.75} />
+          </Link>
+          {listenHref ? (
+            <a
+              href={listenHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Listen
+              <ExternalLink className="size-3.5" strokeWidth={1.75} aria-hidden />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}

@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Link, useParams, Navigate, useLocation } from 'react-router-dom';
 import { getRegionFromDirectory, useKolDirectory } from '../../hooks/useKolDirectory';
 import { ChevronLeft, Loader2, Stethoscope } from 'lucide-react';
-import { kolNetworkBaseFromPath } from '../../utils/kol-network-paths';
+import { kolNetworkBaseFromPath, kolProfilePath, kolRegionPath } from '../../utils/kol-network-paths';
 
 export default function DolRegionDetail() {
   const { regionSlug } = useParams<{ regionSlug: string }>();
@@ -74,7 +74,7 @@ export default function DolRegionDetail() {
                   ) : null}
                 </h2>
                 <Link
-                  to={`${networkBase}/profile/${entry.id}`}
+                  to={kolProfilePath(networkBase, entry.id)}
                   className="shrink-0 text-sm font-semibold text-steel-700 hover:underline dark:text-steel-400"
                 >
                   View profile
@@ -101,7 +101,7 @@ export default function DolRegionDetail() {
                 .map((r) => (
                   <Link
                     key={r.id}
-                    to={`${networkBase}/${r.id}`}
+                    to={kolRegionPath(networkBase, r.id)}
                     className="rounded-[6px] border border-border bg-card px-3.5 py-2 text-sm font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   >
                     {r.title}
@@ -159,7 +159,7 @@ export default function DolRegionDetail() {
                     ) : null}
                   </h3>
                   <Link
-                    to={`${networkBase}/profile/${entry.id}`}
+                    to={kolProfilePath(networkBase, entry.id)}
                     className="shrink-0 text-sm font-semibold text-brand-700 hover:text-brand-900"
                   >
                     View profile →
@@ -191,7 +191,7 @@ export default function DolRegionDetail() {
               .map((r) => (
                 <Link
                   key={r.id}
-                  to={`${networkBase}/${r.id}`}
+                  to={kolRegionPath(networkBase, r.id)}
                   className="rounded-[6px] border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:border-border hover:bg-muted"
                 >
                   {r.title}

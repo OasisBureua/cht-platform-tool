@@ -144,7 +144,7 @@ function SessionRow({
 
   return (
     <Link
-      to={`/app/chm-office-hours/${w.id}`}
+      to={`/app/office-hours/${w.id}`}
       className="group flex items-center gap-4 px-5 py-4 transition-[background-color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-muted active:scale-[0.995]"
     >
       <div className="shrink-0 w-12 text-center">

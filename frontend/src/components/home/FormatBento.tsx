@@ -162,7 +162,7 @@ export function FormatBento({ poster }: { poster: string }) {
         meta="34:02"
         title="The audio cut"
         body="The same conversation, for the commute."
-        to="/podcasts"
+        to="/podcast-network"
         accent
       >
         <Wave />
