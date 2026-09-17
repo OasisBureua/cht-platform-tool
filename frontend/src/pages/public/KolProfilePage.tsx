@@ -147,33 +147,33 @@ export default function KolProfilePage() {
           KOL Network
         </Link>
 
-        <div className="overflow-hidden rounded-card border border-border/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <div className="relative h-20 w-full overflow-hidden bg-muted sm:h-24">
-            {vm.bannerImageUrl ? (
-              <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
-            ) : (
-              <ProfileBanner seed={entry.id} />
-            )}
-          </div>
-
-          <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[16rem_1fr] lg:gap-8">
+        {/* No decorative banner in the app shell — the public ProfileBanner
+            motif sat behind the identity rail and clipped long fields. */}
+        <div className="rounded-card border border-border/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)] sm:p-6">
+          <div className="grid gap-6 lg:grid-cols-[minmax(14rem,18rem)_1fr] lg:gap-8">
             <aside className="min-w-0">
-              <img
-                src={entry.photoUrl || avatarUrl(entry.name)}
-                alt=""
-                className="-mt-12 size-20 rounded-full object-cover ring-4 ring-card sm:size-24"
-              />
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                  {vm.displayName}
-                </h1>
-                {entry.featured ? (
-                  <span className="rounded-[6px] bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                    Featured
-                  </span>
-                ) : null}
+              <div className="flex items-start gap-3">
+                <img
+                  src={entry.photoUrl || avatarUrl(entry.name)}
+                  alt=""
+                  className="size-16 shrink-0 rounded-full object-cover ring-1 ring-border sm:size-20"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h1 className="text-balance text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                      {vm.displayName}
+                    </h1>
+                    {entry.featured ? (
+                      <span className="rounded-[6px] bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                        Featured
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-pretty text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere]">
+                    {vm.institution}
+                  </p>
+                </div>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">{vm.institution}</p>
 
               <dl className="mt-5 divide-y divide-border border-t border-border">
                 {(
@@ -188,8 +188,10 @@ export default function KolProfilePage() {
                   ].filter(Boolean) as [string, string][]
                 ).map(([k, v]) => (
                   <div key={k} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
-                    <dt className="text-muted-foreground">{k}</dt>
-                    <dd className="text-end font-medium tabular-nums text-foreground">{v}</dd>
+                    <dt className="shrink-0 text-muted-foreground">{k}</dt>
+                    <dd className="min-w-0 text-end font-medium tabular-nums text-foreground [overflow-wrap:anywhere]">
+                      {v}
+                    </dd>
                   </div>
                 ))}
               </dl>
@@ -227,33 +229,39 @@ export default function KolProfilePage() {
 
             <div className="min-w-0 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div>
+                <div className="min-w-0">
                   <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Role</p>
-                  <p className="mt-1 text-sm text-foreground">{entry.role}</p>
+                  <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
+                    {entry.role}
+                  </p>
                 </div>
                 {entry.intel?.affiliation ? (
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Affiliation
                     </p>
-                    <p className="mt-1 text-sm text-foreground">{entry.intel.affiliation}</p>
+                    <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
+                      {entry.intel.affiliation}
+                    </p>
                   </div>
                 ) : null}
                 {entry.education?.trim() ? (
-                  <div className="sm:col-span-2">
+                  <div className="min-w-0 sm:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       Education &amp; training
                     </p>
-                    <p className="mt-1 text-sm text-foreground">{entry.education}</p>
+                    <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
+                      {entry.education}
+                    </p>
                   </div>
                 ) : null}
               </div>
 
               {displayBrief ? (
-                <article className="overflow-hidden rounded-card border border-border bg-background">
+                <article className="rounded-card border border-border bg-background">
                   <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                     <Sparkles
-                      className={`size-4 ${displayBrief.isAiGenerated ? 'text-steel-600' : 'text-muted-foreground'}`}
+                      className={`size-4 shrink-0 ${displayBrief.isAiGenerated ? 'text-steel-600' : 'text-muted-foreground'}`}
                       aria-hidden
                     />
                     <span className="text-sm font-semibold text-foreground">Intel summary</span>
@@ -266,14 +274,18 @@ export default function KolProfilePage() {
                       <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                         Who they are
                       </p>
-                      <p className="mt-1.5 text-foreground">{displayBrief.whoTheyAre}</p>
+                      <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
+                        {displayBrief.whoTheyAre}
+                      </p>
                     </div>
                     {displayBrief.focus ? (
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           What they focus on
                         </p>
-                        <p className="mt-1.5 text-foreground">{displayBrief.focus}</p>
+                        <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
+                          {displayBrief.focus}
+                        </p>
                       </div>
                     ) : null}
                     {displayBrief.chmContext ? (
@@ -281,33 +293,31 @@ export default function KolProfilePage() {
                         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                           CHM context
                         </p>
-                        <p className="mt-1.5 text-foreground">{displayBrief.chmContext}</p>
+                        <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
+                          {displayBrief.chmContext}
+                        </p>
                       </div>
                     ) : null}
                   </div>
                 </article>
               ) : null}
 
-              <article className="rounded-card border border-border bg-background p-4">
-                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                  <Briefcase className="h-4 w-4" aria-hidden />
-                  Role
-                </h2>
-                <p className="mt-2 text-sm text-muted-foreground">{entry.role}</p>
-              </article>
-
               <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
 
               {showBioOnBackground ? (
                 <article className="rounded-card border border-border bg-background p-4">
                   <h2 className="text-sm font-semibold text-foreground">Summary</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">{entry.bio}</p>
+                  <p className="mt-2 text-pretty text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    {entry.bio}
+                  </p>
                 </article>
               ) : null}
               {vm.researchHighlights ? (
                 <article className="rounded-card border border-border bg-background p-4">
                   <h2 className="text-sm font-semibold text-foreground">Research highlights</h2>
-                  <p className="mt-2 text-sm text-muted-foreground">{vm.researchHighlights}</p>
+                  <p className="mt-2 text-pretty text-sm text-muted-foreground [overflow-wrap:anywhere]">
+                    {vm.researchHighlights}
+                  </p>
                 </article>
               ) : null}
               {vm.awards && vm.awards.length > 0 ? (
