@@ -30,7 +30,7 @@ export default function ZoomSessionPage({
 
   const defaultBack =
     sessionKind === 'MEETING'
-      ? `/app/chm-office-hours/${id}`
+      ? `/app/office-hours/${id}`
       : `/app/live/${id}`;
   const backTo =
     returnTo.startsWith('/') && !returnTo.startsWith('//')

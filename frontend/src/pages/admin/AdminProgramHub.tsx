@@ -1656,7 +1656,7 @@ function ZoomLinksSection({
                 to={
                   isWebinar
                     ? `/app/live/${pr.id}/session?host=1&returnTo=${encodeURIComponent(`/admin/programs/${pr.id}/hub`)}`
-                    : `/app/chm-office-hours/${pr.id}/session?host=1&returnTo=${encodeURIComponent(`/admin/programs/${pr.id}/hub`)}`
+                    : `/app/office-hours/${pr.id}/session?host=1&returnTo=${encodeURIComponent(`/admin/programs/${pr.id}/hub`)}`
                 }
                 className="inline-flex items-center gap-1.5 rounded-lg bg-violet-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-violet-700 transition-colors"
               >

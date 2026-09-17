@@ -20,7 +20,8 @@ import { ChmMark } from '../components/brand/ChmMark';
 /* Mirrors the live platform's information architecture. */
 const nav = [
   { to: '/catalog', label: 'Content Library' },
-  { to: '/kol-network', label: 'KOL Network' },
+  { to: '/kols', label: 'KOL Network' },
+  { to: '/podcast-network', label: 'Podcasts' },
   { to: '/live', label: 'Live' },
 ];
 
@@ -173,7 +174,7 @@ export default function PublicLayout() {
               <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-hairline" />
             )}
             <Link
-              to="/home"
+              to="/"
               className="press shrink-0 rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
@@ -671,17 +672,21 @@ const columns: { label: string; links: FooterLink[] }[] = [
     /* Each show points at its own hub; a series without an override
        falls back to the umbrella CHM listing, which is the contract
        `platformLinks` already documents. */
-    links: PODCAST_SHOWS.map((s) => ({
-      href: (s.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS)[0].href,
-      label: s.title,
-    })),
+    links: [
+      { to: '/podcast-network', label: 'All shows' },
+      ...PODCAST_SHOWS.map((s) => ({
+        to: `/podcast-network/${encodeURIComponent(s.id)}`,
+        label: s.title,
+      })),
+    ],
   },
   {
     label: 'Company',
     links: [
       { to: '/about', label: 'About CHM' },
       { to: '/about', label: 'What we do' },
-      { to: '/kol-network', label: 'KOL network' },
+      { to: '/kols', label: 'KOL network' },
+      { to: '/podcast-network', label: 'Podcast network' },
       { to: '/contact', label: 'Contact' },
     ],
   },
@@ -721,7 +726,7 @@ function SiteFooter() {
         <div className="grid gap-12 lg:grid-cols-[1fr_3fr]">
           <div>
             <Link
-              to="/home"
+              to="/"
               className="press inline-block rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
@@ -805,7 +810,7 @@ function SiteFooter() {
                           {l.label}
                         </a>
                       ) : (
-                        <Link to={l.to ?? '/home'} className={FOOTER_LINK}>
+                        <Link to={l.to ?? "/"} className={FOOTER_LINK}>
                           {l.label}
                         </Link>
                       )}

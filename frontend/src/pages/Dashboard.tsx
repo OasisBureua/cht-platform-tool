@@ -56,7 +56,7 @@ const QUICK_START_ACTIONS = [
     title: 'CHM Office Hours',
     desc: 'Drop in for live Q&A with experts. Book a slot and join.',
     icon: CalendarClock,
-    to: '/app/chm-office-hours',
+    to: '/app/office-hours',
   },
   {
     title: 'Surveys',
@@ -323,8 +323,8 @@ export default function Dashboard() {
       description:
         'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
       imageUrl: podcastThumb,
-      primaryHref: '/app/podcasts',
-      secondaryHref: '/app/podcasts',
+      primaryHref: '/app/podcast-network',
+      secondaryHref: '/app/podcast-network',
       primaryCta: 'Listen',
       secondaryCta: 'All podcasts',
     });
@@ -339,9 +339,9 @@ export default function Dashboard() {
           'Reserve a time and join live Q&A with our clinical team.',
         imageUrl: nextOfficeHoursSession.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[2],
         primaryHref: nextOfficeHoursSession.id
-          ? `/app/chm-office-hours/${nextOfficeHoursSession.id}`
-          : '/app/chm-office-hours',
-        secondaryHref: '/app/chm-office-hours',
+          ? `/app/office-hours/${nextOfficeHoursSession.id}`
+          : '/app/office-hours',
+        secondaryHref: '/app/office-hours',
         primaryCta: 'View session',
         secondaryCta: 'Full schedule',
       });
@@ -923,7 +923,7 @@ export default function Dashboard() {
         <ConversationRow
           title="CHM Office Hours"
           subtitle={officeHoursLoading ? 'Loading' : `${officeHours.length} listed`}
-          seeAllHref="/app/chm-office-hours"
+          seeAllHref="/app/office-hours"
           seeAllLabel="Full schedule"
         >
           {officeHoursLoading ? (
@@ -937,7 +937,7 @@ export default function Dashboard() {
             officeHours.slice(0, 12).map((w, i) => (
               <StripCard
                 key={w.id}
-                to={w.id ? `/app/chm-office-hours/${w.id}` : '/app/chm-office-hours'}
+                to={w.id ? `/app/office-hours/${w.id}` : '/app/office-hours'}
                 title={w.title}
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                 description={

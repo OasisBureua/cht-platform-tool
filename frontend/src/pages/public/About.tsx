@@ -189,7 +189,7 @@ export default function About() {
         </div>
         <div className="flex flex-wrap gap-3">
           <Button to="/contact">Talk to the team</Button>
-          <Button to="/kol-network" variant="outline">
+          <Button to="/kols" variant="outline">
             See the KOL network
           </Button>
         </div>
@@ -347,7 +347,7 @@ function KolPanel() {
 
   return (
     <HeroPanel>
-      <Chrome label="chm / kol-network" />
+      <Chrome label="chm / kols" />
       <div className="p-4">
         <div className="flex gap-2">
           <span className="flex h-9 flex-1 items-center rounded-[6px] bg-surface px-3 text-body-s text-faint">

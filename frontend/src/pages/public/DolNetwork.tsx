@@ -137,7 +137,7 @@ function Chrome({ label }: { label: string }) {
 function KolPanel({ rows, count }: { rows: FlatKol[]; count: number }) {
   return (
     <HeroPanel>
-      <Chrome label="chm / kol-network" />
+      <Chrome label="chm / kols" />
       <div className="p-4">
         <div className="flex gap-2">
           <span className="flex h-9 flex-1 items-center rounded-[6px] bg-surface px-3 text-body-s text-faint">
@@ -213,7 +213,7 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
   const [sort, setSort] = useState<Sort>('state');
   const [newOnly, setNewOnly] = useState(false);
   const id = useId();
-  const basePath = embedded ? '/app/kol-network' : '/kol-network';
+  const basePath = embedded ? '/app/kols' : '/kols';
   const catalogBase = embedded ? '/app/catalog' : '/catalog';
 
   // Search hits the API, so it waits for a pause in typing.
@@ -514,7 +514,7 @@ function KolCard({
   basePath: string;
   catalogBase: string;
 }) {
-  const profileHref = `${basePath}/profile/${k.id}`;
+  const profileHref = `${basePath}/${encodeURIComponent(k.id)}`;
   const inst = institutionHint(k);
   const catalogHref = (() => {
     const publicHref = kolCatalogBrowseHref(k);

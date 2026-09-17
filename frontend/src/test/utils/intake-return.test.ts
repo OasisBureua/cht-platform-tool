@@ -38,8 +38,8 @@ describe('intake-return helpers', () => {
 
     it('routes office hours paths to office hours register', () => {
       expect(
-        buildProgramRegisterHref('prog-2', '/app/chm-office-hours/prog-2'),
-      ).toBe('/app/chm-office-hours/prog-2/register');
+        buildProgramRegisterHref('prog-2', '/app/office-hours/prog-2'),
+      ).toBe('/app/office-hours/prog-2/register');
     });
   });
 
