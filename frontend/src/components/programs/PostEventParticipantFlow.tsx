@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
 import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
-import { BillComMark } from '../branding/BillComMark';
+import { StripeMark } from '../branding/StripeMark';
 import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
+import { programHasHonorarium } from '../../utils/program-has-honorarium';
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
 
@@ -38,6 +39,7 @@ export default function PostEventParticipantFlow(props: {
     | 'feedbackSurveyId'
     | 'feedbackUsesJotform'
     | 'honorariumAmount'
+    | 'hasHonorarium'
     | 'zoomSessionType'
     | 'startDate'
     | 'duration'
@@ -60,7 +62,7 @@ export default function PostEventParticipantFlow(props: {
   const hasSurvey =
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
-  const hasHonorarium = !!program.honorariumAmount && program.honorariumAmount > 0;
+  const hasHonorarium = programHasHonorarium(program);
   const timeUnlocked = isPostEventSurveyUnlocked(program);
   const att = myRegistration?.postEventAttendanceStatus;
   const attendancePending = att === 'PENDING_VERIFICATION';
@@ -279,7 +281,7 @@ export default function PostEventParticipantFlow(props: {
                 {hasHonorarium ? (
                   <>
                     {' '}
-                    Honorarium amount and payout steps are shown there after you submit.
+                    Payout steps are shown there after you submit.
                   </>
                 ) : null}{' '}
                 You cannot return to a previous step after you continue.
@@ -287,7 +289,7 @@ export default function PostEventParticipantFlow(props: {
             ) : hasHonorarium ? (
               <>
                 Confirm you are ready to submit your honorarium request. Payout is processed by an administrator through{' '}
-                <BillComMark size="sm" className="mx-0.5 translate-y-px" />
+                <StripeMark size="sm" className="mx-0.5 translate-y-px" />
                 . After you continue, you <strong>cannot</strong> return to this step.
               </>
             ) : null}

@@ -236,6 +236,22 @@ resource "aws_ecs_task_definition" "backend" {
             valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
           },
           {
+            name      = "STRIPE_SECRET_KEY"
+            valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
+          },
+          {
+            name      = "STRIPE_PUBLISHABLE_KEY"
+            valueFrom = "${var.app_secrets_arn}:stripe_publishable_key::"
+          },
+          {
+            name      = "STRIPE_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:stripe_webhook_secret::"
+          },
+          {
+            name      = "STRIPE_CONNECT_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:stripe_connect_webhook_secret::"
+          },
+          {
             name      = "ADMIN_BOOTSTRAP_SECRET"
             valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
           },

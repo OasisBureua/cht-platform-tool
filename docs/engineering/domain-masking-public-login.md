@@ -108,11 +108,24 @@ Total: roughly **0.5–1 day** if wildcard cert and CloudFront patterns already 
 
 ## 10. Next steps (after approval)
 
-1. Engineering: wire DNS / TLS / alternate domain + CORS
-2. Update marketing Login button
-3. Smoke-test login end-to-end
-4. Document canonical public URL in runbooks / Confluence
+1. ~~ACM cert for `app.communityhealth.media`~~ — done (combined CloudFront cert also covers `testapp` + `*.testapp` + `app`)
+2. Terraform: CloudFront aliases + cert ARN + Cognito callbacks + S3 CORS (`extra_cloudfront_aliases`)
+3. GoDaddy: **traffic** CNAME `app` → CloudFront (`d3e3l3z7xryrfg.cloudfront.net`) — not the ACM validation record
+4. Deploy platform (Terraform apply + backend with CORS allowlist)
+5. Update marketing Login button → `https://app.communityhealth.media/login`
+6. Smoke-test login end-to-end on `app.`
+7. Document canonical public URL in runbooks / Confluence
 
 ---
 
 **Ask:** Approve hostname `app.communityhealth.media` and proceed with DNS + allowlist changes?
+
+### Combined ACM cert (CloudFront)
+
+CloudFront accepts **one** viewer certificate. Use:
+
+`arn:aws:acm:us-east-1:233636046512:certificate/1b14a74c-35aa-4ee6-b1dd-2d68892e9d3d`
+
+SANs: `testapp.communityhealth.media`, `*.testapp.communityhealth.media`, `app.communityhealth.media`.
+
+App-only cert `…/ec1d6d81-…` remains issued but is not attached to CloudFront.

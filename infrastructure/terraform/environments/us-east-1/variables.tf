@@ -15,8 +15,14 @@ variable "single_nat_gateway" {
 }
 
 variable "domain_name" {
-  description = "Domain name"
+  description = "Primary domain name (CloudFront alias + Route53 zone)"
   type        = string
+}
+
+variable "extra_cloudfront_aliases" {
+  description = "Additional CloudFront aliases (e.g. app.communityhealth.media). Must be covered by cloudfront_certificate_arn."
+  type        = list(string)
+  default     = []
 }
 
 variable "secondary_api_origin_domain" {
@@ -381,6 +387,34 @@ variable "bill_mfa_device_name" {
   default     = ""
 }
 
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_publishable_key" {
+  description = "Stripe publishable key (pk_test_ / pk_live_). Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret for Your account destination. Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_connect_webhook_secret" {
+  description = "Stripe webhook signing secret for Connected accounts destination. Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string
@@ -455,6 +489,12 @@ variable "cognito_mfa_configuration" {
   description = "MFA enforcement level: OPTIONAL (app soft-gate) or ON (required at Cognito sign-in). Flip to ON after users enroll."
   type        = string
   default     = "OPTIONAL"
+}
+
+variable "enable_cognito_sms_mfa" {
+  description = "Provision Cognito→SNS IAM role for SMS MFA / phone verification (pool wiring via cognito-sync-pool-config.sh)"
+  type        = bool
+  default     = true
 }
 
 variable "cognito_user_pool_tier" {

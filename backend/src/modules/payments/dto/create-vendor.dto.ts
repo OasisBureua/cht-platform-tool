@@ -19,26 +19,35 @@ export class BankAccountDto {
   routingNumber: string;
 }
 
+/** Bill.com vendor create body. All fields optional at the pipe so Stripe
+ *  callers can POST /connect-account with an empty body; Bill path still
+ *  validates required fields in the service. */
 export class CreateVendorDto {
+  @IsOptional()
   @IsString()
-  payeeName: string;
+  payeeName?: string;
 
+  @IsOptional()
   @IsString()
-  addressLine1: string;
+  addressLine1?: string;
 
+  @IsOptional()
   @IsString()
-  city: string;
+  city?: string;
 
+  @IsOptional()
   @IsString()
-  state: string;
+  state?: string;
 
+  @IsOptional()
   @IsString()
-  zipCode: string;
+  zipCode?: string;
 
-  /** ACH or CHECK — required for explicit payment method selection. */
+  /** ACH or CHECK — required for Bill when creating/updating a vendor. */
+  @IsOptional()
   @IsString()
   @IsIn(['ACH', 'CHECK'])
-  paymentMethod!: 'ACH' | 'CHECK';
+  paymentMethod?: 'ACH' | 'CHECK';
 
   @ValidateIf((o: CreateVendorDto) => o.paymentMethod === 'ACH')
   @IsObject()

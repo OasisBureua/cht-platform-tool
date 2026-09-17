@@ -184,7 +184,18 @@ describe('ZoomRecordingsPullService', () => {
     expect(mockUploadDone).toHaveBeenCalledTimes(1);
     expect(mockS3Send).toHaveBeenCalledTimes(1);
     expect(prisma.zoomRecordingSession.upsert).toHaveBeenCalledTimes(1);
-    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledTimes(2);
+    // Each file: IN_PROGRESS upsert (live UI status) + COMPLETED upsert after S3 upload.
+    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledTimes(4);
+    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ pullStatus: 'IN_PROGRESS' }),
+      }),
+    );
+    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ pullStatus: 'COMPLETED' }),
+      }),
+    );
     expect(result.upserted).toHaveLength(2);
   });
 

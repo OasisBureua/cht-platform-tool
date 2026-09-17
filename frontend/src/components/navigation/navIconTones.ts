@@ -24,6 +24,10 @@
  * `text-ink-coral` in the same list.
  */
 export type NavIconTone =
+  | 'text-foreground'
+  | 'text-black'
+  | 'text-red-600'
+  | 'text-green-600'
   | 'text-ink-coral'
   | 'text-ink-purple'
   | 'text-ink-cyan'

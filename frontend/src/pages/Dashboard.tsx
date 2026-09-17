@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { isSessionExpired } from '../utils/live-session-timing';
+import {
+  LIVE_WEBINARS_QUERY_KEY,
+  OFFICE_HOURS_QUERY_KEY,
+  liveSessionListQueryOptions,
+} from '../utils/live-session-list-query';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
@@ -175,9 +180,9 @@ export default function Dashboard() {
   };
 
   const { data: webinars = [], isLoading: webinarsLoading } = useQuery({
-    queryKey: ['webinars'],
+    queryKey: LIVE_WEBINARS_QUERY_KEY,
     queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: earningsSummary, isLoading: earningsSummaryLoading } = useQuery({
@@ -204,9 +209,9 @@ export default function Dashboard() {
   const surveys = surveyList?.active ?? [];
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
-    queryKey: ['office-hours'],
+    queryKey: OFFICE_HOURS_QUERY_KEY,
     queryFn: webinarsApi.listOfficeHours,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: tags = {} } = useQuery({

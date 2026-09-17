@@ -61,6 +61,7 @@ import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
 import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import type { MfaFeatureFlags } from '../feature-flags/feature-flags.types';
+import { normalizeUsPhoneE164 } from '../common/phone';
 
 interface LoginSuccess {
   session_token: string;
@@ -288,7 +289,7 @@ export class AuthController {
     | LoginSuccess
     | MappedCognitoLoginError
     | { error: string }
-    | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+    | { challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA'; session: string }
     | {
         challenge: 'MFA_SETUP';
         session: string;
@@ -404,7 +405,7 @@ export class AuthController {
 
   /**
    * POST /api/auth/cognito/mfa
-   * Complete SOFTWARE_TOKEN_MFA challenge after cognito/login.
+   * Complete SOFTWARE_TOKEN_MFA or SMS_MFA challenge after cognito/login.
    */
   @SkipThrottle({ short: true, medium: true, long: true, auth: true })
   @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
@@ -413,6 +414,7 @@ export class AuthController {
     @Body('email') email: string,
     @Body('session') session: string,
     @Body('code') code: string,
+    @Body('challenge') challenge: string | undefined,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
@@ -423,6 +425,8 @@ export class AuthController {
     const emailStr = (email || '').trim();
     const sessionStr = (session || '').trim();
     const codeStr = (code || '').trim();
+    const challengeName =
+      challenge === 'SMS_MFA' ? 'SMS_MFA' : 'SOFTWARE_TOKEN_MFA';
     const ip = this.clientIp(req);
     if (!emailStr) return { error: 'Email is required.' };
     if (!sessionStr) return { error: 'MFA session is required.' };
@@ -436,6 +440,7 @@ export class AuthController {
         sessionStr,
         codeStr,
         emailStr,
+        challengeName,
       );
       const loginResult = await this.sessionFromCognitoTokens(tokens, res);
       if ('error' in loginResult) {
@@ -444,13 +449,13 @@ export class AuthController {
       }
       await this.lockout.recordSuccess('mfa', emailStr, ip);
       this.logger.log(
-        `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email}`,
+        `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email} challenge=${challengeName}`,
       );
       this.auditAuthEvent(req, 'auth.mfa_login', {
         userId: loginResult.userId,
         email: loginResult.email,
         role: loginResult.role,
-      }, { method: 'cognito' });
+      }, { method: 'cognito', challenge: challengeName });
       return loginResult;
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
@@ -1283,6 +1288,144 @@ export class AuthController {
     }
   }
 
+  /**
+   * POST /api/auth/mfa/phone/start
+   * Save phone on Cognito and send SMS verification code (SMS MFA enrollment).
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('mfa/phone/start')
+  @UseGuards(JwtAuthGuard)
+  async mfaPhoneStart(
+    @CurrentUser() user: AuthUser,
+    @Body('phoneNumber') phoneNumber: string,
+    @Req() req: Request,
+  ): Promise<{ ok?: true; phoneNumber?: string; error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+    this.assertMfaEnrollmentAllowed();
+
+    const e164 = normalizeUsPhoneE164(phoneNumber);
+    if (!e164) {
+      return {
+        error: 'Enter a valid US mobile number (10 digits).',
+      };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'Phone setup requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('mfa', user.email, ip);
+    if (locked) return locked;
+
+    try {
+      await this.cognitoService.setPhoneAndSendVerification(accessToken, e164);
+      // Hold pending number in Postgres only after Cognito accepts it; still
+      // unverified until /mfa/phone/verify succeeds.
+      await this.authService.setPhoneNumber(user.userId, e164);
+      this.logger.log(`[Auth] SMS MFA phone start for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_phone_start', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
+      return { ok: true, phoneNumber: e164 };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Could not send verification SMS.';
+      this.logger.warn(`[Auth] MFA phone start failed for ${user.email}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', user.email, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
+      if (/InvalidParameterException|InvalidPhoneNumber/i.test(msg)) {
+        return { error: 'That phone number is not valid for SMS.' };
+      }
+      if (/LimitExceededException/i.test(msg)) {
+        return { error: 'Too many SMS attempts. Please try again later.' };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/mfa/phone/verify
+   * Verify Cognito phone_number and enable preferred SMS MFA.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('mfa/phone/verify')
+  @UseGuards(JwtAuthGuard)
+  async mfaPhoneVerify(
+    @CurrentUser() user: AuthUser,
+    @Body('code') code: string,
+    @Req() req: Request,
+  ): Promise<{ ok?: true; error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+    this.assertMfaEnrollmentAllowed();
+
+    const codeStr = (code || '').trim();
+    if (!/^\d{6}$/.test(codeStr)) {
+      return { error: 'Enter the 6-digit code from the SMS.' };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'Phone verification requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('mfa', user.email, ip);
+    if (locked) return locked;
+
+    try {
+      await this.cognitoService.verifyPhoneAttribute(accessToken, codeStr);
+      await this.cognitoService.enableSmsMfa(accessToken);
+      await this.lockout.recordSuccess('mfa', user.email, ip);
+      this.logger.log(`[Auth] SMS MFA enabled for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_sms_enabled', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
+      return { ok: true };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Phone verification failed.';
+      this.logger.warn(`[Auth] MFA phone verify failed for ${user.email}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', user.email, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
+      if (/CodeMismatchException|ExpiredCodeException/i.test(msg)) {
+        return { error: 'Invalid or expired code. Please try again.' };
+      }
+      return { error: msg };
+    }
+  }
+
   @Post('logout')
   async logout(
     @Req() req: Request,
@@ -1367,6 +1510,7 @@ export class AuthController {
       lastName,
       role: user.role,
       profileComplete,
+      phoneNumber: dbUser?.phoneNumber ?? null,
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),

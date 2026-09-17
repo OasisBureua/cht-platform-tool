@@ -10,10 +10,11 @@ import {
   Stethoscope,
   Newspaper,
   LayoutDashboard,
+  Wrench,
 } from 'lucide-react';
 import type { NavIconTone } from './navIconTones';
 
-export type AdminNavItem = {
+export type AdminNavLeaf = {
   to: string;
   label: string;
   icon: LucideIcon;
@@ -22,23 +23,59 @@ export type AdminNavItem = {
   end?: boolean;
 };
 
+export type AdminNavGroup = {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  iconTone: NavIconTone;
+  children: AdminNavLeaf[];
+};
+
+export type AdminNavEntry = AdminNavLeaf | AdminNavGroup;
+
+export function isAdminNavGroup(entry: AdminNavEntry): entry is AdminNavGroup {
+  return 'children' in entry && Array.isArray(entry.children);
+}
+
+/** @deprecated Prefer AdminNavLeaf — kept for callers that still import AdminNavItem. */
+export type AdminNavItem = AdminNavLeaf;
+
 /**
- * Desktop admin sidebar + mobile slide drawer.
+ * Desktop admin sidebar.
  *
- * The four destinations that also exist in the member shell (LIVE, Office
- * Hours, Surveys, Earnings) carry the same hue there, so a rail is read the
- * same way in both. Ten items over seven tones means three repeats; they are
- * placed five to seven rows apart and never adjacent.
+ * Icons are black by default; LIVE is red and Earnings is green
+ * (same convention as the member `/app` rail).
+ * Content / Reporting / Campaigns are nested under Tools (Apple-style flyout).
  */
-export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
-  { to: '/admin/programs', label: 'LIVE', icon: Radio, iconTone: 'text-ink-coral', end: false },
-  { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, iconTone: 'text-ink-purple', end: false },
-  { to: '/admin/webinar-approvals', label: 'Approvals', icon: ClipboardCheck, iconTone: 'text-ink-cyan', end: false },
-  { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-anchor', end: false },
-  { to: '/admin/payments', label: 'Earnings', icon: DollarSign, iconTone: 'text-ink-green', end: false },
-  { to: '/admin/kol-network', label: 'KOL Network', icon: Stethoscope, iconTone: 'text-ink-pink', end: false },
-  { to: '/admin/users', label: 'Users', icon: Users, iconTone: 'text-amber', end: false },
-  { to: '/admin/content', label: 'Content', icon: Newspaper, iconTone: 'text-ink-cyan', end: false },
-  { to: '/admin/content-hub', label: 'Reporting', icon: FileBarChart, iconTone: 'text-ink-purple', end: false },
-  { to: '/admin/campaigns-dashboard', label: 'Campaigns Dashboard', icon: LayoutDashboard, iconTone: 'text-anchor', end: false },
+export const ADMIN_NAV_ITEMS: AdminNavEntry[] = [
+  { to: '/admin/programs', label: 'LIVE', icon: Radio, iconTone: 'text-red-600', end: false },
+  { to: '/admin/office-hours', label: 'Office Hours', icon: CalendarClock, iconTone: 'text-foreground', end: false },
+  { to: '/admin/webinar-approvals', label: 'Approvals', icon: ClipboardCheck, iconTone: 'text-foreground', end: false },
+  { to: '/admin/surveys', label: 'Surveys', icon: ClipboardList, iconTone: 'text-foreground', end: false },
+  { to: '/admin/payments', label: 'Earnings', icon: DollarSign, iconTone: 'text-green-600', end: false },
+  { to: '/admin/kol-network', label: 'KOL Network', icon: Stethoscope, iconTone: 'text-foreground', end: false },
+  { to: '/admin/users', label: 'Users', icon: Users, iconTone: 'text-foreground', end: false },
+  {
+    id: 'tools',
+    label: 'Tools',
+    icon: Wrench,
+    iconTone: 'text-foreground',
+    children: [
+      { to: '/admin/content', label: 'Content', icon: Newspaper, iconTone: 'text-foreground', end: false },
+      { to: '/admin/content-hub', label: 'Reporting', icon: FileBarChart, iconTone: 'text-foreground', end: false },
+      {
+        to: '/admin/campaigns-dashboard',
+        label: 'Campaigns Dashboard',
+        icon: LayoutDashboard,
+        iconTone: 'text-foreground',
+        end: false,
+      },
+    ],
+  },
 ];
+
+export function adminNavGroupIsActive(group: AdminNavGroup, pathname: string): boolean {
+  return group.children.some(
+    (child) => pathname === child.to || pathname.startsWith(`${child.to}/`),
+  );
+}

@@ -9,7 +9,7 @@ import {
   SCHEDULER_TIMEZONES,
   formatTimezoneLabel,
 } from '../../utils/timezoneOptions';
-import { BillComMark } from '../../components/branding/BillComMark';
+import { StripeMark } from '../../components/branding/StripeMark';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 import ZoomWebinarSettingsFields, {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
@@ -31,6 +31,7 @@ export default function AdminWebinarScheduler({
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
   const [honorariumUsd, setHonorariumUsd] = useState('');
+  const [chmProgramId, setChmProgramId] = useState('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -150,6 +151,7 @@ export default function AdminWebinarScheduler({
       zoomSessionType,
       status: 'PUBLISHED',
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
+      ...(chmProgramId.trim() ? { chmProgramId: chmProgramId.trim() } : {}),
       ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
       ...(sessionHeroImageUrl.trim() ? { sessionHeroImageUrl: sessionHeroImageUrl.trim() } : {}),
       ...(sessionDisclaimer.trim() ? { sessionDisclaimer: sessionDisclaimer.trim() } : {}),
@@ -171,7 +173,7 @@ export default function AdminWebinarScheduler({
               Creates a Zoom Webinar and publishes it. The server automatically creates native registration intake and
               post-event surveys for this program. Learners complete intake before approval; post-event steps appear
               after the session. Honorarium payouts use{' '}
-              <BillComMark size="sm" className="translate-y-px" />.
+              <StripeMark size="sm" className="translate-y-px" />.
             </>
           ) : (
             'Creates Office Hours as a Zoom Meeting (type MEETING: conversational Q&A, waiting room). Registrations require admin approval before learners can join. Pair with Program hub time slots when you split the hour.'
@@ -367,7 +369,7 @@ export default function AdminWebinarScheduler({
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {isWebinar
-                ? 'Person moderating/running the session. Shown as "Host:" on the live session card.'
+                ? 'Person moderating/running the session. Shown as "Speaker:" on the live session card.'
                 : 'Person hosting Office Hours. Shown as "Get time with…" on the session card.'}
             </p>
           </div>
@@ -477,7 +479,7 @@ export default function AdminWebinarScheduler({
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-muted-foreground">, optional; webinars only</span>
+                <span className="font-normal text-muted-foreground">, optional; webinars only; admin-only</span>
               </label>
               <input
                 type="number"
@@ -489,11 +491,28 @@ export default function AdminWebinarScheduler({
                 className="w-full max-w-xs rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
               <p className="mt-1 text-xs text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-                Learners can request this amount after post-event steps; admins pay via{' '}
-                <BillComMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
+                Stored for admin payouts via <StripeMark size="xs" className="translate-y-px" />. Not shown to learners
+                under /app. Not available for Office Hours (Zoom Meetings).
               </p>
             </div>
           ) : null}
+
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              Internal nomenclature / CHM Content ID{' '}
+              <span className="font-normal text-muted-foreground">, optional; admin-only</span>
+            </label>
+            <input
+              type="text"
+              value={chmProgramId}
+              onChange={(e) => setChmProgramId(e.target.value)}
+              placeholder="e.g. AZ-25-01_LIV001"
+              className="w-full max-w-md rounded-xl border border-border px-4 py-3 text-sm font-mono focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Hidden from learners. Used for billing, tagging, and recording asset naming.
+            </p>
+          </div>
 
           {isWebinar ? (
             <div className="text-sm text-muted-foreground border border-border rounded-xl bg-muted px-4 py-3 space-y-2">

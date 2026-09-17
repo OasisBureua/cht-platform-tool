@@ -21,7 +21,7 @@ Docs-only changes under `docs/**` do not trigger dev deploy.
 
 | Lane | Paths | What runs |
 |------|--------|-----------|
-| Backend | `backend/**`, `worker/**` | Images + ECS image roll (Terraform plan/apply for task defs) |
+| Backend | `backend/**`, `worker/**` | Images + ECS image roll (Terraform plan/apply for task defs). Tests: backend `npm test` + worker `pytest` |
 | Frontend | `frontend/**` | Build + S3 + CloudFront |
 | Infra | `infrastructure/**` | Terraform plan/apply |
 

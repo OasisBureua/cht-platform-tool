@@ -53,6 +53,7 @@ export default function AdminPrograms() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
       queryClient.invalidateQueries({ queryKey: ['webinars'] });
+      queryClient.invalidateQueries({ queryKey: ['office-hours'] });
       setDeleteConfirmId(null);
       setDeleteError(null);
     },
@@ -239,6 +240,7 @@ export default function AdminPrograms() {
             onSaved={(updatedId?: string) => {
               queryClient.invalidateQueries({ queryKey: ['admin', 'webinars'] });
               queryClient.invalidateQueries({ queryKey: ['webinars'] });
+              queryClient.invalidateQueries({ queryKey: ['office-hours'] });
               if (updatedId) queryClient.invalidateQueries({ queryKey: ['program', updatedId] });
               setEditingId(null);
             }}
@@ -463,6 +465,9 @@ function WebinarRow({
               Honorarium ${webinar.honorariumAmount.toLocaleString()}
             </p>
           )}
+        {webinar.chmProgramId ? (
+          <p className="text-[11px] font-mono text-muted-foreground mt-0.5">{webinar.chmProgramId}</p>
+        ) : null}
       </td>
 
       <td className="px-4 py-3 text-muted-foreground hidden sm:table-cell whitespace-nowrap">
@@ -599,6 +604,7 @@ function EditWebinarModal({
   const [honorariumUsd, setHonorariumUsd] = useState(
     webinar.honorariumAmount != null ? String(webinar.honorariumAmount) : '',
   );
+  const [chmProgramId, setChmProgramId] = useState(webinar.chmProgramId ?? '');
   const [hostDisplayName, setHostDisplayName] = useState(webinar.hostDisplayName ?? '');
   const [hostBio, setHostBio] = useState(webinar.hostBio ?? '');
   const [speakers, setSpeakers] = useState<string[]>(webinar.speakers ?? []);
@@ -682,6 +688,7 @@ function EditWebinarModal({
       speakers: speakers.map((s) => s.trim()).filter(Boolean),
       sessionHeroImageUrl: sessionHeroImageUrl.trim() || null,
       sessionDisclaimer: sessionDisclaimer.trim() || null,
+      chmProgramId: chmProgramId.trim() || null,
       ...(sessionKind === 'WEBINAR' ? { zoomSettings } : {}),
     };
     updateMutation.mutate(payload);
@@ -806,7 +813,7 @@ function EditWebinarModal({
           {sessionKind === 'WEBINAR' ? (
             <div>
               <label className="block text-xs font-semibold text-muted-foreground mb-1">
-                Honorarium (USD): optional
+                Honorarium (USD): optional; admin-only
               </label>
               <input
                 type="number"
@@ -818,10 +825,27 @@ function EditWebinarModal({
                 className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Webinars only. Save with an empty field to clear the honorarium for this program.
+                Webinars only. Not shown to learners. Save with an empty field to clear.
               </p>
             </div>
           ) : null}
+
+          <div>
+            <label className="block text-xs font-semibold text-muted-foreground mb-1">
+              Internal nomenclature / CHM Content ID{' '}
+              <span className="font-normal text-muted-foreground">, optional; admin-only</span>
+            </label>
+            <input
+              type="text"
+              value={chmProgramId}
+              onChange={(e) => setChmProgramId(e.target.value)}
+              placeholder="e.g. AZ-25-01_LIV001"
+              className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-mono focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Hidden from learners. Used for billing, tagging, and recording asset naming. Leave blank to clear.
+            </p>
+          </div>
 
           {sessionKind === 'WEBINAR' ? (
             <>
@@ -837,7 +861,7 @@ function EditWebinarModal({
                   className="w-full rounded-xl border border-border px-4 py-2.5 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Person moderating/running the session. Shown as "Host:" on the webinar card.
+                  Person moderating/running the session. Shown as &quot;Speaker:&quot; on the webinar card.
                 </p>
               </div>
 

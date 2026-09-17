@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Patch,
   Post,
   Body,
@@ -68,6 +69,7 @@ import {
   buildUserRecipientWhere,
   parseCsvQueryParam,
   registrationInviteUserSelect,
+  adminUserListSelect,
 } from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
@@ -590,13 +592,28 @@ export class AdminController {
   }
 
   @Get('surveys/:id/responses')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List all learner responses for a survey' })
+  @ApiOperation({ summary: 'List learner responses for a survey (paginated)' })
   @ApiParam({ name: 'id', description: 'Survey ID' })
-  listSurveyResponses(@Param('id') id: string) {
-    return this.surveysService.listResponsesForAdmin(id);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Default 10, max 100',
+  })
+  listSurveyResponses(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.surveysService.listResponsesForAdmin(id, {
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10,
+    });
   }
 
   @Get('surveys/:id/analytics')
@@ -838,9 +855,15 @@ export class AdminController {
         : {}),
     });
 
+    // Also match on NPI — admin-users-specific, not part of the shared
+    // registration-invite recipient search (which has no NPI use case).
+    if (q?.trim() && where.OR) {
+      where.OR = [...where.OR, { npiNumber: { contains: q.trim() } }];
+    }
+
     const users = await this.prisma.user.findMany({
       where,
-      select: registrationInviteUserSelect,
+      select: adminUserListSelect,
       orderBy: { createdAt: 'desc' },
       take,
     });
@@ -1024,6 +1047,7 @@ export class AdminController {
           p.zoomSessionType === 'WEBINAR' && p.honorariumAmount != null
             ? p.honorariumAmount / 100
             : undefined,
+        chmProgramId: p.chmProgramId ?? null,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks:
           (p.zoomPanelistLinks as Array<{
@@ -1184,6 +1208,8 @@ export class AdminController {
       sessionDisclaimer?: string;
       /** Optional. Banner image URL for learners (HTTPS). */
       sessionHeroImageUrl?: string;
+      /** Optional. Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string;
       /** Optional. Zoom webinar settings (Q&A, Backstage, HD, recording). Ignored for MEETING. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -1329,6 +1355,9 @@ export class AdminController {
         : {}),
       ...(body.sessionHeroImageUrl?.trim()
         ? { sessionHeroImageUrl: body.sessionHeroImageUrl.trim() }
+        : {}),
+      ...(body.chmProgramId !== undefined
+        ? { chmProgramId: body.chmProgramId?.trim() || null }
         : {}),
     });
 
@@ -2378,6 +2407,8 @@ export class AdminController {
       speakers?: string[];
       sessionDisclaimer?: string | null;
       sessionHeroImageUrl?: string | null;
+      /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string | null;
       /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -2521,6 +2552,11 @@ export class AdminController {
         body.sessionHeroImageUrl === null || body.sessionHeroImageUrl === ''
           ? null
           : body.sessionHeroImageUrl.trim() || null;
+    if (body.chmProgramId !== undefined)
+      updateData.chmProgramId =
+        body.chmProgramId === null || body.chmProgramId === ''
+          ? null
+          : body.chmProgramId.trim() || null;
 
     if (
       speakersChanged &&

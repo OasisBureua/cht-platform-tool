@@ -12,6 +12,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { useTheme } from '../contexts/ThemeContext';
+import { isTestappHost } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
 import { CHM_PODCAST_PLATFORM_LINKS, PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { ChmMark } from '../components/brand/ChmMark';
@@ -59,6 +60,21 @@ export default function PublicLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState('');
 
+  /* Auth pages are a single decision on one screen. A footer under
+     them adds a scroll to a page that is meant to fit the frame, and
+     offers twenty exits from a form we just asked someone to finish. */
+  const AUTH_ROUTES = [
+    '/login', '/join', '/admin/login', '/forgot-password',
+    '/reset-password/confirm', '/mfa/setup', '/verify-email',
+    '/complete-profile', '/auth/callback',
+  ];
+  const isAuthRoute = AUTH_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + '/'),
+  );
+
+  /* Platform (testapp / app.) auth chrome: hold marketing IA until homepage ships. */
+  const hidePrelaunchNav = isTestappHost() && isAuthRoute;
+
   /* One navigation closes every transient surface. Adjusting during
      render rather than in an effect means the panel is never painted
      open on the page it just left. */
@@ -71,6 +87,7 @@ export default function PublicLayout() {
   }
 
   useEffect(() => {
+    if (hidePrelaunchNav) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -79,7 +96,7 @@ export default function PublicLayout() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [hidePrelaunchNav]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -106,26 +123,20 @@ export default function PublicLayout() {
     else navigate('/catalog');
   };
 
+  const primaryNav = hidePrelaunchNav ? [] : nav;
 
-  /* Auth pages are a single decision on one screen. A footer under
-     them adds a scroll to a page that is meant to fit the frame, and
-     offers twenty exits from a form we just asked someone to finish. */
-  const AUTH_ROUTES = [
-    '/login', '/join', '/admin/login', '/forgot-password',
-    '/reset-password/confirm', '/mfa/setup', '/verify-email',
-    '/complete-profile', '/auth/callback',
-  ];
-  const isAuthRoute = AUTH_ROUTES.some(
-    (r) => pathname === r || pathname.startsWith(r + '/'),
-  );
-
-  const drawerLinks = [
-    ...nav,
-    { to: '/for-hcps', label: 'For HCPs' },
-    { to: '/contact', label: 'Contact' },
-    { to: '/login', label: 'Log in' },
-    { to: '/join', label: 'Get started' },
-  ];
+  const drawerLinks = hidePrelaunchNav
+    ? [
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ]
+    : [
+        ...nav,
+        { to: '/for-hcps', label: 'For HCPs' },
+        { to: '/contact', label: 'Contact' },
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ];
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-ground text-text">
@@ -170,7 +181,7 @@ export default function PublicLayout() {
             </Link>
 
             <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 lg:flex">
-              {nav.map((n) => (
+              {primaryNav.map((n) => (
                 <NavLink
                   key={n.to}
                   to={n.to}
@@ -183,22 +194,26 @@ export default function PublicLayout() {
                   {n.label}
                 </NavLink>
               ))}
-              <DiseaseMenu
-                open={diseaseOpen}
-                setOpen={setDiseaseOpen}
-                active={pathname.startsWith('/catalog/')}
-              />
+              {!hidePrelaunchNav ? (
+                <DiseaseMenu
+                  open={diseaseOpen}
+                  setOpen={setDiseaseOpen}
+                  active={pathname.startsWith('/catalog/')}
+                />
+              ) : null}
             </nav>
 
             <div className="ms-auto flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search the library"
-                className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
-              >
-                <Search className="size-[18px]" strokeWidth={1.5} />
-              </button>
+              {!hidePrelaunchNav ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Search the library"
+                  className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
+                >
+                  <Search className="size-[18px]" strokeWidth={1.5} />
+                </button>
+              ) : null}
 
               <ThemeControl />
 
@@ -255,19 +270,23 @@ export default function PublicLayout() {
                     {n.label}
                   </Link>
                 ))}
-                <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
-                <div className="flex flex-wrap gap-2 px-1 pb-1">
-                  {DISEASE_AREAS.map((a) => (
-                    <Link
-                      key={a.slug}
-                      to={`/catalog/${a.slug}`}
-                      onClick={() => setDrawerOpen(false)}
-                      className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
-                    >
-                      {a.title}
-                    </Link>
-                  ))}
-                </div>
+                {!hidePrelaunchNav ? (
+                  <>
+                    <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
+                    <div className="flex flex-wrap gap-2 px-1 pb-1">
+                      {DISEASE_AREAS.map((a) => (
+                        <Link
+                          key={a.slug}
+                          to={`/catalog/${a.slug}`}
+                          onClick={() => setDrawerOpen(false)}
+                          className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
+                        >
+                          {a.title}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
               </nav>
             </div>
           ) : null}
@@ -285,7 +304,7 @@ export default function PublicLayout() {
 
       {!isAuthRoute && <SiteFooter />}
 
-      {searchOpen ? (
+      {searchOpen && !hidePrelaunchNav ? (
         <SearchDialog
           q={headerQuery}
           setQ={setHeaderQuery}

@@ -2,10 +2,10 @@ import type { ZoomWebinarSettings } from '../../api/admin';
 
 export const DEFAULT_ZOOM_WEBINAR_SETTINGS: ZoomWebinarSettings = {
   questionAndAnswer: true,
-  backstage: false,
+  backstage: true,
   hdVideoScreenShare: true,
-  hdVideo1080p: false,
-  emailInAttendeeReport: false,
+  hdVideo1080p: true,
+  emailInAttendeeReport: true,
   autoRecordCloud: true,
 };
 

@@ -39,6 +39,7 @@ export type ZoomRecordingFileDto = {
   pulledAt: string | null;
   pulledByUserId: string | null;
   pullStatus: string;
+  pullError: string | null;
   storedInS3: boolean;
 };
 
@@ -70,6 +71,7 @@ export class ZoomRecordingsPullService {
     pulledAt: Date | null;
     pulledByUserId: string | null;
     pullStatus?: string;
+    pullError?: string | null;
     s3Bucket?: string | null;
     s3Key?: string | null;
   }): ZoomRecordingFileDto {
@@ -89,6 +91,7 @@ export class ZoomRecordingsPullService {
       pulledAt: r.pulledAt?.toISOString() ?? null,
       pulledByUserId: r.pulledByUserId,
       pullStatus: r.pullStatus ?? (storedInS3 ? 'COMPLETED' : 'PENDING'),
+      pullError: r.pullError ?? null,
       storedInS3,
     };
   }
@@ -176,7 +179,12 @@ export class ZoomRecordingsPullService {
 
   async pullForSession(
     sessionId: string,
-    opts: { adminUserId?: string; fileTypes?: string[] },
+    opts: {
+      adminUserId?: string;
+      fileTypes?: string[];
+      /** Zoom cloud recording file ids (not DB row ids). */
+      zoomRecordingFileIds?: string[];
+    },
   ) {
     if (!this.zoom.isConfigured()) {
       throw new ServiceUnavailableException('Zoom API is not configured');
@@ -198,9 +206,17 @@ export class ZoomRecordingsPullService {
       const allowed = new Set(opts.fileTypes.map((t) => t.toUpperCase()));
       completed = completed.filter((f) => allowed.has(f.fileType.toUpperCase()));
     }
+    if (opts.zoomRecordingFileIds?.length) {
+      const allowedIds = new Set(
+        opts.zoomRecordingFileIds.map((id) => String(id).trim()).filter(Boolean),
+      );
+      completed = completed.filter((f) => allowedIds.has(String(f.id)));
+    }
     if (completed.length === 0) {
       throw new NotFoundException(
-        'Zoom returned no completed recording files for this session.',
+        opts.zoomRecordingFileIds?.length
+          ? 'Zoom returned no matching completed recording file for this request.'
+          : 'Zoom returned no completed recording files for this session.',
       );
     }
 
@@ -293,13 +309,59 @@ export class ZoomRecordingsPullService {
     const assetSeqByFormat = new Map<string, number>();
 
     for (const file of opts.files) {
+      const ext = extForFile(file.fileType, file.fileExtension);
+      const key = buildRecordingS3Key({
+        programId: opts.programId,
+        meetingId: opts.meetingId,
+        fileId: file.id,
+        ext,
+      });
+
       try {
-        const ext = extForFile(file.fileType, file.fileExtension);
-        const key = buildRecordingS3Key({
-          programId: opts.programId,
-          meetingId: opts.meetingId,
-          fileId: file.id,
-          ext,
+        // Mark in-progress before download so the admin UI can poll live status.
+        await this.prisma.zoomRecordingFile.upsert({
+          where: {
+            zoomMeetingId_zoomRecordingFileId: {
+              zoomMeetingId: opts.meetingId,
+              zoomRecordingFileId: file.id,
+            },
+          },
+          create: {
+            sessionId: opts.sessionId,
+            programId: opts.programId,
+            zoomMeetingId: opts.meetingId,
+            zoomRecordingFileId: file.id,
+            fileType: file.fileType,
+            recordingType: file.recordingType ?? null,
+            fileExtension: ext,
+            fileSizeBytes: file.fileSize ?? null,
+            pullStatus: ZoomRecordingPullStatus.IN_PROGRESS,
+            pullError: null,
+            recordingStart: file.recordingStart
+              ? new Date(file.recordingStart)
+              : null,
+            recordingEnd: file.recordingEnd
+              ? new Date(file.recordingEnd)
+              : null,
+            topic: opts.topic,
+          },
+          update: {
+            sessionId: opts.sessionId,
+            programId: opts.programId,
+            fileType: file.fileType,
+            recordingType: file.recordingType ?? null,
+            fileExtension: ext,
+            fileSizeBytes: file.fileSize ?? null,
+            pullStatus: ZoomRecordingPullStatus.IN_PROGRESS,
+            pullError: null,
+            recordingStart: file.recordingStart
+              ? new Date(file.recordingStart)
+              : null,
+            recordingEnd: file.recordingEnd
+              ? new Date(file.recordingEnd)
+              : null,
+            topic: opts.topic,
+          },
         });
 
         const useStream = shouldStreamFileType(file.fileType, streamTypes);

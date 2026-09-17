@@ -6,7 +6,7 @@ import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download } from 'lucide-react';
-import { BillComMark } from '../../components/branding/BillComMark';
+import { StripeMark } from '../../components/branding/StripeMark';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -57,7 +57,7 @@ export default function AdminPayments() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
     onError: () => {
-      // Bill.com failures mark the row FAILED server-side, refresh both lists.
+      // Payout failures mark the row FAILED server-side, refresh both lists.
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
@@ -121,7 +121,7 @@ export default function AdminPayments() {
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
             Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send
-            through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
+            through <StripeMark size="sm" className="translate-y-px" /> (ACH direct deposit only).
           </p>
         </div>
         <div className="shrink-0 flex flex-wrap gap-2">
@@ -249,7 +249,7 @@ export default function AdminPayments() {
           <div>
             <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
             <p className="mt-0.5 text-sm text-green-900">
-              Recent payouts completed through <BillComMark size="xs" className="translate-y-px" /> (newest first, up to 200).
+              Recent payouts completed through <StripeMark size="xs" className="translate-y-px" /> (newest first, up to 200).
             </p>
           </div>
         </div>
@@ -295,7 +295,7 @@ export default function AdminPayments() {
               <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
               <p className="mt-0.5 text-sm text-destructive flex flex-wrap items-center gap-x-1 gap-y-1">
                 These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to try
-                again through <BillComMark size="xs" className="translate-y-px" />.
+                again through <StripeMark size="xs" className="translate-y-px" />.
               </p>
             </div>
           </div>
@@ -538,7 +538,7 @@ function ManualPaymentForm() {
               eligibility.warnings.length > 0
                 ? eligibility.warnings
                 : [
-                    'Attendance, survey, Bill.com vendor, or W-9 requirements are not complete yet.',
+                    'Attendance, survey, Stripe payout account, or tax details are not complete yet.',
                   ],
             programTitle: eligibility.programTitle,
           });
@@ -705,7 +705,7 @@ function ManualPaymentForm() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   This person is not fully ready for Pay now on{' '}
                   <strong>{eligibilityConfirm.programTitle}</strong>. You can still queue the
-                  payment, but Pay now will fail until attendance, survey, Bill.com vendor, and W-9
+                  payment, but Pay now will fail until attendance, survey, Stripe payout account, and tax
                   requirements are met.
                 </p>
                 <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-amber-900">
@@ -786,7 +786,8 @@ function FailedRow({
   isRetrying: boolean;
   isDeleting: boolean;
 }) {
-  const canRetry = !!payment.user.billVendorId;
+  const canRetry =
+    !!payment.user.stripeAccountId || !!payment.user.billVendorId;
 
   return (
     <tr className="bg-white/70 hover:bg-white">
@@ -832,7 +833,7 @@ function FailedRow({
         </div>
         {!canRetry && (
           <p className="mt-1 text-xs text-amber-600 flex flex-wrap items-center gap-1">
-            No <BillComMark size="xs" /> vendor
+            No <StripeMark size="xs" /> payout account
           </p>
         )}
       </td>
@@ -896,21 +897,21 @@ function PendingRow({
   isDeleting: boolean;
   payError?: string | null;
 }) {
-  const hasVendor = !!payment.user.billVendorId;
+  const hasStripe =
+    !!payment.user.stripeAccountId && payment.user.stripePayoutsEnabled !== false;
+  const hasPayoutAccount = hasStripe || !!payment.user.billVendorId;
   const hasW9 = payment.user.w9Submitted !== false;
-  const canPay = hasVendor && hasW9;
-  const blockReason = !hasVendor
-    ? 'No Bill.com vendor: HCP must complete payment setup (ACH or check)'
+  const canPay = hasPayoutAccount && hasW9;
+  const blockReason = !hasPayoutAccount
+    ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
     : !hasW9
-      ? 'W-9 not submitted: HCP must complete W-9 first'
+      ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
       : null;
 
   const methodLabel =
     payment.user.preferredPaymentMethod === 'CHECK'
-      ? 'Check'
-      : payment.user.preferredPaymentMethod === 'ACH'
-        ? `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`
-        : '—';
+      ? 'Check (legacy)'
+      : `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`;
 
   return (
     <tr className="hover:bg-muted">
@@ -931,7 +932,7 @@ function PendingRow({
             type="button"
             onClick={onPayNow}
             disabled={!canPay || isPaying}
-            title={blockReason ?? 'Send payout via Bill.com'}
+            title={blockReason ?? 'Send payout via Stripe ACH'}
             className={[
               'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
               canPay && !isPaying

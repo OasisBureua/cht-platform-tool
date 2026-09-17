@@ -9,6 +9,7 @@ import {
   Logger,
   UseGuards,
   Res,
+  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -26,6 +27,7 @@ import { Roles } from '../../auth/roles.decorator';
 import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { BillService } from './bill.service';
+import { StripeService } from './stripe.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
 import {
@@ -44,25 +46,42 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly billService: BillService,
+    private readonly stripeService: StripeService,
   ) {}
+
+  private assertBillEndpointsAllowed(): void {
+    if (this.stripeService.isConfigured()) {
+      throw new BadRequestException(
+        'This environment uses Stripe Connect. Bill.com payment endpoints are disabled.',
+      );
+    }
+  }
 
   /**
    * POST /api/payments/:userId/connect-account
-   * Create Bill.com vendor for user (auth required). Optional body with bank details.
+   * Stripe: creates Connect recipient + returns hosted Account Link URL.
+   * Bill: creates/updates vendor (body required). Bill DTO is not validated when Stripe is on.
    */
   @Post(':userId/connect-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createConnectAccount(
     @Param('userId') userId: string,
-    @Body() body?: CreateVendorDto,
+    @Body() body?: Record<string, unknown>,
   ): Promise<CreateConnectAccountResponseDto> {
+    if (this.stripeService.isConfigured()) {
+      this.logger.log(`Creating Stripe Connect account for user: ${userId}`);
+      return this.paymentsService.createConnectAccount(userId);
+    }
     this.logger.log(`Creating Bill.com vendor for user: ${userId}`);
-    return this.paymentsService.createConnectAccount(userId, body);
+    return this.paymentsService.createConnectAccount(
+      userId,
+      body as CreateVendorDto | undefined,
+    );
   }
 
   /**
    * POST /api/payments/:userId/account-link
-   * Get payment settings URL (auth required)
+   * Stripe Account Link (hosted) or Bill settings URL.
    */
   @Post(':userId/account-link')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -74,12 +93,27 @@ export class PaymentsController {
   }
 
   /**
+   * POST /api/payments/:userId/account-session
+   * Stripe Connect Embedded onboarding Account Session (client_secret).
+   */
+  @Post(':userId/account-session')
+  @UseGuards(JwtAuthGuard, CheckUserGuard)
+  @ApiOperation({
+    summary: 'Create Stripe Account Session for embedded Connect onboarding',
+  })
+  async createAccountSession(@Param('userId') userId: string) {
+    this.logger.log(`Creating Stripe account session for user: ${userId}`);
+    return this.paymentsService.createStripeAccountSession(userId);
+  }
+
+  /**
    * GET /api/payments/test-connection
    * Test Bill.com API connection (login). Admin only in prod; X-Dev-User-Id bypass for local testing.
    */
   @Get('test-connection')
   @UseGuards(JwtAuthGuard, AdminOrDevGuard)
   async testConnection() {
+    this.assertBillEndpointsAllowed();
     return this.paymentsService.testBillConnection();
   }
 
@@ -98,6 +132,7 @@ export class PaymentsController {
   })
   @ApiOkResponse({ type: BillFundingAccountsResponseDto })
   async listBillFundingAccounts(): Promise<BillFundingAccountsResponseDto> {
+    this.assertBillEndpointsAllowed();
     return this.billService.listBankFundingAccountsWithRecommendation();
   }
 
@@ -109,6 +144,7 @@ export class PaymentsController {
   @Get('bill-element-session')
   @UseGuards(JwtAuthGuard)
   async getBillElementSession() {
+    this.assertBillEndpointsAllowed();
     return this.billService.getElementSession();
   }
 
@@ -351,7 +387,8 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/w9
-   * Submit W-9 tax form (auth required). User must have Bill.com vendor first.
+   * Bill env: push tax ID to Bill vendor.
+   * Stripe env (PAY-4): Bill path unused — syncs w9Submitted from Connect requirements only (no TIN body used).
    */
   @Post(':userId/w9')
   @UseGuards(JwtAuthGuard, CheckUserGuard)

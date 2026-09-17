@@ -229,7 +229,11 @@ export class ProgramsController {
   ): Promise<ProgramResponseDto> {
     this.logger.log(`Getting program: ${id}`);
     const includeZoomHostLink = req.user?.role === UserRole.ADMIN;
-    return this.programsService.getProgramById(id, { includeZoomHostLink });
+    const learnerView = req.user?.role !== UserRole.ADMIN;
+    return this.programsService.getProgramById(id, {
+      includeZoomHostLink,
+      learnerView,
+    });
   }
 
   /**

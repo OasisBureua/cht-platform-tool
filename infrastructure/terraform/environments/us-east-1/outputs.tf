@@ -173,6 +173,16 @@ output "cognito_kms_key_arn" {
   value       = var.enable_cognito_pools ? module.cognito[0].cognito_kms_key_arn : null
 }
 
+output "cognito_sms_sns_caller_arn" {
+  description = "IAM role ARN for Cognito SMS (Configure SMS / sync script)"
+  value       = var.enable_cognito_pools ? module.cognito[0].sms_sns_caller_arn : null
+}
+
+output "cognito_sms_external_id" {
+  description = "ExternalId for the Cognito SMS IAM role trust policy"
+  value       = var.enable_cognito_pools ? module.cognito[0].sms_external_id : null
+}
+
 output "ecr_dr_registry_url" {
   description = "ECR registry in the DR region (use for us-east-2 ECS images after replication)."
   value       = try(module.ecr_replication[0].dr_registry_url, null)

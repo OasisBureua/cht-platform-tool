@@ -19,10 +19,10 @@ export interface ZoomWebinarSettings {
 /** Defaults for new webinars created in CHT (ticket SCRUM-182). */
 export const DEFAULT_ZOOM_WEBINAR_SETTINGS: ZoomWebinarSettings = {
   questionAndAnswer: true,
-  backstage: false,
+  backstage: true,
   hdVideoScreenShare: true,
-  hdVideo1080p: false,
-  emailInAttendeeReport: false,
+  hdVideo1080p: true,
+  emailInAttendeeReport: true,
   autoRecordCloud: true,
 };
 

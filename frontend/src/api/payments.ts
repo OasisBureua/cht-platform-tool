@@ -34,18 +34,35 @@ export const paymentsApi = {
     }
   },
 
-  createConnectLink: async (userId: string): Promise<{ url: string }> => {
-    try {
-      const { data } = await apiClient.post(`/payments/${userId}/connect-account`);
-      return { url: data.onboardingUrl || data.url || '/app/payments' };
-    } catch (err) {
-      if (ENABLE_MOCK_FALLBACK) return { url: '/app/payments' };
-      throw err;
-    }
+  /** Stripe hosted Account Link (or Bill settings URL when Stripe is off). */
+  createAccountLink: async (userId: string): Promise<{ url: string }> => {
+    const { data } = await apiClient.post(`/payments/${userId}/account-link`);
+    return { url: data.url || '/settings?tab=payment' };
   },
 
-  /** Submit payee + address, and bank details when ACH is selected */
-  createConnectAccount: async (
+  /** @deprecated Use createAccountLink */
+  createConnectLink: async (userId: string): Promise<{ url: string }> => {
+    return paymentsApi.createAccountLink(userId);
+  },
+
+  /** Stripe Connect Embedded Account Session (client_secret + publishable key). */
+  createAccountSession: async (
+    userId: string,
+  ): Promise<{
+    clientSecret: string;
+    publishableKey: string;
+    accountId: string;
+    expiresAt: number;
+  }> => {
+    const { data } = await apiClient.post(`/payments/${userId}/account-session`);
+    return data;
+  },
+
+  /**
+   * Bill.com vendor create only. Do not call when Stripe is configured —
+   * use createAccountLink / createAccountSession instead.
+   */
+  createBillVendor: async (
     userId: string,
     bankData: {
       payeeName: string;
@@ -89,7 +106,7 @@ export const paymentsApi = {
     return data;
   },
 
-  /** Re-fetch vendor state from Bill.com and update local user flags (after changes in Bill.com UI). */
+  /** Re-fetch Connect / vendor state and update local user flags. */
   syncAccountStatus: async (userId: string) => {
     const { data } = await apiClient.post(`/payments/${userId}/sync-account`);
     return data;
