@@ -227,3 +227,14 @@ variable "appconfig_profile" {
   type        = string
   default     = ""
 }
+variable "companion_base_url" {
+  description = "cht-companion Service Connect base URL (e.g. http://cht-companion:8080). Empty disables chat proxy."
+  type        = string
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Cloud Map HTTP namespace name or ARN for ECS Service Connect client (e.g. cht-dev.local). Empty disables."
+  type        = string
+  default     = ""
+}

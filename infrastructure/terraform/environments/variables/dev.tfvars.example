@@ -68,3 +68,8 @@ cognito_mrr_associate_waf_replica     = false
 # Dev Stripe keys live in AWS Secrets Manager (cht-dev-app-secrets); sync with:
 #   ./scripts/sync-tfvars-from-secrets-manager.sh dev
 # deploy-dev.yml does not pass TF_VAR_stripe_* (avoids wiping SM).
+
+# CHT Companion (SSE chat BFF) — enable when cht-companion is on Service Connect
+# service_connect_namespace = "cht-dev.local"
+# companion_base_url = "http://cht-companion:8080"
+# companion_internal_secret = ""

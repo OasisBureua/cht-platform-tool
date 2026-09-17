@@ -26,11 +26,11 @@ describe('ZoomWebinarSettingsFields', () => {
     const backstage = screen.getByRole('switch', {
       name: /hosts and panelists can access Backstage/i,
     });
-    expect(backstage).toHaveAttribute('aria-checked', 'false');
+    expect(backstage).toHaveAttribute('aria-checked', 'true');
     expect(backstage).not.toBeDisabled();
   });
 
-  it('lets admins turn Backstage on', () => {
+  it('lets admins turn Backstage off', () => {
     const onChange = vi.fn();
     render(
       <ZoomWebinarSettingsFields
@@ -46,7 +46,7 @@ describe('ZoomWebinarSettingsFields', () => {
     );
     expect(onChange).toHaveBeenCalledWith({
       ...DEFAULT_ZOOM_WEBINAR_SETTINGS,
-      backstage: true,
+      backstage: false,
     });
   });
 });
