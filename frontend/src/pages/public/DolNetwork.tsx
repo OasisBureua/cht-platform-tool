@@ -463,21 +463,24 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
         )}
       </div>
 
-      <section>
-        <div className={`${rail} flex flex-wrap items-center justify-between gap-8 ${embedded ? 'py-10' : 'py-16'}`}>
-          <div>
-            <h2 className="display text-display-m text-text">Practising, and want to record?</h2>
-            <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
-              CHM faculty are clinicians first. Sessions are recorded between clinics, in ninety
-              minutes, with no script approval.
-            </p>
+      {/* Public marketing CTA — omit inside the member app shell. */}
+      {!embedded ? (
+        <section>
+          <div className={`${rail} flex flex-wrap items-center justify-between gap-8 py-16`}>
+            <div>
+              <h2 className="display text-display-m text-text">Practising, and want to record?</h2>
+              <p className="prose-lede mt-3 max-w-[46ch] text-body-m text-muted2">
+                CHM faculty are clinicians first. Sessions are recorded between clinics, in ninety
+                minutes, with no script approval.
+              </p>
+            </div>
+            <Button to="/contact" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+              Talk to the editorial team
+              <ArrowRight className="size-4" strokeWidth={1.75} />
+            </Button>
           </div>
-          <Button to="/contact" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
-            Talk to the editorial team
-            <ArrowRight className="size-4" strokeWidth={1.75} />
-          </Button>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </div>
   );
 }

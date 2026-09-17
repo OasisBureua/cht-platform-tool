@@ -66,6 +66,7 @@ const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
 const CompanionChat         = lazy(() => import('./pages/CompanionChat'));
+const KolNetwork            = lazy(() => import('./pages/KolNetwork'));
 
 // ── Admin pages (lazy) ───────────────────────────────────────────────────────
 const AdminDashboard        = lazy(() => import('./pages/admin/AdminDashboard'));
@@ -272,7 +273,7 @@ function App() {
                 <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
                 <Route path="catalog" element={<VideosPage />} />
 
-                <Route path="kol-network" element={<DolNetwork embedded />} />
+                <Route path="kol-network" element={<KolNetwork />} />
                 <Route path="kol-network/profile/:kolId" element={<KolProfilePage />} />
                 <Route path="kol-network/:regionSlug" element={<DolRegionDetail />} />
 

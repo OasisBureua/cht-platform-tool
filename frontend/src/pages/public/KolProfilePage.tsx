@@ -4,7 +4,9 @@ import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowRight,
   Briefcase,
+  ChevronLeft,
   ExternalLink,
+  Loader2,
   Sparkles,
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
@@ -56,7 +58,6 @@ function IconLinkedIn({ className }: { className?: string }) {
   );
 }
 
-
 function avatarUrl(name: string): string {
   const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
@@ -103,7 +104,7 @@ export default function KolProfilePage() {
   const catalogBase = kolCatalogBaseFromPath(pathname);
   const embedded = pathname.startsWith('/app');
 
-  const profile = useKolProfile(kolId);
+  const profile = useKolProfile(kolId, embedded ? 'app' : 'public');
 
   const vm = useMemo(() => {
     if (profile.loadState !== 'ready') return null;
@@ -111,14 +112,12 @@ export default function KolProfilePage() {
   }, [profile]);
 
   if (profile.loadState === 'loading') {
-    return (
-      <div
-        className={
-          embedded
-            ? 'w-full px-2 py-16 text-center text-muted2'
-            : 'min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2'
-        }
-      >
+    return embedded ? (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" aria-label="Loading profile" />
+      </div>
+    ) : (
+      <div className="min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2">
         Loading profile…
       </div>
     );
@@ -137,13 +136,202 @@ export default function KolProfilePage() {
     Boolean(entry.bio?.trim()) &&
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
+  if (embedded) {
+    return (
+      <div className="space-y-6 text-foreground">
+        <Link
+          to={networkBase}
+          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          KOL Network
+        </Link>
+
+        <div className="overflow-hidden rounded-card border border-border/90 bg-card shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
+          <div className="relative h-20 w-full overflow-hidden bg-muted sm:h-24">
+            {vm.bannerImageUrl ? (
+              <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
+            ) : (
+              <ProfileBanner seed={entry.id} />
+            )}
+          </div>
+
+          <div className="grid gap-6 p-4 sm:p-6 lg:grid-cols-[16rem_1fr] lg:gap-8">
+            <aside className="min-w-0">
+              <img
+                src={entry.photoUrl || avatarUrl(entry.name)}
+                alt=""
+                className="-mt-12 size-20 rounded-full object-cover ring-4 ring-card sm:size-24"
+              />
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold tracking-tight text-foreground md:text-2xl">
+                  {vm.displayName}
+                </h1>
+                {entry.featured ? (
+                  <span className="rounded-[6px] bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
+                    Featured
+                  </span>
+                ) : null}
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">{vm.institution}</p>
+
+              <dl className="mt-5 divide-y divide-border border-t border-border">
+                {(
+                  [
+                    ['Specialty', vm.specialty],
+                    ['Location', vm.stateName],
+                    entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
+                    entry.intel?.publicationsApprox
+                      ? ['Publications', `~${entry.intel.publicationsApprox}`]
+                      : null,
+                    entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
+                  ].filter(Boolean) as [string, string][]
+                ).map(([k, v]) => (
+                  <div key={k} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
+                    <dt className="text-muted-foreground">{k}</dt>
+                    <dd className="text-end font-medium tabular-nums text-foreground">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+
+              <Link
+                to={catalogHref}
+                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"
+              >
+                Catalog videos
+                <ArrowRight className="size-4" aria-hidden />
+              </Link>
+
+              {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {vm.phone ? (
+                    <a
+                      href={`tel:${vm.phone.replace(/\D/g, '')}`}
+                      className="inline-flex h-10 items-center rounded-[6px] border border-border px-3 text-sm text-foreground hover:bg-muted/60"
+                    >
+                      {vm.phone}
+                    </a>
+                  ) : null}
+                  <SocialIcon href={vm.linkedInUrl} label="LinkedIn" embedded>
+                    <IconLinkedIn className="size-4" />
+                  </SocialIcon>
+                  <SocialIcon href={vm.twitterUrl} label="Twitter / X" embedded>
+                    <IconTwitter className="size-4" />
+                  </SocialIcon>
+                  <SocialIcon href={vm.webUrl} label="Website" embedded>
+                    <ExternalLink className="size-4" />
+                  </SocialIcon>
+                </div>
+              )}
+            </aside>
+
+            <div className="min-w-0 space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Role</p>
+                  <p className="mt-1 text-sm text-foreground">{entry.role}</p>
+                </div>
+                {entry.intel?.affiliation ? (
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Affiliation
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">{entry.intel.affiliation}</p>
+                  </div>
+                ) : null}
+                {entry.education?.trim() ? (
+                  <div className="sm:col-span-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Education &amp; training
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">{entry.education}</p>
+                  </div>
+                ) : null}
+              </div>
+
+              {displayBrief ? (
+                <article className="overflow-hidden rounded-card border border-border bg-background">
+                  <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+                    <Sparkles
+                      className={`size-4 ${displayBrief.isAiGenerated ? 'text-steel-600' : 'text-muted-foreground'}`}
+                      aria-hidden
+                    />
+                    <span className="text-sm font-semibold text-foreground">Intel summary</span>
+                    <span className="ms-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
+                    </span>
+                  </div>
+                  <div className="space-y-4 px-4 py-4 text-sm leading-relaxed text-muted-foreground">
+                    <div>
+                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        Who they are
+                      </p>
+                      <p className="mt-1.5 text-foreground">{displayBrief.whoTheyAre}</p>
+                    </div>
+                    {displayBrief.focus ? (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          What they focus on
+                        </p>
+                        <p className="mt-1.5 text-foreground">{displayBrief.focus}</p>
+                      </div>
+                    ) : null}
+                    {displayBrief.chmContext ? (
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                          CHM context
+                        </p>
+                        <p className="mt-1.5 text-foreground">{displayBrief.chmContext}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </article>
+              ) : null}
+
+              <article className="rounded-card border border-border bg-background p-4">
+                <h2 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Briefcase className="h-4 w-4" aria-hidden />
+                  Role
+                </h2>
+                <p className="mt-2 text-sm text-muted-foreground">{entry.role}</p>
+              </article>
+
+              <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
+
+              {showBioOnBackground ? (
+                <article className="rounded-card border border-border bg-background p-4">
+                  <h2 className="text-sm font-semibold text-foreground">Summary</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">{entry.bio}</p>
+                </article>
+              ) : null}
+              {vm.researchHighlights ? (
+                <article className="rounded-card border border-border bg-background p-4">
+                  <h2 className="text-sm font-semibold text-foreground">Research highlights</h2>
+                  <p className="mt-2 text-sm text-muted-foreground">{vm.researchHighlights}</p>
+                </article>
+              ) : null}
+              {vm.awards && vm.awards.length > 0 ? (
+                <article className="rounded-card border border-border bg-background p-4">
+                  <h2 className="text-sm font-semibold text-foreground">Recognition</h2>
+                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
+                    {vm.awards.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                </article>
+              ) : null}
+
+              <KolPublicationsSection kolId={entry.id} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className={embedded ? 'min-w-0 w-full pb-12 text-text' : 'min-h-screen w-full bg-ground pb-20 text-text'}>
+    <div className="min-h-screen w-full bg-ground pb-20 text-text">
       <div className="w-full max-w-none">
-        {/* Banner: full viewport width */}
-        {/* A banner rather than a slab: the cluster motif seeded from
-            this profile, so the page reads as part of the site instead
-            of a stock gradient. A supplied banner image still wins. */}
         <div className="relative h-24 w-full overflow-hidden bg-surface sm:h-28">
           {vm.bannerImageUrl ? (
             <img src={vm.bannerImageUrl} alt="" className="size-full object-cover" loading="lazy" />
@@ -152,12 +340,6 @@ export default function KolProfilePage() {
           )}
         </div>
 
-
-        {/* ── Dossier ──────────────────────────────────────────
-            A sticky identity rail beside a scrolling record. The tabs
-            are gone: they hid two thirds of the profile behind a click,
-            and the fields a partner wants to compare -- sessions,
-            publications, Open Payments -- were never on screen together. */}
         <div className="rail grid gap-8 pb-6 lg:grid-cols-[21rem_1fr] lg:gap-12">
           <aside className="lg:sticky lg:top-24 lg:h-fit lg:self-start">
             <img
@@ -179,8 +361,6 @@ export default function KolProfilePage() {
             </div>
             <p className="prose-lede mt-2 text-body-s text-muted2">{vm.institution}</p>
 
-            {/* The hard numbers, pinned. This is the block that has to
-                stay on screen while the narrative scrolls past it. */}
             <dl className="mt-6 border-t border-hairline">
               {(
                 [
@@ -262,85 +442,81 @@ export default function KolProfilePage() {
             </div>
 
             <div className="mt-8 space-y-4">
-
-                {displayBrief ? (
-                  <article className="card overflow-hidden p-0">
-                    <div className="flex items-center gap-2 border-b border-hairline px-6 py-4">
-                      <Sparkles
-                        className={`size-4 ${displayBrief.isAiGenerated ? 'text-anchor' : 'text-faint'}`}
-                        aria-hidden
-                      />
-                      <span className="display text-body-m text-text">Intel summary</span>
-                      <span className="eyebrow ms-auto text-faint">
-                        {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
-                      </span>
+              {displayBrief ? (
+                <article className="card overflow-hidden p-0">
+                  <div className="flex items-center gap-2 border-b border-hairline px-6 py-4">
+                    <Sparkles
+                      className={`size-4 ${displayBrief.isAiGenerated ? 'text-anchor' : 'text-faint'}`}
+                      aria-hidden
+                    />
+                    <span className="display text-body-m text-text">Intel summary</span>
+                    <span className="eyebrow ms-auto text-faint">
+                      {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
+                    </span>
+                  </div>
+                  <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">
+                    <div>
+                      <p className="eyebrow text-faint">Who they are</p>
+                      <p className="mt-2">{displayBrief.whoTheyAre}</p>
                     </div>
-                    <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">
+                    {displayBrief.focus ? (
                       <div>
-                        <p className="eyebrow text-faint">Who they are</p>
-                        <p className="mt-2">{displayBrief.whoTheyAre}</p>
-                      </div>
-                      {displayBrief.focus ? (
-                        <div>
-                          <p className="eyebrow text-faint">What they focus on</p>
-                          <p className="mt-2">{displayBrief.focus}</p>
-                        </div>
-                      ) : null}
-                      {displayBrief.chmContext ? (
-                        <div>
-                          <p className="eyebrow text-faint">CHM context</p>
-                          <p className="mt-2">{displayBrief.chmContext}</p>
-                        </div>
-                      ) : null}
-                    </div>
-                    {displayBrief.isAiGenerated ? (
-                      <div className="border-t border-hairline px-6 py-4">
-                        <p className="text-body-s leading-snug text-faint">
-                          AI-generated summaries are provided for convenience and may contain inaccuracies. Verify
-                          important details against primary sources.
-                        </p>
+                        <p className="eyebrow text-faint">What they focus on</p>
+                        <p className="mt-2">{displayBrief.focus}</p>
                       </div>
                     ) : null}
-                  </article>
-                ) : null}
-
-                <article className="card p-6">
-                  <h2 className="display flex items-center gap-2 text-body-m text-text">
-                    <Briefcase className="h-4 w-4" aria-hidden />
-                    Role
-                  </h2>
-                  <p className="prose-lede mt-3 text-body-s text-muted2">{entry.role}</p>
+                    {displayBrief.chmContext ? (
+                      <div>
+                        <p className="eyebrow text-faint">CHM context</p>
+                        <p className="mt-2">{displayBrief.chmContext}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                  {displayBrief.isAiGenerated ? (
+                    <div className="border-t border-hairline px-6 py-4">
+                      <p className="text-body-s leading-snug text-faint">
+                        AI-generated from public sources. Please verify important details against
+                        primary sources.
+                      </p>
+                    </div>
+                  ) : null}
                 </article>
+              ) : null}
 
-                <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
-              
-                {showBioOnBackground ? (
-                  <article className="card p-6">
-                    <h2 className="display text-body-m text-text">Summary</h2>
-                    <p className="prose-lede mt-3 text-body-s text-muted2">{entry.bio}</p>
-                  </article>
-                ) : null}
-                {vm.researchHighlights ? (
-                  <article className="card p-6">
-                    <h2 className="display text-body-m text-text">Research highlights</h2>
-                    <p className="prose-lede mt-3 text-body-s text-muted2">{vm.researchHighlights}</p>
-                  </article>
-                ) : null}
-                {vm.awards && vm.awards.length > 0 ? (
-                  <article className="card p-6">
-                    <h2 className="display text-body-m text-text">Recognition</h2>
-                    <ul className="mt-3 list-inside list-disc space-y-1.5 text-body-s text-muted2">
-                      {vm.awards.map((a) => (
-                        <li key={a}>{a}</li>
-                      ))}
-                    </ul>
-                  </article>
-                ) : null}
+              <article className="card p-6">
+                <h2 className="display flex items-center gap-2 text-body-m text-text">
+                  <Briefcase className="h-4 w-4" aria-hidden />
+                  Role
+                </h2>
+                <p className="prose-lede mt-3 text-body-s text-muted2">{entry.role}</p>
+              </article>
 
-                {/* Last: seventeen indexed papers is a reference list, not
-                    the reason anyone opened the page. */}
-                <KolPublicationsSection kolId={entry.id} />
-              
+              <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
+
+              {showBioOnBackground ? (
+                <article className="card p-6">
+                  <h2 className="display text-body-m text-text">Summary</h2>
+                  <p className="prose-lede mt-3 text-body-s text-muted2">{entry.bio}</p>
+                </article>
+              ) : null}
+              {vm.researchHighlights ? (
+                <article className="card p-6">
+                  <h2 className="display text-body-m text-text">Research highlights</h2>
+                  <p className="prose-lede mt-3 text-body-s text-muted2">{vm.researchHighlights}</p>
+                </article>
+              ) : null}
+              {vm.awards && vm.awards.length > 0 ? (
+                <article className="card p-6">
+                  <h2 className="display text-body-m text-text">Recognition</h2>
+                  <ul className="mt-3 list-inside list-disc space-y-1.5 text-body-s text-muted2">
+                    {vm.awards.map((a) => (
+                      <li key={a}>{a}</li>
+                    ))}
+                  </ul>
+                </article>
+              ) : null}
+
+              <KolPublicationsSection kolId={entry.id} />
             </div>
           </div>
         </div>
@@ -349,7 +525,17 @@ export default function KolProfilePage() {
   );
 }
 
-function SocialIcon({ href, label, children }: { href?: string; label: string; children: ReactNode }) {
+function SocialIcon({
+  href,
+  label,
+  children,
+  embedded,
+}: {
+  href?: string;
+  label: string;
+  children: ReactNode;
+  embedded?: boolean;
+}) {
   if (!href) return null;
   return (
     <a
@@ -357,7 +543,11 @@ function SocialIcon({ href, label, children }: { href?: string; label: string; c
       target="_blank"
       rel="noopener noreferrer"
       aria-label={label}
-      className="press grid size-10 place-items-center rounded-[6px] bg-surface text-muted2 shadow-card transition-colors duration-150 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      className={
+        embedded
+          ? 'grid size-10 place-items-center rounded-[6px] border border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+          : 'press grid size-10 place-items-center rounded-[6px] bg-surface text-muted2 shadow-card transition-colors duration-150 hover:text-text focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring'
+      }
     >
       {children}
     </a>
