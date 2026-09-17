@@ -167,17 +167,25 @@ export class AdminZoomRecordingsController {
           description:
             'Optional filter, e.g. ["TRANSCRIPT","MP4"]. Defaults to all completed files.',
         },
+        zoomRecordingFileIds: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            'Optional Zoom cloud recording file ids. When set, only those files are pulled.',
+        },
       },
     },
   })
   async pullSession(
     @Param('sessionId') sessionId: string,
-    @Body() body: { fileTypes?: string[] },
+    @Body()
+    body: { fileTypes?: string[]; zoomRecordingFileIds?: string[] },
     @CurrentUser() admin: AuthUser,
   ) {
     const result = await this.pullService.pullForSession(sessionId, {
       adminUserId: admin.userId,
       fileTypes: body?.fileTypes,
+      zoomRecordingFileIds: body?.zoomRecordingFileIds,
     });
     const detail = await this.catalog.getSession(sessionId);
     return {
@@ -313,6 +321,16 @@ export class AdminZoomRecordingsController {
       pageSize: pageSize ? Number(pageSize) : undefined,
       search,
     });
+  }
+
+  @Get('sessions/:sessionId/surveys')
+  @Header('Cache-Control', 'no-store')
+  @ApiOperation({
+    summary:
+      'List CHT surveys for a catalog session (via linked Program). Unlinked sessions return canFetchSurveys=false.',
+  })
+  async listSessionSurveys(@Param('sessionId') sessionId: string) {
+    return this.catalog.listSessionSurveys(sessionId);
   }
 
   @Get('sessions/:sessionId/attendance/report/download-url')

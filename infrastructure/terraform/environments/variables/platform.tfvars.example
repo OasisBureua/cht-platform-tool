@@ -45,3 +45,8 @@ elasticache_node_type = "cache.t3.medium"
 # Production: keep one NAT Gateway per AZ.
 single_nat_gateway = false
 
+# CHT Companion (SSE chat BFF) — enable when cht-companion is on Service Connect
+# service_connect_namespace = "cht-platform.local"   # when prod companion namespace exists
+# companion_base_url = "http://cht-companion:8080"
+# companion_internal_secret = ""
+

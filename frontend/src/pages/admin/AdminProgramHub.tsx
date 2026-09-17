@@ -1562,6 +1562,7 @@ function ZoomRecordingsSection({
       ) : (
         <ZoomRecordingFilesTable
           recordings={recordings}
+          isPulling={pullMut.isPending}
           emptyMessage="No recordings in S3 yet. After the live session, click Pull from Zoom."
           onView={(id) => void openRecording(id, 'view')}
           onDownload={(id) => void openRecording(id, 'download')}

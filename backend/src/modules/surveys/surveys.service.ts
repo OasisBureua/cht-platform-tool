@@ -571,8 +571,15 @@ export class SurveysService {
     return { deleted: true, id };
   }
 
-  /** Admin: all submitted responses for a survey with learner identity. */
-  async listResponsesForAdmin(surveyId: string) {
+  /**
+   * Admin: learner responses for a survey.
+   * Pass `page`/`pageSize` for paginated UI lists.
+   * Omit both to load all rows (CSV export / analytics).
+   */
+  async listResponsesForAdmin(
+    surveyId: string,
+    opts?: { page?: number; pageSize?: number },
+  ) {
     const survey = await this.prisma.survey.findUnique({
       where: { id: surveyId },
       select: {
@@ -587,9 +594,25 @@ export class SurveysService {
     });
     if (!survey) throw new NotFoundException('Survey not found');
 
+    const total = await this.prisma.surveyResponse.count({
+      where: { surveyId },
+    });
+
+    const paginate = opts?.page != null || opts?.pageSize != null;
+    const pageSize = paginate
+      ? Math.min(Math.max(opts?.pageSize ?? 10, 1), 100)
+      : Math.max(total, 1);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const page = paginate
+      ? Math.min(Math.max(opts?.page ?? 1, 1), totalPages)
+      : 1;
+    const skip = paginate ? (page - 1) * pageSize : 0;
+    const take = paginate ? pageSize : undefined;
+
     const responses = await this.prisma.surveyResponse.findMany({
       where: { surveyId },
       orderBy: { submittedAt: 'desc' },
+      ...(take != null ? { skip, take } : {}),
       include: {
         user: {
           select: {
@@ -639,6 +662,11 @@ export class SurveysService {
         user: r.user,
         registration: regByUser.get(r.userId) ?? null,
       })),
+      pagination: {
+        page,
+        pageSize: paginate ? pageSize : total,
+        total,
+      },
     };
   }
 

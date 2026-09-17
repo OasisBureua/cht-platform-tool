@@ -61,16 +61,19 @@ describe('SurveysService.getResponseAnalyticsForAdmin', () => {
   let service: SurveysService;
   let prisma: {
     survey: { findUnique: jest.Mock };
-    surveyResponse: { findMany: jest.Mock };
+    surveyResponse: { findMany: jest.Mock; count: jest.Mock };
     programRegistration: { findMany: jest.Mock; count: jest.Mock };
   };
 
   beforeEach(() => {
     prisma = {
       survey: { findUnique: jest.fn() },
-      surveyResponse: { findMany: jest.fn() },
+      surveyResponse: { findMany: jest.fn(), count: jest.fn() },
       programRegistration: { findMany: jest.fn(), count: jest.fn() },
     };
+
+    // Pagination added count(); analytics still loads all rows via findMany.
+    prisma.surveyResponse.count.mockResolvedValue(0);
 
     service = new SurveysService(
       prisma as unknown as PrismaService,

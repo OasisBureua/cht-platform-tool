@@ -377,6 +377,9 @@ export default function ClipDetail() {
   }, [canonicalUrl]);
 
   const catalogBase = isInApp ? '/app/catalog' : '/catalog';
+  const seriesHref = seriesSlug
+    ? `${catalogBase}/playlist/series/${encodeURIComponent(seriesSlug)}`
+    : null;
   const libraryLabel = isInApp ? 'Conversations' : 'Content Library';
   const clipHref = (c: MediaHubClip) =>
     isInApp ? `/app/clip/${getShortClipId(c.id)}` : `/catalog/clip/${getShortClipId(c.id)}`;
@@ -476,11 +479,11 @@ export default function ClipDetail() {
               </Link>
             </>
           ) : null}
-          {seriesLabel ? (
+          {seriesLabel && seriesHref ? (
             <>
               <span aria-hidden>/</span>
               <Link
-                to={`${catalogBase}?q=${encodeURIComponent(seriesLabel)}`}
+                to={seriesHref}
                 className="press -my-1.5 inline-block rounded-[6px] py-1.5 hover:text-anchor"
               >
                 {seriesLabel}
@@ -625,11 +628,8 @@ export default function ClipDetail() {
             </div>
           ) : null}
 
-          {seriesLabel ? (
-            <Link
-              to={`${catalogBase}?q=${encodeURIComponent(seriesLabel)}`}
-              className="card press lift block p-5"
-            >
+          {seriesLabel && seriesHref ? (
+            <Link to={seriesHref} className="card press lift block p-5">
               <p className="eyebrow text-muted2">Part of the series</p>
               <p className="display mt-2 text-body-l text-text">{seriesLabel}</p>
               {seriesDetail?.description ? (
