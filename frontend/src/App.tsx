@@ -272,6 +272,10 @@ function App() {
                 <Route path="catalog/:diseaseSlug" element={<DiseaseDetail />} />
                 <Route path="catalog" element={<VideosPage />} />
 
+                <Route path="kol-network" element={<DolNetwork embedded />} />
+                <Route path="kol-network/profile/:kolId" element={<KolProfilePage />} />
+                <Route path="kol-network/:regionSlug" element={<DolRegionDetail />} />
+
                 <Route path="earnings" element={<Earnings />} />
                 <Route path="chatbot" element={<CompanionChat />} />
                 <Route path="settings" element={<Settings />} />

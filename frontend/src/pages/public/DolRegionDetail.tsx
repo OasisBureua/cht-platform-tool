@@ -2,11 +2,15 @@ import { useEffect } from 'react';
 import { Link, useParams, Navigate, useLocation } from 'react-router-dom';
 import { getRegionFromDirectory, useKolDirectory } from '../../hooks/useKolDirectory';
 import { ChevronLeft } from 'lucide-react';
+import { kolNetworkBaseFromPath } from '../../utils/kol-network-paths';
 
 export default function DolRegionDetail() {
   const { regionSlug } = useParams<{ regionSlug: string }>();
   const location = useLocation();
-  const directory = useKolDirectory();
+  const networkBase = kolNetworkBaseFromPath(location.pathname);
+  const directory = useKolDirectory({
+    surface: location.pathname.startsWith('/app') ? 'app' : 'public',
+  });
   const region = regionSlug ? getRegionFromDirectory(directory, regionSlug) : null;
 
   useEffect(() => {
@@ -24,7 +28,7 @@ export default function DolRegionDetail() {
     );
   }
   if (!region) {
-    return <Navigate to="/kol-network" replace />;
+    return <Navigate to={networkBase} replace />;
   }
 
   return (
@@ -33,7 +37,7 @@ export default function DolRegionDetail() {
       <section>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
           <Link
-            to="/kol-network"
+            to={networkBase}
             className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground mb-4"
           >
             <ChevronLeft className="h-4 w-4" />
@@ -76,7 +80,7 @@ export default function DolRegionDetail() {
                     )}
                   </h3>
                   <Link
-                    to={`/kol-network/profile/${entry.id}`}
+                    to={`${networkBase}/profile/${entry.id}`}
                     className="shrink-0 text-sm font-semibold text-brand-700 hover:text-brand-900"
                   >
                     View profile →
@@ -109,7 +113,7 @@ export default function DolRegionDetail() {
               .map((r) => (
                 <Link
                   key={r.id}
-                  to={`/kol-network/${r.id}`}
+                  to={`${networkBase}/${r.id}`}
                   className="rounded-[6px] border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:border-border"
                 >
                   {r.title}

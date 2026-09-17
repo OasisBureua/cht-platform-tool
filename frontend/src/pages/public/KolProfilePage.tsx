@@ -1,6 +1,6 @@
 import { ProfileBanner } from '../../components/kol/ProfileBanner';
 import { useMemo, type ReactNode } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowRight,
   Briefcase,
@@ -13,6 +13,10 @@ import { useKolProfile } from '../../hooks/useKolProfile';
 import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
+import {
+  kolCatalogBaseFromPath,
+  kolNetworkBaseFromPath,
+} from '../../utils/kol-network-paths';
 
 // X/Twitter brand icon was removed from lucide-react in v1.x, local outline SVG.
 function IconTwitter({ className }: { className?: string }) {
@@ -94,6 +98,10 @@ function buildViewModel(region: DolRegion, entry: DolEntry) {
 
 export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
+  const { pathname } = useLocation();
+  const networkBase = kolNetworkBaseFromPath(pathname);
+  const catalogBase = kolCatalogBaseFromPath(pathname);
+  const embedded = pathname.startsWith('/app');
 
   const profile = useKolProfile(kolId);
 
@@ -104,24 +112,33 @@ export default function KolProfilePage() {
 
   if (profile.loadState === 'loading') {
     return (
-      <div className="min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2">
+      <div
+        className={
+          embedded
+            ? 'w-full px-2 py-16 text-center text-muted2'
+            : 'min-h-screen w-full bg-ground px-6 py-20 text-center text-muted2'
+        }
+      >
         Loading profile…
       </div>
     );
   }
   if (!kolId || profile.loadState !== 'ready' || !vm) {
-    return <Navigate to="/kol-network" replace />;
+    return <Navigate to={networkBase} replace />;
   }
 
   const { entry } = profile;
   const displayBrief = resolveKolDisplayBrief(entry);
-  const catalogHref = kolCatalogBrowseHref(entry);
+  const catalogHref = (() => {
+    const href = kolCatalogBrowseHref(entry);
+    return catalogBase === '/catalog' ? href : href.replace(/^\/catalog/, catalogBase);
+  })();
   const showBioOnBackground =
     Boolean(entry.bio?.trim()) &&
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   return (
-    <div className="min-h-screen w-full bg-ground pb-20 text-text">
+    <div className={embedded ? 'min-w-0 w-full pb-12 text-text' : 'min-h-screen w-full bg-ground pb-20 text-text'}>
       <div className="w-full max-w-none">
         {/* Banner: full viewport width */}
         {/* A banner rather than a slab: the cluster motif seeded from

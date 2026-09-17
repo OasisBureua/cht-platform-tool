@@ -213,6 +213,8 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
   const [sort, setSort] = useState<Sort>('state');
   const [newOnly, setNewOnly] = useState(false);
   const id = useId();
+  const basePath = embedded ? '/app/kol-network' : '/kol-network';
+  const catalogBase = embedded ? '/app/catalog' : '/catalog';
 
   // Search hits the API, so it waits for a pause in typing.
   useEffect(() => {
@@ -452,12 +454,12 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
                     {list.length} {list.length === 1 ? 'KOL' : 'KOLs'}
                   </span>
                 </div>
-                <KolGrid list={list} />
+                <KolGrid list={list} basePath={basePath} catalogBase={catalogBase} />
               </section>
             ))}
           </div>
         ) : (
-          <KolGrid list={shown} />
+          <KolGrid list={shown} basePath={basePath} catalogBase={catalogBase} />
         )}
       </div>
 
@@ -480,21 +482,42 @@ export default function DolNetwork({ embedded = false }: { embedded?: boolean })
   );
 }
 
-function KolGrid({ list }: { list: FlatKol[] }) {
+function KolGrid({
+  list,
+  basePath,
+  catalogBase,
+}: {
+  list: FlatKol[];
+  basePath: string;
+  catalogBase: string;
+}) {
   return (
     <ul className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {list.map((k, i) => (
         <Reveal as="li" key={`${k.stateId}-${k.id}`} delay={Math.min(i, 6) * 50}>
-          <KolCard k={k} />
+          <KolCard k={k} basePath={basePath} catalogBase={catalogBase} />
         </Reveal>
       ))}
     </ul>
   );
 }
 
-function KolCard({ k }: { k: FlatKol }) {
-  const profileHref = `/kol-network/profile/${k.id}`;
+function KolCard({
+  k,
+  basePath,
+  catalogBase,
+}: {
+  k: FlatKol;
+  basePath: string;
+  catalogBase: string;
+}) {
+  const profileHref = `${basePath}/profile/${k.id}`;
   const inst = institutionHint(k);
+  const catalogHref = (() => {
+    const publicHref = kolCatalogBrowseHref(k);
+    if (catalogBase === '/catalog') return publicHref;
+    return publicHref.replace(/^\/catalog/, catalogBase);
+  })();
 
   return (
     /* The card is a container, not a link: it carries two
@@ -581,7 +604,7 @@ function KolCard({ k }: { k: FlatKol }) {
           <ArrowRight className="size-3.5" strokeWidth={1.75} />
         </Link>
         <Link
-          to={kolCatalogBrowseHref(k)}
+          to={catalogHref}
           className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text hover:shadow-[var(--shadow-card-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
         >
           View content
