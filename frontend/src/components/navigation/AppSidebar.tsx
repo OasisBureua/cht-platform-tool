@@ -5,8 +5,8 @@ import { getAppNavItems } from './appNavItems';
 export default function AppSidebar() {
   const navItems = getAppNavItems();
   return (
-    <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col bg-white/70 shadow-[6px_0_36px_-20px_rgba(0,0,0,0.09)] backdrop-blur-xl backdrop-saturate-150 md:flex /85 dark:shadow-[8px_0_40px_-22px_rgba(0,0,0,0.55)]">
-      <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-zinc-200/25 /60">
+    <aside className="sticky top-0 hidden h-screen w-[112px] shrink-0 self-start flex-col bg-card/80 shadow-[6px_0_36px_-20px_rgba(0,0,0,0.09)] backdrop-blur-xl backdrop-saturate-150 md:flex dark:bg-zinc-950/90 dark:shadow-[8px_0_40px_-22px_rgba(0,0,0,0.55)]">
+      <div className="flex h-[88px] w-full shrink-0 items-center justify-center border-b border-border/60">
         <Link
           to="/app/home"
           className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-card text-steel-600 transition-[color,opacity,transform] duration-200 ease-out hover:text-steel-700 hover:opacity-95 active:scale-[0.96] dark:text-steel-400 dark:hover:text-steel-300"

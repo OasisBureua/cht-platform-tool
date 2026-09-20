@@ -517,8 +517,10 @@ function KolCard({
   const profileHref = `${basePath}/${encodeURIComponent(k.id)}`;
   const inst = institutionHint(k);
   const catalogHref = (() => {
-    const publicHref = kolCatalogBrowseHref(k);
+    const publicHref = kolCatalogBrowseHref(k, basePath.startsWith('/app') ? basePath : '/kols');
     if (catalogBase === '/catalog') return publicHref;
+    // Prefer surface-aware href; keep replace as a safety net for legacy callers.
+    if (publicHref.startsWith(catalogBase)) return publicHref;
     return publicHref.replace(/^\/catalog/, catalogBase);
   })();
 

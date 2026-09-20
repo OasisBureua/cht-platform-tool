@@ -1,17 +1,40 @@
 import { listNativeSurveyQuestions } from './survey-schema';
 
+/**
+ * Excel on Windows often opens CSVs as Windows-1252 unless a UTF-8 BOM is
+ * present. Without it, UTF-8 en dashes (–) render as mojibake (`â€“`).
+ * Prepend this so Excel picks UTF-8; also normalize fancy dashes to ASCII
+ * for tools that still ignore encoding.
+ */
+export const UTF8_CSV_BOM = '\uFEFF';
+
+/** Map common Unicode punctuation that breaks CSV-in-Excel to ASCII. */
+export function normalizeCsvText(value: string): string {
+  return value
+    .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D]/g, '-') // hyphens / dashes
+    .replace(/[\u2018\u2019\u201A\u201B]/g, "'") // single quotes
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // double quotes
+    .replace(/\u2026/g, '...') // ellipsis
+    .replace(/\u00A0/g, ' '); // non-breaking space
+}
+
 function formatAnswerValue(value: unknown): string {
   if (value == null || value === '') return '';
-  if (Array.isArray(value)) return value.join(', ');
-  if (typeof value === 'object') return JSON.stringify(value);
-  return String(value);
+  if (Array.isArray(value)) {
+    return normalizeCsvText(value.map((v) => String(v)).join(', '));
+  }
+  if (typeof value === 'object') {
+    return normalizeCsvText(JSON.stringify(value));
+  }
+  return normalizeCsvText(String(value));
 }
 
 function csvEscape(value: string): string {
-  if (/[",\n\r]/.test(value)) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const normalized = normalizeCsvText(value);
+  if (/[",\n\r]/.test(normalized)) {
+    return `"${normalized.replace(/"/g, '""')}"`;
   }
-  return value;
+  return normalized;
 }
 
 function slugifyFilenamePart(value: string): string {
@@ -94,7 +117,7 @@ export function buildSurveyResponsesCsv(input: {
     lines.push(cells.map((c) => csvEscape(String(c))).join(','));
   }
 
-  return `${lines.join('\n')}\n`;
+  return `${UTF8_CSV_BOM}${lines.join('\n')}\n`;
 }
 
 export function surveyResponsesCsvFilename(

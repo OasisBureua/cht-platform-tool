@@ -101,6 +101,10 @@ export interface CreateWebinarPayload {
   chmProgramId?: string;
   /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
   zoomSettings?: ZoomWebinarSettings;
+  /** Optional. Clone registration (INTAKE) questions from an existing survey. */
+  intakeSurveySourceId?: string;
+  /** Optional. Clone post-event (FEEDBACK) questions from an existing survey. */
+  feedbackSurveySourceId?: string;
 }
 
 export interface UpdateWebinarPayload {
@@ -202,7 +206,14 @@ export interface PendingPayment {
     preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
     bankAccountLast4?: string | null;
   };
-  program: { id: string; title: string } | null;
+  program: {
+    id: string;
+    title: string;
+    /** Internal CHM nomenclature / Content ID for reconciliation. */
+    chmProgramId?: string | null;
+    /** Sponsor / client name used as campaign label. */
+    sponsorName?: string | null;
+  } | null;
 }
 
 export interface FailedPayment extends PendingPayment {
@@ -1205,6 +1216,56 @@ export const adminApi = {
     return data;
   },
 
+  listReusableSurveys: async (
+    type?: 'INTAKE' | 'FEEDBACK',
+  ): Promise<
+    Array<{
+      id: string;
+      title: string;
+      type: 'INTAKE' | 'FEEDBACK' | string;
+      isCustomized: boolean;
+      schemaVersion: number;
+      updatedAt: string;
+      responseCount: number;
+      program: { id: string; title: string; startDate: string | null };
+    }>
+  > => {
+    const { data } = await apiClient.get('/admin/surveys/reusable', {
+      params: type ? { type } : undefined,
+    });
+    return data as Array<{
+      id: string;
+      title: string;
+      type: string;
+      isCustomized: boolean;
+      schemaVersion: number;
+      updatedAt: string;
+      responseCount: number;
+      program: { id: string; title: string; startDate: string | null };
+    }>;
+  },
+
+  cloneSurveyOntoProgram: async (
+    programId: string,
+    sourceSurveyId: string,
+  ): Promise<{
+    surveyId: string;
+    type: string;
+    created: boolean;
+    replaced: boolean;
+  }> => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/surveys/clone`,
+      { sourceSurveyId },
+    );
+    return data as {
+      surveyId: string;
+      type: string;
+      created: boolean;
+      replaced: boolean;
+    };
+  },
+
   deleteSurvey: async (id: string) => {
     await apiClient.delete(`/admin/surveys/${id}`);
   },
@@ -1589,6 +1650,8 @@ export const adminApi = {
         honorariumAmount: number | null;
         zoomSessionType?: 'WEBINAR' | 'MEETING';
         startDate?: string | null;
+        chmProgramId?: string | null;
+        sponsorName?: string | null;
       };
     }>;
   },

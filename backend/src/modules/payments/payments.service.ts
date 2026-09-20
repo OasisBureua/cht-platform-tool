@@ -734,7 +734,14 @@ export class PaymentsService {
             bankAccountLast4: true,
           },
         },
-        program: { select: { id: true, title: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            chmProgramId: true,
+            sponsorName: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -909,7 +916,14 @@ export class PaymentsService {
             w9Submitted: true,
           },
         },
-        program: { select: { id: true, title: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            chmProgramId: true,
+            sponsorName: true,
+          },
+        },
       },
     });
   }
@@ -932,7 +946,14 @@ export class PaymentsService {
             bankAccountLast4: true,
           },
         },
-        program: { select: { id: true, title: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            chmProgramId: true,
+            sponsorName: true,
+          },
+        },
       },
       orderBy: { failedAt: 'desc' },
     });
@@ -959,7 +980,14 @@ export class PaymentsService {
             bankAccountLast4: true,
           },
         },
-        program: { select: { id: true, title: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            chmProgramId: true,
+            sponsorName: true,
+          },
+        },
       },
       orderBy: [{ paidAt: 'desc' }, { updatedAt: 'desc' }],
       take,
@@ -1009,7 +1037,14 @@ export class PaymentsService {
             lastName: true,
           },
         },
-        program: { select: { id: true, title: true } },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            chmProgramId: true,
+            sponsorName: true,
+          },
+        },
       },
       orderBy: { createdAt: 'desc' },
       take: 5000,
@@ -1032,9 +1067,12 @@ export class PaymentsService {
       'userName',
       'programId',
       'programTitle',
+      'chmProgramId',
+      'campaignLabel',
       'createdAt',
       'paidAt',
       'failedAt',
+      'stripeTransferId',
       'billPaymentId',
     ].join(',');
 
@@ -1050,9 +1088,13 @@ export class PaymentsService {
         `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim(),
         p.programId ?? '',
         p.program?.title ?? '',
+        p.program?.chmProgramId ?? '',
+        // Sponsor / client name used as the campaign label for reconciliation.
+        p.program?.sponsorName ?? '',
         p.createdAt?.toISOString?.() ?? '',
         p.paidAt?.toISOString?.() ?? '',
         p.failedAt?.toISOString?.() ?? '',
+        p.stripeTransferId ?? '',
         p.billPaymentId ?? '',
       ]
         .map(escape)
@@ -1308,6 +1350,7 @@ export class PaymentsService {
     payment: {
       id: string;
       userId: string;
+      programId: string | null;
       amount: number;
       type: string;
       description: string | null;
@@ -1370,6 +1413,13 @@ export class PaymentsService {
       );
     }
 
+    const program = payment.programId
+      ? await this.prisma.program.findUnique({
+          where: { id: payment.programId },
+          select: { chmProgramId: true, sponsorName: true, title: true },
+        })
+      : null;
+
     try {
       const transfer = await this.stripeService.createTransfer({
         amountCents: payment.amount,
@@ -1377,6 +1427,9 @@ export class PaymentsService {
         paymentId: payment.id,
         userId: payment.userId,
         description: payment.description || `${payment.type} payment`,
+        programId: payment.programId,
+        chmProgramId: program?.chmProgramId,
+        campaignLabel: program?.sponsorName || program?.title,
       });
 
       await this.prisma.payment.update({
@@ -1581,12 +1634,21 @@ export class PaymentsService {
 
     if (this.useStripe()) {
       try {
+        const program = dto.programId
+          ? await this.prisma.program.findUnique({
+              where: { id: dto.programId },
+              select: { chmProgramId: true, sponsorName: true, title: true },
+            })
+          : null;
         const transfer = await this.stripeService.createTransfer({
           amountCents: dto.amount,
           destinationAccountId: user.stripeAccountId!,
           paymentId: payment.id,
           userId: dto.userId,
           description: dto.description || 'Honorarium payment',
+          programId: dto.programId,
+          chmProgramId: program?.chmProgramId,
+          campaignLabel: program?.sponsorName || program?.title,
         });
         await this.prisma.payment.update({
           where: { id: payment.id },

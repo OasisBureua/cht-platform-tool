@@ -94,11 +94,26 @@ export default function AdminPayments() {
 
   // Group failed payments by program (sorted alphabetically; no-program group last)
   const failedByProgram = useMemo(() => {
-    const groups = new Map<string, { title: string; programId: string | null; payments: typeof failed }>();
+    const groups = new Map<
+      string,
+      {
+        title: string;
+        programId: string | null;
+        chmProgramId: string | null;
+        sponsorName: string | null;
+        payments: typeof failed;
+      }
+    >();
     for (const p of failed) {
       const key = p.program?.id ?? '__none__';
       if (!groups.has(key)) {
-        groups.set(key, { title: p.program?.title ?? 'No program', programId: p.program?.id ?? null, payments: [] });
+        groups.set(key, {
+          title: p.program?.title ?? 'No program',
+          programId: p.program?.id ?? null,
+          chmProgramId: p.program?.chmProgramId ?? null,
+          sponsorName: p.program?.sponsorName ?? null,
+          payments: [],
+        });
       }
       groups.get(key)!.payments.push(p);
     }
@@ -192,6 +207,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Method</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Campaign / ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Created</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Actions</th>
               </tr>
@@ -262,19 +278,20 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Method / delivery</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Campaign / ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Paid on</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paidPending ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     Loading paid payments…
                   </td>
                 </tr>
               ) : paid.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
                     No completed payouts yet. Successful payments appear here after <strong>Pay now</strong> finishes.
                   </td>
                 </tr>
@@ -316,6 +333,16 @@ export default function AdminPayments() {
                     <tr className="bg-red-100/40">
                       <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
                         {group.title}
+                        {group.chmProgramId ? (
+                          <span className="ml-2 font-mono font-normal text-destructive normal-case tracking-normal">
+                            {group.chmProgramId}
+                          </span>
+                        ) : null}
+                        {group.sponsorName ? (
+                          <span className="ml-2 font-normal text-destructive normal-case tracking-normal">
+                            · {group.sponsorName}
+                          </span>
+                        ) : null}
                         <span className="ml-2 font-normal text-destructive normal-case">
                           ({group.payments.length} failed)
                         </span>
@@ -377,6 +404,12 @@ export default function AdminPayments() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{r.program.title}</p>
+                      {r.program.chmProgramId ? (
+                        <p className="mt-0.5 font-mono text-[11px] text-gray-500">{r.program.chmProgramId}</p>
+                      ) : null}
+                      {r.program.sponsorName ? (
+                        <p className="text-xs text-gray-500">{r.program.sponsorName}</p>
+                      ) : null}
                       <p className="text-xs text-gray-500">{r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
@@ -877,8 +910,32 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
         ) : null}
       </td>
       <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '-'}</td>
+      <td className="px-4 py-3 text-gray-600">
+        <PaymentCampaignCell program={payment.program} />
+      </td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
+  );
+}
+
+function PaymentCampaignCell({
+  program,
+}: {
+  program: PendingPayment['program'];
+}) {
+  if (!program) return <span className="text-muted-foreground">-</span>;
+  const label = program.sponsorName?.trim() || null;
+  const id = program.chmProgramId?.trim() || null;
+  if (!label && !id) return <span className="text-muted-foreground">-</span>;
+  return (
+    <div>
+      {label ? <p className="text-sm text-foreground">{label}</p> : null}
+      {id ? (
+        <p className="font-mono text-[11px] text-muted-foreground" title="Internal CHM Content ID">
+          {id}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -925,6 +982,9 @@ function PendingRow({
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.type.replace(/_/g, ' ')}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{methodLabel}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.program?.title ?? '-'}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        <PaymentCampaignCell program={payment.program} />
+      </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-2">

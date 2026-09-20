@@ -667,9 +667,11 @@ export class AdminController {
   ) {
     const { filename, body } =
       await this.surveysService.buildResponsesCsvForAdmin(id);
+    // Send as a UTF-8 buffer so Express does not re-encode and so the BOM
+    // from buildSurveyResponsesCsv survives for Excel on Windows.
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(body);
+    res.send(Buffer.from(body, 'utf8'));
   }
 
   @Get('users/registration-invite-filter-options')
@@ -1182,6 +1184,16 @@ export class AdminController {
           description:
             'Optional (WEBINAR). Zoom webinar toggles. Omitted fields use CHT defaults (Q&A on, Backstage off, HD screen share on, 1080p off, email in report off, cloud recording on).',
         },
+        intakeSurveySourceId: {
+          type: 'string',
+          description:
+            'Optional (WEBINAR). Existing INTAKE survey id whose questions are cloned onto the new program.',
+        },
+        feedbackSurveySourceId: {
+          type: 'string',
+          description:
+            'Optional (WEBINAR). Existing FEEDBACK survey id whose questions are cloned onto the new program.',
+        },
       },
     },
   })
@@ -1212,6 +1224,10 @@ export class AdminController {
       chmProgramId?: string;
       /** Optional. Zoom webinar settings (Q&A, Backstage, HD, recording). Ignored for MEETING. */
       zoomSettings?: Record<string, unknown>;
+      /** Optional. Clone registration (INTAKE) questions from this survey id. */
+      intakeSurveySourceId?: string;
+      /** Optional. Clone post-event (FEEDBACK) questions from this survey id. */
+      feedbackSurveySourceId?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -1366,6 +1382,10 @@ export class AdminController {
         await this.surveysService.attachSurveysForNewWebinar(
           program.id,
           program.title,
+          {
+            intakeSurveySourceId: body.intakeSurveySourceId,
+            feedbackSurveySourceId: body.feedbackSurveySourceId,
+          },
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -1572,6 +1592,68 @@ export class AdminController {
       program.id,
       program.title,
     );
+  }
+
+  @Get('surveys/reusable')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['INTAKE', 'FEEDBACK'],
+  })
+  async listReusableSurveys(@Query('type') type?: string) {
+    const normalized = type?.toUpperCase();
+    if (
+      normalized &&
+      normalized !== 'INTAKE' &&
+      normalized !== 'FEEDBACK'
+    ) {
+      throw new BadRequestException('type must be INTAKE or FEEDBACK');
+    }
+    return this.surveysService.listReusableSurveyTemplates(
+      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
+    );
+  }
+
+  @Post('programs/:id/surveys/clone')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Clone an existing INTAKE/FEEDBACK survey onto this program (creates or replaces empty row)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['sourceSurveyId'],
+      properties: {
+        sourceSurveyId: { type: 'string' },
+      },
+    },
+  })
+  async cloneSurveyOntoProgram(
+    @Param('id') id: string,
+    @Body() body: { sourceSurveyId?: string },
+  ) {
+    const sourceSurveyId = body.sourceSurveyId?.trim();
+    if (!sourceSurveyId) {
+      throw new BadRequestException('sourceSurveyId is required');
+    }
+    const program = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+    return this.surveysService.cloneSurveyOntoProgram(program.id, sourceSurveyId, {
+      programTitle: program.title,
+    });
   }
 
   @Post('webinars/ensure-native-surveys')

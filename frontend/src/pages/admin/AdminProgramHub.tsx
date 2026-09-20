@@ -71,6 +71,30 @@ export default function AdminProgramHub() {
   const feedbackSurveyId = registrationPayload?.surveys?.feedback?.id;
   const linkedSurveys = registrationPayload?.surveys?.all ?? [];
   const [csvDownloading, setCsvDownloading] = useState<'intake' | 'feedback' | null>(null);
+  const [intakeCloneSourceId, setIntakeCloneSourceId] = useState('');
+  const [feedbackCloneSourceId, setFeedbackCloneSourceId] = useState('');
+  const [cloneMessage, setCloneMessage] = useState<{ ok?: string; err?: string }>({});
+
+  const { data: reusableSurveys = [] } = useQuery({
+    queryKey: ['admin', 'surveys', 'reusable'],
+    queryFn: () => adminApi.listReusableSurveys(),
+    enabled: !!programId,
+    staleTime: 60 * 1000,
+  });
+  const intakeCloneOptions = useMemo(
+    () =>
+      reusableSurveys.filter(
+        (s) => s.type === 'INTAKE' && s.program.id !== programId,
+      ),
+    [reusableSurveys, programId],
+  );
+  const feedbackCloneOptions = useMemo(
+    () =>
+      reusableSurveys.filter(
+        (s) => s.type === 'FEEDBACK' && s.program.id !== programId,
+      ),
+    [reusableSurveys, programId],
+  );
 
   const downloadSurveyCsv = async (surveyId: string, kind: 'intake' | 'feedback') => {
     setCsvDownloading(kind);
@@ -92,6 +116,30 @@ export default function AdminProgramHub() {
         queryKey: ['admin', 'program', programId, 'registrations'],
       });
       void queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
+    },
+  });
+
+  const cloneSurveyMut = useMutation({
+    mutationFn: (sourceSurveyId: string) =>
+      adminApi.cloneSurveyOntoProgram(programId!, sourceSurveyId),
+    onSuccess: (data) => {
+      setCloneMessage({
+        ok: data.replaced
+          ? `Replaced empty ${data.type} survey with the selected template.`
+          : `Attached ${data.type} survey from the selected template.`,
+      });
+      setIntakeCloneSourceId('');
+      setFeedbackCloneSourceId('');
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'program', programId, 'registrations'],
+      });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
+      void queryClient.invalidateQueries({ queryKey: ['admin', 'surveys', 'reusable'] });
+    },
+    onError: (err) => {
+      setCloneMessage({
+        err: getApiErrorMessage(err, 'Could not attach that survey.'),
+      });
     },
   });
 
@@ -541,7 +589,7 @@ export default function AdminProgramHub() {
             <h2 className="text-lg font-semibold text-foreground">Linked surveys</h2>
             <p className="text-sm text-muted-foreground">
               Every native survey on this program (intake, post-event, and any legacy rows). Open edit, responses, or the
-              learner survey URL.
+              learner survey URL. Reuse a previously customized survey from another session below.
             </p>
           </div>
           <button
@@ -556,12 +604,98 @@ export default function AdminProgramHub() {
             {ensureNativeSurveysMut.isPending ? 'Checking…' : 'Ensure native surveys'}
           </button>
         </div>
+
+        <div className="rounded-lg border border-border bg-muted/40 p-4 space-y-3">
+          <p className="text-sm font-semibold text-foreground">Attach from another program</p>
+          <p className="text-xs text-muted-foreground">
+            Copies questions onto this program. Source survey is unchanged. Replaces an empty survey of the same type;
+            blocked if that survey already has responses.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-foreground">Registration survey</label>
+              <select
+                value={intakeCloneSourceId}
+                onChange={(e) => {
+                  setIntakeCloneSourceId(e.target.value);
+                  setCloneMessage({});
+                }}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              >
+                <option value="">Select a previous intake…</option>
+                {intakeCloneOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.isCustomized ? '★ ' : ''}
+                    {s.program.title} — {s.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!intakeCloneSourceId || cloneSurveyMut.isPending}
+                onClick={() => {
+                  setCloneMessage({});
+                  cloneSurveyMut.mutate(intakeCloneSourceId);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {cloneSurveyMut.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                Attach intake
+              </button>
+            </div>
+            <div className="space-y-2">
+              <label className="block text-xs font-semibold text-foreground">Post-event survey</label>
+              <select
+                value={feedbackCloneSourceId}
+                onChange={(e) => {
+                  setFeedbackCloneSourceId(e.target.value);
+                  setCloneMessage({});
+                }}
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm"
+              >
+                <option value="">Select a previous post-event…</option>
+                {feedbackCloneOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.isCustomized ? '★ ' : ''}
+                    {s.program.title} — {s.title}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={!feedbackCloneSourceId || cloneSurveyMut.isPending}
+                onClick={() => {
+                  setCloneMessage({});
+                  cloneSurveyMut.mutate(feedbackCloneSourceId);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {cloneSurveyMut.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Copy className="h-3.5 w-3.5" />
+                )}
+                Attach post-event
+              </button>
+            </div>
+          </div>
+          {cloneMessage.ok ? (
+            <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{cloneMessage.ok}</p>
+          ) : null}
+          {cloneMessage.err ? (
+            <p className="text-xs font-medium text-destructive">{cloneMessage.err}</p>
+          ) : null}
+        </div>
+
         {rLoading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : linkedSurveys.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No surveys linked yet. Use <strong>Ensure native surveys</strong> to attach intake and post-event templates
-            without changing existing responses.
+            No surveys linked yet. Use <strong>Ensure native surveys</strong> or attach from another program above.
           </p>
         ) : (
           <ul className="space-y-2">
