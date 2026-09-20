@@ -370,8 +370,17 @@
   .dark .bg-white\/90 {
     background-color: rgb(9 9 11 / 0.9) !important;
   }
+  .dark .bg-white\/85 {
+    background-color: rgb(9 9 11 / 0.85) !important;
+  }
   .dark .bg-white\/80 {
     background-color: rgb(9 9 11 / 0.8) !important;
+  }
+  .dark .bg-white\/75 {
+    background-color: rgb(9 9 11 / 0.75) !important;
+  }
+  .dark .bg-white\/70 {
+    background-color: rgb(9 9 11 / 0.7) !important;
   }
   .dark .bg-white\/60 {
     background-color: rgb(9 9 11 / 0.6) !important;

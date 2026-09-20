@@ -4,6 +4,7 @@ import {
   lastNameSlugCandidates,
   matchCatalogDoctorSlugsByLastName,
 } from './kol-catalog-doctor-match';
+import { kolCatalogBaseFromPath } from './kol-network-paths';
 
 export type KolCatalogDoctorEntry = Pick<DolEntry, 'id' | 'name' | 'intel'>;
 
@@ -42,14 +43,35 @@ export function kolCatalogDoctorSlugs(
   return out;
 }
 
+/**
+ * Catalog browse URL filtered to this KOL's doctor tag.
+ * Always stays on the current surface (`/catalog` or `/app/catalog`) so
+ * in-app "View all" never drops to the marketing homepage via catch-all.
+ */
 export function kolCatalogBrowseHref(
   entry: KolCatalogDoctorEntry,
-  doctors?: { slug: string }[],
+  doctorsOrPathname?: { slug: string }[] | string,
+  pathname?: string,
 ): string {
-  const slug = kolCatalogDoctorSlugs(entry, doctors)[0] ?? entry.id;
-  return `/catalog?${new URLSearchParams({ doctor: slug }).toString()}`;
+  const doctors = Array.isArray(doctorsOrPathname) ? doctorsOrPathname : undefined;
+  const path =
+    typeof doctorsOrPathname === 'string'
+      ? doctorsOrPathname
+      : pathname ??
+        (typeof window !== 'undefined' ? window.location.pathname : '');
+  const base = kolCatalogBaseFromPath(path);
+  const slug = kolCatalogDoctorSlugs(entry, doctors)[0] ?? entry.id?.trim();
+  if (!slug) {
+    // Never emit a bare "/" or empty path — that routes to the homepage.
+    return base;
+  }
+  return `${base}?${new URLSearchParams({ doctor: slug }).toString()}`;
 }
 
-export function kolCatalogClipHref(clipId: string): string {
-  return `/catalog/clip/${encodeURIComponent(clipId)}`;
+export function kolCatalogClipHref(clipId: string, pathname?: string): string {
+  const path =
+    pathname ??
+    (typeof window !== 'undefined' ? window.location.pathname : '');
+  const base = path.startsWith('/app') ? '/app/clip' : '/catalog/clip';
+  return `${base}/${encodeURIComponent(clipId)}`;
 }

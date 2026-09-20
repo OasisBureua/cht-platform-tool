@@ -99,13 +99,21 @@ export function mergeIntel(
   const fromApi = apiIntelToKolIntel(apiKol.intel);
   const fromStat = stat?.intel;
   if (!fromApi && !fromStat) return undefined;
+
+  const aiBrief = {
+    ...fromStat?.aiBrief,
+    ...fromApi?.aiBrief,
+  };
+  const hasAiBrief = Boolean(
+    aiBrief.whoTheyAre?.trim() ||
+      aiBrief.focus?.trim() ||
+      aiBrief.chmContext?.trim(),
+  );
+
   return {
     ...fromStat,
     ...fromApi,
-    aiBrief: {
-      ...fromStat?.aiBrief,
-      ...fromApi?.aiBrief,
-    },
+    ...(hasAiBrief ? { aiBrief } : {}),
   };
 }
 

@@ -234,6 +234,10 @@ export class StripeService {
     paymentId: string;
     userId: string;
     description?: string;
+    /** Optional reconciliation labels (CHM nomenclature + sponsor/campaign). */
+    chmProgramId?: string | null;
+    campaignLabel?: string | null;
+    programId?: string | null;
   }): Promise<Stripe.Transfer> {
     const stripe = this.getClient();
     if (input.amountCents < 1) {
@@ -249,6 +253,13 @@ export class StripeService {
         metadata: {
           paymentId: input.paymentId,
           userId: input.userId,
+          ...(input.programId ? { programId: input.programId } : {}),
+          ...(input.chmProgramId?.trim()
+            ? { chmProgramId: input.chmProgramId.trim() }
+            : {}),
+          ...(input.campaignLabel?.trim()
+            ? { campaignLabel: input.campaignLabel.trim().slice(0, 500) }
+            : {}),
         },
       },
       { idempotencyKey: `cht-payment-${input.paymentId}` },

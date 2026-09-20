@@ -1,5 +1,11 @@
 export function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob);
+  // Prefer an explicit UTF-8 CSV type so browsers/Excel get charset hints
+  // when the server already sent a BOM-prefixed body.
+  const typed =
+    blob.type && blob.type !== 'application/octet-stream'
+      ? blob
+      : new Blob([blob], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(typed);
   const a = document.createElement('a');
   a.href = url;
   a.download = filename;

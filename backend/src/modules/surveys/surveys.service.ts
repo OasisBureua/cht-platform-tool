@@ -993,12 +993,223 @@ export class SurveysService {
 
   /**
    * Create native INTAKE + FEEDBACK surveys for a new or imported webinar.
+   * Optional source IDs clone questions from an existing survey (same type)
+   * so admins can reuse a customized form on a future session.
    */
   async attachSurveysForNewWebinar(
     programId: string,
     programTitle: string,
+    opts?: {
+      intakeSurveySourceId?: string;
+      feedbackSurveySourceId?: string;
+    },
   ): Promise<{ intakeSurveyId: string; feedbackSurveyId: string }> {
+    if (opts?.intakeSurveySourceId?.trim()) {
+      await this.cloneSurveyOntoProgram(
+        programId,
+        opts.intakeSurveySourceId.trim(),
+        { expectedType: 'INTAKE', programTitle },
+      );
+    }
+    if (opts?.feedbackSurveySourceId?.trim()) {
+      await this.cloneSurveyOntoProgram(
+        programId,
+        opts.feedbackSurveySourceId.trim(),
+        { expectedType: 'FEEDBACK', programTitle },
+      );
+    }
     return this.ensureNativeSurveyPairForProgram(programId, programTitle);
+  }
+
+  /**
+   * Surveys that can be reused as question templates on another program.
+   * Customized rows sort first so Amanda's DB09 forms surface quickly.
+   */
+  async listReusableSurveyTemplates(type?: 'INTAKE' | 'FEEDBACK'): Promise<
+    Array<{
+      id: string;
+      title: string;
+      type: SurveyType;
+      isCustomized: boolean;
+      schemaVersion: number;
+      updatedAt: string;
+      responseCount: number;
+      program: { id: string; title: string; startDate: string | null };
+    }>
+  > {
+    const rows = await this.prisma.survey.findMany({
+      where: {
+        type: type
+          ? type
+          : { in: [SurveyType.INTAKE, SurveyType.FEEDBACK] },
+        // Only native question schemas can be cloned safely.
+        jotformFormId: null,
+      },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        isCustomized: true,
+        schemaVersion: true,
+        updatedAt: true,
+        program: { select: { id: true, title: true, startDate: true } },
+        _count: { select: { responses: true } },
+      },
+      orderBy: [{ isCustomized: 'desc' }, { updatedAt: 'desc' }],
+      take: 200,
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      title: r.title,
+      type: r.type,
+      isCustomized: r.isCustomized,
+      schemaVersion: r.schemaVersion,
+      updatedAt: r.updatedAt.toISOString(),
+      responseCount: r._count.responses,
+      program: {
+        id: r.program.id,
+        title: r.program.title,
+        startDate: r.program.startDate?.toISOString() ?? null,
+      },
+    }));
+  }
+
+  /**
+   * Copy questions from `sourceSurveyId` onto `programId` for the same type.
+   * Creates a new row when missing; replaces an empty existing row (0 responses).
+   * Refuses to overwrite a survey that already has responses.
+   */
+  async cloneSurveyOntoProgram(
+    programId: string,
+    sourceSurveyId: string,
+    opts?: {
+      expectedType?: 'INTAKE' | 'FEEDBACK';
+      programTitle?: string;
+    },
+  ): Promise<{
+    surveyId: string;
+    type: SurveyType;
+    created: boolean;
+    replaced: boolean;
+  }> {
+    const program = await this.prisma.program.findUnique({
+      where: { id: programId },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+
+    const source = await this.prisma.survey.findUnique({
+      where: { id: sourceSurveyId },
+    });
+    if (!source) throw new NotFoundException('Source survey not found');
+    if (
+      opts?.expectedType &&
+      source.type !== opts.expectedType
+    ) {
+      throw new BadRequestException(
+        `Source survey type is ${source.type}; expected ${opts.expectedType}.`,
+      );
+    }
+    if (
+      source.type !== SurveyType.INTAKE &&
+      source.type !== SurveyType.FEEDBACK
+    ) {
+      throw new BadRequestException(
+        'Only INTAKE or FEEDBACK surveys can be reused as templates.',
+      );
+    }
+    if (source.programId === programId) {
+      throw new BadRequestException(
+        'Source survey is already linked to this program.',
+      );
+    }
+
+    const questions = withNativeSchemaVersion(
+      validateNativeSurveySchema(source.questions),
+      source.schemaVersion || 1,
+    );
+    const titleSuffix =
+      source.type === SurveyType.INTAKE ? 'Registration' : 'Post Event Survey';
+    const titleBase = (opts?.programTitle ?? program.title).trim() || program.title;
+    const nextTitle = `${titleBase} - ${titleSuffix}`;
+
+    const existing = await this.prisma.survey.findFirst({
+      where: { programId, type: source.type },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    if (existing) {
+      const responseCount = await this.prisma.surveyResponse.count({
+        where: { surveyId: existing.id },
+      });
+      if (responseCount > 0) {
+        throw new BadRequestException(
+          `Cannot replace the ${source.type} survey on this program: it already has ${responseCount} response(s).`,
+        );
+      }
+      const updated = await this.prisma.survey.update({
+        where: { id: existing.id },
+        data: {
+          title: nextTitle,
+          description:
+            source.description ??
+            (source.type === SurveyType.INTAKE
+              ? 'Webinar registration intake'
+              : 'Post-webinar feedback'),
+          questions: questions as object,
+          schemaVersion: source.schemaVersion || 1,
+          isCustomized: true,
+          jotformFormId: null,
+          jotformWebhookUrl: null,
+          required: source.required,
+        },
+      });
+      this.logger.log(
+        `Cloned survey ${source.id} onto program ${programId} (replaced ${existing.id})`,
+      );
+      return {
+        surveyId: updated.id,
+        type: updated.type,
+        created: false,
+        replaced: true,
+      };
+    }
+
+    const created = await this.prisma.survey.create({
+      data: {
+        programId,
+        title: nextTitle,
+        description:
+          source.description ??
+          (source.type === SurveyType.INTAKE
+            ? 'Webinar registration intake'
+            : 'Post-webinar feedback'),
+        questions: questions as object,
+        type: source.type,
+        required: source.required,
+        jotformFormId: null,
+        jotformWebhookUrl: null,
+        isCustomized: true,
+        schemaVersion: source.schemaVersion || 1,
+      },
+    });
+    await this.prisma.program.update({
+      where: { id: programId },
+      data:
+        source.type === SurveyType.INTAKE
+          ? { jotformIntakeFormUrl: null }
+          : { jotformSurveyUrl: null },
+    });
+    this.logger.log(
+      `Cloned survey ${source.id} onto program ${programId} (created ${created.id})`,
+    );
+    return {
+      surveyId: created.id,
+      type: created.type,
+      created: true,
+      replaced: false,
+    };
   }
 
   /**
