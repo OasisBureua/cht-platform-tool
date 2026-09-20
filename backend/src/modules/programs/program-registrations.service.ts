@@ -2431,6 +2431,8 @@ export class ProgramRegistrationsService {
             honorariumAmount: true,
             zoomSessionType: true,
             startDate: true,
+            chmProgramId: true,
+            sponsorName: true,
           },
         },
       },

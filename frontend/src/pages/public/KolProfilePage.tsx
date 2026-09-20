@@ -16,7 +16,6 @@ import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../../utils/kol-catalog-link';
 import {
-  kolCatalogBaseFromPath,
   kolNetworkBaseFromPath,
 } from '../../utils/kol-network-paths';
 
@@ -101,7 +100,6 @@ export default function KolProfilePage() {
   const { kolId } = useParams<{ kolId: string }>();
   const { pathname } = useLocation();
   const networkBase = kolNetworkBaseFromPath(pathname);
-  const catalogBase = kolCatalogBaseFromPath(pathname);
   const embedded = pathname.startsWith('/app');
 
   const profile = useKolProfile(kolId, embedded ? 'app' : 'public');
@@ -128,10 +126,7 @@ export default function KolProfilePage() {
 
   const { entry } = profile;
   const displayBrief = resolveKolDisplayBrief(entry);
-  const catalogHref = (() => {
-    const href = kolCatalogBrowseHref(entry);
-    return catalogBase === '/catalog' ? href : href.replace(/^\/catalog/, catalogBase);
-  })();
+  const catalogHref = kolCatalogBrowseHref(entry, pathname);
   const showBioOnBackground =
     Boolean(entry.bio?.trim()) &&
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
@@ -184,7 +179,8 @@ export default function KolProfilePage() {
                     entry.intel?.publicationsApprox
                       ? ['Publications', `~${entry.intel.publicationsApprox}`]
                       : null,
-                    entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
+                    // NPI is admin/public intel only — never on the member /app/kols surface.
+                    !embedded && entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
                   ].filter(Boolean) as [string, string][]
                 ).map(([k, v]) => (
                   <div key={k} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
@@ -258,15 +254,15 @@ export default function KolProfilePage() {
               </div>
 
               {displayBrief ? (
-                <article className="rounded-card border border-border bg-background">
+                <article className="rounded-card border border-border bg-card">
                   <div className="flex items-center gap-2 border-b border-border px-4 py-3">
                     <Sparkles
-                      className={`size-4 shrink-0 ${displayBrief.isAiGenerated ? 'text-steel-600' : 'text-muted-foreground'}`}
+                      className={`size-4 shrink-0 ${displayBrief.isAiGenerated ? 'text-steel-600 dark:text-steel-400' : 'text-muted-foreground'}`}
                       aria-hidden
                     />
                     <span className="text-sm font-semibold text-foreground">Intel summary</span>
                     <span className="ms-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
+                      {displayBrief.isAiGenerated ? 'From Content Hub · AI' : 'Profile summary'}
                     </span>
                   </div>
                   <div className="space-y-4 px-4 py-4 text-sm leading-relaxed text-muted-foreground">
@@ -461,7 +457,7 @@ export default function KolProfilePage() {
                     />
                     <span className="display text-body-m text-text">Intel summary</span>
                     <span className="eyebrow ms-auto text-faint">
-                      {displayBrief.isAiGenerated ? 'AI-generated' : 'Profile summary'}
+                      {displayBrief.isAiGenerated ? 'From Content Hub · AI' : 'Profile summary'}
                     </span>
                   </div>
                   <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">

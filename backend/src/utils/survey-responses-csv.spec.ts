@@ -1,10 +1,12 @@
 import {
+  UTF8_CSV_BOM,
   buildSurveyResponsesCsv,
+  normalizeCsvText,
   surveyResponsesCsvFilename,
 } from './survey-responses-csv';
 
 describe('survey-responses-csv', () => {
-  it('builds CSV with question prompts as headers', () => {
+  it('builds CSV with question prompts as headers and a UTF-8 BOM', () => {
     const csv = buildSurveyResponsesCsv({
       surveyTitle: 'Post Event',
       surveyType: 'FEEDBACK',
@@ -37,6 +39,7 @@ describe('survey-responses-csv', () => {
       ],
     });
 
+    expect(csv.startsWith(UTF8_CSV_BOM)).toBe(true);
     expect(csv).toContain(
       'first_name,last_name,email,specialty,registration_status,attendance_status,submitted_at,schema_version,NPI number,Overall rating',
     );
@@ -65,6 +68,42 @@ describe('survey-responses-csv', () => {
     });
 
     expect(csv).toContain('"Says ""yes"", maybe"');
+  });
+
+  it('normalizes en/em dashes so Excel does not show mojibake', () => {
+    expect(normalizeCsvText('6–10')).toBe('6-10');
+    expect(normalizeCsvText('11—20')).toBe('11-20');
+    expect(normalizeCsvText('0–10')).toBe('0-10');
+
+    const csv = buildSurveyResponsesCsv({
+      surveyTitle: 'Intake',
+      surveyType: 'INTAKE',
+      questionsSchema: {
+        sections: [
+          {
+            questions: [
+              { id: 'years', prompt: 'Years in independent clinical practice' },
+            ],
+          },
+        ],
+      },
+      responses: [
+        {
+          submittedAt: '2026-07-10T12:00:00.000Z',
+          answers: { years: '6–10' },
+          user: {
+            email: 'a@b.com',
+            firstName: 'A',
+            lastName: 'B',
+          },
+          registration: { status: 'APPROVED' },
+        },
+      ],
+    });
+
+    expect(csv).toContain('6-10');
+    expect(csv).not.toContain('–');
+    expect(csv).not.toContain('â€“');
   });
 
   it('builds a program-prefixed filename', () => {

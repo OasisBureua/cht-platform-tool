@@ -362,7 +362,7 @@ function KolGrid({ list }: { list: FlatKol[] }) {
 
 function KolCard({ k }: { k: FlatKol }) {
   const profileHref = kolProfilePath(KOL_NETWORK_APP_BASE, k.id);
-  const catalogHref = kolCatalogBrowseHref(k).replace(/^\/catalog/, '/app/catalog');
+  const catalogHref = kolCatalogBrowseHref(k);
   const inst = institutionHint(k);
 
   return (
