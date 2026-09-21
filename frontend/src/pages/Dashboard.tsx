@@ -511,7 +511,7 @@ export default function Dashboard() {
               {/* The badge sits over a poster scrim as often as over the
                   wash, so it is a fixed-bright glass pill carrying the
                   fixed dark label rather than page-following tokens. */}
-              <span className="eyebrow inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-on-bright shadow-card backdrop-blur-md">
+              <span className="eyebrow inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-on-bright shadow-card backdrop-blur-md dark:border-white/25 dark:text-white">
                 <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Next LIVE
               </span>

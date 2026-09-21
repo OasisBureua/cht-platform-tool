@@ -22,11 +22,13 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
   const browseHref = doctorSlug?.trim()
     ? `${catalogBase}?${new URLSearchParams({ doctor: doctorSlug.trim() }).toString()}`
     : kolCatalogBrowseHref(entry, pathname);
-  const shootLabel =
-    entry.shootCount && entry.shootCount > 0
-      ? `${entry.shootCount} CHM shoot${entry.shootCount === 1 ? '' : 's'}`
-      : total > 0
-        ? `${total} video${total === 1 ? '' : 's'} in catalog`
+  // Prefer catalog video total (matches View all). Shoot count is a weaker
+  // fallback and was incorrectly shown instead of the real video count.
+  const catalogCountLabel =
+    total > 0
+      ? `${total} video${total === 1 ? '' : 's'} in catalog`
+      : entry.shootCount && entry.shootCount > 0
+        ? `${entry.shootCount} CHM shoot${entry.shootCount === 1 ? '' : 's'}`
         : null;
 
   if (loadState === 'loading') {
@@ -66,7 +68,7 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
       <article className="rounded-card border border-border bg-card p-4 shadow-card sm:p-5">
         <ConversationRow
           title="CHM catalog content"
-          subtitle={shootLabel ?? (doctorSlug ? `Filtered · ${doctorSlug}` : undefined)}
+          subtitle={catalogCountLabel ?? (doctorSlug ? `Filtered · ${doctorSlug}` : undefined)}
           seeAllHref={browseHref}
           seeAllLabel="View all"
         >
@@ -88,8 +90,8 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
             <Film className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden />
             CHM catalog content
           </h2>
-          {shootLabel ? (
-            <p className="mt-1 text-xs text-muted-foreground">{shootLabel}</p>
+          {catalogCountLabel ? (
+            <p className="mt-1 text-xs text-muted-foreground">{catalogCountLabel}</p>
           ) : null}
         </div>
         <Link
