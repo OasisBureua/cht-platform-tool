@@ -23,13 +23,14 @@ async function fetchClipsForKol(
     return { clips: [], total: 0, doctorSlug: entry.id };
   }
 
+  // Match catalog "View all" for this doctor: no per-shoot cap / shoot
+  // dedup. Those were capping the profile grid at ~2 clips even when the
+  // doctor had many tagged videos across a single shoot.
   for (const doctor of slugs) {
     const { items, total } = await catalogApi.getClips({
       doctor,
       limit,
       sort_by: 'recorded_at',
-      dedup_by: 'shoot',
-      per_shoot_cap: 2,
     });
     const clips = items.filter(shouldSurfaceCatalogClip);
     if (clips.length > 0) {
