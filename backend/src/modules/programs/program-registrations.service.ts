@@ -1242,6 +1242,8 @@ export class ProgramRegistrationsService {
             firstName: true,
             lastName: true,
             specialty: true,
+            institution: true,
+            role: true,
           },
         },
         slot: true,
