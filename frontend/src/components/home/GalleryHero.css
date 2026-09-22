@@ -45,7 +45,7 @@
   text-align: center; pointer-events: none;
   padding-inline: var(--page-gutter, 1.5rem);
 }
-.hero__copy--top { top: calc(clamp(1.25rem, 4%, 2.5rem) + 30px); }
+.hero__copy--top { top: calc(clamp(1.25rem, 4%, 2.5rem) + 25px); }
 .hero__copy--bottom { bottom: calc(clamp(1.25rem, 4%, 2.5rem) + 20px); }
 
 /* Wide enough for "Medicine moves through" to hold one line, so the
@@ -54,7 +54,7 @@
   margin: 0;
   font-family: var(--font-display);
   font-weight: 500;
-  font-size: clamp(2.925rem, 6.35vw, 5.52rem);
+  font-size: clamp(2.779rem, 6.033vw, 5.244rem);
   line-height: 1.02; letter-spacing: -0.035em;
   color: hsl(var(--foreground));
   max-width: 26ch;

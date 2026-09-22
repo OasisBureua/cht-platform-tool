@@ -186,14 +186,11 @@
 /* The drawing carries the hue; the well behind it stays neutral. The
    SVG is used as a mask over a solid fill rather than drawn directly,
    which is the only way to recolour artwork that ships its own ink. */
-/* White, not a darker grey: the well has to read as a plate the
-   drawing sits on. At 2.75rem the drawings were illegible; 4.5rem is
-   where the anatomy becomes the thing that tells you which area you
-   are looking at, and it keeps the card near-square rather than
-   tall. */
+/* No plate: the drawing sits straight on the card, at 5.625rem, where
+   the anatomy is what tells you which area you are looking at. */
 .chm-skin .area__cluster {
   position: relative; display: grid; place-items: center;
-  width: 4.5rem; height: 4.5rem; flex: none;
+  width: 5.625rem; height: 5.625rem; flex: none;
   border-radius: 0.5rem; overflow: hidden;
   /* No plate: the drawing sits straight on the card. */
   background: transparent;

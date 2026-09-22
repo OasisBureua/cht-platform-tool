@@ -37,7 +37,10 @@ export function mountGalleryRoom(hero) {
   // ── constants, from the approved build ───────────────────────
   const SEGMENTS = 96;
   const CAM = 2000;
-  const SIZE = 0.84;          // piece height as a fraction of base
+  const SIZE = 0.84;
+  // Every card 10% smaller than the theme's. Applied to the final size
+  // rather than to SIZE, which cancels out when the band binds.
+  const CARD_SCALE = 0.9;          // piece height as a fraction of base
   const GAP = 0.48;           // spacing between pieces, in means (20% tighter than the reference)
   const LABEL_H = 0.24;       // label height as a fraction of base
   const LABEL_GAP = 0.04;
@@ -241,7 +244,7 @@ export function mountGalleryRoom(hero) {
 
     let total = 0;
     for (const p of pieces) {
-      p.h = base * p.size;
+      p.h = base * p.size * CARD_SCALE;
       p.w = p.h * p.aspect;
       p.lh = LABEL_H * base;
       p.lw = p.lh * p.labelAspect;

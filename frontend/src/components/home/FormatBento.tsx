@@ -33,13 +33,26 @@ const CHAPTERS: [string, string][] = [
   ['08:40', 'Where the guidelines lag'],
 ];
 
+/**
+ * Card labels in the brand guide's colours: Knowledge Blue, Amber and
+ * Deep Expertise, with Amber on Live as the guide reserves it. Each is
+ * the deepest tone of its hue that clears 4.5:1 as 11px text on the
+ * white card; the guide's own amber and Knowledge Blue sit at 1.9:1 and
+ * 2.6:1 there.
+ */
+const LABEL_TONE = {
+  blue: 'hsl(193 63% 35%)',
+  amber: 'hsl(37 91% 32%)',
+  deep: 'hsl(196 66% 23%)',
+} as const;
+
 function Card({
   label,
   meta,
   title,
   body,
   to,
-  accent,
+  tone,
   className = '',
   height = 'h-[21.25rem]',
   span = 'md:col-span-4',
@@ -50,7 +63,8 @@ function Card({
   title: string;
   body: string;
   to: string;
-  accent?: boolean;
+  /** Label colour, from LABEL_TONE. */
+  tone: string;
   className?: string;
   /** Fixed, so one card's content cannot set every sibling's height. */
   height?: string;
@@ -64,7 +78,9 @@ function Card({
       className={`group card lift press flex flex-col overflow-hidden p-4 ${height} ${span} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
     >
       <div className="flex items-center justify-between">
-        <span className={`eyebrow ${accent ? 'text-ink-pink' : 'text-faint'}`}>{label}</span>
+        <span className="eyebrow" style={{ color: tone }}>
+          {label}
+        </span>
         <span className="meta tabular-nums text-faint">{meta}</span>
       </div>
       <div className="my-3 min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -225,6 +241,7 @@ export function FormatBento({ poster }: { poster: string }) {
     <div className="mt-12 grid gap-4 md:grid-cols-12">
       <Card
         label="Video"
+        tone={LABEL_TONE.blue}
         meta="18:40"
         title="The long-form conversation"
         body="Two clinicians work a case end to end."
@@ -245,17 +262,18 @@ export function FormatBento({ poster }: { poster: string }) {
 
       <Card
         label="Podcast"
+        tone={LABEL_TONE.amber}
         meta="34:02"
         title="The audio cut"
         body="The same conversation, for the commute."
         to="/podcast-network"
-        accent
       >
         <Wave />
       </Card>
 
       <Card
         label="Editorial"
+        tone={LABEL_TONE.deep}
         meta="6 min"
         title="The written explainer"
         body="What changed, and what it changes."
@@ -267,6 +285,7 @@ export function FormatBento({ poster }: { poster: string }) {
       {/* Row two: the two things that are not a cut of a recording. */}
       <Card
         label="Live"
+        tone={LABEL_TONE.amber}
         meta="Next: 4 Sep"
         title="Office Hours"
         body="Send the case you are stuck on. Two faculty work it live, without the answer in advance."
@@ -297,6 +316,7 @@ export function FormatBento({ poster }: { poster: string }) {
 
       <Card
         label="For clinicians"
+        tone={LABEL_TONE.blue}
         meta="Free"
         title="The HCP platform"
         body="Every session, every format, filed by disease state. Free, and it stays free."
