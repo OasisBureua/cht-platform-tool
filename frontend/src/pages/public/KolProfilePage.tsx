@@ -10,7 +10,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
-import { KolPublicationsSection } from '../../components/kol/KolPublicationsSection';
 import { useKolProfile } from '../../hooks/useKolProfile';
 import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
@@ -326,8 +325,6 @@ export default function KolProfilePage() {
                   </ul>
                 </article>
               ) : null}
-
-              <KolPublicationsSection kolId={entry.id} />
             </div>
           </div>
         </div>
@@ -521,8 +518,6 @@ export default function KolProfilePage() {
                   </ul>
                 </article>
               ) : null}
-
-              <KolPublicationsSection kolId={entry.id} />
             </div>
           </div>
         </div>
