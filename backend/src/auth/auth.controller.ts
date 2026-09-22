@@ -63,6 +63,11 @@ import type { Prisma } from '@prisma/client';
 import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import type { MfaFeatureFlags } from '../feature-flags/feature-flags.types';
 import { normalizeUsPhoneE164 } from '../common/phone';
+import {
+  listMissingProfilePaymentFields,
+  NON_HCP_SPECIALTIES,
+  type ProfileMissingField,
+} from '../common/profile-payment-eligibility';
 
 interface LoginSuccess {
   session_token: string;
@@ -75,6 +80,9 @@ interface LoginSuccess {
   lastName?: string;
   role: string;
   profileComplete?: boolean;
+  profileMissingFields?: ProfileMissingField[];
+  specialty?: string | null;
+  npiNumber?: string | null;
   phoneNumber?: string | null;
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
@@ -239,7 +247,8 @@ export class AuthController {
       tokens.accessToken,
     );
     const dbUser = await this.authService.getUserById(user.userId);
-    const profileComplete = this.authService.isProfileComplete(dbUser);
+    const profileMissingFields = listMissingProfilePaymentFields(dbUser);
+    const profileComplete = profileMissingFields.length === 0;
 
     let mfaEnabled = false;
     try {
@@ -268,6 +277,9 @@ export class AuthController {
       lastName: dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
       role: user.role,
       profileComplete,
+      profileMissingFields,
+      specialty: dbUser?.specialty ?? null,
+      npiNumber: dbUser?.npiNumber ?? null,
       phoneNumber: dbUser?.phoneNumber ?? null,
       mfaEnabled,
       mfaEnrollmentRequired,
@@ -714,15 +726,7 @@ export class AuthController {
     }
 
     const professionTrim = profession.trim();
-    const npiRequiredProfessions = new Set([
-      'Physician',
-      'Nurse Practitioner',
-      'Physician Assistant',
-      'Pharmacist',
-      'Nurse',
-      'Other HCP',
-    ]);
-    const npiOptional = !npiRequiredProfessions.has(professionTrim);
+    const npiOptional = NON_HCP_SPECIALTIES.has(professionTrim);
     const npi = (npiNumber || '').replace(/\D/g, '');
     if (!npiOptional && npi.length !== 10) {
       return { error: 'NPI number must be 10 digits.' };
@@ -1502,6 +1506,9 @@ export class AuthController {
         lastName: string;
         role: string;
         profileComplete: boolean;
+        profileMissingFields: ProfileMissingField[];
+        specialty: string | null;
+        npiNumber: string | null;
         phoneNumber: string | null;
         mfaEnabled: boolean;
         mfaEnrollmentRequired: boolean;
@@ -1525,7 +1532,8 @@ export class AuthController {
     const lastName = dbLast
       ? dbLast
       : nameParts.slice(1).join(' ') || dbLast || '';
-    const profileComplete = this.authService.isProfileComplete(dbUser);
+    const profileMissingFields = listMissingProfilePaymentFields(dbUser);
+    const profileComplete = profileMissingFields.length === 0;
 
     let mfaEnabled = false;
     if (this.cognitoService.isConfigured()) {
@@ -1570,6 +1578,9 @@ export class AuthController {
       lastName,
       role: user.role,
       profileComplete,
+      profileMissingFields,
+      specialty: dbUser?.specialty ?? null,
+      npiNumber: dbUser?.npiNumber ?? null,
       phoneNumber: dbUser?.phoneNumber ?? null,
       mfaEnabled,
       mfaEnrollmentRequired,

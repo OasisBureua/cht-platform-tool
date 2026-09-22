@@ -299,7 +299,7 @@ export default function Join() {
       if (recaptchaEnabled) {
         recaptchaToken = await executeRecaptcha('login');
       }
-      const { error: loginErr, mfa, mfaSetup, mfaEnrollmentRequired } = await login(
+      const { error: loginErr, mfa, mfaSetup } = await login(
         email,
         password,
         recaptchaToken,
@@ -320,7 +320,6 @@ export default function Join() {
       }
       // After Join, land in the app. Soft MFA enrollment is prompted on later
       // logins (Login page) or via in-app notification — not forced here.
-      void mfaEnrollmentRequired;
       window.location.assign(returnTo ?? PLATFORM_HOME);
     } catch (captchaErr) {
       setSubmitting(false);

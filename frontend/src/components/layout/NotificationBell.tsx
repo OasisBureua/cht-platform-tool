@@ -1,9 +1,13 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 import { programsApi } from '../../api/programs';
 import { adminApi } from '../../api/admin';
+import {
+  formatMissingProfileFields,
+  listMissingProfileFields,
+} from '../../utils/profile-completeness';
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -11,10 +15,15 @@ export function NotificationBell() {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const profileIncomplete = user?.profileComplete === false;
+  const missingProfile = useMemo(
+    () => (user ? listMissingProfileFields(user) : []),
+    [user],
+  );
+  const profileIncomplete = missingProfile.length > 0;
   const mfaNeeded =
     !user?.mfaEnabled && Boolean(user?.mfaFeature?.enabled);
   const isAdmin = user?.role === 'ADMIN';
+  const missingLabel = formatMissingProfileFields(missingProfile);
 
   const { data: items = [] } = useQuery({
     queryKey: ['programs', 'live-action-items'],
@@ -37,7 +46,7 @@ export function NotificationBell() {
   /** Open the panel once per login when profile or SMS MFA still needs attention. */
   useEffect(() => {
     if (!user?.userId) return;
-    const needsAttention = user.profileComplete === false || mfaNeeded;
+    const needsAttention = missingProfile.length > 0 || mfaNeeded;
     if (!needsAttention) return;
     try {
       if (typeof sessionStorage?.getItem !== 'function') return;
@@ -47,7 +56,7 @@ export function NotificationBell() {
       /* ignore */
     }
     setOpen(true);
-  }, [user?.userId, user?.profileComplete, mfaNeeded]);
+  }, [user?.userId, missingProfile.length, mfaNeeded]);
 
   useEffect(() => {
     if (!open) return;
@@ -98,11 +107,15 @@ export function NotificationBell() {
 
           {profileIncomplete ? (
             <div className="border-b border-warning/25/80 bg-warning/10/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
-              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Complete your profile</p>
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                Complete your profile
+              </p>
               <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-                Add your <strong>mobile phone</strong>, <strong>profession</strong>, and <strong>NPI</strong> (where
-                required) under Settings. Phone is required for SMS MFA; you will not be paid until your profile is
-                complete.
+                Add your <strong>{missingLabel}</strong> under Settings
+                {missingProfile.includes('phone')
+                  ? '. Phone is required for SMS MFA'
+                  : ''}
+                ; you will not be paid until required fields are complete.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 <Link

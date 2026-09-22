@@ -190,12 +190,39 @@ export class AuthService {
         this.logger.log(
           `Linking existing user ${byEmail.id} (${normalizedEmail}) to authId ${authId}`,
         );
+        const npi =
+          npiNumber && String(npiNumber).replace(/\D/g, '').length === 10
+            ? String(npiNumber).replace(/\D/g, '').slice(0, 10)
+            : undefined;
         user = await this.prisma.user.update({
           where: { id: byEmail.id },
           data: {
             authId,
-            ...(phoneNumber?.trim()
+            ...(!byEmail.phoneNumber?.trim() && phoneNumber?.trim()
               ? { phoneNumber: phoneNumber.trim() }
+              : {}),
+            ...(!byEmail.specialty?.trim() && specialty?.trim()
+              ? { specialty: specialty.trim() }
+              : {}),
+            ...(!byEmail.npiNumber?.trim() && npi ? { npiNumber: npi } : {}),
+            ...(!byEmail.institution?.trim() && institution?.trim()
+              ? { institution: institution.trim() }
+              : {}),
+            ...(!byEmail.city?.trim() && city?.trim()
+              ? { city: city.trim() }
+              : {}),
+            ...(!byEmail.state?.trim() && state?.trim()
+              ? { state: state.trim() }
+              : {}),
+            ...(!byEmail.zipCode?.trim() && zipCode?.trim()
+              ? { zipCode: zipCode.trim() }
+              : {}),
+            ...((!byEmail.firstName?.trim() || byEmail.firstName === 'User') &&
+            firstName?.trim()
+              ? { firstName: firstName.trim() }
+              : {}),
+            ...(!byEmail.lastName?.trim() && lastName?.trim()
+              ? { lastName: lastName.trim() }
               : {}),
           },
         });
@@ -245,6 +272,48 @@ export class AuthService {
           zipCode: user.zipCode,
         })
         .catch((err) => this.logger.error('[Auth] outbound-sync error:', err));
+    } else {
+      // Existing authId: fill only null/empty Join fields (never clobber Settings).
+      const npi =
+        npiNumber && String(npiNumber).replace(/\D/g, '').length === 10
+          ? String(npiNumber).replace(/\D/g, '').slice(0, 10)
+          : undefined;
+      const patch: {
+        phoneNumber?: string;
+        specialty?: string;
+        npiNumber?: string;
+        institution?: string;
+        city?: string;
+        state?: string;
+        zipCode?: string;
+      } = {};
+      if (!user.phoneNumber?.trim() && phoneNumber?.trim()) {
+        patch.phoneNumber = phoneNumber.trim();
+      }
+      if (!user.specialty?.trim() && specialty?.trim()) {
+        patch.specialty = specialty.trim();
+      }
+      if (!user.npiNumber?.trim() && npi) {
+        patch.npiNumber = npi;
+      }
+      if (!user.institution?.trim() && institution?.trim()) {
+        patch.institution = institution.trim();
+      }
+      if (!user.city?.trim() && city?.trim()) {
+        patch.city = city.trim();
+      }
+      if (!user.state?.trim() && state?.trim()) {
+        patch.state = state.trim();
+      }
+      if (!user.zipCode?.trim() && zipCode?.trim()) {
+        patch.zipCode = zipCode.trim();
+      }
+      if (Object.keys(patch).length > 0) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: patch,
+        });
+      }
     }
     // Do NOT overwrite firstName/lastName for existing users - Settings PATCH is the source of truth.
     // OAuth metadata is only used when creating a new user.
