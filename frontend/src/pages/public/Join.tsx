@@ -299,7 +299,7 @@ export default function Join() {
       if (recaptchaEnabled) {
         recaptchaToken = await executeRecaptcha('login');
       }
-      const { error: loginErr, mfa, mfaSetup, mfaEnrollmentRequired } = await login(
+      const { error: loginErr, mfa, mfaSetup } = await login(
         email,
         password,
         recaptchaToken,
@@ -318,11 +318,8 @@ export default function Join() {
         window.location.assign('/login');
         return;
       }
-      // Soft MFA enrollment (AppConfig) — use phone from Join profile on /mfa/setup.
-      if (mfaEnrollmentRequired) {
-        window.location.assign('/mfa/setup');
-        return;
-      }
+      // After Join, land in the app. Soft MFA enrollment is prompted on later
+      // logins (Login page) or via in-app notification — not forced here.
       window.location.assign(returnTo ?? PLATFORM_HOME);
     } catch (captchaErr) {
       setSubmitting(false);

@@ -10,6 +10,10 @@ import { format } from 'date-fns';
 import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
 import { StripeMark } from '../components/branding/StripeMark';
 import { PayoutTimingNote } from '../components/payments/PayoutTimingNote';
+import {
+  formatMissingProfileFields,
+  listMissingProfileFields,
+} from '../utils/profile-completeness';
 
 function statusChip(status: PaymentStatus) {
   const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
@@ -86,7 +90,12 @@ export default function Payments() {
 
   const payoutsReady = !!(accountStatus?.hasAccount && accountStatus?.payoutsEnabled);
   const needsSetup = !payoutsReady;
-  const profileIncomplete = user?.profileComplete === false;
+  const missingProfile = useMemo(
+    () => (user ? listMissingProfileFields(user) : []),
+    [user],
+  );
+  const profileIncomplete = missingProfile.length > 0;
+  const missingLabel = formatMissingProfileFields(missingProfile);
 
   const refreshPayments = () => {
     void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
@@ -118,8 +127,8 @@ export default function Payments() {
         <div className="rounded-card border border-warning/25 bg-warning/10 p-4 text-sm text-amber-950">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
-            Add your <strong>profession</strong> and <strong>NPI</strong> (when required) under Settings before you can
-            connect payouts or request honoraria.
+            Add your <strong>{missingLabel}</strong> under Settings before you can connect payouts or
+            request honoraria.
           </p>
           <Link
             to="/app/settings"

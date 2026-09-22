@@ -87,7 +87,11 @@ export default function Login() {
         // Runs in the browser before any API call, if this hangs, backend logs stay empty.
         recaptchaToken = await executeRecaptcha('login');
       }
-      const { error: err, mfa, mfaSetup: setup } = await login(email, password, recaptchaToken);
+      const { error: err, mfa, mfaSetup: setup, mfaEnrollmentRequired } = await login(
+        email,
+        password,
+        recaptchaToken,
+      );
       if (setup) {
         setMfaSetup(setup);
         setShowManualKey(false);
@@ -101,6 +105,12 @@ export default function Login() {
       if (err) {
         setError(err.message || 'Login failed. Please check your credentials.');
         setErrorCode(err.code || null);
+        return;
+      }
+      // Username/password: if AppConfig MFA is on and they have never enrolled,
+      // send them to setup (Join skips this and lands in /app).
+      if (mfaEnrollmentRequired) {
+        window.location.assign('/mfa/setup');
         return;
       }
     } catch (captchaErr) {

@@ -21,6 +21,11 @@ import {
 } from '../data/us-states';
 import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
 import { StripeMark } from '../components/branding/StripeMark';
+import {
+  formatMissingProfileFields,
+  listMissingProfileFields,
+  type ProfileMissingField,
+} from '../utils/profile-completeness';
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
@@ -449,6 +454,10 @@ export default function Settings() {
                   profileState={profile?.state}
                   profileZip={profile?.zipCode}
                   profileComplete={user?.profileComplete}
+                  profileMissingFields={user?.profileMissingFields}
+                  specialty={user?.specialty}
+                  npiNumber={user?.npiNumber}
+                  phoneNumber={user?.phoneNumber}
                   embedded
                   onSuccess={() => {
                     void queryClient.invalidateQueries({ queryKey: ['payments-account-status', userId] });
@@ -536,6 +545,10 @@ function PaymentSettingsSection({
   profileState: _profileState,
   profileZip: _profileZip,
   profileComplete,
+  profileMissingFields,
+  specialty,
+  npiNumber,
+  phoneNumber,
   embedded = false,
   onSuccess,
 }: {
@@ -555,13 +568,27 @@ function PaymentSettingsSection({
   profileState?: string;
   profileZip?: string;
   profileComplete?: boolean;
+  profileMissingFields?: ProfileMissingField[];
+  specialty?: string | null;
+  npiNumber?: string | null;
+  phoneNumber?: string | null;
   /** When true, no outer card chrome (used inside Settings tabs). */
   embedded?: boolean;
   onSuccess: () => void;
 }) {
   const [syncMessage, setSyncMessage] = useState<{ ok?: string; err?: string }>({});
   const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
-  const profileIncomplete = profileComplete === false;
+  const missingProfile = listMissingProfileFields({
+    profileMissingFields,
+    specialty,
+    npiNumber,
+    phoneNumber,
+  });
+  const profileIncomplete =
+    missingProfile.length > 0 ||
+    (profileComplete === false && !Array.isArray(profileMissingFields));
+  const missingLabel =
+    formatMissingProfileFields(missingProfile) || 'required profile details';
 
   const syncMutation = useMutation({
     mutationFn: () => paymentsApi.syncAccountStatus(userId),
@@ -627,8 +654,8 @@ function PaymentSettingsSection({
         <div className="rounded-[6px] border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-950 mb-4">
           <p className="font-semibold">Complete your profile first</p>
           <p className="mt-1 text-amber-900/90">
-            Add your profession and NPI (when required) in the <strong>Profile</strong> tab
-            before connecting payouts.
+            Add your <strong>{missingLabel}</strong> in the <strong>Profile</strong> tab before
+            connecting payouts.
           </p>
         </div>
       ) : null}
