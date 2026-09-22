@@ -294,30 +294,44 @@ export default function Join() {
   };
 
   const finishJoinAfterEmailVerified = async () => {
-    const { error: loginErr, mfa, mfaSetup, mfaEnrollmentRequired } = await login(
-      email,
-      password,
-    );
-    if (loginErr) {
+    try {
+      let recaptchaToken: string | undefined;
+      if (recaptchaEnabled) {
+        recaptchaToken = await executeRecaptcha('login');
+      }
+      const { error: loginErr, mfa, mfaSetup, mfaEnrollmentRequired } = await login(
+        email,
+        password,
+        recaptchaToken,
+      );
+      if (loginErr) {
+        setSubmitting(false);
+        setError(
+          loginErr.message ||
+            'Could not sign you in. If this email is already registered, try Log in instead.',
+        );
+        return;
+      }
+      // Cognito MFA challenge (already enrolled) — finish on the login screen.
+      if (mfa || mfaSetup) {
+        setSubmitting(false);
+        window.location.assign('/login');
+        return;
+      }
+      // Soft MFA enrollment (AppConfig) — use phone from Join profile on /mfa/setup.
+      if (mfaEnrollmentRequired) {
+        window.location.assign('/mfa/setup');
+        return;
+      }
+      window.location.assign(returnTo ?? PLATFORM_HOME);
+    } catch (captchaErr) {
       setSubmitting(false);
       setError(
-        loginErr.message ||
-          'Could not sign you in. If this email is already registered, try Log in instead.',
+        captchaErr instanceof Error
+          ? captchaErr.message
+          : 'Captcha verification failed. Please try again.',
       );
-      return;
     }
-    // Cognito MFA challenge (already enrolled) — finish on the login screen.
-    if (mfa || mfaSetup) {
-      setSubmitting(false);
-      window.location.assign('/login');
-      return;
-    }
-    // Soft MFA enrollment (AppConfig) — use phone from Join profile on /mfa/setup.
-    if (mfaEnrollmentRequired) {
-      window.location.assign('/mfa/setup');
-      return;
-    }
-    window.location.assign(returnTo ?? PLATFORM_HOME);
   };
 
   const handleConfirmEmail = async (e: React.FormEvent) => {
