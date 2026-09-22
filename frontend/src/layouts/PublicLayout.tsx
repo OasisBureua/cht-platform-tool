@@ -178,7 +178,7 @@ export default function PublicLayout() {
               className="press shrink-0 rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
-              <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
+              <ChmWordmarkOption2 className="h-auto w-[4.75rem] sm:w-[5.25rem]" />
             </Link>
 
             {!isAuthRoute && (
@@ -736,7 +736,7 @@ function SiteFooter() {
               className="press inline-block rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
-              <ChmWordmarkOption2 className="h-8 w-[5rem] text-text" />
+              <ChmWordmarkOption2 className="h-auto w-[5rem] text-text" />
             </Link>
             <p className="prose-lede mt-5 max-w-[28ch] text-body-s text-muted2">
               Community Health Media. Peer-led oncology education, organised the way clinicians

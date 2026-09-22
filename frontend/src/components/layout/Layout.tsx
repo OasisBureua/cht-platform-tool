@@ -94,7 +94,7 @@ export default function Layout() {
             className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-steel-600 transition-[opacity,transform] duration-200 hover:text-steel-700 active:scale-[0.98] dark:text-steel-400 dark:hover:text-steel-300"
             aria-label="Community Health Media, app home"
           >
-            <ChmWordmarkOption2 className="h-8 w-[4rem]" />
+            <ChmWordmarkOption2 className="h-auto w-[4.5rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
             {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (

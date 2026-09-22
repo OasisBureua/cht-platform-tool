@@ -6,11 +6,19 @@
 @tailwind utilities;
 
 :root {
-  --color-text-primary: #0d0d0d;
-  --color-text-secondary: #373737;
-  --color-text-muted: #5c5c5c;
-  --color-border: #ebebeb;
-  --color-surface: #f6f6f6;
+  /* ============================================================
+   * CHM BRAND (light). From the CHM brand guide, the same values the
+   * WordPress theme ships: Base White ground #F2F4F8, Precision Ink
+   * text #22303C, Knowledge Blue signature #2FA9CC. Link and faint
+   * text sit a few points darker than the guide so they clear AA on
+   * white. The .dark blocks are untouched.
+   * ============================================================ */
+  --font-display: 'Chillax', 'Geist', system-ui, sans-serif;
+  --color-text-primary: #22303c;
+  --color-text-secondary: #3d4d5a;
+  --color-text-muted: #5e6e7b;
+  --color-border: #dfe4ec;
+  --color-surface: #eceff4;
 
   /* ============================================================
    * CEREBRAL PALETTE
@@ -39,19 +47,19 @@
    * it, which is the inverse of the old ramp: it keeps the white
    * ground while still separating a card without a border.
    * ============================================================ */
-  --background: 0 0% 100%;          /* #ffffff */
-  --foreground: 0 0% 5%;            /* #0d0d0d */
-  --card: 0 0% 96%;                 /* #f6f6f6 */
-  --card-foreground: 0 0% 5%;
-  --muted: 0 0% 92%;                /* #ebebeb */
-  --muted-foreground: 0 0% 31%;     /* clears AA on card and muted, not just on white */
-  --border: 0 0% 92%;
-  --input: 0 0% 88%;
-  --ring: 212 100% 38%;             /* anchor */
+  --background: 220 30% 96%;
+  --foreground: 208 28% 18%;
+  --card: 0 0% 100%;
+  --card-foreground: 208 28% 18%;
+  --muted: 216 24% 92%;
+  --muted-foreground: 208 15% 40%;
+  --border: 216 22% 89%;
+  --input: 216 22% 86%;
+  --ring: 193 63% 38%;
 
-  --primary: 224 88% 52%;           /* #1a54f0 — deepened for white */
+  --primary: 193 63% 49%;
   --primary-foreground: 0 0% 100%;
-  --primary-hover: 224 88% 44%;     /* #0d41d5 */
+  --primary-hover: 193 63% 42%;
 
   --accent: 314 72% 38%;            /* #a61b86 */
   --accent-foreground: 0 0% 100%;
@@ -574,9 +582,9 @@
      Saturation is deliberately tiny — at this lightness the hue is
      felt rather than seen, and luminance barely moves, so every
      contrast pair below holds. */
-  --ground: 0 0% 100%;
-  --surface-1: 40 24% 96.5%;
-  --surface-2: 40 18% 92.4%;
+  --ground: 220 30% 96%;
+  --surface-1: 0 0% 100%;
+  --surface-2: 216 24% 92%;
 
   /* The signed-in app shell's own field. The marketing pages sit on the
      white `ground`; the app sits on this instead, so a `.card` at 96.5%
@@ -584,33 +592,33 @@
      rectangle. It is the cool CHM chrome tint the shell carried before
      the token sweep replaced it with the flat neutral `muted`, taken
      down two points of lightness so the card actually separates. */
-  --app-ground: 220 28% 94.5%;
+  --app-ground: 220 26% 94%;
 
   /* text ramp: 14.7 / 9.1 / 5.9 / 4.7 on white. Kept near-neutral with
      the faintest warm cast so it sits on the warm surfaces without
      reading as two different greys. */
-  --text: 30 6% 5.4%;
-  --dim: 30 5% 21.6%;
-  --muted2: 30 5% 36.3%;
-  --faint: 30 5% 40.5%;
+  --text: 208 28% 18%;
+  --dim: 208 20% 28%;
+  --muted2: 208 15% 40%;
+  --faint: 216 14% 45%;
 
   /* alpha tokens: carry their own alpha, so they are consumed as
      hsl(var(--x)) with no <alpha-value> slot. */
-  --wash: 40 30% 20% / 0.035;
-  --hairline: 30 12% 12% / 0.08;
-  --hairline-strong: 30 12% 12% / 0.14;
-  --placeholder: 30 6% 12% / 0.3;
+  --wash: 208 28% 18% / 0.035;
+  --hairline: 208 28% 18% / 0.08;
+  --hairline-strong: 208 28% 18% / 0.14;
+  --placeholder: 208 28% 18% / 0.3;
 
   /* action + accent */
-  --signature: 223.8 87.4% 52.2%;
-  --cta: 223.8 87.4% 52.2%;
-  --cta-deep: 224.4 88.1% 44.4%;
-  --anchor: 212.3 100% 38.3%;
+  --signature: 193 63% 49%;
+  --cta: 193 63% 49%;
+  --cta-deep: 193 63% 40%;
+  --anchor: 193 63% 35%;
   --amber-ink: 17.5 77.6% 38.2%;
-  --inverse: 0 0% 5.2%;
+  --inverse: 208 28% 14%;
 
   /* Fixed across appearances: a label that always sits on a bright fill. */
-  --on-bright: 0 0% 5.2%;
+  --on-bright: 208 28% 18%;
 
   /* Fixed across appearances: the design's amber, as it is tuned for the
      deep-blue ground. A permanently dark region cannot use `amber-ink`,
@@ -619,9 +627,9 @@
   --amber-on-deep: 0.2 88.9% 79.7%;
 
   /* Elevation. Light appearance. */
-  --s-card: 0 1px 2px rgb(0 0 0 / 0.05), 0 6px 16px -8px rgb(0 0 0 / 0.14);
-  --s-card-hover: 0 2px 6px rgb(0 0 0 / 0.07), 0 18px 36px -12px rgb(0 0 0 / 0.24);
-  --s-pop: 0 4px 10px rgb(0 0 0 / 0.08), 0 32px 64px -20px rgb(0 0 0 / 0.34);
+  --s-card: 0 1px 2px hsl(208 28% 18% / 0.04), 0 6px 18px -10px hsl(208 28% 18% / 0.16);
+  --s-card-hover: 0 2px 6px hsl(208 28% 18% / 0.06), 0 14px 32px -14px hsl(208 28% 18% / 0.22);
+  --s-pop: 0 6px 14px hsl(208 28% 18% / 0.08), 0 24px 48px -18px hsl(208 28% 18% / 0.26);
   --s-nav: 0 1px 0 rgb(0 0 0 / 0.04), 0 8px 24px -16px rgb(0 0 0 / 0.3);
   --ring-img: rgb(0 0 0 / 0.1);
 
@@ -749,13 +757,15 @@
 
   /* ── type ─────────────────────────────────────────────────────────── */
   .display {
-    font-weight: 450;
+    font-family: var(--font-display);
+    font-weight: 500;
     text-wrap: balance;
   }
 
   /* The hero variant: same weight, tighter optical tracking. */
   .display-tight {
-    font-weight: 450;
+    font-family: var(--font-display);
+    font-weight: 500;
     text-wrap: balance;
     letter-spacing: -0.032em;
     line-height: 1.02;

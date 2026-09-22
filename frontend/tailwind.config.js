@@ -14,7 +14,7 @@ export default {
         sans: ['Geist', 'system-ui', 'sans-serif'],
         /** Display/headings. Kept under the `serif` key so the ~existing
             font-serif usages keep working; the face is no longer a serif. */
-        serif: ['Geist', 'system-ui', 'sans-serif'],
+        serif: ['Chillax', 'Geist', 'system-ui', 'sans-serif'],
         /** Report-document body: true editorial serif (matches Report Generator white-papers). */
         report: ['Georgia', '"Times New Roman"', 'serif'],
         /** Numeric/tabular data, tokens, IDs. */

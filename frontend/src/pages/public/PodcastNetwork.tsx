@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import {
@@ -6,9 +7,10 @@ import {
   type PodcastShow,
 } from '../../data/podcastsCatalog';
 import { Button, Reveal } from '../../components/ui';
+import './PodcastNetwork.css';
 
 /**
- * Public Podcast Network hub — clean URL `/podcast-network`.
+ * Public Podcast Network hub, at the clean URL `/podcast-network`.
  * Lists CHM shows and listen destinations; scales as shows are added to
  * `PODCAST_SHOWS`. In-app listening stays under `/app/podcast-network`.
  */
@@ -31,23 +33,38 @@ const NEUTRAL_TONE = { ring: 'var(--color-hairline)', ink: 'var(--color-dim)' };
 export default function PodcastNetwork() {
   return (
     <div className="min-h-screen bg-ground">
-      <section className="rail pb-12 pt-14 md:pb-16 md:pt-16">
-        <p className="eyebrow text-muted2">Podcast network</p>
-        <h1 className="display mt-6 max-w-[18ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l">
-          Four shows, one network
-        </h1>
-        <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
-          Expert-led conversations in oncology and breast cancer — for clinicians,
-          patients, and caregivers. Pick a show, then listen on your platform of choice.
-        </p>
-        <div className="mt-9 flex flex-wrap gap-3">
-          <Button to="/join" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
-            Join CHM
-            <ArrowRight className="size-4" strokeWidth={1.75} />
-          </Button>
-          <Button to="/kols" variant="outline">
-            Browse the KOL directory
-          </Button>
+      {/* The covers carry the hero. Four of them fanned reads as a
+          network in a way a headline alone does not, and they are what a
+          listener recognises. The drift is a slow float, ambient rather
+          than something to watch, and it stops under reduced motion. */}
+      <section className="pod-hero">
+        <span className="pod-hero__glow" aria-hidden />
+        <div className="rail pod-hero__in">
+          <div className="pod-hero__copy">
+            <p className="eyebrow text-muted2">Podcast network</p>
+            <h1 className="display text-text">Four shows, one network</h1>
+            <p className="pod-hero__lede">
+              Expert-led conversations in oncology and breast cancer, for clinicians, patients and
+              caregivers. Pick a show, then listen on your platform of choice.
+            </p>
+            <div className="pod-hero__actions flex flex-wrap gap-3">
+              <Button to="/join" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+                Join CHM
+                <ArrowRight className="size-4" strokeWidth={1.75} />
+              </Button>
+              <Button to="/kols" variant="outline">
+                Browse the KOL directory
+              </Button>
+            </div>
+          </div>
+
+          <ul className="pod-fan" aria-hidden>
+            {PODCAST_SHOWS.map((show, i) => (
+              <li key={show.id} style={{ '--i': i } as CSSProperties}>
+                <img src={show.image} alt="" width={1200} height={1200} decoding="async" />
+              </li>
+            ))}
+          </ul>
         </div>
       </section>
 

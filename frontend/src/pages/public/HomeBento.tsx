@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
-import { HomeHero } from '../../components/home/HomeHero';
+import { GalleryHero } from '../../components/home/GalleryHero';
 import { DiseaseClusterCard } from '../../components/home/DiseaseClusterCard';
 import { FormatBento } from '../../components/home/FormatBento';
 import { LatestTabs } from '../../components/home/LatestTabs';
@@ -372,7 +372,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
 
   const { data: randomVideosData, isLoading: randomVideosLoading } = useQuery({
     queryKey: ['catalog', 'random-videos'],
-    queryFn: () => catalogApi.getRandomVideos(8),
+    queryFn: () => catalogApi.getRandomVideos(12),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
   const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
@@ -824,7 +824,15 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
     <div className="min-w-0 overflow-x-hidden bg-ground text-text">
 
       {/* ── Hero ─────────────────────────────────────────── */}
-      <HomeHero variant="demo" tiles={featuredVideos.map((v) => ({ id: v.id, imageUrl: v.imageUrl }))} />
+      <GalleryHero
+        works={featuredVideos.map((v) => ({
+          id: v.id,
+          title: v.title,
+          imageUrl: v.imageUrl,
+          href: clipHref(v),
+          meta: 'Video',
+        }))}
+      />
 
       {/* ── The model, as a bento ─────────────────────────
           No headline. Five cards that each show a format rather than
