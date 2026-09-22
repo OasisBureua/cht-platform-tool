@@ -12,6 +12,22 @@ import { Button, Reveal } from '../../components/ui';
  * Lists CHM shows and listen destinations; scales as shows are added to
  * `PODCAST_SHOWS`. In-app listening stays under `/app/podcast-network`.
  */
+/**
+ * One colour per show, drawn from the CHM spectrum.
+ *
+ * Four cards sharing a layout read as one block; the hue is what tells
+ * them apart at a glance. `ring` tints the card's edge, `ink` carries
+ * the category line and fills the primary action.
+ */
+const SHOW_TONE: Record<string, { ring: string; ink: string }> = {
+  'breast-friends': { ring: 'rgb(167 27 134 / 0.34)', ink: 'rgb(167 27 134)' },
+  'cancer-unfiltered': { ring: 'rgb(0 112 138 / 0.34)', ink: 'rgb(0 112 138)' },
+  'big-c-energy': { ring: 'rgb(143 81 0 / 0.34)', ink: 'rgb(143 81 0)' },
+  tetalks: { ring: 'rgb(100 56 194 / 0.34)', ink: 'rgb(100 56 194)' },
+};
+
+const NEUTRAL_TONE = { ring: 'var(--color-hairline)', ink: 'var(--color-dim)' };
+
 export default function PodcastNetwork() {
   return (
     <div className="min-h-screen bg-ground">
@@ -81,9 +97,13 @@ export default function PodcastNetwork() {
 function ShowCard({ show }: { show: PodcastShow }) {
   const listenHref = (show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS)[0]?.href;
   const seriesPath = `/podcast-network/${encodeURIComponent(show.id)}`;
+  const tone = SHOW_TONE[show.id] ?? NEUTRAL_TONE;
 
   return (
-    <article className="lift card flex h-full flex-col gap-5 p-6 sm:flex-row sm:items-start">
+    <article
+      className="lift card flex h-full flex-col gap-5 p-6 sm:flex-row sm:items-start"
+      style={{ boxShadow: `inset 0 0 0 1px ${tone.ring}` }}
+    >
       <img
         src={show.logo ?? show.image}
         alt=""
@@ -95,7 +115,9 @@ function ShowCard({ show }: { show: PodcastShow }) {
         referrerPolicy="no-referrer"
       />
       <div className="min-w-0 flex-1">
-        <p className="eyebrow text-faint">{show.category}</p>
+        <p className="eyebrow" style={{ color: tone.ink }}>
+          {show.category}
+        </p>
         <h3 className="display mt-1 text-body-l text-text">
           <Link to={seriesPath} className="press rounded outline-offset-4 hover:text-signature">
             {show.title}
@@ -106,7 +128,8 @@ function ShowCard({ show }: { show: PodcastShow }) {
         <div className="mt-5 flex flex-wrap gap-2">
           <Link
             to={seriesPath}
-            className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-signature px-4 text-body-s text-ground hover:brightness-[0.94] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="press inline-flex h-9 items-center gap-1.5 rounded-[6px] px-4 text-body-s text-white hover:brightness-[1.12] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            style={{ backgroundColor: tone.ink }}
           >
             View series
             <ArrowRight className="size-3.5" strokeWidth={1.75} />
