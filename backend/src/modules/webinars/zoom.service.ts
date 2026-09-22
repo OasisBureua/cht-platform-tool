@@ -538,18 +538,18 @@ export class ZoomService implements OnModuleInit {
     const { data } = await this.requestWithSettingsFallback<ZoomWebinarResponse>(
       (payload) =>
         firstValueFrom(
-          this.http.post<ZoomWebinarResponse>(
-            'https://api.zoom.us/v2/users/me/webinars',
+      this.http.post<ZoomWebinarResponse>(
+        'https://api.zoom.us/v2/users/me/webinars',
             payload,
             { headers: { Authorization: `Bearer ${token}` } },
           ),
         ),
-      {
-        topic: params.topic,
-        agenda: params.agenda,
+        {
+          topic: params.topic,
+          agenda: params.agenda,
         start_time: startTime,
-        duration: params.duration,
-        timezone: params.timezone || 'America/New_York',
+          duration: params.duration,
+          timezone: params.timezone || 'America/New_York',
         type: 5,
         settings: toZoomWebinarSettingsApi(
           params.settings ?? DEFAULT_ZOOM_WEBINAR_SETTINGS,
@@ -605,8 +605,8 @@ export class ZoomService implements OnModuleInit {
       (payload) =>
         firstValueFrom(
           this.http.patch(`https://api.zoom.us/v2/webinars/${webinarId}`, payload, {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+        headers: { Authorization: `Bearer ${token}` },
+      }),
         ),
       body,
       `update webinar ${webinarId}`,

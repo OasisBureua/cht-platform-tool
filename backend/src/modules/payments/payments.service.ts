@@ -1825,7 +1825,7 @@ export class PaymentsService {
   async getHistory(userId: string) {
     const payments = await this.prisma.payment.findMany({
       where: { userId },
-      include: { program: { select: { title: true } } },
+      include: { program: { select: { id: true, title: true } } },
       orderBy: { createdAt: 'desc' },
       take: 100,
     });
@@ -1834,6 +1834,8 @@ export class PaymentsService {
       id: p.id,
       date: (p.paidAt || p.createdAt).toISOString(),
       title: p.description || p.program?.title || p.type.replace(/_/g, ' '),
+      programId: p.programId ?? p.program?.id ?? null,
+      programTitle: p.program?.title ?? null,
       amount: p.amount / 100,
       status: p.status,
       method:

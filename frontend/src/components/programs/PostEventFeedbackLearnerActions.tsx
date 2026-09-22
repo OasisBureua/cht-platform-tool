@@ -304,6 +304,13 @@ export function PostEventFeedbackLearnerActions(props: {
           {payMut.isError ? (
             <p className="text-sm text-destructive">Could not submit payment request. Fix any issues above and try again.</p>
           ) : null}
+          {payMut.isSuccess || myRegistration.honorariumRequestedAt || myRegistration.honorariumPayment ? (
+            <p className="text-sm text-muted-foreground">
+              Request received. Payouts are typically sent within{' '}
+              <strong className="font-semibold text-foreground">14 calendar days</strong> after submission via ACH
+              once your bank and tax details are connected.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
