@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,7 +22,7 @@ export default function MfaSetup() {
 
   const [secretCode, setSecretCode] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
-  const [phone, setPhone] = useState('');
+  const [phone, setPhone] = useState(() => user?.phoneNumber?.replace(/^\+1/, '') || '');
   const [phoneSent, setPhoneSent] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -30,6 +30,24 @@ export default function MfaSetup() {
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showManualKey, setShowManualKey] = useState(false);
+  const [autoStarted, setAutoStarted] = useState(false);
+
+  // Prefill + optionally send SMS when profile already has a phone from Join.
+  useEffect(() => {
+    if (method !== 'sms' || autoStarted || phoneSent || !user?.phoneNumber) return;
+    setAutoStarted(true);
+    setPhone(user.phoneNumber.replace(/^\+1/, ''));
+    void (async () => {
+      setLoadingSetup(true);
+      const result = await beginSmsMfaSetup(user.phoneNumber!);
+      setLoadingSetup(false);
+      if (result.error) {
+        setError(result.error.message || 'Could not send verification SMS.');
+        return;
+      }
+      setPhoneSent(true);
+    })();
+  }, [method, autoStarted, phoneSent, user?.phoneNumber, beginSmsMfaSetup]);
 
   const handleStartTotpSetup = async () => {
     setError(null);
