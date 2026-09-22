@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { GalleryHero } from '../../components/home/GalleryHero';
-import { DiseaseClusterCard } from '../../components/home/DiseaseClusterCard';
+import { AreasSection, MomentsSection, PeopleSection, ShowsSection } from '../../components/home/HomeSkinSections';
 import { FormatBento } from '../../components/home/FormatBento';
 import { LatestTabs } from '../../components/home/LatestTabs';
 import { Thumb } from '../../components/ui/Thumb';
@@ -163,38 +163,6 @@ function Arrow({ className = '', strokeWidth = 1.5 }: { className?: string; stro
   );
 }
 
-/**
- * The design's button: a mono label at control height, filled with the
- * CTA token or reading as a control through elevation alone.
- */
-function Btn({
-  to,
-  children,
-  variant = 'cta',
-  withArrow = false,
-}: {
-  to: string;
-  children: ReactNode;
-  variant?: 'cta' | 'outline';
-  withArrow?: boolean;
-}) {
-  const fill =
-    variant === 'cta'
-      ? 'bg-cta text-ground hover:bg-cta-deep'
-      : 'bg-surface text-text shadow-card hover:bg-ground hover:shadow-card-hover';
-  return (
-    <Link
-      to={to}
-      className={`press inline-flex h-11 items-center justify-center gap-2 rounded-[6px] ps-6 font-mono text-[0.875rem] tracking-[-0.011em] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${
-        withArrow ? 'pe-5' : 'pe-6'
-      } ${fill}`}
-    >
-      {children}
-      {withArrow ? <Arrow className="size-4" strokeWidth={1.75} /> : null}
-    </Link>
-  );
-}
-
 /** A poster with the mark, a scrim and an optional runtime on it. */
 
 /* ── page content ────────────────────────────────────────────────────── */
@@ -308,6 +276,21 @@ const SHOWS: {
  */
 const AREA_CANVAS_TOKENS: Record<string, string> = {'breast-cancer': '--ink-pink', 'lung-cancer': '--ink-purple', 'weight-loss': '--ink-coral', 'gi': '--anchor', 'gu': '--ink-cyan', 'hematology': '--ink-green', 'gynecologic': '--ink-purple'};
 
+/**
+ * The disease-state cards as the theme draws them: an anatomy drawing
+ * in the area's own ink on a white plate. Order and labels are the
+ * theme's. Keyed by this app's slugs.
+ */
+const SKIN_AREAS: Record<string, { label: string; art: string; hue: string; ink: string; order: number }> = {
+  'breast-cancer': { label: 'Breast cancer', art: 'breast', hue: 'var(--cerebral-pink)', ink: 'var(--ink-pink)', order: 0 },
+  'weight-loss': { label: 'Weight Loss', art: 'weight-loss', hue: 'var(--cerebral-coral)', ink: 'var(--ink-coral)', order: 1 },
+  'lung-cancer': { label: 'Lung Cancer', art: 'lung', hue: 'var(--cerebral-cyan)', ink: 'var(--ink-cyan)', order: 2 },
+  hematology: { label: 'Hematology', art: 'hematology', hue: 'var(--cerebral-green)', ink: 'var(--ink-green)', order: 3 },
+  gi: { label: 'GI', art: 'gi', hue: 'var(--cerebral-amber)', ink: 'var(--ink-amber)', order: 4 },
+  gu: { label: 'GU', art: 'gu', hue: 'var(--cerebral-blue)', ink: 'var(--primary)', order: 5 },
+  gynecologic: { label: 'Gynecologic', art: 'gynecology', hue: 'var(--cerebral-purple)', ink: 'var(--ink-purple)', order: 6 },
+};
+
 const DESIGN_ONLY_AREAS = [
   { slug: 'gi', label: 'GI', tone: 'var(--color-gi)' },
   { slug: 'gu', label: 'GU', tone: 'var(--color-gu)' },
@@ -330,14 +313,6 @@ const AREA_TONES: Record<string, { tone: string; mix?: string }> = {
 
 /** The video cut of the session, shown as the document in front. */
 
-
-const INITIAL_TONES = [
-  'var(--color-cyan)',
-  'var(--color-pink)',
-  'var(--color-purple)',
-  'var(--color-coral)',
-  'var(--color-glow)',
-];
 
 /* The stat band's grid: faint rules that pulse along their length on
    staggered, non-repeating durations. */
@@ -407,7 +382,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   /* Faculty: the live directory, falling back to the static roster the
      platform ships so the row is never empty while the call is in
      flight. The portraits lead, because the row is a row of portraits. */
-  const { regions, loadState } = useKolDirectory({ surface: 'public' });
+  const { regions } = useKolDirectory({ surface: 'public' });
   const faculty: DolEntry[] = useMemo(() => {
     const live = regions.flatMap((r) => r.entries);
     const roster = live.length > 0 ? live : kolStaticEnrichment;
@@ -634,55 +609,33 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
       </>
     ),
     moment: (
-      <>
-        {/* ── This Moment in Medicine ──────────────────────── */}
-        <Band labelledBy="moment-heading">
-          <SectionHead
-            id="moment-heading"
-            title="This Moment in Medicine"
-            sub="Short answers to the questions that come up between patients."
-            seeAll={{ noun: 'episodes', to: '/catalog' }}
-          />
-          <ol className="mt-12 grid gap-3 lg:grid-cols-2">
-            {MOMENTS.map((m, i) => {
-              const poster = featuredVideos.length ? featuredVideos[i % featuredVideos.length] : undefined;
-              return (
-                <Reveal as="li" key={m.t} delay={i * 55}>
-                  <Link
-                    to={poster ? clipHref(poster) : '/catalog'}
-                    className="press card group flex items-center gap-5 p-3 ps-5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                  >
-                    <span className="meta w-6 shrink-0 tabular-nums text-faint">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="display block text-body-m text-text">{m.t}</span>
-                      <span className="meta mt-1 block tabular-nums text-faint">{m.d}</span>
-                    </span>
-                    {poster ? (
-                      <Thumb src={poster.imageUrl} className="hidden h-16 w-28 shrink-0 sm:block" />
-                    ) : null}
-                  </Link>
-                </Reveal>
-              );
-            })}
-          </ol>
-        </Band>
-      </>
+      <MomentsSection
+        moments={MOMENTS.map((m, i) => {
+          const poster = featuredVideos.length ? featuredVideos[i % featuredVideos.length] : undefined;
+          return {
+            key: m.t,
+            title: m.t,
+            duration: m.d,
+            imageUrl: poster?.imageUrl,
+            to: poster ? clipHref(poster) : '/catalog',
+          };
+        })}
+      />
     ),
     shows: (
-      <>
-        {/* ── Podcast network ──────────────────────────────── */}
-        <Band labelledBy="shows-heading">
-          <SectionHead
-            id="shows-heading"
-            title="CHM Podcast Network"
-            sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/podcast-network' }}
-          />
-          {showsBody}
-        </Band>
-      </>
+      <ShowsSection
+        shows={PODCAST_SHOWS.map((show) => ({
+          key: show.id,
+          title: show.title,
+          category: show.category,
+          tagline: show.tagline,
+          update: show.updateNote,
+          // TeTalks is in Spanish; the attribute stops a screen reader
+          // reading it with an English voice.
+          lang: show.id === 'tetalks' ? 'es' : undefined,
+          to: `/podcast-network/${encodeURIComponent(show.id)}`,
+        }))}
+      />
     ),
     articles: (
       <>
@@ -698,34 +651,20 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
       </>
     ),
     areas: (
-      <>
-        {/* ── Explore by disease state ─────────────────────── */}
-        <Band labelledBy="areas-heading">
-          <SectionHead
-            id="areas-heading"
-            title="Explore by disease state"
-            sub="Each cluster is sized by what the area actually holds."
-          />
-        <div className="mt-12">
-          {/* overflow-x-auto clips vertically too, so the hover lift needs
-              headroom inside the scroller rather than margin outside it. */}
-          <div className="-my-5">
-            <div className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-3 overflow-x-auto py-5">
-              {areas.map((a) => (
-                <DiseaseClusterCard
-                  key={a.slug}
-                  label={a.label}
-                  sub={a.live ? 'Video, podcast, editorial and live' : 'In production'}
-                  tone={a.token}
-                  weight={a.live ? 1 : 0}
-                  to={a.to}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-        </Band>
-      </>
+      <AreasSection
+        areas={[...areas]
+          .filter((a) => SKIN_AREAS[a.slug])
+          .sort((x, y) => SKIN_AREAS[x.slug].order - SKIN_AREAS[y.slug].order)
+          .map((a) => ({
+            key: a.slug,
+            label: SKIN_AREAS[a.slug].label,
+            note: a.live ? 'Video, podcast, editorial and live' : 'In production',
+            hue: SKIN_AREAS[a.slug].hue,
+            ink: SKIN_AREAS[a.slug].ink,
+            art: SKIN_AREAS[a.slug].art,
+            to: a.to,
+          }))}
+      />
     ),
     latest: (
       <>
@@ -747,69 +686,16 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
       </>
     ),
     kol: (
-      <>
-        {/* ── In conversation ──────────────────────────────── */}
-        <Band labelledBy="kol-heading">
-          <SectionHead
-            id="kol-heading"
-            title="In conversation"
-            sub="Practising specialists who bring their own audiences."
-            seeAll={{ noun: 'profiles', to: '/kols' }}
-          />
-          {/* Four, one row, then the link. Five in a 3+2 grid left a
-              ragged second row that read as a mistake; four sits square
-              and the rest of the network is one click away. */}
-          <ul className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
-            {faculty.map((k, i) => (
-              <Reveal as="li" key={k.id} delay={i * 50}>
-                <Link
-                  to={`/kols/${encodeURIComponent(k.id)}`}
-                  className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                >
-                  {k.photoUrl ? (
-                    <img
-                      src={k.photoUrl}
-                      alt=""
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      className="img-ring size-24 rounded-full object-cover md:size-28"
-                    />
-                  ) : (
-                    <span
-                      aria-hidden
-                      className="display grid size-24 place-items-center rounded-full text-body-l md:size-28"
-                      style={{
-                        background: INITIAL_TONES[i % INITIAL_TONES.length],
-                        color: 'var(--color-on-bright)',
-                      }}
-                    >
-                      {initials(k.name)}
-                    </span>
-                  )}
-                  <span className="display mt-4 block text-body-m text-text group-hover:text-anchor">
-                    {k.name}
-                  </span>
-                  {/* Two lines, then ellipsis. A full affiliation string runs to
-                      four lines on a five-up grid and drags the row height
-                      with it. */}
-                  <span className="mt-1 line-clamp-2 block text-body-s text-muted2">
-                    {institutionLine(k)}
-                  </span>
-                </Link>
-              </Reveal>
-            ))}
-            {faculty.length === 0 && loadState === 'loading'
-              ? Array.from({ length: 4 }, (_, i) => (
-                  <li key={`kol-skeleton-${i}`} aria-hidden>
-                    <span className="block size-24 rounded-full bg-surface-2 md:size-28" />
-                    <span className="mt-4 block h-3 w-3/4 rounded-[6px] bg-surface-2" />
-                    <span className="mt-2 block h-3 w-1/2 rounded-[6px] bg-surface-2" />
-                  </li>
-                ))
-              : null}
-          </ul>
-        </Band>
-      </>
+      <PeopleSection
+        people={faculty.map((k) => ({
+          key: k.id,
+          name: k.name,
+          org: institutionLine(k),
+          photoUrl: k.photoUrl || undefined,
+          mono: initials(k.name),
+          to: `/kol-network/profile/${encodeURIComponent(k.id)}`,
+        }))}
+      />
     ),
   };
   /* A: no two horizontal scrollers touch.
@@ -817,7 +703,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         sections become five and only one scroller is loose on the page. */
   const ORDER =
     order === 'c'
-      ? ['engine', 'latest', 'areas', 'moment', 'kol']
+      ? ['engine', 'latest', 'areas', 'moment', 'kol', 'shows']
       : ['engine', 'now', 'moment', 'shows', 'articles', 'areas', 'kol'];
 
   return (
@@ -842,25 +728,6 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
         <Fragment key={key}>{SECTIONS[key]}</Fragment>
       ))}
 
-      {/* ── Get started ──────────────────────────────────── */}
-      <section aria-labelledby="start-heading">
-        <div className="rail flex flex-col items-center py-16 md:py-20 text-center">
-          <h2 id="start-heading" className="display max-w-[18ch] text-display-l text-text">
-            Free for clinicians. Always.
-          </h2>
-          <p className="prose-lede mt-5 max-w-[46ch] text-body-l text-muted2">
-            Create an account to save your place, claim credit and get one email a week.
-          </p>
-          <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Btn to="/join" variant="cta" withArrow>
-              Start watching free
-            </Btn>
-            <Btn to="/for-hcps" variant="outline">
-              For HCPs
-            </Btn>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

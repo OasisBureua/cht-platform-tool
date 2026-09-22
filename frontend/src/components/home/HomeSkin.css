@@ -1,0 +1,523 @@
+/* ============================================================
+ * The homepage sections and the closing band, ported from the CHM
+ * WordPress theme (chm-wp-home/assets/css), where they were designed
+ * and signed off. Everything is scoped under .chm-skin so the theme's
+ * .eyebrow, .btn and heading rules cannot reach the rest of the app,
+ * and the app's utilities cannot reach in. Containers use the app's
+ * own .rail so these sections line up with the ones around them.
+ * ============================================================ */
+
+.chm-skin {
+  /* WordPress-theme tokens the app does not define. Values are the
+     theme's, from the CHM brand guide. */
+  --knowledge-blue: 193 63% 49%;
+  --deep-expertise: 196 66% 23%;
+  --precision-ink: 208 28% 18%;
+  --slate: 213 14% 38%;
+  --amber: 37 91% 55%;
+  --cerebral-amber: 40 100% 64%;
+  --ink-amber: 34 100% 28%;
+  --radius-card: 0.875rem;
+  --t-display-s: 1.375rem;
+  --t-display-m: 2.25rem;
+  --t-body-l: 1.125rem;
+  --t-body-m: 1rem;
+  --t-body-s: 0.875rem;
+  --t-meta: 0.75rem;
+  --font-sans: Geist, system-ui, -apple-system, sans-serif;
+  --font-mono: "Geist Mono", Menlo, ui-monospace, monospace;
+  --gutter: var(--rail-pad, 1.5rem);
+  font-family: var(--font-sans);
+}
+
+.chm-skin h1,
+.chm-skin h2,
+.chm-skin h3,
+.chm-skin h4 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.chm-skin h1 { font-size: var(--t-hero); letter-spacing: -0.032em; line-height: 1.02; }
+.chm-skin h2 { font-size: var(--t-display-m); }
+.chm-skin h3 { font-size: var(--t-display-s); letter-spacing: -0.018em; line-height: 1.2; }
+
+.chm-skin p { margin: 0; text-wrap: pretty; }
+
+.chm-skin a { color: inherit; text-decoration: none; }
+
+.chm-skin img { max-width: 100%; height: auto; display: block; }
+
+.chm-skin ul { margin: 0; padding: 0; list-style: none; }
+
+/* One visible focus treatment for the whole site. The app used the
+   ring token for this and keyboard users depend on it, so it is not
+   optional in the port. */
+.chm-skin :where(a, button, summary, [tabindex]):focus-visible {
+  outline: 2px solid hsl(var(--ring));
+  outline-offset: 3px;
+  border-radius: var(--radius);
+}
+
+/* ── shared primitives ─────────────────────────────────────────── */
+
+
+.chm-skin .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  /* muted-foreground rather than a lighter grey: this clears AA on
+     the card surface as well as on white, which the old #8b8680 in
+     the prototype did not (3.61:1). */
+  color: hsl(var(--muted-foreground));
+}
+
+
+.chm-skin .btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 36px; padding-inline: 1rem;
+  border: 0; border-radius: var(--radius);
+  font: 400 var(--t-body-s)/1 var(--font-sans);
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.chm-skin .btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+.chm-skin .sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap; border: 0;
+}
+
+/* ── band + section head ── */
+/* ── band and section head ─────────────────────────────────────── */
+
+.chm-skin .band { padding-block: 0 clamp(2.5rem, 5vw, 3.5rem); }
+.chm-skin .band:first-of-type { padding-block-start: clamp(2rem, 4vw, 3rem); }
+
+.chm-skin .band__head {
+  display: grid; gap: 0.9rem;
+  grid-template-columns: 1fr auto;
+  align-items: start;
+  margin-bottom: 1.75rem;
+}
+.chm-skin .band__head h2 { grid-column: 1; font-size: clamp(1.4rem, 2.2vw, 1.75rem); }
+.chm-skin .band__head p {
+  grid-column: 1; max-width: 52ch;
+  color: hsl(var(--muted-foreground)); font-size: var(--t-body-s);
+}
+.chm-skin .band__head .band__action { grid-column: 2; grid-row: 1 / span 2; }
+
+.chm-skin .band__action {
+  display: inline-flex; align-items: center; height: 42px; padding-inline: 1.1rem;
+  border-radius: var(--radius); background: hsl(var(--card));
+  font-size: var(--t-body-s); color: hsl(var(--foreground)); white-space: nowrap;
+  transition: background-color 150ms ease;
+}
+.chm-skin .band__action:hover { background: hsl(var(--muted)); }
+
+
+/* ── disease states ── */
+/* ── disease states ────────────────────────────────────────────────
+   The client's arrangement, exactly: the head sits in a left column
+   with no action button, a large ghosted mark behind it, and the cards
+   run as a four-column grid whose first row is inset by one column.
+   Only the card contents are ours, our anatomy drawings in place of
+   their line icons.
+   ───────────────────────────────────────────────────────────────── */
+
+.chm-skin .areas-band { position: relative; overflow: hidden; }
+
+.chm-skin .areas-grid { display: grid; gap: 2rem; align-items: start; }
+@media (min-width: 62rem) {
+  .chm-skin .areas-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2.82fr); gap: 1.5rem; }
+}
+
+.chm-skin .areas-intro { position: relative; z-index: 1; }
+.chm-skin .areas-intro h2 { font-size: clamp(1.75rem, 2.9vw, 2.5rem); line-height: 1.12; }
+.chm-skin .areas-intro p { margin-top: 0.9rem; color: hsl(var(--muted2)); font-size: var(--t-body-s); }
+
+/* The mark, blown up and ghosted, sitting under the left column. It
+   fades out down its own height rather than sitting as a flat tint
+   the same treatment as the closing band's marks, and for the same
+   reason: a uniform silhouette reads as a shape stamped on the page,
+   a fading one reads as a watermark under it. */
+.chm-skin .areas-mark {
+  position: absolute; inset-block-end: -4rem; inset-inline-start: -3rem;
+  width: 26rem; color: hsl(var(--foreground) / .07);
+  pointer-events: none; z-index: 0;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .5) 48%, transparent 90%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .5) 48%, transparent 90%);
+}
+.chm-skin .areas-mark svg { width: 100%; height: auto; }
+
+.chm-skin .areas {
+  display: grid; gap: 1.35rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 46rem) { .chm-skin .areas { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* The first row is inset by one column, which is what gives the block
+   its step and lets the heading breathe into the gap. */
+@media (min-width: 46rem) { .chm-skin .areas > li:first-child { grid-column-start: 2; } }
+
+/* Near-square, with the drawing at the top and the label sitting on
+   the floor of the card. The min-height is what holds that shape: a
+   card sized by its own content collapses to the label, and the seven
+   then step up and down the row by however long each subtitle runs. */
+.chm-skin .area {
+  display: flex; flex-direction: column; height: 100%;
+  min-height: 11.5rem;
+  padding: 1.25rem;
+  border-radius: 0.625rem;
+  background: hsl(var(--muted) / .55);
+  transition: background-color 180ms ease, transform 220ms cubic-bezier(.23, 1, .32, 1);
+}
+.chm-skin .area:hover { background: hsl(var(--muted) / .85); transform: translateY(-2px); }
+
+/* The drawing carries the hue; the well behind it stays neutral. The
+   SVG is used as a mask over a solid fill rather than drawn directly,
+   which is the only way to recolour artwork that ships its own ink. */
+/* White, not a darker grey: the well has to read as a plate the
+   drawing sits on. At 2.75rem the drawings were illegible; 4.5rem is
+   where the anatomy becomes the thing that tells you which area you
+   are looking at, and it keeps the card near-square rather than
+   tall. */
+.chm-skin .area__cluster {
+  position: relative; display: grid; place-items: center;
+  width: 4.5rem; height: 4.5rem; flex: none;
+  border-radius: 0.5rem; overflow: hidden;
+  background: #fff;
+}
+.chm-skin .area__art {
+  width: 86%; height: 86%;
+  background: hsl(var(--cluster-ink));
+  -webkit-mask: var(--art) center / contain no-repeat;
+  mask: var(--art) center / contain no-repeat;
+}
+.chm-skin .area__art--breast { --art: url(/images/anatomy/breast.svg); }
+.chm-skin .area__art--weight-loss { --art: url(/images/anatomy/weight-loss.svg); }
+.chm-skin .area__art--lung { --art: url(/images/anatomy/lung.svg); }
+.chm-skin .area__art--hematology { --art: url(/images/anatomy/hematology.svg); }
+.chm-skin .area__art--gi { --art: url(/images/anatomy/gi.svg); }
+.chm-skin .area__art--gu { --art: url(/images/anatomy/gu.svg); }
+.chm-skin .area__art--gynecology { --art: url(/images/anatomy/gynecology.svg); }
+
+.chm-skin .area__body { display: block; margin-top: auto; padding-top: 1rem; }
+.chm-skin .area__body h3 { font-family: var(--font-sans); font-size: 1rem; font-weight: 500; }
+.chm-skin .area__body p { margin-top: 0.3rem; font-size: 0.8125rem; color: hsl(var(--muted2)); }
+
+
+/* ── this moment ── */
+/* ── this moment in medicine ───────────────────────────────────── */
+
+.chm-skin .moments { display: grid; gap: 1.35rem; grid-template-columns: 1fr; }
+@media (min-width: 62rem) { .chm-skin .moments { grid-template-columns: 1fr 1fr; } }
+
+/* The same light ground as the disease cards, not a white card on a
+   white page: the two sections sit next to each other, and a shadowed
+   white card beside a flat grey one reads as two design systems. */
+.chm-skin .moment {
+  position: relative; overflow: hidden;
+  display: grid; align-items: center; gap: 1.35rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 1.5rem;
+  border-radius: 0.625rem; background: hsl(var(--muted) / .55);
+  transition: background-color 180ms ease;
+}
+.chm-skin .moment:hover { background: hsl(var(--muted) / .9); }
+.chm-skin .moment img {
+  width: 10rem; aspect-ratio: 16 / 9; object-fit: cover;
+  border-radius: 8px; background: hsl(var(--muted));
+}
+/* On a phone a 10rem still leaves under 100px for the title, which
+   clamps to two words. The thumbnail gives the width back. */
+@media (max-width: 30rem) {
+  .chm-skin .moment { padding: 1.1rem; gap: 1rem; }
+  .chm-skin .moment img { width: 7rem; }
+}
+/* The index as a watermark rather than a label: it orders the row
+   without taking a column of its own. */
+.chm-skin .moment__no {
+  position: absolute; inset-block-start: 50%; inset-inline-end: -0.6rem;
+  transform: translateY(-50%);
+  font-family: var(--font-display); font-size: 5.25rem; font-weight: 600;
+  line-height: 1; color: hsl(var(--foreground) / .055);
+  pointer-events: none; user-select: none;
+}
+.chm-skin .moment__dur {
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 6px;
+  background: #fff; font-family: var(--font-mono);
+  font-size: var(--t-meta); color: hsl(var(--muted2));
+  font-variant-numeric: tabular-nums;
+}
+/* Two lines, then an ellipsis. Session titles run long enough that an
+   unclamped third line would set the height of the whole row. */
+.chm-skin .moment h3 {
+  margin-top: 0.6rem;
+  font-family: var(--font-sans); font-size: var(--t-body-s);
+  font-weight: 400; line-height: 1.45;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+
+/* ── in conversation ── */
+/* ── in conversation ───────────────────────────────────────────── */
+
+/* Four across one row on desktop, two-up on a phone. auto-fit would
+   reflow them to three-and-one at some widths, which is the ragged
+   row the four-card count exists to avoid. */
+.chm-skin .people {
+  display: grid; gap: 1rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+@media (min-width: 48rem) { .chm-skin .people { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Full-bleed portrait with the name laid over the top, which is the
+   client's treatment, it reads as a row of faces rather than a row of
+   cards with faces in them. */
+/* The depth comes from three layers, not one flat fill: a vertical
+   gradient from the anchor down to a pale wash, a ghosted mark sitting
+   in the upper third, and the portrait over both. */
+.chm-skin .person {
+  position: relative; display: block; overflow: hidden;
+  aspect-ratio: 3 / 4;
+  border-radius: var(--radius-card);
+  background: linear-gradient(to bottom,
+    hsl(var(--deep-expertise)) 0%,
+    hsl(196 45% 42%) 38%,
+    hsl(196 32% 68%) 72%,
+    hsl(200 28% 82%) 100%);
+  box-shadow: var(--s-card);
+  transition: transform 220ms cubic-bezier(.23, 1, .32, 1), box-shadow 220ms ease;
+}
+.chm-skin .person__ghost {
+  position: absolute; inset-block-start: 8%; inset-inline-start: 50%;
+  transform: translateX(-50%);
+  width: 64%; color: hsl(0 0% 100% / .1);
+  pointer-events: none;
+}
+.chm-skin .person__ghost svg { width: 100%; height: auto; }
+.chm-skin .person:hover { transform: translateY(-3px); box-shadow: var(--s-card-hover); }
+.chm-skin .person img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.chm-skin .person__mono {
+  position: absolute; inset-block-end: 12%; inset-inline: 0;
+  display: grid; place-items: center;
+  font-family: var(--font-display); font-size: 2.75rem; font-weight: 500;
+  color: hsl(var(--deep-expertise) / .28);
+}
+/* Set to the left, not centred. Centred names on a column of cards
+   make every line a different length off a different axis, so the row
+   has no edge to read down; left-aligning gives the five one. */
+.chm-skin .person__label {
+  position: absolute; inset-inline: 0; inset-block-start: 0;
+  padding: 1.15rem 1.1rem 2.75rem; text-align: start;
+  background: linear-gradient(to bottom, hsl(196 66% 14% / .55), transparent);
+  color: #fff;
+}
+.chm-skin .person__label h3 {
+  font-family: var(--font-sans); font-size: 1.0625rem; font-weight: 500;
+  line-height: 1.25; letter-spacing: -0.01em; color: #fff;
+  text-wrap: balance;
+}
+.chm-skin .person__label p { margin-top: 0.35rem; font-size: 0.8125rem; line-height: 1.4; color: hsl(0 0% 100% / .8); }
+
+
+/* ── podcast network ── */
+/* ── podcast network ───────────────────────────────────────────── */
+
+.chm-skin .shows { display: grid; gap: 1.5rem; grid-template-columns: 1fr; }
+@media (min-width: 46rem) { .chm-skin .shows { grid-template-columns: 1fr 1fr; } }
+
+.chm-skin .show {
+  display: flex; flex-direction: column;
+  min-height: 300px; padding: 1.5rem;
+  border-radius: var(--radius-card);
+  background: hsl(var(--show, var(--deep-expertise))); color: #fff;
+  transition: transform 220ms cubic-bezier(.23, 1, .32, 1);
+}
+.chm-skin .show:hover { transform: translateY(-3px); }
+.chm-skin .show .eyebrow { color: hsl(0 0% 100% / .55); }
+.chm-skin .show h3 { margin-top: 0.85rem; font-size: 1.5rem; color: #fff; }
+.chm-skin .show__tagline { margin-top: auto; font-size: var(--t-body-s); color: hsl(0 0% 100% / .62); }
+
+.chm-skin .wave { display: flex; align-items: flex-end; gap: 4.8px; height: 52px; margin-block: 1.35rem; }
+.chm-skin .wave span {
+  flex: 1; border-radius: 3px; background: currentColor;
+  transform-origin: bottom;
+  animation: wave-pulse 1.9s ease-in-out infinite;
+}
+@keyframes wave-pulse { 0%, 100% { transform: scaleY(1); } 50% { transform: scaleY(.45); } }
+.chm-skin .show:hover .wave span { animation-duration: 1.1s; }
+
+.chm-skin .show__foot { display: flex; align-items: center; gap: 1rem; }
+.chm-skin .show__play {
+  width: 30px; height: 30px; border-radius: 50%; flex: none;
+  background: hsl(var(--knowledge-blue)); color: #fff;
+  display: grid; place-items: center;
+}
+.chm-skin .show__play svg { width: 11px; height: 11px; }
+.chm-skin .show__foot span { font-size: var(--t-body-s); }
+.chm-skin .show__foot .eyebrow { margin-inline-start: auto; }
+
+
+/* ── closing band ── */
+/* ── the closing band ──────────────────────────────────────────────
+   The CTA and the footer are one continuous slate band, divided by
+   rules rather than by colour. Building them as two bands with
+   different grounds was the thing that read wrong.
+   ───────────────────────────────────────────────────────────────── */
+
+.chm-skin .closing {
+  position: relative; overflow: hidden;
+  background: hsl(var(--slate)); color: hsl(0 0% 100% / .76);
+  margin-top: clamp(2rem, 5vw, 4rem);
+}
+
+/* Two large marks, ghosted, either side of the CTA only. */
+/* The marks fade out down their own height rather than sitting as a
+   flat tint, that gradient is most of why the band reads as lit from
+   the top rather than as a slab with shapes stamped on it. */
+.chm-skin .closing__mark {
+  position: absolute; height: 23rem; width: 23rem;
+  color: hsl(0 0% 100% / .085); pointer-events: none;
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .55) 45%, transparent 92%);
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / .55) 45%, transparent 92%);
+}
+/* Inverted, so the pair reads as one mark rotated rather than the
+   same mark printed twice. The rotation carries the fade mask with
+   it, so this one's gradient is authored upside down in order to
+   still run top-to-bottom on screen. */
+/* The pair sits at different heights, each cropped by a different
+   edge of the band. Flush-topped and level, they read as a repeated
+   tile; offset and cut, they read as one mark passing behind. */
+.chm-skin .closing__mark--l {
+  inset-block-start: -2.5rem;
+  inset-inline-start: -2.5rem;
+  transform: rotate(180deg);
+  -webkit-mask-image: linear-gradient(to top, #000 0%, rgb(0 0 0 / .55) 45%, transparent 92%);
+  mask-image: linear-gradient(to top, #000 0%, rgb(0 0 0 / .55) 45%, transparent 92%);
+}
+.chm-skin .closing__mark--r { inset-block-start: 3.5rem; inset-inline-end: -2.5rem; }
+.chm-skin .closing__mark svg { width: 100%; height: 100%; }
+
+.chm-skin .getstarted__in {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center; gap: 0.9rem;
+  text-align: center;
+  /* Loosened from the pass that cut it: the space you circled was
+     dead because nothing occupied it. The marks fill it now, so it
+     reads as composition rather than a gap, but it stays well short
+     of the 92px it was. */
+  padding-block: clamp(2.5rem, 4.6vw, 3.75rem) clamp(1.75rem, 3.2vw, 2.6rem);
+}
+.chm-skin .getstarted__in h2 {
+  font-size: clamp(1.5rem, 2.9vw, 2.2rem);
+  letter-spacing: -0.035em;
+  color: #fff;
+}
+.chm-skin .getstarted__in p { color: hsl(0 0% 100% / .74); max-width: 72ch; font-size: var(--t-body-s); }
+.chm-skin .getstarted__actions { display: flex; flex-wrap: wrap; gap: 0.6rem; justify-content: center; margin-top: 0.6rem; }
+.chm-skin .getstarted__actions .btn { height: 40px; padding-inline: 1.15rem; gap: 0.5em; font-size: var(--t-body-s); }
+/* Outlined, not filled: two solid buttons side by side compete, and
+   the teal is supposed to be the one that gets pressed. */
+.chm-skin .btn-secondary {
+  background: transparent; color: #fff;
+  border: 1px solid hsl(0 0% 100% / .45);
+}
+.chm-skin .btn-secondary:hover { background: hsl(0 0% 100% / .12); border-color: hsl(0 0% 100% / .7); }
+
+
+/* ── footer ── */
+/* ── footer, inside the same band ──────────────────────────────── */
+
+.chm-skin .site-foot { position: relative; z-index: 1; padding-block: 0 1.25rem; }
+.chm-skin .site-foot::before {
+  content: ""; display: block; height: 1px;
+  background: hsl(0 0% 100% / .14);
+  margin-block-end: 2.25rem;
+}
+
+/* One row at every width. Below the point where it fits, the footer
+   scrolls sideways rather than collapsing into a stack, the columns
+   stay legible as columns and the row running past the edge is the
+   cue that there is more. */
+.chm-skin .foot-top {
+  display: flex; align-items: stretch;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  /* bleed to the viewport edge, then pad back to the rail */
+  margin-inline: calc(var(--gutter) * -1);
+  padding-inline: var(--gutter);
+  scroll-padding-inline-start: var(--gutter);
+}
+.chm-skin .foot-top::-webkit-scrollbar { display: none; }
+
+.chm-skin .foot-about { flex: 0 0 20rem; padding-inline-end: 2rem; }
+@media (max-width: 40rem) { .chm-skin .foot-about { flex-basis: 16rem; } }
+
+.chm-skin .foot-about .site-bar__mark { display: inline-flex; margin-bottom: 1.1rem; color: #fff; font-size: 1.35rem; }
+.chm-skin .foot-about p { font-size: 0.8125rem; line-height: 1.6; max-width: 34ch; }
+.chm-skin .foot-about address { font-style: normal; margin-top: 1rem; font-size: 0.8125rem; line-height: 1.6; }
+.chm-skin .foot-about address a { color: inherit; }
+.chm-skin .foot-about address a:hover { color: #fff; }
+
+/* Outlined squares, not filled circles. */
+.chm-skin .socials { display: flex; gap: 0.5rem; margin-top: 1.5rem; }
+.chm-skin .socials a {
+  width: 30px; height: 30px; border-radius: 7px;
+  display: grid; place-items: center;
+  border: 1px solid hsl(0 0% 100% / .28); color: hsl(0 0% 100% / .82);
+  transition: border-color 150ms ease, color 150ms ease;
+}
+.chm-skin .socials a:hover { border-color: #fff; color: #fff; }
+.chm-skin .socials svg { width: 14px; height: 14px; }
+
+/* Space between the columns, not rules: at six columns the hairlines
+   read as a table, and the gap already groups them. */
+.chm-skin .foot-col {
+  flex: 0 0 auto; min-width: 9.5rem;
+  padding-inline-end: 3rem;
+}
+.chm-skin .foot-col h4 {
+  font-family: var(--font-sans); font-size: 0.8125rem; font-weight: 500;
+  color: #fff; margin-bottom: 1rem; white-space: nowrap;
+}
+.chm-skin .foot-col li + li { margin-top: 0.6rem; }
+.chm-skin .foot-col a { font-size: 0.8125rem; color: hsl(0 0% 100% / .68); white-space: nowrap; }
+.chm-skin .foot-col a:hover { color: #fff; }
+
+.chm-skin .foot-base {
+  display: flex; flex-wrap: wrap; gap: 0.5rem 1.25rem; align-items: center;
+  margin-top: 2.5rem; padding-top: 1.25rem;
+  border-top: 1px solid hsl(0 0% 100% / .14);
+  font-size: 0.75rem; color: hsl(0 0% 100% / .6);
+}
+.chm-skin .foot-base__mid { margin-inline: auto; }
+.chm-skin .foot-base__tag { margin-inline-start: auto; }
+.chm-skin .foot-base a:hover { color: #fff; }
+
+
+/* ── band foot action ── */
+/* ── a section action centred under its content ──────────────────
+   Used where the row is the whole section and the link is its
+   conclusion rather than a shortcut past it. `.band--footaction`
+   drops the top-right slot so the head does not reserve a column for
+   an action that is not in it. */
+.chm-skin .band--footaction .band__head { grid-template-columns: 1fr; }
+.chm-skin .band__foot { display: flex; justify-content: center; margin-top: 2rem; }
+.chm-skin .band__foot .band__action {
+  border: 1px solid hsl(var(--border)); background: #fff;
+}
+.chm-skin .band__foot .band__action:hover { background: hsl(var(--muted)); }
+
