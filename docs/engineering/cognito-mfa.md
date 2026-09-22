@@ -68,8 +68,18 @@ Cognito remains the source of truth at challenge time. Postgres is a mirror for 
 
 ## App behavior
 
+**Either / or — never both in one sign-in**
+
+| Path | When | What the user does |
+|------|------|--------------------|
+| **Soft AppConfig** | Cognito MFA is **OPTIONAL**, AppConfig `mfa.enabled`, user not enrolled | Password login → tokens → `/mfa/setup` once (SMS or TOTP per `mfa.method`) |
+| **Cognito challenge** | User already enrolled | Password login → `SMS_MFA` / `SOFTWARE_TOKEN_MFA` → one code → app |
+| **Cognito MFA_SETUP** | Pool MFA **ON** and not enrolled | Password login → TOTP setup on Login → app (no soft `/mfa/setup` after) |
+
+Join always lands in `/app` after email verify (soft enrollment waits for a later password login). Completing a Cognito MFA code never also redirects to `/mfa/setup`.
+
 1. **Login (already enrolled)** — Cognito returns `SOFTWARE_TOKEN_MFA` or `SMS_MFA`; client completes via `POST /auth/cognito/mfa` with `challenge`.
-2. **Login (Require MFA, not enrolled)** — `MFA_SETUP` → TOTP associate path (unchanged).
+2. **Login (Require MFA, not enrolled)** — `MFA_SETUP` → TOTP associate path (unchanged); response marks enrollment satisfied so soft gate does not run.
 3. **Enrollment (Optional + AppConfig on)**  
    - SMS: `POST /auth/mfa/phone/start` → `POST /auth/mfa/phone/verify`  
    - TOTP: `POST /auth/mfa/setup` → `POST /auth/mfa/verify`
