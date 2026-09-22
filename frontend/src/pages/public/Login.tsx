@@ -171,7 +171,8 @@ export default function Login() {
 
   return (
     <AuthLayout
-      heading="Your clinical library is waiting."
+      heading="Community Health Media"
+      sub="Your clinical library is waiting."
       footer={
         <>
           Don&apos;t have an account?{' '}

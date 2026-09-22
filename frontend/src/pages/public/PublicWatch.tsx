@@ -46,20 +46,8 @@ function clipDuration(seconds: number | undefined): string | undefined {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return new Intl.NumberFormat().format(n);
-}
 
 /** MediaHub sends snake_case; some ContentHub paths send camelCase. */
-function readNumber(clip: MediaHubClip, snake: string, camel: string): number {
-  const raw = clip as unknown as Record<string, unknown>;
-  const v = raw[snake] ?? raw[camel];
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string') return parseInt(v, 10) || 0;
-  return 0;
-}
 
 function readString(clip: MediaHubClip, snake: string, camel: string): string {
   const raw = clip as unknown as Record<string, unknown>;
@@ -588,7 +576,6 @@ export default function PublicWatch() {
     : null;
 
   const lede = clipDisplaySummary(clip);
-  const viewCount = readNumber(clip, 'view_count', 'viewCount');
   const postedRaw = readString(clip, 'posted_at', 'postedAt');
   const posted = postedRaw ? new Date(postedRaw) : null;
   const postedLabel = posted && isValid(posted) ? formatDate(posted, 'd MMMM yyyy') : null;
@@ -652,9 +639,6 @@ export default function PublicWatch() {
 
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
               {postedLabel ? <span className="meta text-faint">{postedLabel}</span> : null}
-              {viewCount > 0 ? (
-                <span className="meta tabular-nums text-faint">{formatCount(viewCount)} views</span>
-              ) : null}
             </div>
 
             {/* Tags are filters: each one opens the library narrowed to

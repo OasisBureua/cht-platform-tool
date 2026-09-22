@@ -52,7 +52,7 @@ export function CatalogRow({
           <h2 id={headingId} className="display text-display-s text-text">
             {title}
           </h2>
-          {subtitle ? <p className="meta mt-1.5 tabular-nums text-faint">{subtitle}</p> : null}
+          {subtitle ? <p className="mt-1.5 text-[0.8125rem] tabular-nums text-faint">{subtitle}</p> : null}
         </div>
         <Link
           to={seeAllHref}
@@ -153,7 +153,7 @@ export function CatalogSessionCard({
         <div className="flex flex-1 flex-col px-1 pt-3.5 pb-1">
           <h3 className="display line-clamp-2 text-body-m text-text">{title}</h3>
           {description ? (
-            <p className="meta mt-auto pt-3 line-clamp-1 text-faint" title={description}>
+            <p className="mt-auto pt-3 line-clamp-1 text-[0.8125rem] text-faint" title={description}>
               {description}
             </p>
           ) : null}

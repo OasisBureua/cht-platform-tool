@@ -8,10 +8,12 @@ import {
 } from '../data/podcastsCatalog';
 import { usePodcastEpisodes } from '../hooks/usePodcastYouTubeEpisodes';
 import { YouTubePlayer } from '../components/YouTubePlayer';
-import { formatViewCount } from '../utils/youtubeDuration';
 import { podcastEpisodeWatchPath, podcastShowPath } from '../utils/podcastRoutes';
 import { ChmMark } from '../components/brand/ChmMark';
 import { Button, Chip, chipKind, Thumb } from '../components/ui';
+import { useQuery } from '@tanstack/react-query';
+import { catalogApi, type MediaHubClip } from '../api/catalog';
+import { getMediaHubThumbnail, getShortClipId, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 
 function Eyebrow({
   children,
@@ -70,6 +72,13 @@ function splitGuests(guests: string | undefined, showTitle: string): string[] {
     .filter(Boolean);
 }
 
+/** 2,181 s → "36 min 21 sec", the show page's own style. */
+function clipDuration(seconds: number | undefined): string {
+  if (!seconds || seconds <= 0) return '';
+  const m = Math.floor(seconds / 60), r = Math.round(seconds % 60);
+  return m >= 60 ? `${Math.floor(m / 60)} hr ${m % 60} min` : `${m} min ${r} sec`;
+}
+
 function monogram(name: string): string {
   const parts = name.replace(/^(Dr\.?|Prof\.?|Mr\.?|Ms\.?|Mrs\.?)\s+/i, '').split(/\s+/);
   return `${parts[0]?.[0] ?? ''}${parts.length > 1 ? parts[parts.length - 1][0] : ''}`.toUpperCase();
@@ -83,6 +92,41 @@ export default function PodcastEpisodeWatch() {
     show?.remoteEpisodes ? show.id : undefined,
     'latest',
   );
+
+  // What CHM puts beside this episode: conversations with the same faculty
+  // first, then the newest recordings the catalog itself surfaces. Not the
+  // rest of the show, which lives in "More from" below.
+  const episodeForRec = (show ? (show.remoteEpisodes ? data?.episodes ?? [] : show.episodes) : []).find(
+    (e) => e.videoId === episodeId,
+  );
+  const guestNames = episodeForRec && show ? splitGuests(episodeForRec.guests, show.title) : [];
+  const { data: recommended = [] } = useQuery({
+    queryKey: ['podcast', 'recommended', showId, episodeId, guestNames.join('|')],
+    enabled: !!episodeForRec,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const out: MediaHubClip[] = [];
+      const seen = new Set<string>();
+      const take = (items: MediaHubClip[]) => {
+        for (const c of items) {
+          if (out.length >= 5) return;
+          if (seen.has(c.id) || !shouldSurfaceCatalogClip(c)) continue;
+          seen.add(c.id);
+          out.push(c);
+        }
+      };
+      const safe = (p: Promise<{ items: MediaHubClip[] }>) =>
+        p.catch(() => ({ items: [] as MediaHubClip[] }));
+      const byGuest = await Promise.all(
+        guestNames.slice(0, 2).map((g) => safe(catalogApi.getClips({ q: g, limit: 4, sort_by: 'recent' }))),
+      );
+      byGuest.forEach((r) => take(r.items));
+      if (out.length < 5) {
+        take((await safe(catalogApi.getClips({ sort_by: 'recorded_at', limit: 8, dedup_by: 'shoot' }))).items);
+      }
+      return out;
+    },
+  });
 
   if (!showId || !episodeId || !show) {
     return <Navigate to="/app/podcast-network" replace />;
@@ -99,6 +143,7 @@ export default function PodcastEpisodeWatch() {
 
   const showPath = podcastShowPath(showId);
   const showArt = show.image;
+
 
   const crumbs = (
     <nav aria-label="Breadcrumb" className="meta flex flex-wrap items-center gap-2 text-faint">
@@ -156,13 +201,11 @@ export default function PodcastEpisodeWatch() {
     .filter((ep, at, all) => all.findIndex((o) => o.videoId === ep.videoId) === at)
     .slice(0, 8);
 
-  const queue = track.slice(0, 5);
-  const more = track.slice(queue.length, queue.length + 3);
+  const more = track.slice(0, 3);
 
   const guests = splitGuests(episode.guests, show.title);
   const categories = show.category.split('·').map((c) => c.trim()).filter(Boolean);
   const listenOn = show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS;
-  const views = formatViewCount(episode.viewCount);
 
   return (
     <div className="pb-24 md:pb-16">
@@ -211,31 +254,35 @@ export default function PodcastEpisodeWatch() {
             <div className="flex items-center justify-between gap-4 px-4 py-3.5">
               {/* What is playing is carried by the label, not only by the
                   frame: audio first, because that is what this is. */}
-              <p className="meta text-muted2">
+              <p className="text-[0.8125rem] text-muted2">
                 Audio · {episode.num}
-                {views ? ` · ${views}` : ''}
               </p>
-              <p className="meta tabular-nums text-muted2">{episode.duration}</p>
+              <p className="text-[0.8125rem] tabular-nums text-muted2">{episode.duration}</p>
             </div>
 
-            {queue.length > 0 ? (
+            {recommended.length > 0 ? (
               <>
-                <h2 id="queue-heading" className="eyebrow px-4 pt-1 pb-2 text-faint">
-                  Up next in this show
-                </h2>
-                <ol aria-labelledby="queue-heading" className="px-2 pb-2">
-                  {queue.map((q, i) => (
-                    <li key={q.videoId}>
+                <div className="flex items-baseline justify-between px-4 pt-1 pb-2">
+                  <h2 id="recommended-heading" className="eyebrow text-faint">
+                    Recommended videos
+                  </h2>
+                  <Link to="/app/catalog" className="press text-[0.75rem] text-dim hover:text-text">
+                    All conversations
+                  </Link>
+                </div>
+                <ol aria-labelledby="recommended-heading" className="px-2 pb-2">
+                  {recommended.map((c, i) => (
+                    <li key={c.id}>
                       <Link
-                        to={podcastEpisodeWatchPath(showId, q.videoId!)}
+                        to={`/app/clip/${getShortClipId(c.id)}`}
                         className="press group flex items-center gap-3 rounded-[6px] p-2 hover:bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                       >
-                        <span className="meta w-5 shrink-0 tabular-nums text-faint">
+                        <span className="w-5 shrink-0 text-[0.75rem] tabular-nums text-faint">
                           {String(i + 1).padStart(2, '0')}
                         </span>
                         <span className="img-ring relative block h-12 w-[5.25rem] shrink-0 overflow-hidden rounded-[6px] bg-surface-2">
                           <img
-                            src={q.thumbnailUrl ?? showArt}
+                            src={getMediaHubThumbnail(c)}
                             alt=""
                             loading="lazy"
                             referrerPolicy="no-referrer"
@@ -243,11 +290,11 @@ export default function PodcastEpisodeWatch() {
                           />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block truncate text-body-s text-dim group-hover:text-text">
-                            {q.title}
-                          </span>
-                          <span className="meta mt-0.5 block tabular-nums text-faint">
-                            {q.num} · {q.duration}
+                          <span className="block truncate text-body-s font-medium text-text">{c.title}</span>
+                          <span className="mt-0.5 block truncate text-[0.75rem] tabular-nums text-faint">
+                            {[c.doctors?.length ? c.doctors.slice(0, 2).join(', ') : null, clipDuration(c.duration_seconds)]
+                              .filter(Boolean)
+                              .join(' · ')}
                           </span>
                         </span>
                       </Link>
@@ -281,7 +328,7 @@ export default function PodcastEpisodeWatch() {
               >
                 {show.title}
               </Link>
-              <p className="meta mt-0.5 truncate text-faint">{show.updateNote}</p>
+              <p className="mt-0.5 truncate text-[0.75rem] text-faint">{show.updateNote}</p>
             </div>
           </div>
 
@@ -294,11 +341,10 @@ export default function PodcastEpisodeWatch() {
             ) : null}
 
             <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <span className="meta text-faint">{episode.date}</span>
+              <span className="text-[0.8125rem] text-faint">{episode.date}</span>
               {episode.duration ? (
-                <span className="meta tabular-nums text-faint">{episode.duration}</span>
+                <span className="text-[0.8125rem] tabular-nums text-faint">{episode.duration}</span>
               ) : null}
-              {views ? <span className="meta tabular-nums text-faint">{views}</span> : null}
             </div>
 
             {categories.length > 0 ? (

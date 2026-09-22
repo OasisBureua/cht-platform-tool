@@ -324,7 +324,7 @@ function PlaylistCard({ item, href }: { item: CatalogItem; href: string }) {
           {title}
         </h3>
         {faculty ? (
-          <p className="meta mt-auto line-clamp-1 pt-3 text-faint">{faculty}</p>
+          <p className="mt-auto line-clamp-1 pt-3 text-[0.8125rem] text-faint">{faculty}</p>
         ) : null}
       </div>
     </Link>
@@ -473,7 +473,7 @@ function FeaturedCarousel({
                 {active.title}
               </span>
               {lead ? (
-                <span className="meta mt-2 flex items-center gap-2 text-faint">
+                <span className="mt-2 flex items-center gap-2 text-[0.8125rem] text-faint">
                   {lead}
                   <ArrowRight
                     className="size-3.5 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1"
