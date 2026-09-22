@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -7,6 +7,8 @@ import { googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } fro
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { consumePendingLoginMfa } from '../../utils/pending-login-mfa';
+import { shouldPromptSoftMfaEnrollment } from '../../utils/mfa-enrollment-gate';
 import { RecaptchaNotice } from '../../components/RecaptchaNotice';
 import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 import { AuthLayout } from '../../components/auth/AuthLayout';
@@ -41,6 +43,22 @@ export default function Login() {
   } | null>(null);
   const [showManualKey, setShowManualKey] = useState(false);
 
+  // Resume Cognito MFA leftover from Join post-verify login (challenge was stashed).
+  useEffect(() => {
+    const pending = consumePendingLoginMfa();
+    if (!pending) return;
+    setEmail(pending.email);
+    if (pending.mfaSetup) {
+      setMfaSetup(pending.mfaSetup);
+      setShowManualKey(false);
+      return;
+    }
+    if (pending.mfa?.session) {
+      setMfaSession(pending.mfa.session);
+      setMfaChallenge(pending.mfa.challenge);
+    }
+  }, []);
+
   const handleOAuth = async (provider: 'google') => {
     if (!googleOAuthEnabled) {
       setError(googleOAuthMigrationMessage);
@@ -58,12 +76,10 @@ export default function Login() {
     }
   };
 
-  // Navigate once bootstrap finishes, or immediately after login sets the profile
-  // (login no longer re-triggers /auth/me + isLoading).
+  // After password login or Cognito MFA challenge, land in the app.
+  // Soft `/mfa/setup` is XOR with Cognito MFA — never redirect here after a
+  // Cognito challenge/setup code (that forced users through both).
   if (isAuthenticated && !isLoading) {
-    if (user?.mfaEnrollmentRequired) {
-      return <Navigate to="/mfa/setup" replace />;
-    }
     return <Navigate to={getPostLoginPath(user?.role, from)} replace />;
   }
 
@@ -92,6 +108,7 @@ export default function Login() {
         password,
         recaptchaToken,
       );
+      // Cognito path: challenge or MFA_SETUP — exclusive; no soft /mfa/setup after.
       if (setup) {
         setMfaSetup(setup);
         setShowManualKey(false);
@@ -107,9 +124,13 @@ export default function Login() {
         setErrorCode(err.code || null);
         return;
       }
-      // Username/password: if AppConfig MFA is on and they have never enrolled,
-      // send them to setup (Join skips this and lands in /app).
-      if (mfaEnrollmentRequired) {
+      // Soft AppConfig path only (tokens, never enrolled). Join skips this.
+      if (
+        shouldPromptSoftMfaEnrollment({
+          mfaEnrollmentRequired,
+          cognitoMfa: false,
+        })
+      ) {
         window.location.assign('/mfa/setup');
         return;
       }
