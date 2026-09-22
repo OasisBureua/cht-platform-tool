@@ -37,6 +37,7 @@ import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 import { Button, Field } from '../../components/ui';
 import { cn } from '../../lib/cn';
 import { invitesApi, type ResolvedInvite } from '../../api/invites';
+import { stashPendingLoginMfa } from '../../utils/pending-login-mfa';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
   i === 0 ? { ...o, label: 'Select your role' } : { ...o },
@@ -312,14 +313,15 @@ export default function Join() {
         );
         return;
       }
-      // Cognito MFA challenge (already enrolled) — finish on the login screen.
+      // Cognito MFA XOR soft AppConfig /mfa/setup — never both.
+      // Preserve Cognito challenge for Login; soft SMS is later password logins only.
       if (mfa || mfaSetup) {
         setSubmitting(false);
+        stashPendingLoginMfa({ email, mfa, mfaSetup });
         window.location.assign('/login');
         return;
       }
-      // After Join, land in the app. Soft MFA enrollment is prompted on later
-      // logins (Login page) or via in-app notification — not forced here.
+      // After Join, land in the app (no soft MFA on join).
       window.location.assign(returnTo ?? PLATFORM_HOME);
     } catch (captchaErr) {
       setSubmitting(false);

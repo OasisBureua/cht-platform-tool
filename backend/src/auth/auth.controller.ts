@@ -136,6 +136,18 @@ export class AuthController {
   }
 
   /**
+   * After Cognito MFA challenge or MFA_SETUP, enrollment is satisfied.
+   * Never also soft-gate to AppConfig `/mfa/setup` (XOR with soft enrollment).
+   */
+  private cognitoMfaSatisfied(login: LoginSuccess): LoginSuccess {
+    return {
+      ...login,
+      mfaEnabled: true,
+      mfaEnrollmentRequired: false,
+    };
+  }
+
+  /**
    * MFA enrollment gate from AppConfig `mfa.enabled` (default off until SMS/10DLC is ready).
    */
   private isMfaEnrollmentEnforced(): boolean {
@@ -471,7 +483,7 @@ export class AuthController {
         email: loginResult.email,
         role: loginResult.role,
       }, { method: 'cognito', challenge: challengeName });
-      return loginResult;
+      return this.cognitoMfaSatisfied(loginResult);
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
       this.logger.warn(
@@ -538,7 +550,7 @@ export class AuthController {
         email: loginResult.email,
         role: loginResult.role,
       }, { method: 'cognito' });
-      return loginResult;
+      return this.cognitoMfaSatisfied(loginResult);
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
       this.logger.warn(
