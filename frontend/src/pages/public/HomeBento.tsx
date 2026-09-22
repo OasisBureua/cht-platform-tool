@@ -411,7 +411,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   const faculty: DolEntry[] = useMemo(() => {
     const live = regions.flatMap((r) => r.entries);
     const roster = live.length > 0 ? live : kolStaticEnrichment;
-    return [...roster].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)).slice(0, 5);
+    return [...roster].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)).slice(0, 4);
   }, [regions]);
 
   /* The two series the platform actually publishes carry their own
@@ -756,16 +756,12 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             sub="Practising specialists who bring their own audiences."
             seeAll={{ noun: 'profiles', to: '/kol-network' }}
           />
-          <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-6">
+          {/* Four, one row, then the link. Five in a 3+2 grid left a
+              ragged second row that read as a mistake; four sits square
+              and the rest of the network is one click away. */}
+          <ul className="mt-12 grid grid-cols-2 gap-x-6 gap-y-10 sm:grid-cols-4">
             {faculty.map((k, i) => (
-              <Reveal
-                as="li"
-                key={k.id}
-                delay={i * 50}
-                /* 3 up top, 2 below: the first three take two of six
-                   columns each, the last two take three. */
-                className={i < 3 ? 'sm:col-span-2' : 'sm:col-span-3'}
-              >
+              <Reveal as="li" key={k.id} delay={i * 50}>
                 <Link
                   to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
                   className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -803,7 +799,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
               </Reveal>
             ))}
             {faculty.length === 0 && loadState === 'loading'
-              ? Array.from({ length: 5 }, (_, i) => (
+              ? Array.from({ length: 4 }, (_, i) => (
                   <li key={`kol-skeleton-${i}`} aria-hidden>
                     <span className="block size-24 rounded-full bg-surface-2 md:size-28" />
                     <span className="mt-4 block h-3 w-3/4 rounded-[6px] bg-surface-2" />
