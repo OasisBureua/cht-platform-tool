@@ -10,7 +10,6 @@ import {
   ConversationsHeroSkeleton,
 } from '../../components/content/ConversationsHero';
 import { CatalogRow, CatalogSessionCard } from '../../components/content/CatalogRow';
-import { DoctorBioRail } from '../../components/content/DoctorBioRail';
 import {
   BIOMARKER_CAROUSEL_IDS,
   BiomarkerConversationRow,
@@ -968,7 +967,6 @@ export default function VideosPage() {
               className={`${CHIP} ${CHIP_ON}`}
             >
               {doctorLabelFromSlug(doctorFilter)}
-              <span className="ms-2 opacity-70">×</span>
             </button>
           ) : null}
           {biomarkerChips.length > 0 ? (
@@ -1178,51 +1176,31 @@ export default function VideosPage() {
             ))}
           </div>
         ) : (
-          <div
-            className={
-              doctorFilter
-                ? 'grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start'
-                : undefined
-            }
-          >
-            <ul
-              className={`grid gap-5 sm:grid-cols-2 ${
-                doctorFilter ? 'lg:grid-cols-2 xl:grid-cols-3' : 'lg:grid-cols-3 xl:grid-cols-4'
-              }`}
-            >
-              {results.map((item) => {
-                const lead = item.doctors?.[0] ? doctorLabelFromSlug(item.doctors[0]) : null;
-                return (
-                  <li key={item.id}>
-                    <Link
-                      to={clipHref(item)}
-                      state={{ clip: item }}
-                      className="card group flex h-full flex-col p-4"
-                    >
-                      <div className="relative">
-                        <Thumb clip={item} className="aspect-video w-full" />
-                        <span className="absolute top-3 start-3">
-                          <FormatBadge clip={item} />
-                        </span>
-                      </div>
-                      <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
-                        <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
-                        <p className="meta mt-auto pt-5 text-faint">{lead}</p>
-                      </div>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-            {doctorFilter ? (
-              <DoctorBioRail
-                slug={doctorFilter}
-                isInApp={isInApp}
-                onClear={() => setFilters({ doctor: '' })}
-                className="lg:sticky lg:top-24 order-first lg:order-none"
-              />
-            ) : null}
-          </div>
+          <ul className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {results.map((item) => {
+              const lead = item.doctors?.[0] ? doctorLabelFromSlug(item.doctors[0]) : null;
+              return (
+                <li key={item.id}>
+                  <Link
+                    to={clipHref(item)}
+                    state={{ clip: item }}
+                    className="card group flex h-full flex-col p-4"
+                  >
+                    <div className="relative">
+                      <Thumb clip={item} className="aspect-video w-full" />
+                      <span className="absolute top-3 start-3">
+                        <FormatBadge clip={item} />
+                      </span>
+                    </div>
+                    <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
+                      <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
+                      <p className="meta mt-auto pt-5 text-faint">{lead}</p>
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
 
         {/* The sentinel belongs to the grid. Mounting it under the rails
