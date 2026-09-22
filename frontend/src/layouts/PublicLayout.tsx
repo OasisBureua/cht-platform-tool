@@ -181,6 +181,7 @@ export default function PublicLayout() {
               <ChmWordmarkOption2 className="h-7 w-[4.5rem] sm:h-8 sm:w-[5rem]" />
             </Link>
 
+            {!isAuthRoute && (
             <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 lg:flex">
               {primaryNav.map((n) => (
                 <NavLink
@@ -203,6 +204,7 @@ export default function PublicLayout() {
                 />
               ) : null}
             </nav>
+            )}
 
             <div className="ms-auto flex shrink-0 items-center gap-2">
               {!hidePrelaunchNav ? (
@@ -218,6 +220,7 @@ export default function PublicLayout() {
 
               <ThemeControl />
 
+              {!isAuthRoute && (<>
               {/* Two plain controls. A chevron here read as a dropdown but
                   only linked to sign-in, so the icon lied about the action. */}
               <Link
@@ -232,7 +235,9 @@ export default function PublicLayout() {
               >
                 Get started
               </Link>
+            </>)}
 
+              {!isAuthRoute && (
               <button
                 type="button"
                 onClick={() => setDrawerOpen((v) => !v)}
@@ -247,6 +252,7 @@ export default function PublicLayout() {
                   <Menu className="size-5" strokeWidth={1.75} />
                 )}
               </button>
+              )}
             </div>
           </div>
 

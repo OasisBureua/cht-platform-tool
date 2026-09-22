@@ -323,7 +323,7 @@ function PlaylistCard({ item, href }: { item: CatalogItem; href: string }) {
           {title}
         </h3>
         {faculty ? (
-          <p className="meta mt-auto line-clamp-1 pt-3 text-faint">{faculty}</p>
+          <p className="mt-auto line-clamp-1 pt-3 text-[0.8125rem] text-faint">{faculty}</p>
         ) : null}
       </div>
     </Link>
@@ -472,7 +472,7 @@ function FeaturedCarousel({
                 {active.title}
               </span>
               {lead ? (
-                <span className="meta mt-2 flex items-center gap-2 text-faint">
+                <span className="mt-2 flex items-center gap-2 text-[0.8125rem] text-faint">
                   {lead}
                   <ArrowRight
                     className="size-3.5 transition-[translate] duration-150 ease-[var(--ease-standard)] group-hover:translate-x-1"
@@ -907,7 +907,7 @@ export default function VideosPage() {
               poster, so the faculty route lives beside the search. */}
           {isInApp ? (
             <Button
-              to="/kols"
+              to="/app/kols"
               variant="outline"
               className={`${BTN} h-14 shrink-0 bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
             >
@@ -1191,11 +1191,11 @@ export default function VideosPage() {
                       <span className="absolute top-3 start-3">
                         <FormatBadge clip={item} />
                       </span>
-                </div>
+                    </div>
                     <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
                       <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
                       <p className="meta mt-auto pt-5 text-faint">{lead}</p>
-                </div>
+                    </div>
                   </Link>
                 </li>
               );

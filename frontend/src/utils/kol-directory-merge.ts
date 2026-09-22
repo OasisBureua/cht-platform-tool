@@ -19,10 +19,20 @@ function roleLead(role: string): string {
   return role.split(/[.;]/)[0]?.trim() ?? role.trim();
 }
 
-/** Intel card content for directory cards and profile overview, always populated when name/role/bio exist. */
+/** Intel card content: prefer Hub bio, then Hub AI brief, then role. */
 export function resolveKolDisplayBrief(
   entry: Pick<DolEntry, 'name' | 'role' | 'bio' | 'intel'>,
 ): KolDisplayBrief | null {
+  const bio = entry.bio?.trim();
+  const role = entry.role?.trim();
+  if (bio) {
+    return {
+      whoTheyAre: bio,
+      focus: role ? roleLead(role) : undefined,
+      isAiGenerated: false,
+    };
+  }
+
   const ai = entry.intel?.aiBrief;
   const normalizedAi = normalizeKolAiBrief(ai);
   const hasIntelBrief = Boolean(
@@ -47,15 +57,6 @@ export function resolveKolDisplayBrief(
     };
   }
 
-  const bio = entry.bio?.trim();
-  const role = entry.role?.trim();
-  if (bio) {
-    return {
-      whoTheyAre: bio,
-      focus: role ? roleLead(role) : undefined,
-      isAiGenerated: false,
-    };
-  }
   if (role) {
     return {
       whoTheyAre: `${entry.name}: ${roleLead(role)}`,
@@ -91,7 +92,7 @@ export function apiIntelToKolIntel(
   return Object.keys(out).length ? out : undefined;
 }
 
-/** Prefer Content Hub intel; static mock fills education, social, aiBrief extras. */
+/** Prefer Content Hub intel; static mock may fill education/social only (not bios/AI). */
 export function mergeIntel(
   apiKol: PublicKol,
   stat?: DolEntry,
@@ -100,32 +101,27 @@ export function mergeIntel(
   const fromStat = stat?.intel;
   if (!fromApi && !fromStat) return undefined;
 
-  const aiBrief = {
-    ...fromStat?.aiBrief,
-    ...fromApi?.aiBrief,
-  };
-  const hasAiBrief = Boolean(
-    aiBrief.whoTheyAre?.trim() ||
-      aiBrief.focus?.trim() ||
-      aiBrief.chmContext?.trim(),
-  );
+  // Never overlay hardcoded AI briefs when Hub did not send one.
+  const { aiBrief: _ignoredStaticAi, ...statWithoutAi } = fromStat ?? {};
+  void _ignoredStaticAi;
 
   return {
-    ...fromStat,
+    ...statWithoutAi,
     ...fromApi,
-    ...(hasAiBrief ? { aiBrief } : {}),
+    ...(fromApi?.aiBrief ? { aiBrief: fromApi.aiBrief } : {}),
   };
 }
 
 export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
   const stat = kolStaticEnrichment.find((e) => e.id === apiKol.slug);
-  const role = stat?.role ?? apiKol.title ?? '';
+  const role = apiKol.title ?? stat?.role ?? '';
   const intel = mergeIntel(apiKol, stat);
   const merged: DolEntry = {
     id: apiKol.slug,
     name: apiKol.name,
     role,
-    bio: apiKol.bio || stat?.bio || '',
+    // Hub bio only — static enrichment bios read as hallucinations.
+    bio: apiKol.bio || '',
     education: stat?.education ?? '',
     isNew: apiKol.is_new,
     photoUrl: apiKol.photo_url ?? undefined,

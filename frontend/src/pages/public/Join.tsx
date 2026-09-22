@@ -67,8 +67,6 @@ export default function Join() {
     confirmEmailSignup,
     resendEmailVerificationCode,
     login,
-    beginSmsMfaSetup,
-    verifySmsMfaSetup,
   } = useAuth();
   const location = useLocation();
 
@@ -115,10 +113,9 @@ export default function Join() {
   const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  /** form → email code → SMS MFA code → authenticated redirect */
-  const [joinStep, setJoinStep] = useState<'form' | 'email' | 'phone'>('form');
+  /** form → email verification code → signed in */
+  const [joinStep, setJoinStep] = useState<'form' | 'email'>('form');
   const [emailCode, setEmailCode] = useState('');
-  const [smsCode, setSmsCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [npiVerifying, setNpiVerifying] = useState(false);
@@ -296,6 +293,33 @@ export default function Join() {
     }
   };
 
+  const finishJoinAfterEmailVerified = async () => {
+    const { error: loginErr, mfa, mfaSetup, mfaEnrollmentRequired } = await login(
+      email,
+      password,
+    );
+    if (loginErr) {
+      setSubmitting(false);
+      setError(
+        loginErr.message ||
+          'Could not sign you in. If this email is already registered, try Log in instead.',
+      );
+      return;
+    }
+    // Cognito MFA challenge (already enrolled) — finish on the login screen.
+    if (mfa || mfaSetup) {
+      setSubmitting(false);
+      window.location.assign('/login');
+      return;
+    }
+    // Soft MFA enrollment (AppConfig) — use phone from Join profile on /mfa/setup.
+    if (mfaEnrollmentRequired) {
+      window.location.assign('/mfa/setup');
+      return;
+    }
+    window.location.assign(returnTo ?? PLATFORM_HOME);
+  };
+
   const handleConfirmEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -311,50 +335,19 @@ export default function Join() {
       setError(confirmErr.message || 'Email verification failed.');
       return;
     }
-
-    const { error: loginErr, mfa, mfaSetup } = await login(email, password);
-    if (loginErr) {
-      setSubmitting(false);
-      setError(loginErr.message || 'Could not sign you in after email verification.');
-      return;
-    }
-    // Pool already requiring MFA challenge — finish via /login UI.
-    if (mfa || mfaSetup) {
-      setSubmitting(false);
-      window.location.assign('/login');
-      return;
-    }
-
-    const smsStart = await beginSmsMfaSetup(phone);
-    setSubmitting(false);
-    if (smsStart.error) {
-      setError(
-        smsStart.error.message ||
-          'Could not send SMS. You can finish phone MFA under Settings after signing in.',
-      );
-      // Still allow continuing to MFA setup page with prefilled phone.
-      setJoinStep('phone');
-      return;
-    }
-    setJoinStep('phone');
-    setInfo('We texted a 6-digit code to your phone. Enter it to enable SMS MFA.');
+    await finishJoinAfterEmailVerified();
   };
 
-  const handleConfirmPhone = async (e: React.FormEvent) => {
-    e.preventDefault();
+  /** Account already CONFIRMED in Cognito (no usable email code) — skip confirm and sign in. */
+  const handleAlreadyVerifiedContinue = async () => {
     setError(null);
-    if (!smsCode.trim()) {
-      setError('Enter the 6-digit code from the text message.');
+    setInfo(null);
+    if (!password) {
+      setError('Enter the password you used on this form, then continue.');
       return;
     }
     setSubmitting(true);
-    const result = await verifySmsMfaSetup(smsCode);
-    setSubmitting(false);
-    if (result.error) {
-      setError(result.error.message || 'Phone verification failed.');
-      return;
-    }
-    window.location.assign(returnTo ?? PLATFORM_HOME);
+    await finishJoinAfterEmailVerified();
   };
 
   const handleResendEmail = async () => {
@@ -370,25 +363,12 @@ export default function Join() {
     setInfo('A new email verification code was sent.');
   };
 
-  const handleResendSms = async () => {
-    setError(null);
-    setInfo(null);
-    setSubmitting(true);
-    const result = await beginSmsMfaSetup(phone);
-    setSubmitting(false);
-    if (result.error) {
-      setError(result.error.message || 'Could not resend SMS.');
-      return;
-    }
-    setInfo('A new SMS code was sent.');
-  };
-
   /* ── email verification step ─────────────────────────────────────── */
   if (joinStep === 'email') {
     return (
       <AuthShell
         heading="Verify your email"
-        sub="Enter the 6-digit code from noreply@communityhealth.media, then we’ll text your phone for MFA."
+        sub="Enter the 6-digit code we sent to your inbox to finish creating your account."
         footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
       >
         <form className="mt-8 space-y-4" onSubmit={handleConfirmEmail}>
@@ -421,54 +401,14 @@ export default function Join() {
         >
           Resend email code
         </button>
-      </AuthShell>
-    );
-  }
-
-  /* ── phone / SMS MFA step ────────────────────────────────────────── */
-  if (joinStep === 'phone') {
-    return (
-      <AuthShell
-        heading="Verify your phone"
-        sub="Enable SMS MFA with the code we texted you. This protects your account on every sign-in."
-        footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
-      >
-        <form className="mt-8 space-y-4" onSubmit={handleConfirmPhone}>
-          {error ? (
-            <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
-          ) : null}
-          {info ? (
-            <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">{info}</div>
-          ) : null}
-          <Field label="Mobile phone" type="tel" value={phone} readOnly required />
-          <Field
-            label="SMS verification code"
-            type="text"
-            inputMode="numeric"
-            autoComplete="one-time-code"
-            placeholder="123456"
-            value={smsCode}
-            onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-            required
-          />
-          <Button type="submit" disabled={submitting} className="w-full">
-            {submitting ? 'Enabling MFA…' : 'Verify phone & enable MFA'}
-          </Button>
-        </form>
         <button
           type="button"
-          onClick={() => void handleResendSms()}
+          onClick={() => void handleAlreadyVerifiedContinue()}
           disabled={submitting}
-          className="press mt-3 w-full text-body-s text-anchor hover:brightness-110 disabled:opacity-50"
+          className="press mt-2 w-full text-body-s text-muted2 hover:text-text disabled:opacity-50"
         >
-          Resend SMS code
+          Already verified? Continue with password
         </button>
-        <Link
-          to={returnTo ?? PLATFORM_HOME}
-          className="press mt-4 inline-flex w-full justify-center text-body-s text-muted2 hover:text-text"
-        >
-          Skip for now (you’ll be prompted again)
-        </Link>
       </AuthShell>
     );
   }
@@ -579,7 +519,7 @@ export default function Join() {
             onChange={(e) => setPhone(e.target.value)}
             autoComplete="tel"
             required
-            hint="US mobile number for SMS MFA verification."
+            hint="US mobile numbers only."
           />
 
           <div>
@@ -768,13 +708,6 @@ export default function Join() {
           Privacy Policy
         </Link>
         .
-      </p>
-
-      <p className="mt-6 text-center text-body-s text-faint">
-        Working in industry instead?{' '}
-        <Link to="/about" className="press rounded-[6px] text-anchor hover:brightness-110">
-          See how CHM partners with pharma
-        </Link>
       </p>
 
       <RecaptchaNotice />

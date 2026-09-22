@@ -52,7 +52,7 @@ Badge.displayName = 'Badge';
 export function DemoBadge({ className }: { className?: string }) {
   return (
     <span
-      title="Representative demo data: MediaHub intel endpoints are not proxied through the CHT backend yet."
+      title="Representative sample data used when Content Hub is unreachable."
       className={cn(
         'inline-flex items-center rounded-pill border border-dashed border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground',
         className,

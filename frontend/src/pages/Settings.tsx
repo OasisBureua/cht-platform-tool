@@ -260,7 +260,7 @@ export default function Settings() {
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-muted-foreground mb-1">
-                  Mobile phone <span className="font-normal text-muted-foreground">(SMS MFA)</span>
+                  Mobile phone
                 </label>
                 <input
                   type="tel"
@@ -270,13 +270,7 @@ export default function Settings() {
                   placeholder="(555) 123-4567"
                   className="w-full rounded-[6px] border border-border px-3 py-2 text-sm"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  US mobile number. After saving, finish verification under{' '}
-                  <Link to="/mfa/setup" className="font-medium underline hover:no-underline">
-                    Set up SMS MFA
-                  </Link>
-                  .
-                </p>
+                <p className="mt-1 text-xs text-muted-foreground">US mobile numbers only.</p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-muted-foreground mb-1">Profession</label>

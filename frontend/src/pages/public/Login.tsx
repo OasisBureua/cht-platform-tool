@@ -61,6 +61,9 @@ export default function Login() {
   // Navigate once bootstrap finishes, or immediately after login sets the profile
   // (login no longer re-triggers /auth/me + isLoading).
   if (isAuthenticated && !isLoading) {
+    if (user?.mfaEnrollmentRequired) {
+      return <Navigate to="/mfa/setup" replace />;
+    }
     return <Navigate to={getPostLoginPath(user?.role, from)} replace />;
   }
 
@@ -168,7 +171,8 @@ export default function Login() {
 
   return (
     <AuthLayout
-      heading="Your clinical library is waiting."
+      heading="Community Health Media"
+      sub="Your clinical library is waiting."
       footer={
         <>
           Don&apos;t have an account?{' '}
