@@ -472,17 +472,17 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
                           {/* Tags are spans, not links: the card is already
                               one link, and nesting a second inside it is
                               invalid. They read as the session's own labels. */}
-                          <ul className="mt-3 flex flex-wrap gap-1.5">
-                            <li
-                              className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                              style={{ background: 'var(--color-cyan)', color: 'var(--color-on-bright)' }}
-                            >
+                          {/* The theme's treatment: grey labels, each led by a
+                              small dot in its own colour, rather than filled
+                              pills. The dot keeps the distinction; the fill was
+                              only noise. */}
+                          <ul className="mt-3 flex flex-wrap gap-x-[0.9rem] gap-y-1">
+                            <li className="inline-flex items-center gap-[0.4rem] text-body-s text-muted2">
+                              <span aria-hidden className="size-[7px] shrink-0 rounded-full" style={{ background: 'hsl(var(--signature))' }} />
                               Oncology
                             </li>
-                            <li
-                              className="inline-flex h-6 items-center rounded-[6px] px-2 text-[0.6875rem] leading-none"
-                              style={{ background: 'var(--color-pink)', color: 'var(--color-on-bright)' }}
-                            >
+                            <li className="inline-flex items-center gap-[0.4rem] text-body-s text-muted2">
+                              <span aria-hidden className="size-[7px] shrink-0 rounded-full" style={{ background: 'hsl(var(--destructive))' }} />
                               {v.youtubeUrl ? 'YouTube' : 'Conversation'}
                             </li>
                           </ul>
