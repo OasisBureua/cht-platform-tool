@@ -60,7 +60,12 @@ export function mountGalleryRoom(hero) {
   // small lift in scale. The pointer target is the tracked anchor, so
   // this is an ordinary hover on a real link, no raycasting.
   const REST_ALPHA = 0.8;
-  const HOVER_SCALE = 1.05;
+  const HOVER_SCALE = 1.25;
+  // The room eases to a stop while a card is hovered or focused, so the
+  // card under the pointer holds still long enough to read and click,
+  // then eases back to cruise when it is left. Same smoothing curve as
+  // the hover itself, so the two move together.
+  let pauseT = 0;
 
   // ── shaders ──────────────────────────────────────────────────
   const VERT = `#version 300 es
@@ -454,7 +459,10 @@ export function mountGalleryRoom(hero) {
 
     const dt = Math.min(now - lastFrame, 80);
     lastFrame = now;
-    current += (speedAt(now) * dt) / 1000;
+    const pauseTarget = pieces.some((p) => p.hover) ? 1 : 0;
+    pauseT += (pauseTarget - pauseT) * (1 - Math.pow(0.82, dt / (1000 / 60)));
+    if (Math.abs(pauseTarget - pauseT) < 0.001) pauseT = pauseTarget;
+    current += (speedAt(now) * (1 - pauseT) * dt) / 1000;
 
     const w = hero.clientWidth, h = hero.clientHeight;
 

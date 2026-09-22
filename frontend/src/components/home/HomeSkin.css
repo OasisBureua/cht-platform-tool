@@ -195,7 +195,8 @@
   position: relative; display: grid; place-items: center;
   width: 4.5rem; height: 4.5rem; flex: none;
   border-radius: 0.5rem; overflow: hidden;
-  background: #fff;
+  /* No plate: the drawing sits straight on the card. */
+  background: transparent;
 }
 .chm-skin .area__art {
   width: 86%; height: 86%;
@@ -290,13 +291,15 @@
    in the upper third, and the portrait over both. */
 .chm-skin .person {
   position: relative; display: block; overflow: hidden;
-  aspect-ratio: 3 / 4;
+  aspect-ratio: 5 / 6;
   border-radius: var(--radius-card);
+  /* The reference's blue: a mid teal at the top, deep enough that the
+     white name clears 4.5:1, easing to a pale teal behind the
+     shoulders. */
   background: linear-gradient(to bottom,
-    hsl(var(--deep-expertise)) 0%,
-    hsl(196 45% 42%) 38%,
-    hsl(196 32% 68%) 72%,
-    hsl(200 28% 82%) 100%);
+    hsl(193 52% 34%) 0%,
+    hsl(193 42% 46%) 48%,
+    hsl(195 30% 70%) 100%);
   box-shadow: var(--s-card);
   transition: transform 220ms cubic-bezier(.23, 1, .32, 1), box-shadow 220ms ease;
 }
@@ -308,7 +311,19 @@
 }
 .chm-skin .person__ghost svg { width: 100%; height: auto; }
 .chm-skin .person:hover { transform: translateY(-3px); box-shadow: var(--s-card-hover); }
-.chm-skin .person img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The portrait sits on the ground rather than filling the card: a
+   cut-out, bottom-anchored at 80% of the card's width, so the blue shows
+   above and around the head. */
+.chm-skin .person img {
+  position: absolute; inset: auto auto 0 50%;
+  width: 80%; height: auto;
+  transform: translateX(-50%);
+  object-fit: contain;
+}
+/* A headshot with no cut-out yet still has its white studio backdrop.
+   Multiply turns that white into the card's blue instead of a pale
+   rectangle; the face darkens slightly, which is the tradeoff. */
+.chm-skin .person img.person__photo--raw { mix-blend-mode: multiply; }
 .chm-skin .person__mono {
   position: absolute; inset-block-end: 12%; inset-inline: 0;
   display: grid; place-items: center;
@@ -320,8 +335,7 @@
    has no edge to read down; left-aligning gives the five one. */
 .chm-skin .person__label {
   position: absolute; inset-inline: 0; inset-block-start: 0;
-  padding: 1.15rem 1.1rem 2.75rem; text-align: start;
-  background: linear-gradient(to bottom, hsl(196 66% 14% / .55), transparent);
+  padding: 1.15rem 1.1rem; text-align: start;
   color: #fff;
 }
 .chm-skin .person__label h3 {
