@@ -501,7 +501,9 @@ export default function AdminWebinarApprovals() {
                             ? 'bg-red-100 text-destructive'
                             : att === 'PENDING_VERIFICATION'
                               ? 'bg-warning/10 text-warning'
-                              : 'bg-muted text-muted-foreground',
+                              : att === 'NOT_REQUIRED'
+                                ? 'bg-sky-50 text-sky-800'
+                                : 'bg-muted text-muted-foreground',
                       ].join(' ')}
                     >
                       {attendanceStatusLabel(att)}
@@ -524,7 +526,7 @@ export default function AdminWebinarApprovals() {
             <p className="text-sm text-muted-foreground px-4 py-8 text-center">
               {programFilter !== 'all'
                 ? 'No attendance records for the selected program.'
-                : 'No attendance records yet. Approved learners appear here when post-event verification is required.'}
+                : 'No attendance records yet. Approved learners for published live sessions appear here (including when attendance is not required).'}
             </p>
           )}
         </div>

@@ -51,6 +51,7 @@ export function attendanceStatusLabel(att: string | null | undefined): string {
   if (att === 'VERIFIED') return 'Verified';
   if (att === 'DENIED') return 'Denied';
   if (att === 'PENDING_VERIFICATION') return 'Pending';
+  if (att === 'NOT_REQUIRED') return 'Not required';
   return '-';
 }
 

@@ -3,9 +3,8 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Loader2, Search, Stethoscope } from 'lucide-react';
 import { kolNetworkApi, type PublicKolList } from '../../../api/kol-network';
-import { demoKolList } from './lib/intel';
 import { Card } from './components/Card';
-import { Badge, DemoBadge } from './components/Badge';
+import { Badge } from './components/Badge';
 import { Input } from './components/Input';
 import { InitialsAvatar } from './components/InitialsAvatar';
 
@@ -14,14 +13,8 @@ const SELECT_CLASS =
 
 /**
  * Internal KOL directory: admin intel entry point. Lists the public KOL
- * roster (live, proxied from MediaHub via the CHT backend) and links each
+ * roster (live, proxied from Content Hub via the CHT backend) and links each
  * row into the HCP intel detail view.
- *
- * When the backend is unreachable (network error OR a malformed non-API
- * response on the port), the page falls back to the seeded demo roster in
- * lib/intel.ts so it stays reviewable frontend-only. Live behavior is
- * unchanged whenever the API returns a valid payload, including a valid
- * empty list.
  */
 export default function AdminKolDirectory() {
   const [inputValue, setInputValue] = useState('');
@@ -34,13 +27,8 @@ export default function AdminKolDirectory() {
     return () => clearTimeout(t);
   }, [inputValue]);
 
-  const { data, isLoading, isError, isFetching } = useQuery({
+  const { data, isLoading, isError, isFetching, error, refetch } = useQuery({
     queryKey: ['admin', 'kol-network', { q, region, institution }],
-    // 'always' + no retry: attempt the request even when react-query's
-    // onlineManager thinks the browser is offline, and reject on the FIRST
-    // failure. With the app default (retry: 1) a failed attempt parks the
-    // query in fetchStatus 'paused' whenever the tab is unfocused/offline, 
-    // it never reaches error state and the demo fallback can't kick in.
     networkMode: 'always',
     retry: false,
     queryFn: async (): Promise<PublicKolList> => {
@@ -50,24 +38,13 @@ export default function AdminKolDirectory() {
         institution: institution || undefined,
         limit: 200,
       });
-      // A non-API service on the port (or a proxy misroute) can resolve with
-      // a 200 whose body isn't our payload. Treat malformed shapes as errors
-      // so the demo fallback kicks in instead of rendering "undefined".
       if (!res || !Array.isArray(res.items) || typeof res.total !== 'number') {
-        throw new Error('Malformed /kol-network response (backend unreachable?)');
+        throw new Error('Malformed /kol-network response (Content Hub unreachable?)');
       }
       return res;
     },
   });
 
-  // Facets (region + institution dropdowns) are populated from an UNFILTERED
-  // list call so the dropdown options don't shrink after a selection. Prior
-  // behavior: dropdown options came from `data.regions`/`data.institutions`,
-  // which are the facets of the CURRENT filter, selecting one region made
-  // the dropdown collapse to only that region. Observed 2026-07-21 on devapp.
-  //
-  // Stale-time set high; the roster doesn't churn on the timescale a user
-  // sits on this page.
   const { data: facetData } = useQuery({
     queryKey: ['admin', 'kol-network', 'facets'],
     networkMode: 'always',
@@ -82,46 +59,45 @@ export default function AdminKolDirectory() {
     },
   });
 
-  // Fallback ONLY on error: a valid empty list still renders the live
-  // empty state. Filters are applied client-side against the demo roster.
-  const usingDemo = isError;
-  const list: PublicKolList | undefined = usingDemo
-    ? demoKolList({
-        q: q || undefined,
-        region: region || undefined,
-        institution: institution || undefined,
-      })
-    : data;
-
-  // Facet source: unfiltered call in live mode; demo roster's full facet set
-  // in demo mode. Fallback to the current list if facets aren't loaded yet.
-  const facetList: PublicKolList | undefined = usingDemo
-    ? demoKolList({})
-    : (facetData ?? list);
+  const list = data;
+  const facetList = facetData ?? list;
 
   const items = list?.items ?? [];
   const total = typeof list?.total === 'number' ? list.total : items.length;
 
   return (
     <div className="space-y-5">
-      {/* Page header */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-foreground">
             <Stethoscope className="h-6 w-6 text-primary" />
             KOL Network
-            {usingDemo && <DemoBadge />}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {usingDemo
-              ? `Internal HCP intelligence · demo roster (backend unreachable) · ${total} profiles`
-              : `Internal HCP intelligence · roster synced from MediaHub${list ? ` · ${total} profiles` : ''}`}
+            Internal HCP intelligence · roster from Content Hub
+            {list ? ` · ${total} profiles` : ''}
           </p>
         </div>
         {isFetching && !isLoading && (
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" aria-label="Refreshing" />
         )}
       </div>
+
+      {isError ? (
+        <Card className="border-destructive/30 bg-destructive/5 p-6">
+          <p className="font-semibold text-destructive">Could not load KOL roster from Content Hub</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {(error as Error)?.message || 'Check Content Hub connectivity and try again.'}
+          </p>
+          <button
+            type="button"
+            onClick={() => void refetch()}
+            className="mt-3 rounded-[6px] bg-gray-900 px-3 py-1.5 text-sm font-semibold text-white"
+          >
+            Retry
+          </button>
+        </Card>
+      ) : null}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">

@@ -55,6 +55,10 @@ export default function AuthCallback() {
           startedRef.current = false;
           return;
         }
+        if (result.mfaEnrollmentRequired) {
+          navigate('/mfa/setup', { replace: true });
+          return;
+        }
         // Navigate even if React Strict Mode cleaned up the effect, auth already succeeded.
         navigate(
           getPostLoginPath(result.role, oauthState?.from || fromPath),

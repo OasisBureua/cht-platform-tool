@@ -24,8 +24,6 @@ import {
 } from '../../../api/kol-network';
 import {
   intelApi,
-  demoKolProfile,
-  demoKolPublications,
   type AIBrief,
   type DrugShift,
   type EngagementSignals,
@@ -118,7 +116,7 @@ const NEGATIVE = 'text-red-600 dark:text-red-400';
  * trials/grants below, and the remaining detail (engagement, prescribing,
  * Open Payments, news) as stacked cards below the fold.
  *
- * Live data: KOL profile + publications (kolNetworkApi, proxied MediaHub
+ * Live data: KOL profile + publications (kolNetworkApi, proxied Content Hub
  * public directory). Everything else flows through the demo seam in
  * ./lib/intel.ts and is flagged with a DemoBadge.
  */
@@ -146,30 +144,28 @@ export default function AdminHcpIntel() {
     },
   });
 
-  // Fallback ONLY on error (backend unreachable / malformed response).
-  // A valid 404 (null) still renders the "KOL not found" state below.
-  const usingDemoProfile = profileQuery.isError;
-  const kol = profileQuery.data ?? (usingDemoProfile ? demoKolProfile(id) : null);
+  // Live Content Hub only — no demo profile/publications overlays.
+  const usingDemoProfile = false;
+  const kol = profileQuery.data ?? null;
   const isLoading = profileQuery.isLoading;
   const name = kol?.name ?? '';
 
-  // Live: MediaHub public publications endpoint, proxied via CHT backend.
-  // Skipped entirely when the profile already fell back to demo.
+  // Live: Content Hub public publications endpoint, proxied via CHT backend.
   const pubsQuery = useQuery({
     queryKey: ['admin', 'kol-network', 'detail', id, 'publications'],
     queryFn: async () => {
       const r = await kolNetworkApi.publications(id, { limit: 100 });
       if (!r || !Array.isArray(r.items)) {
-        throw new Error('Malformed publications response (backend unreachable?)');
+        throw new Error('Malformed publications response (Content Hub unreachable?)');
       }
       return r;
     },
-    enabled: !!kol && !usingDemoProfile,
+    enabled: !!kol,
     networkMode: 'always',
     retry: false,
   });
-  const pubsDemo = usingDemoProfile || pubsQuery.isError;
-  const pubs = pubsDemo ? demoKolPublications(id) : pubsQuery.data;
+  const pubsDemo = false;
+  const pubs = pubsQuery.data;
 
   // Demo seam: see lib/intel.ts.
   const briefQuery = useQuery({
@@ -310,13 +306,24 @@ export default function AdminHcpIntel() {
     );
   }
   if (!kol) {
-    // Only reachable on a VALID 404 from the API: backend/network failures
-    // fall back to the demo profile above so the page stays reviewable.
     return (
       <Card className="border-red-300 bg-destructive/10 dark:border-red-900 dark:bg-red-950/30">
-        <CardContent className="flex items-center gap-3 p-4 pt-4 text-sm text-destructive dark:text-red-300">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          KOL not found.
+        <CardContent className="flex flex-col gap-2 p-4 pt-4 text-sm text-destructive dark:text-red-300">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 shrink-0" />
+            {profileQuery.isError
+              ? 'Could not load this KOL from Content Hub.'
+              : 'KOL not found.'}
+          </div>
+          {profileQuery.isError ? (
+            <button
+              type="button"
+              onClick={() => void profileQuery.refetch()}
+              className="w-fit rounded-[6px] bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white"
+            >
+              Retry
+            </button>
+          ) : null}
         </CardContent>
       </Card>
     );
@@ -509,7 +516,7 @@ export default function AdminHcpIntel() {
         <KpiTile
           eyebrow="Shoots"
           value={kol.shoot_count.toLocaleString()}
-          note={usingDemoProfile ? 'MediaHub · demo' : 'MediaHub · live'}
+          note={usingDemoProfile ? 'Content Hub · demo' : 'Content Hub · live'}
         />
         <KpiTile
           eyebrow="Total Rx"

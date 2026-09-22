@@ -10,10 +10,23 @@ import { adminSurveyDisplayTitle } from '../../utils/admin-survey-display';
 export default function AdminSurveys() {
   const queryClient = useQueryClient();
   const [programFilter, setProgramFilter] = useState<string>('all');
+  const [templateType, setTemplateType] = useState<'all' | 'INTAKE' | 'FEEDBACK'>('all');
 
   const { data: surveyList, isLoading, error } = useQuery({
     queryKey: ['admin', 'surveys'],
     queryFn: () => surveysApi.getAll(),
+  });
+
+  const {
+    data: templates = [],
+    isLoading: templatesLoading,
+    isError: templatesError,
+  } = useQuery({
+    queryKey: ['admin', 'surveys', 'reusable', templateType],
+    queryFn: () =>
+      adminApi.listReusableSurveys(
+        templateType === 'all' ? undefined : templateType,
+      ),
   });
 
   const deleteMutation = useMutation({
@@ -82,7 +95,9 @@ export default function AdminSurveys() {
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Surveys</h1>
           <div className="mt-3 flex flex-wrap items-center gap-3">
-            <label className="text-sm font-semibold text-muted-foreground shrink-0">Filter by program:</label>
+            <label className="text-sm font-semibold text-muted-foreground shrink-0">
+              Filter by program:
+            </label>
             <select
               value={programFilter}
               onChange={(e) => setProgramFilter(e.target.value)}
@@ -115,6 +130,99 @@ export default function AdminSurveys() {
         </Link>
       </div>
 
+      <section className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="flex flex-col gap-3 border-b border-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Survey templates</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Native intake and feedback forms you can browse, edit, or reuse on a program hub.
+            </p>
+          </div>
+          <select
+            value={templateType}
+            onChange={(e) =>
+              setTemplateType(e.target.value as 'all' | 'INTAKE' | 'FEEDBACK')
+            }
+            className="rounded-lg border border-border bg-card px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
+          >
+            <option value="all">All types</option>
+            <option value="INTAKE">Intake</option>
+            <option value="FEEDBACK">Feedback</option>
+          </select>
+        </div>
+        {templatesLoading ? (
+          <div className="flex justify-center py-8">
+            <LoadingSpinner />
+          </div>
+        ) : templatesError ? (
+          <p className="px-4 py-6 text-sm text-destructive">
+            Could not load templates. Try again.
+          </p>
+        ) : templates.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-muted-foreground">
+            No reusable native templates yet. Create or customize a survey on a program, then it
+            appears here for browsing and cloning.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted border-b border-border">
+                <tr>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
+                    Template
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Type</th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
+                    Program
+                  </th>
+                  <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
+                    Responses
+                  </th>
+                  <th className="px-4 py-3 text-right font-semibold text-muted-foreground">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {templates.map((t) => (
+                  <tr key={t.id} className="hover:bg-muted/60">
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      {t.title}
+                      {t.isCustomized ? (
+                        <span className="ms-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                          Customized
+                        </span>
+                      ) : null}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{t.type}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{t.program.title}</td>
+                    <td className="px-4 py-3 tabular-nums text-muted-foreground">
+                      {t.responseCount}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link
+                          to={`/admin/surveys/${t.id}/edit`}
+                          className="text-sm font-semibold text-foreground hover:underline"
+                        >
+                          Edit
+                        </Link>
+                        <Link
+                          to={`/admin/programs/${t.program.id}/hub`}
+                          className="text-sm font-semibold text-blue-700 hover:underline"
+                        >
+                          Program hub
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
       {items.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="font-semibold text-foreground">No surveys yet</p>
@@ -132,12 +240,14 @@ export default function AdminSurveys() {
       ) : filteredItems.length === 0 ? (
         <div className="rounded-xl border border-border bg-card p-8 text-center">
           <p className="font-semibold text-foreground">No surveys for this program</p>
-          <p className="mt-1 text-sm text-muted-foreground">Try another program or clear the filter.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try another program or clear the filter.
+          </p>
         </div>
       ) : (
-        <div className="rounded-xl border border-border bg-card overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-border bg-card">
           <table className="w-full text-sm">
-            <thead className="bg-muted border-b border-border">
+            <thead className="border-b border-border bg-muted">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Survey</th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Type</th>
@@ -187,11 +297,10 @@ export default function AdminSurveys() {
                         <button
                           type="button"
                           onClick={() => handleDelete(s.id, displayTitle)}
-                          disabled={deleteMutation.isPending && deleteMutation.variables === s.id}
-                          className="text-sm font-semibold text-destructive hover:underline disabled:opacity-50"
-                          title="Delete survey"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-destructive hover:underline"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Delete
                         </button>
                       </div>
                     </td>

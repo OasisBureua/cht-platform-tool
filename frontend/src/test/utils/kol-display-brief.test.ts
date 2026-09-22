@@ -2,11 +2,25 @@ import { describe, it, expect } from 'vitest';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
 
 describe('resolveKolDisplayBrief', () => {
-  it('prefers Content Hub aiBrief when present', () => {
+  it('prefers Content Hub bio over aiBrief when both are present', () => {
     const brief = resolveKolDisplayBrief({
       name: 'Dr. A',
       role: 'Oncologist',
       bio: 'Bio text',
+      intel: { aiBrief: { whoTheyAre: 'AI summary', focus: 'TNBC' } },
+    });
+    expect(brief).toEqual({
+      whoTheyAre: 'Bio text',
+      focus: 'Oncologist',
+      isAiGenerated: false,
+    });
+  });
+
+  it('uses Content Hub aiBrief when bio is empty', () => {
+    const brief = resolveKolDisplayBrief({
+      name: 'Dr. A',
+      role: 'Oncologist',
+      bio: '',
       intel: { aiBrief: { whoTheyAre: 'AI summary', focus: 'TNBC' } },
     });
     expect(brief).toEqual({

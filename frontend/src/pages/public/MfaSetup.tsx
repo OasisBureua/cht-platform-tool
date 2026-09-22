@@ -32,7 +32,7 @@ export default function MfaSetup() {
   const [showManualKey, setShowManualKey] = useState(false);
   const [autoStarted, setAutoStarted] = useState(false);
 
-  // Prefill + optionally send SMS when profile already has a phone from Join.
+  // Prefill + send SMS when profile already has a phone (e.g. from Join).
   useEffect(() => {
     if (method !== 'sms' || autoStarted || phoneSent || !user?.phoneNumber) return;
     setAutoStarted(true);
@@ -48,6 +48,12 @@ export default function MfaSetup() {
       setPhoneSent(true);
     })();
   }, [method, autoStarted, phoneSent, user?.phoneNumber, beginSmsMfaSetup]);
+
+  // Keep local phone field in sync if /me loads phone after first paint.
+  useEffect(() => {
+    if (phoneSent || !user?.phoneNumber) return;
+    setPhone((prev) => prev || user.phoneNumber!.replace(/^\+1/, ''));
+  }, [user?.phoneNumber, phoneSent]);
 
   const handleStartTotpSetup = async () => {
     setError(null);
@@ -161,16 +167,18 @@ export default function MfaSetup() {
                     required
                     className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
                   />
-                  <p className="text-xs text-muted-foreground">
-                    US numbers only. We&apos;ll text a one-time code to verify this number.
-                  </p>
+                  <p className="text-xs text-muted-foreground">US mobile numbers only.</p>
                 </div>
                 <button
                   type="submit"
                   disabled={loadingSetup}
                   className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
                 >
-                  {loadingSetup ? 'Sending…' : 'Send verification code'}
+                  {loadingSetup
+                    ? 'Sending…'
+                    : user?.phoneNumber
+                      ? 'Text code to number on file'
+                      : 'Send verification code'}
                 </button>
               </form>
             ) : (

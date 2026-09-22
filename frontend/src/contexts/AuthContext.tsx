@@ -81,13 +81,19 @@ interface AuthContextValue {
     error?: AuthError;
     mfa?: { session: string; challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' };
     mfaSetup?: { session: string; secretCode: string; otpauthUri: string };
+    mfaEnrollmentRequired?: boolean;
   }>;
   /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
   completeCognitoCallback: (
     code: string,
     redirectUri: string,
     codeVerifier: string,
-  ) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
+  ) => Promise<{
+    error?: AuthError;
+    profileComplete?: boolean;
+    role?: string;
+    mfaEnrollmentRequired?: boolean;
+  }>;
   /** Complete Cognito SOFTWARE_TOKEN_MFA or SMS_MFA after login returns a challenge. */
   completeMfaLogin: (
     email: string,
@@ -427,7 +433,9 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (applyLoginSuccess(data)) {
-        return {};
+        return {
+          mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
+        };
       }
       return { error: { message: 'Login failed.' } };
     },
@@ -507,6 +515,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         return {
           profileComplete: data.profileComplete as boolean | undefined,
           role: data.role as string | undefined,
+          mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
         };
       }
       return { error: { message: 'Login failed.' } };

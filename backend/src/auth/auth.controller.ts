@@ -75,6 +75,7 @@ interface LoginSuccess {
   lastName?: string;
   role: string;
   profileComplete?: boolean;
+  phoneNumber?: string | null;
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
   mfaFeature?: MfaFeatureFlags;
@@ -267,6 +268,7 @@ export class AuthController {
       lastName: dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
       role: user.role,
       profileComplete,
+      phoneNumber: dbUser?.phoneNumber ?? null,
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
@@ -828,13 +830,29 @@ export class AuthController {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Verification failed.';
       this.logger.warn(`[Auth] Cognito confirm failed for ${emailStr}: ${msg}`);
-      if (/expired|invalid|mismatch/i.test(msg)) {
+      // Idempotent: account already verified (double-submit, refresh, or prior Join).
+      // Let the client continue to login / MFA instead of blocking on a dead code.
+      if (/current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)) {
+        this.logger.log(
+          `[Auth] Cognito confirm skipped — already CONFIRMED for ${emailStr}`,
+        );
+        try {
+          await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
+        } catch {
+          /* best-effort */
+        }
+        return {};
+      }
+      if (/CodeMismatchException|ExpiredCodeException|expired|invalid|mismatch/i.test(msg)) {
         return {
           error:
             'That verification code is invalid or expired. Request a new code and try again.',
         };
       }
-      return { error: msg };
+      return {
+        error:
+          'Could not verify that email. If you already verified it, try logging in instead.',
+      };
     }
   }
 
@@ -859,7 +877,16 @@ export class AuthController {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not resend code.';
       this.logger.warn(`[Auth] Cognito resend failed for ${emailStr}: ${msg}`);
-      return { error: msg };
+      if (/current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)) {
+        return {
+          error:
+            'This email is already verified. Continue on the Join page, or log in if you already have an account.',
+        };
+      }
+      return {
+        error:
+          'Could not resend a verification code. Try logging in, or contact support if you are stuck.',
+      };
     }
   }
 
