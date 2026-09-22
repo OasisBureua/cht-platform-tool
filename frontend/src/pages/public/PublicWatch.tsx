@@ -670,7 +670,7 @@ export default function PublicWatch() {
                 ))}
                 {tags.map((t) => (
                   <li key={`tag-${t}`}>
-                    <Chip kind={chipKind(t)} to={`${base}/catalog?q=${encodeURIComponent(t)}`}>
+                    <Chip kind={chipKind(t)} to={`${base}/catalog?marker=${encodeURIComponent(`tag:${t}`)}`}>
                       {t}
                     </Chip>
                   </li>

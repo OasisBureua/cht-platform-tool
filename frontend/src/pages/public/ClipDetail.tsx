@@ -11,6 +11,7 @@ import type { GetClipsParams, MediaHubClip } from '../../api/catalog';
 import { pushClipView } from '../../lib/analytics';
 import { clipAiSummaryText } from '../../utils/mediaHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
+import { DoctorBioRail } from '../../components/content/DoctorBioRail';
 import {
   WORDPRESS_CATALOG_STALE_MS,
   formatWordPressCategoryLabel,
@@ -88,16 +89,6 @@ function tagLabel(value: string): string {
 /** `brand:` tags are internal and never shown to users. */
 function publicTags(clip: MediaHubClip | null | undefined): string[] {
   return (clip?.tags ?? []).filter((t) => !String(t).startsWith('brand:'));
-}
-
-function initialsOf(name: string): string {
-  const words = name
-    .replace(/^dr\.?\s*/i, '')
-    .split(/\s+/)
-    .filter(Boolean);
-  const first = words[0]?.[0] ?? '';
-  const last = words.length > 1 ? words[words.length - 1][0] : '';
-  return `${first}${last}`.toUpperCase();
 }
 
 /**
@@ -263,7 +254,7 @@ export default function ClipDetail() {
       return null;
     },
     enabled: !!id && !skipLinkedInClip,
-    retry: 0, // 404s from MediaHub are expected; don't retry
+    retry: 0, // 404s from Content Hub are expected; don't retry
     placeholderData: stateClipMatches ? stateClip : undefined,
   });
 
@@ -337,12 +328,19 @@ export default function ClipDetail() {
 
   /* ── faculty and series, for the rail's cards ──────────────────── */
 
+  const [selectedDoctor, setSelectedDoctor] = useState<string | null>(null);
+
   const { data: doctorDirectory = [] } = useQuery({
     queryKey: ['catalog', 'doctors'],
     queryFn: () => catalogApi.getDoctors(),
     staleTime: 30 * 60 * 1000,
     enabled: meta.doctors.length > 0,
   });
+
+  const activeDoctor =
+    selectedDoctor && meta.doctors.includes(selectedDoctor)
+      ? selectedDoctor
+      : meta.doctors[0] ?? null;
 
   const { data: seriesDetail } = useQuery({
     queryKey: ['catalog', 'wordpress', 'series', seriesSlug],
@@ -519,7 +517,7 @@ export default function ClipDetail() {
             )}
           </div>
 
-          {/* Transcript, when the shoot has speech-to-text in Media Hub. */}
+          {/* Transcript, when the shoot has speech-to-text in Content Hub. */}
           <div className="mt-10">
             <h2 className="eyebrow text-faint">Transcript</h2>
             {!shootIdDisplay ? (
@@ -579,7 +577,7 @@ export default function ClipDetail() {
                     <li key={tag}>
                       <Chip
                         kind={chipKind(label)}
-                        to={`${catalogBase}?q=${encodeURIComponent(label)}`}
+                        to={`${catalogBase}?marker=${encodeURIComponent(`tag:${tag}`)}`}
                       >
                         {label}
                       </Chip>
@@ -590,41 +588,54 @@ export default function ClipDetail() {
             ) : null}
           </div>
 
-          {meta.doctors.length > 0 ? (
-            <div className="card p-5">
-              <p className="eyebrow text-muted2">In conversation</p>
-              <ul className="mt-4 space-y-4">
-                {meta.doctors.map((slug) => {
-                  const name = doctorLabelFromSlug(slug);
-                  const entry = doctorDirectory.find((d) => d.slug === slug);
-                  const sessions = entry?.post_count ?? entry?.shoot_count ?? 0;
-                  return (
-                    <li key={slug}>
-                      <Link
-                        to={`${catalogBase}?doctor=${encodeURIComponent(slug)}`}
-                        className="press group flex items-center gap-3"
-                      >
-                        <span
-                          aria-hidden
-                          className="img-ring grid size-11 shrink-0 place-items-center rounded-full bg-surface-2 text-body-s font-medium text-dim"
-                        >
-                          {initialsOf(name)}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-body-s font-medium text-text group-hover:text-anchor">
+          {meta.doctors.length > 0 && activeDoctor ? (
+            <div className="space-y-3">
+              {meta.doctors.length > 1 ? (
+                <div className="card p-4">
+                  <p className="eyebrow text-muted2">Faculty</p>
+                  <ul className="mt-3 flex flex-wrap gap-2">
+                    {meta.doctors.map((slug) => {
+                      const name = doctorLabelFromSlug(slug);
+                      const on = slug === activeDoctor;
+                      return (
+                        <li key={slug}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDoctor(slug)}
+                            aria-pressed={on}
+                            className={[
+                              'press inline-flex items-center gap-2 rounded-[6px] px-3 py-1.5 text-body-s',
+                              on
+                                ? 'bg-inverse text-ground'
+                                : 'bg-surface-2 text-text hover:bg-surface',
+                            ].join(' ')}
+                          >
                             {name}
-                          </span>
-                          {sessions > 0 ? (
-                            <span className="meta mt-0.5 block tabular-nums text-muted2">
-                              {sessions} {sessions === 1 ? 'session' : 'sessions'}
-                            </span>
-                          ) : null}
-                        </span>
-                      </Link>
-                    </li>
-                  );
-                })}
-              </ul>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ) : null}
+              <DoctorBioRail slug={activeDoctor} isInApp={isInApp} />
+              <div className="card p-4">
+                <Link
+                  to={`${catalogBase}?doctor=${encodeURIComponent(activeDoctor)}`}
+                  className="text-body-s font-medium text-anchor hover:underline"
+                >
+                  More sessions with {doctorLabelFromSlug(activeDoctor)} →
+                </Link>
+                {(() => {
+                  const entry = doctorDirectory.find((d) => d.slug === activeDoctor);
+                  const sessions = entry?.post_count ?? entry?.shoot_count ?? 0;
+                  return sessions > 0 ? (
+                    <p className="meta mt-1 tabular-nums text-muted2">
+                      {sessions} catalog {sessions === 1 ? 'session' : 'sessions'}
+                    </p>
+                  ) : null;
+                })()}
+              </div>
             </div>
           ) : null}
 
@@ -736,11 +747,11 @@ export default function ClipDetail() {
 function TranscriptDisplay({ data }: { data: unknown }) {
   if (!data) return null;
 
-  // MediaHub returns { transcript: string, shoot_id, shoot_name, doctors, length }
+  // Content Hub returns { transcript: string, shoot_id, shoot_name, doctors, length }
   if (typeof data === 'object' && !Array.isArray(data)) {
     const obj = data as Record<string, unknown>;
 
-    // Plain-string transcript (primary MediaHub shape)
+    // Plain-string transcript (primary Content Hub shape)
     if (typeof obj.transcript === 'string' && obj.transcript.trim()) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (

@@ -61,6 +61,9 @@ export default function Login() {
   // Navigate once bootstrap finishes, or immediately after login sets the profile
   // (login no longer re-triggers /auth/me + isLoading).
   if (isAuthenticated && !isLoading) {
+    if (user?.mfaEnrollmentRequired) {
+      return <Navigate to="/mfa/setup" replace />;
+    }
     return <Navigate to={getPostLoginPath(user?.role, from)} replace />;
   }
 

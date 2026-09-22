@@ -1905,7 +1905,7 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Post-event attendance records (pending, verified, denied) for published live sessions',
+      'Post-event attendance records (pending, verified, denied, not required) for published live sessions',
   })
   async listPostEventAttendance() {
     const rows =

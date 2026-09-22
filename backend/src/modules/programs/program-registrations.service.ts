@@ -2350,7 +2350,7 @@ export class ProgramRegistrationsService {
     });
   }
 
-  /** All approved learners with attendance tracking (pending, verified, or denied). */
+  /** All approved learners with attendance tracking (incl. not-required). */
   async listPostEventAttendanceForAdmin(opts?: {
     programId?: string;
     statuses?: PostEventAttendanceStatus[];
@@ -2359,6 +2359,7 @@ export class ProgramRegistrationsService {
       PostEventAttendanceStatus.PENDING_VERIFICATION,
       PostEventAttendanceStatus.VERIFIED,
       PostEventAttendanceStatus.DENIED,
+      PostEventAttendanceStatus.NOT_REQUIRED,
     ];
     return this.prisma.programRegistration.findMany({
       where: {
