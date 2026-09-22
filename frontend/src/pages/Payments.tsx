@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
 import { StripeMark } from '../components/branding/StripeMark';
+import { PayoutTimingNote } from '../components/payments/PayoutTimingNote';
 
 function statusChip(status: PaymentStatus) {
   const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
@@ -30,6 +31,7 @@ export default function Payments() {
   const userId = user?.userId ?? '';
   const queryClient = useQueryClient();
   const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
+  const [programFilter, setProgramFilter] = useState<string>('all');
   const { data: accountStatus, isLoading: loadingAccount } = useQuery({
     queryKey: ['payments-account-status', userId],
     queryFn: () => paymentsApi.getAccountStatus(userId),
@@ -48,9 +50,31 @@ export default function Payments() {
     enabled: !!userId,
   });
 
-  const pendingCount = (history || []).filter((i) => i.status === 'PENDING' || i.status === 'PROCESSING').length;
-  const paidCount = (history || []).filter((i) => i.status === 'PAID').length;
-  const paidThisMonthCount = (history || []).filter((i) => {
+  const historyRows = history || [];
+
+  const programOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of historyRows) {
+      const id = row.programId?.trim();
+      if (!id) continue;
+      map.set(id, row.programTitle?.trim() || row.title || id);
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [historyRows]);
+
+  const filteredHistory = useMemo(() => {
+    if (programFilter === 'all') return historyRows;
+    if (programFilter === 'none') {
+      return historyRows.filter((r) => !r.programId?.trim());
+    }
+    return historyRows.filter((r) => r.programId === programFilter);
+  }, [historyRows, programFilter]);
+
+  const pendingCount = filteredHistory.filter((i) => i.status === 'PENDING' || i.status === 'PROCESSING').length;
+  const paidCount = filteredHistory.filter((i) => i.status === 'PAID').length;
+  const paidThisMonthCount = filteredHistory.filter((i) => {
     const d = new Date(i.date);
     const now = new Date();
     return (
@@ -82,6 +106,7 @@ export default function Payments() {
           <StripeMark size="sm" className="translate-y-px" /> via <strong>ACH direct deposit only</strong>. Connect
           your bank and tax details here so admins can issue payouts.
         </p>
+        <PayoutTimingNote />
         <p className="text-sm text-muted-foreground">
           <Link to="/app/earnings" className="font-medium text-foreground underline hover:no-underline">
             Earnings summary and charts
@@ -144,7 +169,11 @@ export default function Payments() {
       )}
 
       <section className="grid gap-6 md:grid-cols-3">
-        <StatCard label="Paid payouts" value={String(paidCount)} sub="Lifetime completed" />
+        <StatCard
+          label="Paid payouts"
+          value={String(paidCount)}
+          sub={programFilter === 'all' ? 'Lifetime completed' : 'In this filter'}
+        />
         <StatCard label="Pending" value={String(pendingCount)} sub="Awaiting admin payout" />
         <StatCard label="This month" value={String(paidThisMonthCount)} sub="Paid this month" />
       </section>
@@ -170,20 +199,45 @@ export default function Payments() {
       </section>
 
       <section id="payment-history" className="space-y-3">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-foreground">Payment history</h2>
-          <span className="text-sm text-muted-foreground">{(history || []).length} items</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="payments-program-filter">
+              Filter by program
+            </label>
+            <select
+              id="payments-program-filter"
+              value={programFilter}
+              onChange={(e) => setProgramFilter(e.target.value)}
+              className="h-9 min-w-[10rem] rounded-[6px] border border-border bg-card px-2.5 text-sm text-foreground"
+            >
+              <option value="all">All programs</option>
+              {programOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+              {historyRows.some((r) => !r.programId?.trim()) ? (
+                <option value="none">No program</option>
+              ) : null}
+            </select>
+            <span className="text-sm text-muted-foreground">{filteredHistory.length} items</span>
+          </div>
         </div>
         <div className="bg-card border border-border rounded-card overflow-hidden">
           <div className="divide-y divide-border">
-            {(history || []).map((item) => (
+            {filteredHistory.map((item) => (
               <HistoryRow key={item.id} item={item} />
             ))}
           </div>
-          {(history || []).length === 0 && (
+          {filteredHistory.length === 0 && (
             <div className="p-10 text-center">
-              <p className="font-semibold text-foreground">No payments yet</p>
-              <p className="mt-1 text-sm text-muted-foreground">Complete activities to start earning.</p>
+              <p className="font-semibold text-foreground">
+                {historyRows.length === 0 ? 'No payments yet' : 'No payments for this program'}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {historyRows.length === 0 ? 'Complete activities to start earning.' : 'Try another program filter.'}
+              </p>
             </div>
           )}
         </div>
@@ -218,6 +272,7 @@ function HistoryRow({ item }: { item: PaymentItem }) {
         <p className="font-medium text-foreground truncate">{item.title}</p>
         <p className="text-sm text-muted-foreground truncate">
           {format(new Date(item.date), 'MMM d, yyyy')} • {methodLabel}
+          {item.programTitle ? ` · ${item.programTitle}` : ''}
         </p>
       </div>
       <div className="shrink-0 flex items-center gap-3">

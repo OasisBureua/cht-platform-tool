@@ -13,6 +13,9 @@ export interface PaymentItem {
   id: string;
   date: string; // ISO
   title: string;
+  /** Program linked to this payout when present. */
+  programId?: string | null;
+  programTitle?: string | null;
   amount: number;
   status: PaymentStatus;
   method?: 'Bill.com' | 'ACH' | 'Check' | 'Card' | 'N/A' | string;
