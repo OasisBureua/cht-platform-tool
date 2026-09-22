@@ -175,6 +175,7 @@ export class AuthService {
     city?: string | null,
     state?: string | null,
     zipCode?: string | null,
+    phoneNumber?: string | null,
   ): Promise<AuthUser | null> {
     let user = await this.prisma.user.findUnique({
       where: { authId },
@@ -191,7 +192,12 @@ export class AuthService {
         );
         user = await this.prisma.user.update({
           where: { id: byEmail.id },
-          data: { authId },
+          data: {
+            authId,
+            ...(phoneNumber?.trim()
+              ? { phoneNumber: phoneNumber.trim() }
+              : {}),
+          },
         });
         this.cognitoService
           .syncGroupsForRole(user.email, user.role)
@@ -221,6 +227,7 @@ export class AuthService {
           city: city?.trim() || undefined,
           state: state?.trim() || undefined,
           zipCode: zipCode?.trim() || undefined,
+          phoneNumber: phoneNumber?.trim() || undefined,
         },
       });
       // Fan out to HubSpot + Content Hub. Fire-and-forget: a slow
@@ -597,7 +604,11 @@ export class AuthService {
    * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
   isProfileComplete(
-    user: { specialty: string | null; npiNumber: string | null } | null,
+    user: {
+      specialty: string | null;
+      npiNumber: string | null;
+      phoneNumber?: string | null;
+    } | null,
   ): boolean {
     return isProfileCompleteForPayments(user);
   }

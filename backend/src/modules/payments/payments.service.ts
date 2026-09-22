@@ -88,6 +88,7 @@ export class PaymentsService {
           w9Submitted: true,
           specialty: true,
           npiNumber: true,
+          phoneNumber: true,
         },
       }),
       this.prisma.program.findUnique({
@@ -200,7 +201,7 @@ export class PaymentsService {
       throw new BadRequestException('vendorId is required');
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { specialty: true, npiNumber: true },
+      select: { specialty: true, npiNumber: true, phoneNumber: true },
     });
     if (!user) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(user);
@@ -1882,6 +1883,7 @@ export class PaymentsService {
         billVendorId: true,
         specialty: true,
         npiNumber: true,
+        phoneNumber: true,
       },
     });
     if (!user) throw new NotFoundException('User not found');

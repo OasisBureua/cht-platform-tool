@@ -9,6 +9,7 @@ import { AuthLockoutService } from './auth-lockout.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { NpiRegistryService } from './npi-registry.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
@@ -28,6 +29,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     AuthLockoutService,
     NpiRegistryService,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
@@ -43,6 +45,12 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
       inject: [ConfigService, AuthService],
     },
   ],
-  exports: [AuthService, JwtAuthGuard, CognitoService, NpiRegistryService],
+  exports: [
+    AuthService,
+    JwtAuthGuard,
+    OptionalJwtAuthGuard,
+    CognitoService,
+    NpiRegistryService,
+  ],
 })
 export class AuthModule {}

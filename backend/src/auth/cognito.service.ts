@@ -485,6 +485,8 @@ export class CognitoService {
     password: string,
     firstName?: string,
     lastName?: string,
+    /** Optional E.164 (+1…) — verified after email confirm via MFA SMS flow. */
+    phoneE164?: string,
   ): Promise<{ userSub: string; userConfirmed: boolean }> {
     const response = await this.client.send(
       new SignUpCommand({
@@ -498,6 +500,9 @@ export class CognitoService {
             : []),
           ...(lastName?.trim()
             ? [{ Name: 'family_name', Value: lastName.trim() }]
+            : []),
+          ...(phoneE164?.trim()
+            ? [{ Name: 'phone_number', Value: phoneE164.trim() }]
             : []),
         ],
       }),

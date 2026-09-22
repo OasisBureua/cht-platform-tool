@@ -15,6 +15,7 @@ import type { Request, Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
@@ -678,6 +679,7 @@ export class AuthController {
     @Body('city') city?: string,
     @Body('state') state?: string,
     @Body('zipCode') zipCode?: string,
+    @Body('phoneNumber') phoneNumber?: string,
   ): Promise<{ error?: string; userConfirmed?: boolean }> {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Sign up is not configured. Contact support.' };
@@ -703,6 +705,11 @@ export class AuthController {
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
+
+    const phoneE164 = normalizeUsPhoneE164(phoneNumber);
+    if (!phoneE164) {
+      return { error: 'Enter a valid US mobile number (10 digits).' };
+    }
 
     const professionTrim = profession.trim();
     const npiRequiredProfessions = new Set([
@@ -745,6 +752,7 @@ export class AuthController {
         password,
         firstName,
         lastName,
+        phoneE164,
       );
 
       await this.authService.findOrCreateByAuthId(
@@ -758,6 +766,7 @@ export class AuthController {
         cityNorm,
         stateNorm,
         zipNorm,
+        phoneE164,
       );
 
       await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
@@ -1448,12 +1457,36 @@ export class AuthController {
 
   /**
    * GET /api/auth/me
-   * Returns the current authenticated user's profile (userId, email, firstName, lastName, role).
-   * Frontend uses this to get the DB userId for API calls.
+   * Returns the current authenticated user's profile when a session cookie is present.
+   * Anonymous visitors get 200 `{ authenticated: false }` (not 401) so the SPA bootstrap
+   * probe does not spam DevTools with Unauthorized noise on public pages.
    */
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: AuthUser, @Req() req: Request) {
+  @UseGuards(OptionalJwtAuthGuard)
+  async getMe(
+    @Req() req: Request & { user?: AuthUser },
+  ): Promise<
+    | {
+        userId: string;
+        authId: string;
+        email: string;
+        name?: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        profileComplete: boolean;
+        phoneNumber: string | null;
+        mfaEnabled: boolean;
+        mfaEnrollmentRequired: boolean;
+        mfaFeature: MfaFeatureFlags;
+      }
+    | { authenticated: false }
+  > {
+    const user = req.user;
+    if (!user?.userId) {
+      return { authenticated: false };
+    }
+
     const dbUser = await this.authService.getUserById(user.userId);
     const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
     const dbFirst = dbUser?.firstName?.trim();

@@ -11,7 +11,11 @@ export class OptionalJwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
-      await this.jwtAuthGuard.canActivate(context);
+      const ok = await this.jwtAuthGuard.canActivate(context);
+      if (!ok) {
+        const req = context.switchToHttp().getRequest<{ user?: unknown }>();
+        req.user = undefined;
+      }
     } catch {
       const req = context.switchToHttp().getRequest<{ user?: unknown }>();
       req.user = undefined;

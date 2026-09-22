@@ -41,6 +41,7 @@ export interface ProfileResponse {
   city?: string;
   state?: string;
   zipCode?: string;
+  phoneNumber?: string;
   role: string;
   createdAt: string;
   totalEarnings: number;
@@ -74,6 +75,7 @@ export const dashboardApi = {
       city?: string;
       state?: string;
       zipCode?: string;
+      phoneNumber?: string;
     },
   ): Promise<ProfileResponse> => {
     const { data } = await apiClient.patch(`/dashboard/${userId}/profile`, updates);
