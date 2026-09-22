@@ -75,6 +75,7 @@ export class DashboardController {
       city: dto.city,
       state: dto.state,
       zipCode: dto.zipCode,
+      phoneNumber: dto.phoneNumber,
     });
   }
 }

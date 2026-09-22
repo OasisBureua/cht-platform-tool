@@ -12,6 +12,8 @@ export function NotificationBell() {
   const panelRef = useRef<HTMLDivElement>(null);
 
   const profileIncomplete = user?.profileComplete === false;
+  const mfaNeeded =
+    !user?.mfaEnabled && Boolean(user?.mfaFeature?.enabled);
   const isAdmin = user?.role === 'ADMIN';
 
   const { data: items = [] } = useQuery({
@@ -28,11 +30,15 @@ export function NotificationBell() {
     staleTime: 60_000,
   });
 
-  const hasIndicator = (items.length > 0 || profileIncomplete || webhookImports.length > 0) && !!user?.userId;
+  const hasIndicator =
+    (items.length > 0 || profileIncomplete || mfaNeeded || webhookImports.length > 0) &&
+    !!user?.userId;
 
-  /** Open the panel once per login session when profession/NPI still required (cleared on logout). */
+  /** Open the panel once per login when profile or SMS MFA still needs attention. */
   useEffect(() => {
-    if (!user?.userId || user.profileComplete !== false) return;
+    if (!user?.userId) return;
+    const needsAttention = user.profileComplete === false || mfaNeeded;
+    if (!needsAttention) return;
     try {
       if (typeof sessionStorage?.getItem !== 'function') return;
       if (sessionStorage.getItem('cht-profile-reminder-seen') === '1') return;
@@ -41,7 +47,7 @@ export function NotificationBell() {
       /* ignore */
     }
     setOpen(true);
-  }, [user?.userId, user?.profileComplete]);
+  }, [user?.userId, user?.profileComplete, mfaNeeded]);
 
   useEffect(() => {
     if (!open) return;
@@ -92,19 +98,46 @@ export function NotificationBell() {
 
           {profileIncomplete ? (
             <div className="border-b border-warning/25/80 bg-warning/10/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
-              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Add your profession and NPI</p>
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Complete your profile</p>
               <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
-                You can use the app, but you must add your <strong>profession</strong> and <strong>NPI</strong> (where
-                required) to stay eligible for <strong>payments and earnings</strong>. You will not be paid until this
-                information is on file.
+                Add your <strong>mobile phone</strong>, <strong>profession</strong>, and <strong>NPI</strong> (where
+                required) under Settings. Phone is required for SMS MFA; you will not be paid until your profile is
+                complete.
               </p>
-              <Link
-                to="/app/settings"
-                onClick={() => setOpen(false)}
-                className="mt-2 inline-flex min-h-[40px] items-center justify-center rounded-[6px] bg-amber-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-900 dark:bg-amber-600 dark:hover:bg-amber-500"
-              >
-                Complete required profile
-              </Link>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Link
+                  to="/app/settings"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-[6px] bg-amber-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-900 dark:bg-amber-600 dark:hover:bg-amber-500"
+                >
+                  Complete required profile
+                </Link>
+                {mfaNeeded ? (
+                  <Link
+                    to="/mfa/setup"
+                    onClick={() => setOpen(false)}
+                    className="inline-flex min-h-[40px] items-center justify-center rounded-[6px] border border-amber-800 px-3 py-1.5 text-sm font-semibold text-amber-950 transition-colors hover:bg-amber-100 dark:border-amber-400 dark:text-amber-100"
+                  >
+                    Set up SMS MFA
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ) : mfaNeeded ? (
+            <div className="border-b border-warning/25/80 bg-warning/10/90 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/40">
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">Enable SMS MFA</p>
+              <p className="mt-1.5 text-sm leading-relaxed text-amber-900/90 dark:text-amber-200/90">
+                Protect your account with a code texted to your mobile phone.
+              </p>
+              <div className="mt-2">
+                <Link
+                  to="/mfa/setup"
+                  onClick={() => setOpen(false)}
+                  className="inline-flex min-h-[40px] items-center justify-center rounded-[6px] bg-amber-800 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-amber-900 dark:bg-amber-600 dark:hover:bg-amber-500"
+                >
+                  Set up SMS MFA
+                </Link>
+              </div>
             </div>
           ) : null}
 

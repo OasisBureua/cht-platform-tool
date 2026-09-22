@@ -46,6 +46,7 @@ export default function Settings() {
   const [zipCode, setZipCode] = useState('');
   const [specialty, setSpecialty] = useState('');
   const [npiNumber, setNpiNumber] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -87,6 +88,7 @@ export default function Settings() {
       setCity(profile.city ?? '');
       setState(normalizeUsStateCode(profile.state) ?? '');
       setZipCode((profile.zipCode ?? '').replace(/\D/g, '').slice(0, 5));
+      setPhoneNumber(profile.phoneNumber ?? '');
     }
   }, [profile]);
 
@@ -97,6 +99,11 @@ export default function Settings() {
     try {
       if (!specialty.trim()) {
         setSaveError('Please select your profession.');
+        setSaving(false);
+        return;
+      }
+      if (!phoneNumber.trim()) {
+        setSaveError('Mobile phone number is required for SMS MFA.');
         setSaving(false);
         return;
       }
@@ -128,6 +135,7 @@ export default function Settings() {
         city: city.trim() || undefined,
         state: stateCode,
         zipCode: zip,
+        phoneNumber: phoneNumber.trim(),
       });
       await queryClient.invalidateQueries({ queryKey: ['profile', userId] });
       await refreshProfile();
@@ -249,6 +257,26 @@ export default function Settings() {
                   placeholder="Enter last name"
                   className="w-full rounded-[6px] border border-border px-3 py-2 text-sm"
                 />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-semibold text-muted-foreground mb-1">
+                  Mobile phone <span className="font-normal text-muted-foreground">(SMS MFA)</span>
+                </label>
+                <input
+                  type="tel"
+                  inputMode="tel"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  placeholder="(555) 123-4567"
+                  className="w-full rounded-[6px] border border-border px-3 py-2 text-sm"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  US mobile number. After saving, finish verification under{' '}
+                  <Link to="/mfa/setup" className="font-medium underline hover:no-underline">
+                    Set up SMS MFA
+                  </Link>
+                  .
+                </p>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-semibold text-muted-foreground mb-1">Profession</label>

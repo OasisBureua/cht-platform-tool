@@ -113,6 +113,7 @@ interface AuthContextValue {
       city?: string;
       state?: string;
       zipCode?: string;
+      phoneNumber?: string;
     },
     recaptchaToken?: string,
   ) => Promise<{ error?: AuthError }>;
@@ -526,6 +527,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         city?: string;
         state?: string;
         zipCode?: string;
+        phoneNumber?: string;
       },
       recaptchaToken?: string,
     ) => {
@@ -551,6 +553,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           city: options?.city,
           state: options?.state,
           zipCode: options?.zipCode,
+          phoneNumber: options?.phoneNumber,
           recaptchaToken,
         }),
       });

@@ -17,6 +17,7 @@ import {
   normalizeUsStateCode,
   normalizeUsZip5,
 } from '../../common/us-address';
+import { normalizeUsPhoneE164 } from '../../common/phone';
 import { NpiRegistryService } from '../../auth/npi-registry.service';
 
 @Injectable()
@@ -155,12 +156,24 @@ export class DashboardService {
       city?: string;
       state?: string;
       zipCode?: string;
+      phoneNumber?: string;
     },
   ): Promise<ProfileResponseDto> {
     const npi =
       data.npiNumber !== undefined
         ? data.npiNumber.replace(/\D/g, '').slice(0, 10)
         : undefined;
+
+    let phoneE164: string | null | undefined;
+    if (data.phoneNumber !== undefined) {
+      const normalized = normalizeUsPhoneE164(data.phoneNumber);
+      if (!normalized) {
+        throw new BadRequestException(
+          'Enter a valid US mobile number (10 digits).',
+        );
+      }
+      phoneE164 = normalized;
+    }
 
     let stateNorm: string | null | undefined;
     if (data.state !== undefined) {
@@ -222,6 +235,7 @@ export class DashboardService {
           ...(data.city !== undefined && { city: data.city.trim() || null }),
           ...(stateNorm !== undefined && { state: stateNorm }),
           ...(zipNorm !== undefined && { zipCode: zipNorm }),
+          ...(phoneE164 !== undefined && { phoneNumber: phoneE164 }),
         },
       });
     } catch (err) {
@@ -283,6 +297,7 @@ export class DashboardService {
       city: user.city ?? undefined,
       state: user.state ?? undefined,
       zipCode: user.zipCode ?? undefined,
+      phoneNumber: user.phoneNumber ?? undefined,
       role: user.role,
       createdAt: user.createdAt.toISOString(),
       totalEarnings: user.totalEarnings / 100,

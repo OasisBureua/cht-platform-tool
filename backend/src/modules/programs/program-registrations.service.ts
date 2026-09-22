@@ -2155,6 +2155,7 @@ export class ProgramRegistrationsService {
       select: {
         specialty: true,
         npiNumber: true,
+        phoneNumber: true,
         billVendorId: true,
         stripeAccountId: true,
         stripePayoutsEnabled: true,
