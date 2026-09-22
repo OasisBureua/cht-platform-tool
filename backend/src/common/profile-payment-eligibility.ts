@@ -9,12 +9,13 @@ export type ProfilePaymentFields = {
 
 /**
  * Specialties that are non-clinical / non-HCP and therefore do not require an NPI.
- * 'Pharmaceuticals' is kept for backward-compat with existing DB records; display label
- * was renamed to 'Industry' in the frontend.
+ * Keep in sync with frontend `NON_HCP_PROFESSIONS` (profession-options.ts).
+ * 'Pharmaceuticals' / 'Student' / 'Researcher' remain for legacy DB rows.
  */
 export const NON_HCP_SPECIALTIES = new Set([
   'Industry',
   'Pharmaceuticals',
+  'StudentResearcher',
   'Researcher',
   'Patient Advocate',
   'Caregiver',
@@ -22,27 +23,40 @@ export const NON_HCP_SPECIALTIES = new Set([
   'Other',
 ]);
 
+export type ProfileMissingField = 'phone' | 'profession' | 'npi';
+
 /** Same rules as learner profile for /auth/me profileComplete, used for payouts and honorarium. */
 export function isProfileCompleteForPayments(
   user: ProfilePaymentFields | null | undefined,
 ): boolean {
-  if (!user || !user.specialty?.trim()) return false;
-  if (!user.phoneNumber?.trim()) return false;
-  if (NON_HCP_SPECIALTIES.has(user.specialty.trim())) return true;
-  const npi = (user.npiNumber || '').replace(/\D/g, '');
-  return npi.length === 10;
+  return listMissingProfilePaymentFields(user).length === 0;
+}
+
+/** Which required payment/profile fields are still empty (order matches UX copy). */
+export function listMissingProfilePaymentFields(
+  user: ProfilePaymentFields | null | undefined,
+): ProfileMissingField[] {
+  const missing: ProfileMissingField[] = [];
+  if (!user?.phoneNumber?.trim()) missing.push('phone');
+  if (!user?.specialty?.trim()) missing.push('profession');
+  else if (!NON_HCP_SPECIALTIES.has(user.specialty.trim())) {
+    const npi = (user.npiNumber || '').replace(/\D/g, '');
+    if (npi.length !== 10) missing.push('npi');
+  }
+  return missing;
 }
 
 export function assertProfileCompleteForPayments(
   user: ProfilePaymentFields | null | undefined,
 ): void {
-  if (isProfileCompleteForPayments(user)) return;
-  if (!user?.specialty?.trim()) {
+  const missing = listMissingProfilePaymentFields(user);
+  if (missing.length === 0) return;
+  if (missing.includes('profession')) {
     throw new BadRequestException(
       'Add your profession under Settings before you can set up payments or request an honorarium.',
     );
   }
-  if (!user?.phoneNumber?.trim()) {
+  if (missing.includes('phone')) {
     throw new BadRequestException(
       'Add your mobile phone number under Settings before you can set up payments or request an honorarium.',
     );

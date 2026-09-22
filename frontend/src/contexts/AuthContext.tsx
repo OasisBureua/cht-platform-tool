@@ -11,6 +11,7 @@ import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
 import { cognitoAuthEnabled } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
+import type { ProfileMissingField } from '../utils/profile-completeness';
 
 export interface MfaFeatureFlags {
   enabled: boolean;
@@ -25,6 +26,10 @@ export interface AuthUser {
   lastName?: string;
   role?: string;
   profileComplete?: boolean;
+  /** Explicit missing fields from /auth/me (phone, profession, npi). */
+  profileMissingFields?: ProfileMissingField[];
+  specialty?: string | null;
+  npiNumber?: string | null;
   /** Cognito software-token or SMS MFA enabled for this user. */
   mfaEnabled?: boolean;
   /** Soft gate: redirect to /mfa/setup when AppConfig mfa.enabled is on and user is not enrolled. */
@@ -48,6 +53,13 @@ function parseMfaFeature(
 }
 
 function profileFromMePayload(data: Record<string, unknown>): AuthUser {
+  const missingRaw = data.profileMissingFields;
+  const profileMissingFields = Array.isArray(missingRaw)
+    ? (missingRaw.filter(
+        (f): f is ProfileMissingField =>
+          f === 'phone' || f === 'profession' || f === 'npi',
+      ) as ProfileMissingField[])
+    : undefined;
   return {
     userId: data.userId as string,
     email: data.email as string | undefined,
@@ -56,6 +68,9 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     lastName: data.lastName as string | undefined,
     role: data.role as string | undefined,
     profileComplete: (data.profileComplete as boolean | undefined) ?? true,
+    profileMissingFields,
+    specialty: typeof data.specialty === 'string' ? data.specialty : null,
+    npiNumber: typeof data.npiNumber === 'string' ? data.npiNumber : null,
     mfaEnabled: Boolean(data.mfaEnabled),
     mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
     mfaFeature: parseMfaFeature(data),

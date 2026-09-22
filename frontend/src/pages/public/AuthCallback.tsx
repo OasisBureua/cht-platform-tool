@@ -55,11 +55,8 @@ export default function AuthCallback() {
           startedRef.current = false;
           return;
         }
-        if (result.mfaEnrollmentRequired) {
-          navigate('/mfa/setup', { replace: true });
-          return;
-        }
-        // Navigate even if React Strict Mode cleaned up the effect, auth already succeeded.
+        // After OAuth (including first-time signup), land in the app. Soft MFA
+        // enrollment is prompted on later password logins or via in-app notice.
         navigate(
           getPostLoginPath(result.role, oauthState?.from || fromPath),
           { replace: true },
