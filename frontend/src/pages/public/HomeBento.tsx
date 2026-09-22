@@ -678,7 +678,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             id="shows-heading"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/catalog' }}
+            seeAll={{ noun: 'shows', to: '/podcast-network' }}
           />
           {showsBody}
         </Band>
@@ -739,7 +739,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
           <LatestTabs
             tracks={[
               { key: 'video', label: 'Video', panel: nowBody, more: { to: '/catalog', label: 'Browse the library' } },
-              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/catalog', label: 'Browse the library' } },
+              { key: 'podcast', label: 'Podcasts', panel: showsBody, more: { to: '/podcast-network', label: 'Browse the network' } },
               { key: 'editorial', label: 'Editorial', panel: articlesBody, more: { to: '/catalog', label: 'Browse the library' } },
             ]}
           />
@@ -754,7 +754,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             id="kol-heading"
             title="In conversation"
             sub="Practising specialists who bring their own audiences."
-            seeAll={{ noun: 'profiles', to: '/kol-network' }}
+            seeAll={{ noun: 'profiles', to: '/kols' }}
           />
           {/* Four, one row, then the link. Five in a 3+2 grid left a
               ragged second row that read as a mistake; four sits square
@@ -763,7 +763,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
             {faculty.map((k, i) => (
               <Reveal as="li" key={k.id} delay={i * 50}>
                 <Link
-                  to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
+                  to={`/kols/${encodeURIComponent(k.id)}`}
                   className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {k.photoUrl ? (

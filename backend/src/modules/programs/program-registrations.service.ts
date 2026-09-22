@@ -31,9 +31,10 @@ import { learnerWebinarJoinUrl } from '../../utils/webinar-join-url';
 import { buildUserRecipientWhere } from '../admin/user-recipient-filters.util';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { SesEmailService } from '../email/ses-email.service';
+import { InvitesService } from '../invites/invites.service';
 import { QueueService } from '../../queue/queue.service';
 import {
-  matchRegistrationsToZoomJoins,
+  resolveAttendanceFromZoomJoins,
   zoomPresenceForRegistration,
   type ZoomJoinEvidence,
 } from '../webinars/zoom-attendance-match';
@@ -103,6 +104,7 @@ export class ProgramRegistrationsService {
     private config: ConfigService,
     private queueService: QueueService,
     private sesEmail: SesEmailService,
+    private invites: InvitesService,
   ) {}
 
   private syncUserOutbound(user: {
@@ -505,7 +507,8 @@ export class ProgramRegistrationsService {
       where: { userId_programId: { userId, programId } },
       include: { slot: true, program: true },
     });
-    if (!reg) return null;
+    // Orphan registration rows (program deleted without FK cascade) must not 500 the API.
+    if (!reg?.program) return null;
 
     const defaultIntake =
       this.config.get<string>('jotform.webinarDefaultIntakeUrl')?.trim() ||
@@ -1254,29 +1257,47 @@ export class ProgramRegistrationsService {
     });
   }
 
-  /** JOINED Zoom / Meeting SDK rows for a program (attendance match + admin hub). */
+  /** Zoom / Meeting SDK join+leave rows for a program (presence + duration). */
   async listZoomJoinEvidenceForProgram(
     programId: string,
   ): Promise<ZoomJoinEvidence[]> {
+    return this.listZoomTimedEventsForProgram(programId);
+  }
+
+  async listZoomTimedEventsForProgram(
+    programId: string,
+  ): Promise<ZoomJoinEvidence[]> {
     const rows = await this.prisma.webinarParticipantEvent.findMany({
-      where: { programId, event: 'JOINED' },
-      select: { userId: true, participantEmail: true },
+      where: { programId },
+      select: {
+        userId: true,
+        participantEmail: true,
+        event: true,
+        occurredAt: true,
+      },
+      orderBy: { occurredAt: 'asc' },
     });
     return rows.map((r) => ({
       userId: r.userId,
       participantEmail: r.participantEmail,
+      event: r.event,
+      occurredAt: r.occurredAt,
     }));
   }
 
   /**
-   * After webinar/meeting ended: auto-VERIFY approved registrations whose
-   * platform email (or userId) appears in Zoom JOINED events. Does not override
-   * DENIED / already VERIFIED / NOT_REQUIRED. Sends post-event survey email.
+   * After webinar/meeting ended: auto-resolve attendance from Zoom emails.
+   * HCP email == Zoom email → VERIFIED; same user joined with a different Zoom
+   * email → DENIED. Does not override already VERIFIED / DENIED / NOT_REQUIRED.
    */
   async autoVerifyAttendanceFromZoomJoins(
     programId: string,
-  ): Promise<{ verifiedCount: number; matchedRegistrationIds: string[] }> {
-    const [pending, joinEvents] = await Promise.all([
+  ): Promise<{
+    verifiedCount: number;
+    deniedCount: number;
+    matchedRegistrationIds: string[];
+  }> {
+    const [pending, timedEvents] = await Promise.all([
       this.prisma.programRegistration.findMany({
         where: {
           programId,
@@ -1295,32 +1316,40 @@ export class ProgramRegistrationsService {
               sponsorName: true,
               honorariumAmount: true,
               zoomSessionType: true,
+              zoomSessionEndedAt: true,
             },
           },
         },
       }),
-      this.listZoomJoinEvidenceForProgram(programId),
+      this.listZoomTimedEventsForProgram(programId),
     ]);
 
-    if (pending.length === 0 || joinEvents.length === 0) {
-      return { verifiedCount: 0, matchedRegistrationIds: [] };
+    if (pending.length === 0 || timedEvents.length === 0) {
+      return { verifiedCount: 0, deniedCount: 0, matchedRegistrationIds: [] };
     }
 
-    const matches = matchRegistrationsToZoomJoins(
+    const resolutions = resolveAttendanceFromZoomJoins(
       pending.map((r) => ({
         id: r.id,
         userId: r.userId,
         userEmail: r.user.email,
       })),
-      joinEvents,
+      timedEvents,
     );
 
     const matchedIds: string[] = [];
+    let verifiedCount = 0;
+    let deniedCount = 0;
     const now = new Date();
 
-    for (const match of matches) {
-      const reg = pending.find((r) => r.id === match.registrationId);
+    for (const resolution of resolutions) {
+      const reg = pending.find((r) => r.id === resolution.registrationId);
       if (!reg) continue;
+
+      const nextStatus =
+        resolution.status === 'VERIFIED'
+          ? PostEventAttendanceStatus.VERIFIED
+          : PostEventAttendanceStatus.DENIED;
 
       const updated = await this.prisma.programRegistration.updateMany({
         where: {
@@ -1329,7 +1358,7 @@ export class ProgramRegistrationsService {
             PostEventAttendanceStatus.PENDING_VERIFICATION,
         },
         data: {
-          postEventAttendanceStatus: PostEventAttendanceStatus.VERIFIED,
+          postEventAttendanceStatus: nextStatus,
           postEventAttendanceReviewedAt: now,
           postEventAttendanceReviewedByUserId: null,
         },
@@ -1337,6 +1366,16 @@ export class ProgramRegistrationsService {
       if (updated.count !== 1) continue;
 
       matchedIds.push(reg.id);
+
+      if (resolution.status === 'DENIED') {
+        deniedCount += 1;
+        this.logger.log(
+          `Zoom auto-denied attendance for registration ${reg.id} (HCP ${reg.user.email} ≠ Zoom ${resolution.zoomEmail})`,
+        );
+        continue;
+      }
+
+      verifiedCount += 1;
       await this.ensureEnrollment(reg.userId, programId);
 
       if (reg.user.email) {
@@ -1369,12 +1408,13 @@ export class ProgramRegistrationsService {
       }
 
       this.logger.log(
-        `Zoom auto-verified attendance for registration ${reg.id} (matchedBy=${match.matchedBy})`,
+        `Zoom auto-verified attendance for registration ${reg.id} (email match)`,
       );
     }
 
     return {
-      verifiedCount: matchedIds.length,
+      verifiedCount,
+      deniedCount,
       matchedRegistrationIds: matchedIds,
     };
   }
@@ -1627,13 +1667,22 @@ export class ProgramRegistrationsService {
         });
       }
     }
+    // SCRUM-175: unregistered recipients get an opaque-token invite URL that
+    // resolves server-side to pre-fill the /join signup form with their email
+    // + the target programs. Keeps email PII out of URLs and lets us revoke or
+    // expire links.
     for (const email of unregisteredEmails) {
       try {
+        const { token } = await this.invites.createInvite({
+          email,
+          programIds: programs.map((p) => p.id),
+        });
+        const inviteUrl = `${base}/join?invite=${encodeURIComponent(token)}`;
         await this.sesEmail.sendRegistrationInviteEmail({
           to: email,
           firstName: '',
           programTitles: programs.map((p) => p.title),
-          registerUrl,
+          registerUrl: inviteUrl,
         });
         emailed += 1;
       } catch (err) {
@@ -2106,20 +2155,35 @@ export class ProgramRegistrationsService {
       select: {
         specialty: true,
         npiNumber: true,
+        phoneNumber: true,
         billVendorId: true,
+        stripeAccountId: true,
+        stripePayoutsEnabled: true,
         w9Submitted: true,
       },
     });
     if (!payUser) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(payUser);
-    if (!payUser.billVendorId) {
+
+    const useStripe = !!this.config.get<string>('stripe.secretKey');
+    const hasPayoutAccount = useStripe
+      ? !!payUser.stripeAccountId
+      : !!payUser.billVendorId;
+    if (!hasPayoutAccount) {
       throw new BadRequestException(
         'Add your payment profile under Payments before requesting an honorarium.',
       );
     }
+    if (useStripe && !payUser.stripePayoutsEnabled) {
+      throw new BadRequestException(
+        'Finish Stripe Connect ACH onboarding under Payments before requesting an honorarium.',
+      );
+    }
     if (!payUser.w9Submitted) {
       throw new BadRequestException(
-        'Submit your W-9 under Payments before requesting an honorarium.',
+        useStripe
+          ? 'Finish tax details in Stripe Connect onboarding under Payments before requesting an honorarium.'
+          : 'Submit your W-9 under Payments before requesting an honorarium.',
       );
     }
 
@@ -2368,6 +2432,8 @@ export class ProgramRegistrationsService {
             honorariumAmount: true,
             zoomSessionType: true,
             startDate: true,
+            chmProgramId: true,
+            sponsorName: true,
           },
         },
       },

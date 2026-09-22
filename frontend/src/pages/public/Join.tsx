@@ -3,13 +3,11 @@ import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Check } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
 import {
   cognitoAuthEnabled,
   googleOAuthEnabled,
   googleOAuthMigrationMessage,
-  mediahubAuthDecommissioned,
   recaptchaEnabled,
 } from '../../lib/auth-config';
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
@@ -38,6 +36,7 @@ import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 import { Button, Field } from '../../components/ui';
 import { cn } from '../../lib/cn';
+import { invitesApi, type ResolvedInvite } from '../../api/invites';
 
 const JOIN_PROFESSION_OPTIONS = signupProfessionSelectOptions().map((o, i) =>
   i === 0 ? { ...o, label: 'Select your role' } : { ...o },
@@ -62,19 +61,52 @@ const FROST =
   'backdrop-blur-2xl backdrop-saturate-150';
 
 export default function Join() {
-  const { isAuthenticated, signUp } = useAuth();
+  const {
+    isAuthenticated,
+    signUp,
+    confirmEmailSignup,
+    resendEmailVerificationCode,
+    login,
+    beginSmsMfaSetup,
+    verifySmsMfaSetup,
+  } = useAuth();
   const location = useLocation();
-  const fromLocation = (
-    location.state as { from?: { pathname: string; search?: string } } | null
-  )?.from;
+
+  // SCRUM-175: `?invite=<token>` means this visitor came from an admin-generated
+  // unregistered-invite email. Resolve the token to pre-fill the email field
+  // and route them post-signup to the webinar they were invited to.
+  const inviteToken = useMemo(
+    () => new URLSearchParams(location.search).get('invite')?.trim() || null,
+    [location.search],
+  );
+  const [invite, setInvite] = useState<ResolvedInvite | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+  const [inviteLoading, setInviteLoading] = useState<boolean>(!!inviteToken);
+
+  const inviteFromLocation = useMemo(
+    () =>
+      invite
+        ? {
+            pathname: '/app/live/register-multiple',
+            search: `?programs=${invite.programIds.map(encodeURIComponent).join(',')}`,
+          }
+        : null,
+    [invite],
+  );
+  const fromLocation =
+    inviteFromLocation ??
+    (
+      location.state as { from?: { pathname: string; search?: string } } | null
+    )?.from;
   const returnTo = fromLocation
     ? `${fromLocation.pathname}${fromLocation.search ?? ''}`
     : undefined;
-  const signupEnabled = cognitoAuthEnabled || !mediahubAuthDecommissioned;
+  const signupEnabled = cognitoAuthEnabled;
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
   const [profession, setProfession] = useState('');
   const [npiNumber, setNpiNumber] = useState('');
   const [institution, setInstitution] = useState('');
@@ -82,7 +114,11 @@ export default function Join() {
   const [state, setState] = useState('');
   const [zipCode, setZipCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [info, setInfo] = useState<string | null>(null);
+  /** form → email code → SMS MFA code → authenticated redirect */
+  const [joinStep, setJoinStep] = useState<'form' | 'email' | 'phone'>('form');
+  const [emailCode, setEmailCode] = useState('');
+  const [smsCode, setSmsCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [npiVerifying, setNpiVerifying] = useState(false);
@@ -101,6 +137,10 @@ export default function Join() {
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
   const stateCode = normalizeUsStateCode(state);
   const zipOk = !!normalizeUsZip5(zipCode);
+  const phoneDigits = phone.replace(/\D/g, '');
+  const phoneOk =
+    phoneDigits.length === 10 ||
+    (phoneDigits.length === 11 && phoneDigits.startsWith('1'));
   // Require a successful registry check (and no duplicate) before create.
   const npiOk =
     !requiresNpi ||
@@ -140,6 +180,32 @@ export default function Join() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when digits/role change
   }, [npiDigits, requiresNpi]);
 
+  // SCRUM-175: resolve the invite token from the URL, pre-fill the email field.
+  useEffect(() => {
+    if (!inviteToken) return;
+    let cancelled = false;
+    setInviteLoading(true);
+    invitesApi
+      .getInvite(inviteToken)
+      .then((data) => {
+        if (cancelled) return;
+        setInvite(data);
+        setEmail(data.email);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setInviteError(
+          'This invitation link is no longer valid. It may have expired or already been used. Please request a new invitation from the sender.',
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setInviteLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [inviteToken]);
+
   const canSubmit =
     signupEnabled &&
     !submitting &&
@@ -147,6 +213,7 @@ export default function Join() {
     lastName.trim().length > 0 &&
     emailOk &&
     passwordOk &&
+    phoneOk &&
     !!profession &&
     npiOk &&
     !!stateCode &&
@@ -165,9 +232,7 @@ export default function Join() {
     setOauthLoading(provider);
     try {
       const oauthReturn = returnTo ?? PLATFORM_HOME;
-      const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', oauthReturn)
-        : buildOAuthAuthorizeUrl(provider, oauthReturn);
+      const url = await buildCognitoAuthorizeUrl('Google', oauthReturn);
       window.location.href = url;
     } catch (err) {
       setOauthLoading(null);
@@ -178,6 +243,7 @@ export default function Join() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setInfo(null);
     if (!canSubmit) {
       setError('Please complete all required fields before continuing.');
       return;
@@ -204,6 +270,7 @@ export default function Join() {
           city: city.trim() || undefined,
           state: stateCode!,
           zipCode: zip,
+          phoneNumber: phone,
         },
         recaptchaToken,
       );
@@ -211,7 +278,13 @@ export default function Join() {
         setError(err.message || 'Sign up failed. Please try again.');
         return;
       }
-      setSuccess(true);
+      if (inviteToken) {
+        invitesApi.consumeInvite(inviteToken).catch(() => {
+          // Consume is best-effort; expired tokens on a retry are acceptable.
+        });
+      }
+      setJoinStep('email');
+      setInfo('We sent a 6-digit code to your email. Enter it below to continue.');
     } catch (captchaErr) {
       setError(
         captchaErr instanceof Error
@@ -223,49 +296,178 @@ export default function Join() {
     }
   };
 
-  /* ── sent ───────────────────────────────────────────────────────────
-     The same shell, with the confirmation standing in for the form. */
-  if (success) {
+  const handleConfirmEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setInfo(null);
+    if (!emailCode.trim()) {
+      setError('Enter the 6-digit email verification code.');
+      return;
+    }
+    setSubmitting(true);
+    const { error: confirmErr } = await confirmEmailSignup(email, emailCode);
+    if (confirmErr) {
+      setSubmitting(false);
+      setError(confirmErr.message || 'Email verification failed.');
+      return;
+    }
+
+    const { error: loginErr, mfa, mfaSetup } = await login(email, password);
+    if (loginErr) {
+      setSubmitting(false);
+      setError(loginErr.message || 'Could not sign you in after email verification.');
+      return;
+    }
+    // Pool already requiring MFA challenge — finish via /login UI.
+    if (mfa || mfaSetup) {
+      setSubmitting(false);
+      window.location.assign('/login');
+      return;
+    }
+
+    const smsStart = await beginSmsMfaSetup(phone);
+    setSubmitting(false);
+    if (smsStart.error) {
+      setError(
+        smsStart.error.message ||
+          'Could not send SMS. You can finish phone MFA under Settings after signing in.',
+      );
+      // Still allow continuing to MFA setup page with prefilled phone.
+      setJoinStep('phone');
+      return;
+    }
+    setJoinStep('phone');
+    setInfo('We texted a 6-digit code to your phone. Enter it to enable SMS MFA.');
+  };
+
+  const handleConfirmPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!smsCode.trim()) {
+      setError('Enter the 6-digit code from the text message.');
+      return;
+    }
+    setSubmitting(true);
+    const result = await verifySmsMfaSetup(smsCode);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error.message || 'Phone verification failed.');
+      return;
+    }
+    window.location.assign(returnTo ?? PLATFORM_HOME);
+  };
+
+  const handleResendEmail = async () => {
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    const { error: err } = await resendEmailVerificationCode(email);
+    setSubmitting(false);
+    if (err) {
+      setError(err.message || 'Could not resend email code.');
+      return;
+    }
+    setInfo('A new email verification code was sent.');
+  };
+
+  const handleResendSms = async () => {
+    setError(null);
+    setInfo(null);
+    setSubmitting(true);
+    const result = await beginSmsMfaSetup(phone);
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error.message || 'Could not resend SMS.');
+      return;
+    }
+    setInfo('A new SMS code was sent.');
+  };
+
+  /* ── email verification step ─────────────────────────────────────── */
+  if (joinStep === 'email') {
     return (
       <AuthShell
-        heading="Check your email"
-        sub="Nothing else to do here. The next step is in your inbox."
+        heading="Verify your email"
+        sub="Enter the 6-digit code from noreply@communityhealth.media, then we’ll text your phone for MFA."
         footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
       >
-        <p role="status" className="card mt-8 p-5 text-body-m text-dim">
-          {cognitoAuthEnabled ? (
-            <>
-              If this email can be registered, you&apos;ll receive a 6-digit verification code
-              from <strong className="font-medium text-text">noreply@communityhealth.media</strong>.
-              You can also{' '}
-              <Link
-                to="/forgot-password"
-                className="press rounded-[6px] text-anchor hover:brightness-110"
-              >
-                reset your password
-              </Link>{' '}
-              if you have been here before.
-            </>
-          ) : (
-            <>
-              If this email can be registered, you&apos;ll receive a verification link.
-            </>
-          )}
-        </p>
-
-        {/* A styled Link rather than <Button to>, because this one has to
-            carry router state through to the verification screen. */}
-        <Link
-          to={
-            cognitoAuthEnabled
-              ? `/verify-email?email=${encodeURIComponent(email.trim())}`
-              : '/login'
-          }
-          state={fromLocation ? { from: fromLocation } : undefined}
-          className="press mt-7 inline-flex h-12 w-full items-center justify-center gap-2 rounded-[6px] bg-inverse text-body-m font-medium text-ground hover:brightness-[0.92]"
+        <form className="mt-8 space-y-4" onSubmit={handleConfirmEmail}>
+          {error ? (
+            <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+          ) : null}
+          {info ? (
+            <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">{info}</div>
+          ) : null}
+          <Field label="Email" type="email" value={email} readOnly required />
+          <Field
+            label="Email verification code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            value={emailCode}
+            onChange={(e) => setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            required
+          />
+          <Button type="submit" disabled={submitting} className="w-full">
+            {submitting ? 'Verifying…' : 'Verify email & continue'}
+          </Button>
+        </form>
+        <button
+          type="button"
+          onClick={() => void handleResendEmail()}
+          disabled={submitting}
+          className="press mt-3 w-full text-body-s text-anchor hover:brightness-110 disabled:opacity-50"
         >
-          {cognitoAuthEnabled ? 'Enter verification code' : 'Go to Login'}
-          <ArrowRight className="size-4" strokeWidth={1.75} />
+          Resend email code
+        </button>
+      </AuthShell>
+    );
+  }
+
+  /* ── phone / SMS MFA step ────────────────────────────────────────── */
+  if (joinStep === 'phone') {
+    return (
+      <AuthShell
+        heading="Verify your phone"
+        sub="Enable SMS MFA with the code we texted you. This protects your account on every sign-in."
+        footer={{ prompt: 'Already have an account?', label: 'Log in', href: '/login' }}
+      >
+        <form className="mt-8 space-y-4" onSubmit={handleConfirmPhone}>
+          {error ? (
+            <div className="rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</div>
+          ) : null}
+          {info ? (
+            <div className="rounded-[6px] bg-success/10 px-4 py-3 text-sm text-success">{info}</div>
+          ) : null}
+          <Field label="Mobile phone" type="tel" value={phone} readOnly required />
+          <Field
+            label="SMS verification code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="123456"
+            value={smsCode}
+            onChange={(e) => setSmsCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            required
+          />
+          <Button type="submit" disabled={submitting} className="w-full">
+            {submitting ? 'Enabling MFA…' : 'Verify phone & enable MFA'}
+          </Button>
+        </form>
+        <button
+          type="button"
+          onClick={() => void handleResendSms()}
+          disabled={submitting}
+          className="press mt-3 w-full text-body-s text-anchor hover:brightness-110 disabled:opacity-50"
+        >
+          Resend SMS code
+        </button>
+        <Link
+          to={returnTo ?? PLATFORM_HOME}
+          className="press mt-4 inline-flex w-full justify-center text-body-s text-muted2 hover:text-text"
+        >
+          Skip for now (you’ll be prompted again)
         </Link>
       </AuthShell>
     );
@@ -306,6 +508,24 @@ export default function Join() {
       <p className="eyebrow mt-8 text-faint">Or with email</p>
 
       <form onSubmit={handleSubmit} noValidate className="mt-5">
+        {inviteToken && inviteLoading ? (
+          <p className="mb-5 rounded-[6px] bg-card px-4 py-3 text-body-s text-muted-foreground shadow-card">
+            Loading your invitation…
+          </p>
+        ) : null}
+        {inviteError && (
+          <p
+            role="alert"
+            className="mb-5 rounded-[6px] bg-amber-50 px-4 py-3 text-body-s text-amber-900"
+          >
+            {inviteError}
+          </p>
+        )}
+        {invite && !inviteError ? (
+          <p className="mb-5 rounded-[6px] bg-emerald-50 px-4 py-3 text-body-s text-emerald-900">
+            You&apos;re signing up from an invitation. Complete the form to register for the webinar.
+          </p>
+        ) : null}
         {error && (
           <p
             role="alert"
@@ -346,6 +566,20 @@ export default function Join() {
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
             required
+            readOnly={!!invite}
+            hint={invite ? 'Email locked from your invitation.' : undefined}
+          />
+
+          <Field
+            label="Mobile phone"
+            type="tel"
+            inputMode="tel"
+            placeholder="(555) 123-4567"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            autoComplete="tel"
+            required
+            hint="US mobile number for SMS MFA verification."
           />
 
           <div>

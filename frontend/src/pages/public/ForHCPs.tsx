@@ -37,7 +37,7 @@ const STALE = 5 * 60 * 1000;
 
 const entry = [
   { label: 'Clinical Conversations', href: '/catalog', cta: 'Conversations' },
-  { label: 'CHM Office Hours', href: '/chm-office-hours', cta: 'View sessions' },
+  { label: 'CHM Office Hours', href: '/office-hours', cta: 'View sessions' },
   { label: 'Live panels', href: '/live', cta: 'Join now' },
 ];
 

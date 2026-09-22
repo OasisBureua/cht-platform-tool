@@ -430,6 +430,10 @@ Persists to `campaign.aiInsights`.
 
 Reports are **requested through CHT** and **built from data pulled from Content Hub** at that moment.
 
+cht-reports (PDF/LLM worker) does **not** use the CHT proxy. It calls Hub
+directly: `GET /api/campaigns/{id}/report-packet?windowStart=&windowEnd=&sources=`
+with `X-API-Key`. See `cht-content-hub/docs/engineering/reports-ingest-etl.md`.
+
 ### Flow (analytics + executive)
 
 ```

@@ -240,7 +240,7 @@ export default function WatchVideo() {
         </button>
 
         <button
-          onClick={() => navigate(`/webinars/${program.id}`)}
+          onClick={() => navigate(`/live/${program.id}`)}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           Webinar Details

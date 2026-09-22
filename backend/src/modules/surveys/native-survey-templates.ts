@@ -39,13 +39,19 @@ function multi(
 function text(
   id: string,
   prompt: string,
-  opts?: { required?: boolean; long?: boolean },
+  opts?: {
+    required?: boolean;
+    long?: boolean;
+    /** Maps this answer to a User profile column (SCRUM-186). */
+    syncToProfile?: string;
+  },
 ): NativeQuestion {
   return {
     id,
     type: opts?.long ? 'long_text' : 'text',
     prompt,
     required: opts?.required ?? true,
+    ...(opts?.syncToProfile ? { syncToProfile: opts.syncToProfile } : {}),
   };
 }
 
@@ -64,13 +70,26 @@ export function defaultWebinarIntakeQuestions() {
           'We will send your confirmation and join link to the email on your account.',
         ),
         text('phone', 'Phone number', { required: false }),
-        text('npi', 'NPI number', { required: false }),
-        text('organization', 'Organization', { required: true }),
+        text('npi', 'NPI number', {
+          required: false,
+          syncToProfile: 'npiNumber',
+        }),
+        text('organization', 'Organization', {
+          required: true,
+          syncToProfile: 'institution',
+        }),
+        // Street lines are intake-only (User profile has no street fields).
         text('address_street', 'Company address: street', { required: false }),
         text('address_line2', 'Street address line 2', { required: false }),
-        text('city', 'City', { required: true }),
-        text('state', 'State / Province', { required: true }),
-        text('postal_code', 'Postal / Zip code', { required: false }),
+        text('city', 'City', { required: true, syncToProfile: 'city' }),
+        text('state', 'State / Province', {
+          required: true,
+          syncToProfile: 'state',
+        }),
+        text('postal_code', 'Postal / Zip code', {
+          required: false,
+          syncToProfile: 'zipCode',
+        }),
         text('company_website', 'Company website', { required: false }),
         text('linkedin', 'LinkedIn account handle', { required: false }),
         text('x_handle', 'X account handle', { required: false }),

@@ -25,13 +25,16 @@ import { JotformModule } from './modules/jotform/jotform.module';
 import { HubSpotModule } from './modules/hubspot/hubspot.module';
 import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module';
 import { ContactModule } from './modules/contact/contact.module';
+import { InvitesModule } from './modules/invites/invites.module';
 import { CacheModule } from './cache/cache.module';
 import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { CompanionModule } from './modules/companion/companion.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ConfigModule } from '@nestjs/config';
+import { FeatureFlagsModule } from './feature-flags/feature-flags.module';
 
 const usePrettyLogs = process.env.LOG_PRETTY === 'true';
 
@@ -139,6 +142,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     AuditModule,
     HealthModule,
     QueueModule,
+    FeatureFlagsModule,
     AuthModule,
     DashboardModule,
     PaymentsModule,
@@ -153,9 +157,11 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     HubSpotModule,
     OutboundSyncModule,
     ContactModule,
+    InvitesModule,
     InternalModule,
     AdminContentHubModule,
     CampaignsModule,
+    CompanionModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

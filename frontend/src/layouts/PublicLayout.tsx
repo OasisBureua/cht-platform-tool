@@ -10,9 +10,9 @@ import {
 import { createPortal } from 'react-dom';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
-import ChatBubble from '../components/ChatBubble';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { useTheme } from '../contexts/ThemeContext';
+import { isTestappHost } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
 import { CHM_PODCAST_PLATFORM_LINKS, PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { ChmMark } from '../components/brand/ChmMark';
@@ -20,7 +20,8 @@ import { ChmMark } from '../components/brand/ChmMark';
 /* Mirrors the live platform's information architecture. */
 const nav = [
   { to: '/catalog', label: 'Content Library' },
-  { to: '/kol-network', label: 'KOL Network' },
+  { to: '/kols', label: 'KOL Network' },
+  { to: '/podcast-network', label: 'Podcasts' },
   { to: '/live', label: 'Live' },
 ];
 
@@ -60,6 +61,21 @@ export default function PublicLayout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [headerQuery, setHeaderQuery] = useState('');
 
+  /* Auth pages are a single decision on one screen. A footer under
+     them adds a scroll to a page that is meant to fit the frame, and
+     offers twenty exits from a form we just asked someone to finish. */
+  const AUTH_ROUTES = [
+    '/login', '/join', '/admin/login', '/forgot-password',
+    '/reset-password/confirm', '/mfa/setup', '/verify-email',
+    '/complete-profile', '/auth/callback',
+  ];
+  const isAuthRoute = AUTH_ROUTES.some(
+    (r) => pathname === r || pathname.startsWith(r + '/'),
+  );
+
+  /* Platform (testapp / app.) auth chrome: hold marketing IA until homepage ships. */
+  const hidePrelaunchNav = isTestappHost() && isAuthRoute;
+
   /* One navigation closes every transient surface. Adjusting during
      render rather than in an effect means the panel is never painted
      open on the page it just left. */
@@ -72,6 +88,7 @@ export default function PublicLayout() {
   }
 
   useEffect(() => {
+    if (hidePrelaunchNav) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -80,7 +97,7 @@ export default function PublicLayout() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [hidePrelaunchNav]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -107,26 +124,20 @@ export default function PublicLayout() {
     else navigate('/catalog');
   };
 
+  const primaryNav = hidePrelaunchNav ? [] : nav;
 
-  /* Auth pages are a single decision on one screen. A footer under
-     them adds a scroll to a page that is meant to fit the frame, and
-     offers twenty exits from a form we just asked someone to finish. */
-  const AUTH_ROUTES = [
-    '/login', '/join', '/admin/login', '/forgot-password',
-    '/reset-password/confirm', '/mfa/setup', '/verify-email',
-    '/complete-profile', '/auth/callback',
-  ];
-  const isAuthRoute = AUTH_ROUTES.some(
-    (r) => pathname === r || pathname.startsWith(r + '/'),
-  );
-
-  const drawerLinks = [
-    ...nav,
-    { to: '/for-hcps', label: 'For HCPs' },
-    { to: '/contact', label: 'Contact' },
-    { to: '/login', label: 'Log in' },
-    { to: '/join', label: 'Get started' },
-  ];
+  const drawerLinks = hidePrelaunchNav
+    ? [
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ]
+    : [
+        ...nav,
+        { to: '/for-hcps', label: 'For HCPs' },
+        { to: '/contact', label: 'Contact' },
+        { to: '/login', label: 'Log in' },
+        { to: '/join', label: 'Get started' },
+      ];
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-ground text-text">
@@ -163,7 +174,7 @@ export default function PublicLayout() {
               <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-hairline" />
             )}
             <Link
-              to="/home"
+              to="/"
               className="press shrink-0 rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
@@ -172,7 +183,7 @@ export default function PublicLayout() {
 
             {!isAuthRoute && (
             <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 lg:flex">
-              {nav.map((n) => (
+              {primaryNav.map((n) => (
                 <NavLink
                   key={n.to}
                   to={n.to}
@@ -185,23 +196,27 @@ export default function PublicLayout() {
                   {n.label}
                 </NavLink>
               ))}
-              <DiseaseMenu
-                open={diseaseOpen}
-                setOpen={setDiseaseOpen}
-                active={pathname.startsWith('/catalog/')}
-              />
+              {!hidePrelaunchNav ? (
+                <DiseaseMenu
+                  open={diseaseOpen}
+                  setOpen={setDiseaseOpen}
+                  active={pathname.startsWith('/catalog/')}
+                />
+              ) : null}
             </nav>
             )}
 
             <div className="ms-auto flex shrink-0 items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSearchOpen(true)}
-                aria-label="Search the library"
-                className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
-              >
-                <Search className="size-[18px]" strokeWidth={1.5} />
-              </button>
+              {!hidePrelaunchNav ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(true)}
+                  aria-label="Search the library"
+                  className="press grid size-9 place-items-center rounded-[6px] text-dim hover:text-text"
+                >
+                  <Search className="size-[18px]" strokeWidth={1.5} />
+                </button>
+              ) : null}
 
               <ThemeControl />
 
@@ -262,19 +277,23 @@ export default function PublicLayout() {
                     {n.label}
                   </Link>
                 ))}
-                <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
-                <div className="flex flex-wrap gap-2 px-1 pb-1">
-                  {DISEASE_AREAS.map((a) => (
-                    <Link
-                      key={a.slug}
-                      to={`/catalog/${a.slug}`}
-                      onClick={() => setDrawerOpen(false)}
-                      className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
-                    >
-                      {a.title}
-                    </Link>
-                  ))}
-                </div>
+                {!hidePrelaunchNav ? (
+                  <>
+                    <p className="eyebrow px-3 pb-2 pt-4 text-faint">Disease states</p>
+                    <div className="flex flex-wrap gap-2 px-1 pb-1">
+                      {DISEASE_AREAS.map((a) => (
+                        <Link
+                          key={a.slug}
+                          to={`/catalog/${a.slug}`}
+                          onClick={() => setDrawerOpen(false)}
+                          className="press rounded-[6px] bg-surface-2 px-4 py-2 text-body-s text-dim shadow-[var(--shadow-card)] hover:text-text"
+                        >
+                          {a.title}
+                        </Link>
+                      ))}
+                    </div>
+                  </>
+                ) : null}
               </nav>
             </div>
           ) : null}
@@ -289,11 +308,10 @@ export default function PublicLayout() {
       <main id="main" className="min-w-0 flex-1 overflow-x-clip">
         <Outlet />
       </main>
-      <ChatBubble />
 
       {!isAuthRoute && <SiteFooter />}
 
-      {searchOpen ? (
+      {searchOpen && !hidePrelaunchNav ? (
         <SearchDialog
           q={headerQuery}
           setQ={setHeaderQuery}
@@ -660,17 +678,21 @@ const columns: { label: string; links: FooterLink[] }[] = [
     /* Each show points at its own hub; a series without an override
        falls back to the umbrella CHM listing, which is the contract
        `platformLinks` already documents. */
-    links: PODCAST_SHOWS.map((s) => ({
-      href: (s.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS)[0].href,
-      label: s.title,
-    })),
+    links: [
+      { to: '/podcast-network', label: 'All shows' },
+      ...PODCAST_SHOWS.map((s) => ({
+        to: `/podcast-network/${encodeURIComponent(s.id)}`,
+        label: s.title,
+      })),
+    ],
   },
   {
     label: 'Company',
     links: [
       { to: '/about', label: 'About CHM' },
       { to: '/about', label: 'What we do' },
-      { to: '/kol-network', label: 'KOL network' },
+      { to: '/kols', label: 'KOL network' },
+      { to: '/podcast-network', label: 'Podcast network' },
       { to: '/contact', label: 'Contact' },
     ],
   },
@@ -710,7 +732,7 @@ function SiteFooter() {
         <div className="grid gap-12 lg:grid-cols-[1fr_3fr]">
           <div>
             <Link
-              to="/home"
+              to="/"
               className="press inline-block rounded-[6px] py-1 text-text"
               aria-label="Community Health Media, home"
             >
@@ -794,7 +816,7 @@ function SiteFooter() {
                           {l.label}
                         </a>
                       ) : (
-                        <Link to={l.to ?? '/home'} className={FOOTER_LINK}>
+                        <Link to={l.to ?? "/"} className={FOOTER_LINK}>
                           {l.label}
                         </Link>
                       )}

@@ -103,6 +103,18 @@ resource "aws_ecs_task_definition" "backend" {
             {
               name  = "SESSION_ABSOLUTE_TTL_SECONDS"
               value = "28800"
+            },
+            {
+              name  = "ZOOM_RECORDINGS_SYNC_MONTHS_BACK"
+              value = "24"
+            },
+            {
+              name  = "ZOOM_ATTENDANCE_IMPORT_MONTHS_BACK"
+              value = "12"
+            },
+            {
+              name  = "ZOOM_ATTENDANCE_IMPORT_AUTO_VERIFY"
+              value = "false"
             }
           ],
           concat(
@@ -123,6 +135,14 @@ resource "aws_ecs_task_definition" "backend" {
             var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
             [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
             var.redis_url != "" ? [{ name = "REDIS_URL", value = var.redis_url }] : [],
+            var.appconfig_application != "" && var.appconfig_environment != "" && var.appconfig_profile != ""
+            ? [
+              { name = "APPCONFIG_APPLICATION", value = var.appconfig_application },
+              { name = "APPCONFIG_ENVIRONMENT", value = var.appconfig_environment },
+              { name = "APPCONFIG_PROFILE", value = var.appconfig_profile },
+            ]
+            : [],
+            var.companion_base_url != "" ? [{ name = "COMPANION_BASE_URL", value = var.companion_base_url }] : [],
           )
         )
 
@@ -130,26 +150,6 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name      = "DATABASE_URL"
             valueFrom = "${var.database_secret_arn}:url::"
-          },
-          {
-            name      = "SUPABASE_URL"
-            valueFrom = "${var.app_secrets_arn}:supabase_url::"
-          },
-          {
-            name      = "SUPABASE_ANON_KEY"
-            valueFrom = "${var.app_secrets_arn}:supabase_anon_key::"
-          },
-          {
-            name      = "GOTRUE_JWT_SECRET"
-            valueFrom = "${var.app_secrets_arn}:gotrue_jwt_secret::"
-          },
-          {
-            name      = "MEDIAHUB_BASE_URL"
-            valueFrom = "${var.app_secrets_arn}:mediahub_base_url::"
-          },
-          {
-            name      = "MEDIAHUB_API_KEY"
-            valueFrom = "${var.app_secrets_arn}:mediahub_api_key::"
           },
           {
             name      = "CONTENTHUB_BASE_URL"
@@ -236,6 +236,22 @@ resource "aws_ecs_task_definition" "backend" {
             valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
           },
           {
+            name      = "STRIPE_SECRET_KEY"
+            valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
+          },
+          {
+            name      = "STRIPE_PUBLISHABLE_KEY"
+            valueFrom = "${var.app_secrets_arn}:stripe_publishable_key::"
+          },
+          {
+            name      = "STRIPE_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:stripe_webhook_secret::"
+          },
+          {
+            name      = "STRIPE_CONNECT_WEBHOOK_SECRET"
+            valueFrom = "${var.app_secrets_arn}:stripe_connect_webhook_secret::"
+          },
+          {
             name      = "ADMIN_BOOTSTRAP_SECRET"
             valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
           },
@@ -250,6 +266,10 @@ resource "aws_ecs_task_definition" "backend" {
           {
             name      = "INTERNAL_CACHE_SECRET"
             valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
+          },
+          {
+            name      = "COMPANION_INTERNAL_SECRET"
+            valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
           }
         ]
 
@@ -334,6 +354,16 @@ resource "aws_ecs_service" "backend" {
   force_new_deployment = true
 
   enable_execute_command = true
+
+  # Client-only Service Connect: join companion's Cloud Map namespace so
+  # http://cht-companion:8080 resolves inside the task (no port published).
+  dynamic "service_connect_configuration" {
+    for_each = var.service_connect_namespace != "" ? [1] : []
+    content {
+      enabled   = true
+      namespace = var.service_connect_namespace
+    }
+  }
 
   tags = {
     Name        = "${local.prefix}-backend-service"

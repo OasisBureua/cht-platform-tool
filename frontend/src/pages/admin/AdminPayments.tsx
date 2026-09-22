@@ -6,7 +6,7 @@ import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download } from 'lucide-react';
-import { BillComMark } from '../../components/branding/BillComMark';
+import { StripeMark } from '../../components/branding/StripeMark';
 
 function formatMoney(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -24,10 +24,35 @@ async function downloadPaymentsCsv(status: 'PENDING' | 'FAILED' | 'PAID' | 'ALL'
   URL.revokeObjectURL(url);
 }
 
+function paymentUserLabel(p: {
+  user: { email: string; firstName: string; lastName: string };
+}) {
+  return `${p.user.firstName} ${p.user.lastName} ${p.user.email}`.toLowerCase();
+}
+
+function matchesUserQuery(
+  p: { user: { email: string; firstName: string; lastName: string } },
+  q: string,
+) {
+  if (!q.trim()) return true;
+  return paymentUserLabel(p).includes(q.trim().toLowerCase());
+}
+
+function matchesProgramFilter(
+  p: { programId?: string | null; program?: { id: string } | null },
+  programFilter: string,
+) {
+  if (programFilter === 'all') return true;
+  if (programFilter === 'none') return !(p.programId ?? p.program?.id);
+  return (p.programId ?? p.program?.id) === programFilter;
+}
+
 export default function AdminPayments() {
   const queryClient = useQueryClient();
   const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [userFilter, setUserFilter] = useState('');
+  const [programFilter, setProgramFilter] = useState('all');
 
   const { data: pending, isLoading } = useQuery({
     queryKey: ['admin', 'pending-payments'],
@@ -49,6 +74,52 @@ export default function AdminPayments() {
     queryFn: () => adminApi.getPaidPayments({ limit: 200 }),
   });
 
+  const programOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const p of [...(pending || []), ...failed, ...paid]) {
+      const id = p.program?.id ?? p.programId;
+      if (!id) continue;
+      map.set(id, p.program?.title ?? id);
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [pending, failed, paid]);
+
+  const filteredPending = useMemo(
+    () =>
+      (pending || []).filter(
+        (p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter),
+      ),
+    [pending, userFilter, programFilter],
+  );
+
+  const filteredPaid = useMemo(
+    () =>
+      paid.filter((p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter)),
+    [paid, userFilter, programFilter],
+  );
+
+  const filteredFailed = useMemo(
+    () =>
+      failed.filter((p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter)),
+    [failed, userFilter, programFilter],
+  );
+
+  const filteredEligible = useMemo(() => {
+    const q = userFilter.trim().toLowerCase();
+    return eligibleNotSubmitted.filter((r) => {
+      if (programFilter !== 'all' && programFilter !== 'none' && r.program?.id !== programFilter) {
+        return false;
+      }
+      if (programFilter === 'none' && r.program?.id) return false;
+      if (!q) return true;
+      const hay = `${r.user.firstName} ${r.user.lastName} ${r.user.email}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [eligibleNotSubmitted, userFilter, programFilter]);
+
+
   const payNowMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.payNow(paymentId),
     onSuccess: () => {
@@ -57,7 +128,7 @@ export default function AdminPayments() {
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
     onError: () => {
-      // Bill.com failures mark the row FAILED server-side, refresh both lists.
+      // Payout failures mark the row FAILED server-side, refresh both lists.
       queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
     },
@@ -94,11 +165,26 @@ export default function AdminPayments() {
 
   // Group failed payments by program (sorted alphabetically; no-program group last)
   const failedByProgram = useMemo(() => {
-    const groups = new Map<string, { title: string; programId: string | null; payments: typeof failed }>();
-    for (const p of failed) {
+    const groups = new Map<
+      string,
+      {
+        title: string;
+        programId: string | null;
+        chmProgramId: string | null;
+        sponsorName: string | null;
+        payments: typeof filteredFailed;
+      }
+    >();
+    for (const p of filteredFailed) {
       const key = p.program?.id ?? '__none__';
       if (!groups.has(key)) {
-        groups.set(key, { title: p.program?.title ?? 'No program', programId: p.program?.id ?? null, payments: [] });
+        groups.set(key, {
+          title: p.program?.title ?? 'No program',
+          programId: p.program?.id ?? null,
+          chmProgramId: p.program?.chmProgramId ?? null,
+          sponsorName: p.program?.sponsorName ?? null,
+          payments: [],
+        });
       }
       groups.get(key)!.payments.push(p);
     }
@@ -107,11 +193,11 @@ export default function AdminPayments() {
       if (b.programId === null) return -1;
       return a.title.localeCompare(b.title);
     });
-  }, [failed]);
+  }, [filteredFailed]);
 
   if (isLoading) return <LoadingSpinner />;
 
-  const hasPending = (pending || []).length > 0;
+  const hasPending = filteredPending.length > 0;
 
   return (
     <div className="space-y-8">
@@ -121,7 +207,7 @@ export default function AdminPayments() {
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
             Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send
-            through <BillComMark size="sm" className="translate-y-px" /> (ACH or check).
+            through <StripeMark size="sm" className="translate-y-px" /> (ACH direct deposit only).
           </p>
         </div>
         <div className="shrink-0 flex flex-wrap gap-2">
@@ -167,6 +253,59 @@ export default function AdminPayments() {
 
       <ManualPaymentForm />
 
+      <section className="rounded-card border border-border bg-card p-4">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-[12rem] flex-1">
+            <label htmlFor="admin-payments-user-filter" className="text-xs font-semibold text-muted-foreground">
+              Filter by user
+            </label>
+            <input
+              id="admin-payments-user-filter"
+              type="search"
+              value={userFilter}
+              onChange={(e) => setUserFilter(e.target.value)}
+              placeholder="Name or email"
+              className="mt-1 h-10 w-full rounded-[6px] border border-border bg-card px-3 text-sm text-foreground"
+            />
+          </div>
+          <div className="min-w-[12rem] flex-1 sm:max-w-xs">
+            <label htmlFor="admin-payments-program-filter" className="text-xs font-semibold text-muted-foreground">
+              Filter by program
+            </label>
+            <select
+              id="admin-payments-program-filter"
+              value={programFilter}
+              onChange={(e) => setProgramFilter(e.target.value)}
+              className="mt-1 h-10 w-full rounded-[6px] border border-border bg-card px-3 text-sm text-foreground"
+            >
+              <option value="all">All programs</option>
+              {programOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+              <option value="none">No program</option>
+            </select>
+          </div>
+          {(userFilter || programFilter !== 'all') && (
+            <button
+              type="button"
+              onClick={() => {
+                setUserFilter('');
+                setProgramFilter('all');
+              }}
+              className="h-10 rounded-[6px] border border-border px-3 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Showing {filteredPending.length} pending · {filteredPaid.length} paid · {filteredFailed.length} failed
+          {(userFilter || programFilter !== 'all') ? ' (filtered)' : ''}
+        </p>
+      </section>
+
       {/* Pending table */}
       <section id="pending-table" className="rounded-card border border-border bg-card overflow-hidden">
         {(payNowMutation.isError || deleteMutation.isError) && (
@@ -192,12 +331,13 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Method</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Campaign / ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Created</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {(pending || []).map((p) => (
+              {filteredPending.map((p) => (
                 <PendingRow
                   key={p.id}
                   payment={p}
@@ -216,11 +356,17 @@ export default function AdminPayments() {
           </table>
         </div>
 
-        {(pending || []).length === 0 && (
+        {filteredPending.length === 0 && (
           <div className="px-6 py-12 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
-            <p className="mt-2 font-medium text-foreground">No pending payments</p>
-            <p className="text-sm text-muted-foreground">All payouts are up to date.</p>
+            <p className="mt-2 font-medium text-foreground">
+              {(pending || []).length === 0 ? 'No pending payments' : 'No pending payments match filters'}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {(pending || []).length === 0
+                ? 'All payouts are up to date.'
+                : 'Clear or adjust user/program filters.'}
+            </p>
             <p className="mt-4 text-xs text-muted-foreground">
               Pay now buttons appear in each row when there are pending payments.
             </p>
@@ -249,7 +395,7 @@ export default function AdminPayments() {
           <div>
             <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
             <p className="mt-0.5 text-sm text-green-900">
-              Recent payouts completed through <BillComMark size="xs" className="translate-y-px" /> (newest first, up to 200).
+              Recent payouts completed through <StripeMark size="xs" className="translate-y-px" /> (newest first, up to 200).
             </p>
           </div>
         </div>
@@ -262,24 +408,34 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Method / delivery</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Program</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Campaign / ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-green-900 uppercase">Paid on</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {paidPending ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     Loading paid payments…
                   </td>
                 </tr>
-              ) : paid.length === 0 ? (
+              ) : filteredPaid.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-gray-500">
-                    No completed payouts yet. Successful payments appear here after <strong>Pay now</strong> finishes.
+                  <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
+                    {paid.length === 0
+                      ? (
+                        <>
+                          No completed payouts yet. Successful payments appear here after <strong>Pay now</strong>{' '}
+                          finishes.
+                        </>
+                        )
+                      : (
+                        'No paid payments match filters.'
+                      )}
                   </td>
                 </tr>
               ) : (
-                paid.map((p) => <PaidRow key={p.id} payment={p} />)
+                filteredPaid.map((p) => <PaidRow key={p.id} payment={p} />)
               )}
             </tbody>
           </table>
@@ -295,10 +451,13 @@ export default function AdminPayments() {
               <h2 className="text-base font-semibold text-red-900">Failed payments</h2>
               <p className="mt-0.5 text-sm text-destructive flex flex-wrap items-center gap-x-1 gap-y-1">
                 These payments failed during processing. Review the failure reason and click <strong>Retry</strong> to try
-                again through <BillComMark size="xs" className="translate-y-px" />.
+                again through <StripeMark size="xs" className="translate-y-px" />.
               </p>
             </div>
           </div>
+          {filteredFailed.length === 0 ? (
+            <p className="px-6 py-8 text-sm text-destructive">No failed payments match filters.</p>
+          ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-red-200 text-sm">
               <thead className="bg-red-100/60">
@@ -316,6 +475,16 @@ export default function AdminPayments() {
                     <tr className="bg-red-100/40">
                       <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
                         {group.title}
+                        {group.chmProgramId ? (
+                          <span className="ml-2 font-mono font-normal text-destructive normal-case tracking-normal">
+                            {group.chmProgramId}
+                          </span>
+                        ) : null}
+                        {group.sponsorName ? (
+                          <span className="ml-2 font-normal text-destructive normal-case tracking-normal">
+                            · {group.sponsorName}
+                          </span>
+                        ) : null}
                         <span className="ml-2 font-normal text-destructive normal-case">
                           ({group.payments.length} failed)
                         </span>
@@ -335,6 +504,7 @@ export default function AdminPayments() {
               ))}
             </table>
           </div>
+          )}
           {retryMutation.isError && (
             <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -356,6 +526,9 @@ export default function AdminPayments() {
               </p>
             </div>
           </div>
+          {filteredEligible.length === 0 ? (
+            <p className="px-6 py-8 text-sm text-amber-900">No eligible rows match filters.</p>
+          ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-amber-200 text-sm">
               <thead className="bg-amber-100/60">
@@ -368,7 +541,7 @@ export default function AdminPayments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">
-                {eligibleNotSubmitted.map((r) => (
+                {filteredEligible.map((r) => (
                   <tr key={r.id} className="bg-white/70 hover:bg-white">
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{r.user.firstName} {r.user.lastName}</p>
@@ -377,6 +550,12 @@ export default function AdminPayments() {
                     </td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{r.program.title}</p>
+                      {r.program.chmProgramId ? (
+                        <p className="mt-0.5 font-mono text-[11px] text-gray-500">{r.program.chmProgramId}</p>
+                      ) : null}
+                      {r.program.sponsorName ? (
+                        <p className="text-xs text-gray-500">{r.program.sponsorName}</p>
+                      ) : null}
                       <p className="text-xs text-gray-500">{r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}</p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
@@ -400,6 +579,7 @@ export default function AdminPayments() {
               </tbody>
             </table>
           </div>
+          )}
         </section>
       )}
 
@@ -538,7 +718,7 @@ function ManualPaymentForm() {
               eligibility.warnings.length > 0
                 ? eligibility.warnings
                 : [
-                    'Attendance, survey, Bill.com vendor, or W-9 requirements are not complete yet.',
+                    'Attendance, survey, Stripe payout account, or tax details are not complete yet.',
                   ],
             programTitle: eligibility.programTitle,
           });
@@ -705,7 +885,7 @@ function ManualPaymentForm() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   This person is not fully ready for Pay now on{' '}
                   <strong>{eligibilityConfirm.programTitle}</strong>. You can still queue the
-                  payment, but Pay now will fail until attendance, survey, Bill.com vendor, and W-9
+                  payment, but Pay now will fail until attendance, survey, Stripe payout account, and tax
                   requirements are met.
                 </p>
                 <ul className="mt-3 list-disc pl-5 space-y-1 text-sm text-amber-900">
@@ -786,7 +966,8 @@ function FailedRow({
   isRetrying: boolean;
   isDeleting: boolean;
 }) {
-  const canRetry = !!payment.user.billVendorId;
+  const canRetry =
+    !!payment.user.stripeAccountId || !!payment.user.billVendorId;
 
   return (
     <tr className="bg-white/70 hover:bg-white">
@@ -832,7 +1013,7 @@ function FailedRow({
         </div>
         {!canRetry && (
           <p className="mt-1 text-xs text-amber-600 flex flex-wrap items-center gap-1">
-            No <BillComMark size="xs" /> vendor
+            No <StripeMark size="xs" /> payout account
           </p>
         )}
       </td>
@@ -876,8 +1057,32 @@ function PaidRow({ payment }: { payment: PaidPayment }) {
         ) : null}
       </td>
       <td className="px-4 py-3 text-gray-600">{payment.program?.title ?? '-'}</td>
+      <td className="px-4 py-3 text-gray-600">
+        <PaymentCampaignCell program={payment.program} />
+      </td>
       <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{paidLabel}</td>
     </tr>
+  );
+}
+
+function PaymentCampaignCell({
+  program,
+}: {
+  program: PendingPayment['program'];
+}) {
+  if (!program) return <span className="text-muted-foreground">-</span>;
+  const label = program.sponsorName?.trim() || null;
+  const id = program.chmProgramId?.trim() || null;
+  if (!label && !id) return <span className="text-muted-foreground">-</span>;
+  return (
+    <div>
+      {label ? <p className="text-sm text-foreground">{label}</p> : null}
+      {id ? (
+        <p className="font-mono text-[11px] text-muted-foreground" title="Internal CHM Content ID">
+          {id}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -896,21 +1101,21 @@ function PendingRow({
   isDeleting: boolean;
   payError?: string | null;
 }) {
-  const hasVendor = !!payment.user.billVendorId;
+  const hasStripe =
+    !!payment.user.stripeAccountId && payment.user.stripePayoutsEnabled !== false;
+  const hasPayoutAccount = hasStripe || !!payment.user.billVendorId;
   const hasW9 = payment.user.w9Submitted !== false;
-  const canPay = hasVendor && hasW9;
-  const blockReason = !hasVendor
-    ? 'No Bill.com vendor: HCP must complete payment setup (ACH or check)'
+  const canPay = hasPayoutAccount && hasW9;
+  const blockReason = !hasPayoutAccount
+    ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
     : !hasW9
-      ? 'W-9 not submitted: HCP must complete W-9 first'
+      ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
       : null;
 
   const methodLabel =
     payment.user.preferredPaymentMethod === 'CHECK'
-      ? 'Check'
-      : payment.user.preferredPaymentMethod === 'ACH'
-        ? `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`
-        : '—';
+      ? 'Check (legacy)'
+      : `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`;
 
   return (
     <tr className="hover:bg-muted">
@@ -924,6 +1129,9 @@ function PendingRow({
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.type.replace(/_/g, ' ')}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{methodLabel}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.program?.title ?? '-'}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        <PaymentCampaignCell program={payment.program} />
+      </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-2">
@@ -931,7 +1139,7 @@ function PendingRow({
             type="button"
             onClick={onPayNow}
             disabled={!canPay || isPaying}
-            title={blockReason ?? 'Send payout via Bill.com'}
+            title={blockReason ?? 'Send payout via Stripe ACH'}
             className={[
               'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
               canPay && !isPaying

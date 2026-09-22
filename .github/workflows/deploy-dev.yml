@@ -152,6 +152,24 @@ jobs:
         working-directory: ./backend
         run: npm test
 
+      - name: Worker - Setup Python
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: worker/requirements.txt
+
+      - name: Worker - Install dependencies
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pip install -r requirements.txt
+
+      - name: Worker - Run tests
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pytest
+
       - name: Frontend - Install dependencies
         if: needs.changes.outputs.deploy_frontend == 'true'
         working-directory: ./frontend
@@ -255,9 +273,6 @@ jobs:
       - name: Verify GitHub Environment secrets
         if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         env:
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
-          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
           ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
@@ -279,6 +294,7 @@ jobs:
           RECAPTCHA_SECRET_KEY: ${{ secrets.RECAPTCHA_SECRET_KEY }}
           CONTENTHUB_API_KEY: ${{ secrets.CONTENTHUB_API_KEY }}
           INTERNAL_CACHE_SECRET: ${{ secrets.INTERNAL_CACHE_SECRET }}
+          COMPANION_INTERNAL_SECRET: ${{ secrets.COMPANION_INTERNAL_SECRET }}
         run: ./scripts/verify-github-env-secrets.sh development
 
       - name: Terraform Init
@@ -314,9 +330,6 @@ jobs:
         env:
           TF_VAR_acm_certificate_arn: ${{ secrets.ACM_CERTIFICATE_ARN }}
           TF_VAR_cloudfront_certificate_arn: ${{ secrets.CLOUDFRONT_CERTIFICATE_ARN }}
-          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
-          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
-          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
           TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
           TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
           TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
@@ -334,6 +347,9 @@ jobs:
           TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
           TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
           TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
+          # Stripe for cht-dev is owned by AWS Secrets Manager (cht-dev-app-secrets).
+          # Do not pass TF_VAR_stripe_* here — empty GitHub secrets would wipe SM.
+          # Terraform preserves existing stripe_* keys when TF vars are blank.
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
           TF_VAR_cognito_google_client_id: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
@@ -341,6 +357,7 @@ jobs:
           TF_VAR_recaptcha_secret_key: ${{ secrets.RECAPTCHA_SECRET_KEY }}
           TF_VAR_contenthub_api_key: ${{ secrets.CONTENTHUB_API_KEY }}
           TF_VAR_internal_cache_secret: ${{ secrets.INTERNAL_CACHE_SECRET }}
+          TF_VAR_companion_internal_secret: ${{ secrets.COMPANION_INTERNAL_SECRET }}
 
       - name: Plan summary
         if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
@@ -431,14 +448,11 @@ jobs:
           VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.cognito_client_id }}
           VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
           VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
-          VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
           VITE_DISABLE_AUTH: 'false'
           VITE_USE_DEV_AUTH: 'false'
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
           VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_CATALOG_WORDPRESS_ONLY: 'true'
-          VITE_SUPABASE_URL: https://mediahub.communityhealth.media
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
         if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'

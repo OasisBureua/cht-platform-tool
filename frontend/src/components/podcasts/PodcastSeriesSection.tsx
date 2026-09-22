@@ -30,7 +30,7 @@ const SORT_OPTIONS: { value: PodcastEpisodeSort; label: string }[] = [
 ];
 
 function EpisodeRow({ ep, showId }: { ep: PodcastEpisode; showId: string }) {
-  const watchMatch = useMatch('/app/podcasts/:showId/watch/:episodeId');
+  const watchMatch = useMatch('/app/podcast-network/:showId/watch/:episodeId');
   const isActive =
     !!ep.videoId &&
     watchMatch?.params.showId === showId &&

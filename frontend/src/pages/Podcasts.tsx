@@ -80,7 +80,7 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
                   </p>
                   <div className="flex flex-wrap items-center gap-3">
                     <Link
-                      to={`/app/podcasts/${show.id}`}
+                      to={`/app/podcast-network/${show.id}`}
                       className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
                     >
                       <PlayCircle className="h-4 w-4" aria-hidden />
@@ -132,7 +132,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
       {shows.map((show) => (
         <Link
           key={`top-${show.id}`}
-          to={`/app/podcasts/${show.id}`}
+          to={`/app/podcast-network/${show.id}`}
           className="group shrink-0 w-[5.5rem] text-center"
         >
           <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-white shadow-[0_8px_28px_-18px_rgba(0,0,0,0.12),0_2px_10px_-4px_rgba(0,0,0,0.06)] ring-1 ring-zinc-200/80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.14),0_4px_14px_-4px_rgba(0,0,0,0.08)] dark:bg-white dark:ring-zinc-700 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
@@ -156,7 +156,7 @@ function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
 function CatalogShowCard({ show }: { show: PodcastShow }) {
   return (
     <Link
-      to={`/app/podcasts/${show.id}`}
+      to={`/app/podcast-network/${show.id}`}
       className="group flex gap-4 overflow-hidden rounded-card bg-background p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:ring-zinc-800 sm:gap-5 sm:p-5"
     >
       <img
@@ -193,7 +193,7 @@ function WorthListenCard({ show, episode }: { show: PodcastShow; episode: Podcas
   if (!episode) return null;
   const playHref = episode.videoId
     ? podcastEpisodeWatchPath(show.id, episode.videoId)
-    : `/app/podcasts/${show.id}`;
+    : `/app/podcast-network/${show.id}`;
 
   return (
     <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-card bg-background shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">

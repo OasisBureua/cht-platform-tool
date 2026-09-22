@@ -15,6 +15,11 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { isSessionExpired } from '../utils/live-session-timing';
+import {
+  LIVE_WEBINARS_QUERY_KEY,
+  OFFICE_HOURS_QUERY_KEY,
+  liveSessionListQueryOptions,
+} from '../utils/live-session-list-query';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
@@ -51,7 +56,7 @@ const QUICK_START_ACTIONS = [
     title: 'CHM Office Hours',
     desc: 'Drop in for live Q&A with experts. Book a slot and join.',
     icon: CalendarClock,
-    to: '/app/chm-office-hours',
+    to: '/app/office-hours',
   },
   {
     title: 'Surveys',
@@ -170,9 +175,9 @@ export default function Dashboard() {
   };
 
   const { data: webinars = [], isLoading: webinarsLoading } = useQuery({
-    queryKey: ['webinars'],
+    queryKey: LIVE_WEBINARS_QUERY_KEY,
     queryFn: webinarsApi.list,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: earningsSummary, isLoading: earningsSummaryLoading } = useQuery({
@@ -199,9 +204,9 @@ export default function Dashboard() {
   const surveys = surveyList?.active ?? [];
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
-    queryKey: ['office-hours'],
+    queryKey: OFFICE_HOURS_QUERY_KEY,
     queryFn: webinarsApi.listOfficeHours,
-    staleTime: 5 * 60 * 1000,
+    ...liveSessionListQueryOptions,
   });
 
   const { data: tags = {} } = useQuery({
@@ -313,8 +318,8 @@ export default function Dashboard() {
       description:
         'Browse short expert-led videos, disease-area playlists, and new catalog releases in one place.',
       imageUrl: podcastThumb,
-      primaryHref: '/app/podcasts',
-      secondaryHref: '/app/podcasts',
+      primaryHref: '/app/podcast-network',
+      secondaryHref: '/app/podcast-network',
       primaryCta: 'Listen',
       secondaryCta: 'All podcasts',
     });
@@ -329,9 +334,9 @@ export default function Dashboard() {
           'Reserve a time and join live Q&A with our clinical team.',
         imageUrl: nextOfficeHoursSession.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[2],
         primaryHref: nextOfficeHoursSession.id
-          ? `/app/chm-office-hours/${nextOfficeHoursSession.id}`
-          : '/app/chm-office-hours',
-        secondaryHref: '/app/chm-office-hours',
+          ? `/app/office-hours/${nextOfficeHoursSession.id}`
+          : '/app/office-hours',
+        secondaryHref: '/app/office-hours',
         primaryCta: 'View session',
         secondaryCta: 'Full schedule',
       });
@@ -501,7 +506,7 @@ export default function Dashboard() {
               {/* The badge sits over a poster scrim as often as over the
                   wash, so it is a fixed-bright glass pill carrying the
                   fixed dark label rather than page-following tokens. */}
-              <span className="eyebrow inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-on-bright shadow-card backdrop-blur-md">
+              <span className="eyebrow inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/75 px-3 py-1.5 text-on-bright shadow-card backdrop-blur-md dark:border-white/25 dark:text-white">
                 <Radio className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Next LIVE
               </span>
@@ -913,7 +918,7 @@ export default function Dashboard() {
         <ConversationRow
           title="CHM Office Hours"
           subtitle={officeHoursLoading ? 'Loading' : `${officeHours.length} listed`}
-          seeAllHref="/app/chm-office-hours"
+          seeAllHref="/app/office-hours"
           seeAllLabel="Full schedule"
         >
           {officeHoursLoading ? (
@@ -927,7 +932,7 @@ export default function Dashboard() {
             officeHours.slice(0, 12).map((w, i) => (
               <StripCard
                 key={w.id}
-                to={w.id ? `/app/chm-office-hours/${w.id}` : '/app/chm-office-hours'}
+                to={w.id ? `/app/office-hours/${w.id}` : '/app/office-hours'}
                 title={w.title}
                 imageUrl={w.imageUrl || WEBINAR_PLACEHOLDER_IMAGES[i % WEBINAR_PLACEHOLDER_IMAGES.length]}
                 description={

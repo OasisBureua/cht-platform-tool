@@ -181,7 +181,6 @@ build_env_file() {
   echo "VITE_COGNITO_CLIENT_ID=$COGNITO_CLIENT_ID"
   echo "VITE_COGNITO_DOMAIN=$COGNITO_HOSTED_UI"
   echo "VITE_COGNITO_REGION=$AWS_REGION"
-  echo "VITE_MEDIAHUB_AUTH_DECOMMISSIONED=true"
   echo "VITE_DISABLE_AUTH=false"
   echo "VITE_USE_DEV_AUTH=false"
   if [ -n "$RECAPTCHA_SITE_KEY" ]; then
@@ -234,6 +233,13 @@ upload_frontend_bucket() {
         --cache-control "public, max-age=300, must-revalidate"
     fi
   done
+
+  if [ -f dist/zoom-embed.html ]; then
+    aws s3 cp dist/zoom-embed.html "s3://${target_bucket}/zoom-embed.html" \
+      "${region_flag[@]}" \
+      --cache-control "no-cache, no-store, must-revalidate" \
+      --content-type "text/html"
+  fi
 
   aws s3 cp dist/index.html "s3://${target_bucket}/index.html" \
     "${region_flag[@]}" \

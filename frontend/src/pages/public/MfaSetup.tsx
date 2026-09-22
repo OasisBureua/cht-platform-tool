@@ -1,27 +1,55 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
 
 export default function MfaSetup() {
-  const { beginMfaSetup, verifyMfaSetup, user } = useAuth();
+  const {
+    beginMfaSetup,
+    verifyMfaSetup,
+    beginSmsMfaSetup,
+    verifySmsMfaSetup,
+    user,
+  } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const from =
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
     (user?.role === 'ADMIN' ? '/admin' : '/app/home');
 
+  const method = user?.mfaFeature?.method === 'totp' ? 'totp' : 'sms';
+
   const [secretCode, setSecretCode] = useState<string | null>(null);
   const [otpauthUri, setOtpauthUri] = useState<string | null>(null);
+  const [phone, setPhone] = useState(() => user?.phoneNumber?.replace(/^\+1/, '') || '');
+  const [phoneSent, setPhoneSent] = useState(false);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loadingSetup, setLoadingSetup] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [showManualKey, setShowManualKey] = useState(false);
+  const [autoStarted, setAutoStarted] = useState(false);
 
-  const handleStartSetup = async () => {
+  // Prefill + optionally send SMS when profile already has a phone from Join.
+  useEffect(() => {
+    if (method !== 'sms' || autoStarted || phoneSent || !user?.phoneNumber) return;
+    setAutoStarted(true);
+    setPhone(user.phoneNumber.replace(/^\+1/, ''));
+    void (async () => {
+      setLoadingSetup(true);
+      const result = await beginSmsMfaSetup(user.phoneNumber!);
+      setLoadingSetup(false);
+      if (result.error) {
+        setError(result.error.message || 'Could not send verification SMS.');
+        return;
+      }
+      setPhoneSent(true);
+    })();
+  }, [method, autoStarted, phoneSent, user?.phoneNumber, beginSmsMfaSetup]);
+
+  const handleStartTotpSetup = async () => {
     setError(null);
     setLoadingSetup(true);
     const result = await beginMfaSetup();
@@ -36,7 +64,20 @@ export default function MfaSetup() {
     setShowManualKey(false);
   };
 
-  const handleVerify = async (e: React.FormEvent) => {
+  const handleStartSmsSetup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoadingSetup(true);
+    const result = await beginSmsMfaSetup(phone);
+    setLoadingSetup(false);
+    if (result.error) {
+      setError(result.error.message || 'Could not send verification SMS.');
+      return;
+    }
+    setPhoneSent(true);
+  };
+
+  const handleVerifyTotp = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
 
@@ -55,10 +96,31 @@ export default function MfaSetup() {
     setSuccess(true);
   };
 
+  const handleVerifySms = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!code.trim()) {
+      setError('Verification code is required.');
+      return;
+    }
+    setVerifying(true);
+    const result = await verifySmsMfaSetup(code);
+    setVerifying(false);
+    if (result.error) {
+      setError(result.error.message || 'Phone verification failed.');
+      return;
+    }
+    setSuccess(true);
+  };
+
   return (
     <AuthFormCard
       title="Set up MFA"
-      subtitle="Secure your account with an authenticator app."
+      subtitle={
+        method === 'sms'
+          ? 'Secure your account with a code texted to your phone.'
+          : 'Secure your account with an authenticator app.'
+      }
     >
       <div className="space-y-4">
         {error && (
@@ -81,10 +143,84 @@ export default function MfaSetup() {
           </div>
         )}
 
-        {!secretCode && !success && (
+        {method === 'sms' && !success && (
+          <>
+            {!phoneSent ? (
+              <form className="space-y-3" onSubmit={handleStartSmsSetup}>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground" htmlFor="mfaPhone">
+                    Mobile number
+                  </label>
+                  <input
+                    id="mfaPhone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="(555) 123-4567"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    US numbers only. We&apos;ll text a one-time code to verify this number.
+                  </p>
+                </div>
+                <button
+                  type="submit"
+                  disabled={loadingSetup}
+                  className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+                >
+                  {loadingSetup ? 'Sending…' : 'Send verification code'}
+                </button>
+              </form>
+            ) : (
+              <form className="space-y-3" onSubmit={handleVerifySms}>
+                <p className="text-sm text-muted-foreground">
+                  Enter the 6-digit code we texted you.
+                </p>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium text-muted-foreground" htmlFor="smsCode">
+                    Verification code
+                  </label>
+                  <input
+                    id="smsCode"
+                    type="text"
+                    placeholder="123456"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={code}
+                    onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    required
+                    className="w-full rounded-[6px] border border-border px-3 py-2.5 text-sm text-foreground placeholder-gray-400 focus:border-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={verifying}
+                  className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
+                >
+                  {verifying ? 'Verifying…' : 'Verify and enable SMS MFA'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPhoneSent(false);
+                    setCode('');
+                    setError(null);
+                  }}
+                  className="w-full text-sm font-medium text-foreground underline hover:no-underline"
+                >
+                  Use a different number
+                </button>
+              </form>
+            )}
+          </>
+        )}
+
+        {method === 'totp' && !secretCode && !success && (
           <button
             type="button"
-            onClick={handleStartSetup}
+            onClick={handleStartTotpSetup}
             disabled={loadingSetup}
             className="w-full rounded-[6px] bg-[#000000] px-4 py-2.5 text-sm font-medium text-white hover:bg-neutral-900 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:ring-offset-2 disabled:opacity-70"
           >
@@ -92,7 +228,7 @@ export default function MfaSetup() {
           </button>
         )}
 
-        {secretCode && !success && (
+        {method === 'totp' && secretCode && !success && (
           <>
             <div className="rounded-[6px] border border-border bg-muted px-4 py-3 text-sm text-muted-foreground">
               <p className="font-medium text-foreground">Step 1: Scan with your authenticator app</p>
@@ -137,7 +273,7 @@ export default function MfaSetup() {
               </div>
             </div>
 
-            <form className="space-y-3" onSubmit={handleVerify}>
+            <form className="space-y-3" onSubmit={handleVerifyTotp}>
               <div className="space-y-1.5">
                 <label className="text-sm font-medium text-muted-foreground">
                   Step 2: Enter the 6-digit code from your app

@@ -129,7 +129,7 @@ export default function PodcastEpisodeWatch() {
   });
 
   if (!showId || !episodeId || !show) {
-    return <Navigate to="/app/podcasts" replace />;
+    return <Navigate to="/app/podcast-network" replace />;
   }
 
   const episodes = show.remoteEpisodes ? data?.episodes ?? [] : show.episodes;
@@ -148,7 +148,7 @@ export default function PodcastEpisodeWatch() {
   const crumbs = (
     <nav aria-label="Breadcrumb" className="meta flex flex-wrap items-center gap-2 text-faint">
       <Link
-        to="/app/podcasts"
+        to="/app/podcast-network"
         className="press -my-1.5 inline-block rounded-[6px] py-1.5 hover:text-anchor"
       >
         Podcasts

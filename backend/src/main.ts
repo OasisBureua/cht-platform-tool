@@ -42,7 +42,7 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
-  // Zoom webhook MUST run first to capture raw body before any other parser consumes the stream.
+  // Zoom + Stripe webhooks MUST run first to capture raw body before any other parser consumes the stream.
   app.use(
     '/api/webhooks/zoom',
     express.json({
@@ -52,8 +52,17 @@ async function bootstrap() {
       },
     }),
   );
+  app.use(
+    '/api/webhooks/stripe',
+    express.json({
+      verify: (req: express.Request, _res, buf) => {
+        (req as express.Request & { rawBody?: string }).rawBody =
+          buf.toString('utf8');
+      },
+    }),
+  );
 
-  // Parse JSON body for auth and other routes (skip Zoom - it has its own parser above).
+  // Parse JSON body for auth and other routes (skip Zoom/Stripe - they have their own parser above).
   app.use(
     (
       req: express.Request,
@@ -61,6 +70,7 @@ async function bootstrap() {
       next: express.NextFunction,
     ) => {
       if (req.originalUrl?.startsWith('/api/webhooks/zoom')) return next();
+      if (req.originalUrl?.startsWith('/api/webhooks/stripe')) return next();
       if (req.headers['content-type']?.includes('application/json')) {
         return express.json()(req, res, next);
       }
@@ -77,6 +87,8 @@ async function bootstrap() {
   const corsOrigins = [
     'https://testapp.communityhealth.media',
     'https://staging.testapp.communityhealth.media',
+    'https://app.communityhealth.media',
+    'https://devapp.communityhealth.media',
     'https://communityhealth.media',
     'https://www.communityhealth.media',
     'http://localhost:5173',
@@ -170,7 +182,7 @@ async function bootstrap() {
   logger.log(`🚀 Application is running on: ${baseUrl}`);
   logger.log(`📡 API base: ${baseUrl}/api`);
   logger.log(
-    `🔐 Auth: ${process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY ? 'Supabase' : 'Dev (DB)'}`,
+    `🔐 Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
   );
   logger.log(`📊 Health check: ${baseUrl}/health`);
   logger.log(`🔍 Health ready: ${baseUrl}/health/ready`);

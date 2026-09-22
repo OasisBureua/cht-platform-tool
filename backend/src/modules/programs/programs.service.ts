@@ -24,6 +24,7 @@ import {
   VideoProgressResponseDto,
 } from './dto/update-video-progress.dto';
 import { resolveSessionHeroImageUrl } from '../../utils/session-hero-url';
+import { learnerHonorariumFlags } from '../../utils/learner-honorarium';
 
 @Injectable()
 export class ProgramsService {
@@ -90,6 +91,7 @@ export class ProgramsService {
       honorariumAmount: p.honorariumAmount
         ? p.honorariumAmount / 100
         : undefined,
+      chmProgramId: p.chmProgramId ?? undefined,
       startDate: p.startDate?.toISOString(),
       endDate: p.endDate?.toISOString(),
       enrollmentsCount: p._count.enrollments,
@@ -125,6 +127,8 @@ export class ProgramsService {
     zoomPanelistLinks?: Array<{ name: string; email: string; joinUrl: string }>;
     sessionDisclaimer?: string | null;
     sessionHeroImageUrl?: string | null;
+    /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+    chmProgramId?: string | null;
   }) {
     const program = await this.prisma.program.create({
       data: {
@@ -163,6 +167,9 @@ export class ProgramsService {
           : {}),
         sessionDisclaimer: dto.sessionDisclaimer?.trim() || null,
         sessionHeroImageUrl: dto.sessionHeroImageUrl?.trim() || null,
+        ...(dto.chmProgramId !== undefined
+          ? { chmProgramId: dto.chmProgramId?.trim() || null }
+          : {}),
       },
     });
     this.logger.log(`Program created: ${program.id} - ${program.title}`);
@@ -215,9 +222,7 @@ export class ProgramsService {
       status: p.status,
       sponsorName: p.sponsorName,
       sponsorLogo: p.sponsorLogo || undefined,
-      honorariumAmount: p.honorariumAmount
-        ? p.honorariumAmount / 100
-        : undefined,
+      ...learnerHonorariumFlags(p.honorariumAmount),
       videos: p.videos.map((v) => ({
         id: v.id,
         title: v.title,
@@ -236,7 +241,7 @@ export class ProgramsService {
    */
   async getProgramById(
     programId: string,
-    opts?: { includeZoomHostLink?: boolean },
+    opts?: { includeZoomHostLink?: boolean; learnerView?: boolean },
   ): Promise<ProgramResponseDto> {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
@@ -248,6 +253,11 @@ export class ProgramsService {
     });
 
     if (!program) {
+      throw new NotFoundException('Program not found');
+    }
+
+    // HCP detail pages must match schedule list filters (published only).
+    if (opts?.learnerView && program.status !== 'PUBLISHED') {
       throw new NotFoundException('Program not found');
     }
 
@@ -291,9 +301,14 @@ export class ProgramsService {
       status: program.status,
       sponsorName: program.sponsorName,
       sponsorLogo: program.sponsorLogo || undefined,
-      honorariumAmount: program.honorariumAmount
-        ? program.honorariumAmount / 100
-        : undefined,
+      ...(opts?.learnerView
+        ? learnerHonorariumFlags(program.honorariumAmount)
+        : {
+            honorariumAmount: program.honorariumAmount
+              ? program.honorariumAmount / 100
+              : undefined,
+            ...learnerHonorariumFlags(program.honorariumAmount),
+          }),
       videos: program.videos.map((v) => ({
         id: v.id,
         title: v.title,
@@ -472,9 +487,7 @@ export class ProgramsService {
             description: program.description,
             thumbnailUrl: program.thumbnailUrl || undefined,
             creditAmount: program.creditAmount,
-            honorariumAmount: program.honorariumAmount
-              ? program.honorariumAmount / 100
-              : undefined,
+            ...learnerHonorariumFlags(program.honorariumAmount),
             videosCount: program.videos.length,
           },
         };

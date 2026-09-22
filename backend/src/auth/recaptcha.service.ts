@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isIP } from 'node:net';
 import { isProductionEnv } from '../utils/is-production-env';
 
 interface SiteverifyResponse {
@@ -10,6 +11,34 @@ interface SiteverifyResponse {
 }
 
 export type RecaptchaAction = 'login' | 'signup';
+
+/** Only forward a client IP Google can use; skip ALB / private / malformed. */
+function publicClientIp(remoteIp?: string): string | undefined {
+  const raw = (remoteIp || '').trim();
+  if (!raw) return undefined;
+  const ip = raw.startsWith('::ffff:') ? raw.slice(7) : raw;
+  if (isIP(ip) === 0) return undefined;
+  // IPv4 private / loopback / link-local
+  if (
+    ip === '127.0.0.1' ||
+    ip.startsWith('10.') ||
+    ip.startsWith('192.168.') ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(ip) ||
+    ip.startsWith('169.254.')
+  ) {
+    return undefined;
+  }
+  // IPv6 loopback / ULA / link-local
+  if (
+    ip === '::1' ||
+    ip.toLowerCase().startsWith('fc') ||
+    ip.toLowerCase().startsWith('fd') ||
+    ip.toLowerCase().startsWith('fe80:')
+  ) {
+    return undefined;
+  }
+  return ip;
+}
 
 @Injectable()
 export class RecaptchaService {
@@ -47,6 +76,7 @@ export class RecaptchaService {
 
     const tokenStr = (token || '').trim();
     if (!tokenStr) {
+      this.logger.warn(`[Recaptcha] missing token for ${action}`);
       return { error: 'Captcha verification is required.' };
     }
 
@@ -54,8 +84,13 @@ export class RecaptchaService {
       secret: this.secretKey,
       response: tokenStr,
     });
-    if (remoteIp) {
-      body.set('remoteip', remoteIp);
+    const clientIp = publicClientIp(remoteIp);
+    if (clientIp) {
+      body.set('remoteip', clientIp);
+    } else if (remoteIp?.trim()) {
+      this.logger.debug(
+        `[Recaptcha] omitting non-public remoteip for ${action}`,
+      );
     }
 
     const verifyStart = Date.now();
@@ -77,7 +112,7 @@ export class RecaptchaService {
       }
       data = (await res.json()) as SiteverifyResponse;
       this.logger.log(
-        `[Recaptcha] siteverify done action=${action} in ${Date.now() - verifyStart}ms success=${!!data.success}`,
+        `[Recaptcha] siteverify done action=${action} in ${Date.now() - verifyStart}ms success=${!!data.success} score=${data.score ?? 'n/a'}`,
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -90,9 +125,25 @@ export class RecaptchaService {
     if (!data.success) {
       const codes = data['error-codes']?.join(', ') || 'unknown';
       this.logger.warn(`[Recaptcha] siteverify rejected token: ${codes}`);
+      // Common ops causes: domain not allowlisted, site/secret key mismatch,
+      // or expired / reused token (timeout-or-duplicate).
+      if (codes.includes('timeout-or-duplicate')) {
+        return {
+          error: 'Captcha expired. Please refresh the page and try again.',
+        };
+      }
+      if (
+        codes.includes('invalid-input-secret') ||
+        codes.includes('invalid-input-response')
+      ) {
+        this.logger.error(
+          `[Recaptcha] likely site/secret key mismatch or domain not registered for this host (${codes})`,
+        );
+      }
       return { error: 'Captcha verification failed. Please try again.' };
     }
 
+    // Google may omit action; only fail on an explicit mismatch.
     if (data.action && data.action !== action) {
       this.logger.warn(
         `[Recaptcha] action mismatch: expected ${action}, got ${data.action}`,

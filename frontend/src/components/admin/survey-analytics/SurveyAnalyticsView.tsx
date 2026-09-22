@@ -102,7 +102,10 @@ export function SurveyAnalyticsView({
         <>
           <SurveyAnalyticsSummaryCards totals={analytics.totals} />
 
-          <section className="rounded-card border border-border bg-card p-4">
+          <section
+            className="rounded-card border border-border bg-card p-4"
+            data-print-section="trend"
+          >
             <h3 className="text-sm font-semibold text-foreground">Submissions over time</h3>
             <div className="mt-3">
               <SubmissionsTrendChart points={analytics.timeSeries} />
@@ -112,7 +115,14 @@ export function SurveyAnalyticsView({
           {!analytics.hasNativeSchema ? (
             <JotformNotice />
           ) : segmentBy && analytics.segments ? (
-            <div className="space-y-6">
+            <div className="space-y-6" data-print-section="questions">
+              <h2
+                data-print-only
+                hidden
+                className="text-sm font-semibold uppercase tracking-wide text-gray-500"
+              >
+                Results by segment
+              </h2>
               {analytics.segments.groups.map((group) => (
                 <div key={group.key} className="space-y-3">
                   <div className="flex items-baseline gap-2">
@@ -128,7 +138,16 @@ export function SurveyAnalyticsView({
               ))}
             </div>
           ) : (
-            <QuestionList questions={analytics.questions} />
+            <div data-print-section="questions">
+              <h2
+                data-print-only
+                hidden
+                className="text-sm font-semibold uppercase tracking-wide text-gray-500"
+              >
+                Question results
+              </h2>
+              <QuestionList questions={analytics.questions} />
+            </div>
           )}
         </>
       )}

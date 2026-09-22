@@ -84,6 +84,7 @@ module "vpc" {
   vpc_cidr               = "10.0.0.0/16"
   availability_zones     = ["us-east-1a", "us-east-1b"]
   enable_nat_gateway     = true
+  single_nat_gateway     = var.single_nat_gateway
   enable_flow_logs       = true
   cloudwatch_kms_key_arn = module.kms.cloudwatch_kms_key_arn
   log_retention_days     = local.log_retention_days
@@ -229,7 +230,10 @@ module "s3_certificates" {
   project         = var.project
   environment     = var.environment
   kms_key_id      = module.kms.s3_kms_key_id
-  allowed_origins = ["https://${var.domain_name}"]
+  allowed_origins = distinct(concat(
+    ["https://${var.domain_name}"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 module "s3_session_assets" {
@@ -238,13 +242,16 @@ module "s3_session_assets" {
   project     = var.project
   environment = var.environment
   aws_region  = "us-east-1"
-  cors_allowed_origins = distinct([
-    "https://${var.domain_name}",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:3000",
-  ])
+  cors_allowed_origins = distinct(concat(
+    [
+      "https://${var.domain_name}",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000",
+    ],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 }
 
 # ============================================
@@ -294,11 +301,6 @@ module "secrets" {
   db_name              = local.app_db_name
   db_connection_string = local.app_db_connection_string
 
-  supabase_url                              = var.supabase_url
-  supabase_anon_key                         = var.supabase_anon_key
-  gotrue_jwt_secret                         = var.gotrue_jwt_secret
-  mediahub_base_url                         = var.mediahub_base_url
-  mediahub_api_key                          = var.mediahub_api_key
   contenthub_base_url                       = var.contenthub_base_url
   contenthub_api_key                        = var.contenthub_api_key
   youtube_api_key                           = var.youtube_api_key
@@ -320,10 +322,25 @@ module "secrets" {
   bill_webhook_secret                       = var.bill_webhook_secret
   bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
   bill_mfa_device_name                      = var.bill_mfa_device_name
+  stripe_secret_key                         = var.stripe_secret_key
+  stripe_publishable_key                    = var.stripe_publishable_key
+  stripe_webhook_secret                     = var.stripe_webhook_secret
+  stripe_connect_webhook_secret             = var.stripe_connect_webhook_secret
   admin_bootstrap_secret                    = var.admin_bootstrap_secret
   hubspot_access_token                      = var.hubspot_access_token
   recaptcha_secret_key                      = var.recaptcha_secret_key
   internal_cache_secret                     = var.internal_cache_secret
+  companion_internal_secret                 = var.companion_internal_secret
+}
+
+# ============================================
+# Config - AppConfig (feature flags)
+# ============================================
+module "appconfig" {
+  source = "../../modules/config/appconfig"
+
+  project     = var.project
+  environment = var.environment
 }
 
 # ============================================
@@ -349,9 +366,10 @@ module "iam" {
     module.sqs.cme_queue_arn,
     module.sqs.scheduled_jobs_queue_arn
   ]
-  certificates_bucket_arn   = module.s3_certificates.bucket_arn
-  session_assets_bucket_arn = module.s3_session_assets.bucket_arn
-  cognito_user_pool_arn     = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
+  certificates_bucket_arn       = module.s3_certificates.bucket_arn
+  session_assets_bucket_arn   = module.s3_session_assets.bucket_arn
+  cognito_user_pool_arn       = var.enable_cognito_pools ? module.cognito[0].user_pool_arn : ""
+  appconfig_configuration_arn = module.appconfig.auth_features_configuration_arn
 }
 
 # ============================================
@@ -435,6 +453,11 @@ module "ecs_backend" {
   cognito_region                 = "us-east-1"
   recaptcha_min_score            = var.recaptcha_min_score
   redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
+  appconfig_application          = module.appconfig.application_name
+  appconfig_environment          = module.appconfig.environment_name
+  appconfig_profile              = module.appconfig.auth_features_profile_name
+  companion_base_url             = var.companion_base_url
+  service_connect_namespace      = var.service_connect_namespace
   # Always apply Prisma migrations on backend boot (primary/writer).
   run_db_migrations = true
 }
@@ -528,7 +551,7 @@ module "cloudfront" {
   s3_bucket_domain_name       = module.s3_frontend.bucket_domain_name
   cloudfront_oai_path         = module.s3_frontend.cloudfront_oai_path
   certificate_arn             = var.cloudfront_certificate_arn
-  domain_aliases              = [var.domain_name]
+  domain_aliases              = concat([var.domain_name], var.extra_cloudfront_aliases)
   api_origin_domain           = module.alb.alb_dns_name
   secondary_api_origin_domain = var.secondary_api_origin_domain
   route_api_to_secondary      = var.route_api_to_secondary
@@ -599,10 +622,17 @@ module "cognito" {
   environment   = var.environment
   domain_prefix = var.cognito_domain_prefix
 
-  callback_urls = ["https://${var.domain_name}/auth/callback"]
-  logout_urls   = ["https://${var.domain_name}"]
+  callback_urls = distinct(concat(
+    ["https://${var.domain_name}/auth/callback"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}/auth/callback"],
+  ))
+  logout_urls = distinct(concat(
+    ["https://${var.domain_name}"],
+    [for a in var.extra_cloudfront_aliases : "https://${a}"],
+  ))
 
   mfa_configuration    = var.cognito_mfa_configuration
+  enable_sms_mfa       = var.enable_cognito_sms_mfa
   user_pool_tier       = var.cognito_user_pool_tier
   google_client_id     = var.cognito_google_client_id
   google_client_secret = var.cognito_google_client_secret

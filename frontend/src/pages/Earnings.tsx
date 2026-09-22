@@ -1,10 +1,11 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { BillComMark } from '../components/branding/BillComMark';
+import { StripeMark } from '../components/branding/StripeMark';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { PayoutTimingNote } from '../components/payments/PayoutTimingNote';
 import { format } from 'date-fns';
 import { Banknote } from 'lucide-react';
 import {
@@ -19,14 +20,10 @@ import {
 
 import { useAuth } from '../contexts/AuthContext';
 
-function dollarsToPoints(dollars: number) {
-  // TODO: replace with real conversion rate once backend defines it
-  return Math.round(dollars);
-}
-
 export default function Earnings() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const [programFilter, setProgramFilter] = useState<string>('all');
 
   const { data: earnings, isLoading } = useQuery({
     queryKey: ['earnings', userId],
@@ -40,19 +37,42 @@ export default function Earnings() {
     enabled: !!userId,
   });
 
+  const programOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of paymentHistory) {
+      const id = row.programId?.trim();
+      if (!id) continue;
+      map.set(id, row.programTitle?.trim() || row.title || id);
+    }
+    return [...map.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [paymentHistory]);
+
+  const filteredHistory = useMemo(() => {
+    if (programFilter === 'all') return paymentHistory;
+    if (programFilter === 'none') {
+      return paymentHistory.filter((r) => !r.programId?.trim());
+    }
+    return paymentHistory.filter((r) => r.programId === programFilter);
+  }, [paymentHistory, programFilter]);
+
   const chartData = useMemo(() => {
     return (
       earnings?.weeklyEarnings.map((w) => ({
         date: format(new Date(w.weekStartDate), 'MMM d'),
-        earnings: w.amount,
+        payouts: w.amount > 0 ? 1 : 0,
       })) || []
     );
   }, [earnings]);
 
   if (isLoading || loadingHistory) return <LoadingSpinner />;
 
-  const total = earnings?.totalEarnings ?? 0;
-  const points = dollarsToPoints(total);
+  const pendingCount = filteredHistory.filter(
+    (r) => r.status === 'PENDING' || r.status === 'PROCESSING',
+  ).length;
+  const paidCount = filteredHistory.filter((r) => r.status === 'PAID').length;
+  const weeksWithActivity = chartData.filter((w) => w.payouts > 0).length;
 
   return (
     <div className="space-y-8">
@@ -62,8 +82,8 @@ export default function Earnings() {
           <h1 className="text-balance text-2xl font-semibold text-foreground md:text-3xl">Your Earnings</h1>
         </div>
         <p className="text-pretty text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-          Balances and activity. Actual payouts are sent through{' '}
-          <BillComMark size="sm" className="translate-y-px" />. Open{' '}
+          Payout status and activity. Dollar amounts are not shown here. Actual payouts are sent through{' '}
+          <StripeMark size="sm" className="translate-y-px" />. Open{' '}
           <Link
             to="/app/settings"
             state={{ settingsTab: 'payment' as const }}
@@ -73,30 +93,27 @@ export default function Earnings() {
           </Link>{' '}
           to connect your bank and tax info.
         </p>
+        <PayoutTimingNote />
       </header>
 
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-muted-foreground">Total Balance</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">${total.toFixed(2)}</p>
-          <p className="mt-1 text-sm text-muted-foreground tabular-nums">
-            {points.toLocaleString()} points = ${total.toFixed(2)}
+          <p className="text-sm text-muted-foreground">Completed payouts</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{paidCount}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {programFilter === 'all' ? 'Lifetime paid items' : 'Paid in this filter'}
           </p>
         </div>
 
         <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-muted-foreground">This Week</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
-            ${(earnings?.currentWeekEarnings ?? 0).toFixed(2)}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">Current week earnings</p>
+          <p className="text-sm text-muted-foreground">Active weeks</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{weeksWithActivity}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Weeks with payout activity</p>
         </div>
 
         <div className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-          <p className="text-sm text-muted-foreground">Pending Payments</p>
-          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">
-            ${(earnings?.pendingPayments ?? 0).toFixed(2)}
-          </p>
+          <p className="text-sm text-muted-foreground">Pending payouts</p>
+          <p className="mt-2 text-3xl font-semibold tabular-nums text-foreground">{pendingCount}</p>
           <p className="mt-1 text-sm text-muted-foreground">
             {earnings?.lastPaymentDate
               ? `Last payment: ${format(new Date(earnings.lastPaymentDate), 'MMM d, yyyy')}`
@@ -107,7 +124,7 @@ export default function Earnings() {
 
       <section className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-balance text-foreground">Recent Activity</h2>
+          <h2 className="text-base font-semibold text-balance text-foreground">Recent activity</h2>
           <span className="text-sm text-muted-foreground">Last 12 weeks</span>
         </div>
 
@@ -117,9 +134,9 @@ export default function Earnings() {
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
-                <Line type="monotone" dataKey="earnings" stroke="#111827" strokeWidth={2} dot={false} />
+                <YAxis allowDecimals={false} domain={[0, 1]} />
+                <Tooltip formatter={(v) => (Number(v) > 0 ? 'Activity' : 'None')} />
+                <Line type="monotone" dataKey="payouts" stroke="#111827" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           ) : (
@@ -131,35 +148,66 @@ export default function Earnings() {
       </section>
 
       <section className="rounded-card border border-gray-100/90 bg-card p-5 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)]">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-base font-semibold text-balance text-foreground">Payment history</h2>
-          <Link
-            to="/app/payments#payment-history"
-            className="min-h-[44px] shrink-0 rounded-[6px] px-3 text-sm font-medium text-foreground underline transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:no-underline active:scale-[0.96]"
-          >
-            Full payment history
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="sr-only" htmlFor="earnings-program-filter">
+              Filter by program
+            </label>
+            <select
+              id="earnings-program-filter"
+              value={programFilter}
+              onChange={(e) => setProgramFilter(e.target.value)}
+              className="h-9 min-w-[10rem] rounded-[6px] border border-border bg-card px-2.5 text-sm text-foreground"
+            >
+              <option value="all">All programs</option>
+              {programOptions.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+              {paymentHistory.some((r) => !r.programId?.trim()) ? (
+                <option value="none">No program</option>
+              ) : null}
+            </select>
+            <Link
+              to="/app/payments#payment-history"
+              className="min-h-[36px] shrink-0 rounded-[6px] px-3 text-sm font-medium text-foreground underline transition-[color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:no-underline active:scale-[0.96]"
+            >
+              Full payment history
+            </Link>
+          </div>
         </div>
 
-        {paymentHistory.length === 0 ? (
+        {filteredHistory.length === 0 ? (
           <div className="mt-4 border border-dashed border-border rounded-card p-8 text-center">
-            <p className="text-sm font-semibold text-foreground">No payments yet</p>
-            <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-              Completed honoraria and bonuses appear here after admins process them through{' '}
-              <BillComMark size="xs" className="translate-y-px" />.
+            <p className="text-sm font-semibold text-foreground">
+              {paymentHistory.length === 0 ? 'No payments yet' : 'No payments for this program'}
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground flex flex-wrap items-center justify-center gap-x-1 gap-y-1">
+              {paymentHistory.length === 0 ? (
+                <>
+                  Completed honoraria and bonuses appear here after admins process them through{' '}
+                  <StripeMark size="xs" className="translate-y-px" />.
+                </>
+              ) : (
+                'Try another program filter.'
+              )}
             </p>
           </div>
         ) : (
           <ul className="mt-4 divide-y divide-gray-100 border border-gray-100 rounded-card overflow-hidden">
-            {paymentHistory.slice(0, 8).map((row) => (
+            {filteredHistory.slice(0, 8).map((row) => (
               <li key={row.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
                 <div className="min-w-0">
                   <p className="font-medium text-foreground truncate">{row.title}</p>
-                  <p className="text-xs text-muted-foreground">{format(new Date(row.date), 'MMM d, yyyy')}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(row.date), 'MMM d, yyyy')}
+                    {row.programTitle ? ` · ${row.programTitle}` : ''}
+                  </p>
                 </div>
                 <div className="text-right shrink-0">
-                  <p className="font-semibold text-foreground">${row.amount.toFixed(2)}</p>
-                  <p className="text-xs text-muted-foreground">{row.status}</p>
+                  <p className="font-semibold text-foreground">{row.status}</p>
                 </div>
               </li>
             ))}

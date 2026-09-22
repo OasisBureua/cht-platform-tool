@@ -9,8 +9,13 @@ import {
 } from 'react';
 import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
-import { cognitoAuthEnabled, mediahubAuthDecommissioned } from '../lib/auth-config';
+import { cognitoAuthEnabled } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
+
+export interface MfaFeatureFlags {
+  enabled: boolean;
+  method: 'sms' | 'totp';
+}
 
 export interface AuthUser {
   userId: string;
@@ -20,10 +25,26 @@ export interface AuthUser {
   lastName?: string;
   role?: string;
   profileComplete?: boolean;
-  /** Cognito software-token MFA enabled for this user. */
+  /** Cognito software-token or SMS MFA enabled for this user. */
   mfaEnabled?: boolean;
-  /** Soft gate: ADMIN must enroll MFA while pool MFA is still OPTIONAL. */
+  /** Soft gate: redirect to /mfa/setup when AppConfig mfa.enabled is on and user is not enrolled. */
   mfaEnrollmentRequired?: boolean;
+  /** Server-driven MFA feature flag (AppConfig auth-features). */
+  mfaFeature?: MfaFeatureFlags;
+  /** Verified E.164 phone when stored (SMS MFA). */
+  phoneNumber?: string | null;
+}
+
+function parseMfaFeature(
+  data: Record<string, unknown>,
+): MfaFeatureFlags | undefined {
+  const raw = data.mfaFeature;
+  if (!raw || typeof raw !== 'object') return undefined;
+  const obj = raw as Record<string, unknown>;
+  return {
+    enabled: obj.enabled === true,
+    method: obj.method === 'totp' ? 'totp' : 'sms',
+  };
 }
 
 function profileFromMePayload(data: Record<string, unknown>): AuthUser {
@@ -37,6 +58,9 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     profileComplete: (data.profileComplete as boolean | undefined) ?? true,
     mfaEnabled: Boolean(data.mfaEnabled),
     mfaEnrollmentRequired: Boolean(data.mfaEnrollmentRequired),
+    mfaFeature: parseMfaFeature(data),
+    phoneNumber:
+      typeof data.phoneNumber === 'string' ? data.phoneNumber : null,
   };
 }
 
@@ -49,30 +73,27 @@ interface AuthContextValue {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  /** GoTrue/Cognito JWT for chatbot (unlimited queries). Null when using dev auth or token not available. */
-  accessToken: string | null;
   login: (
     email: string,
     password: string,
     recaptchaToken?: string,
   ) => Promise<{
     error?: AuthError;
-    mfa?: { session: string };
+    mfa?: { session: string; challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' };
     mfaSetup?: { session: string; secretCode: string; otpauthUri: string };
   }>;
-  /** Legacy GoTrue OAuth access_token exchange. Use completeCognitoCallback for Cognito PKCE. */
-  loginOAuth: (accessToken: string) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
   /** Exchange Cognito authorization code (PKCE) for CHT session cookie. */
   completeCognitoCallback: (
     code: string,
     redirectUri: string,
     codeVerifier: string,
   ) => Promise<{ error?: AuthError; profileComplete?: boolean; role?: string }>;
-  /** Complete Cognito SOFTWARE_TOKEN_MFA after login returns a challenge. */
+  /** Complete Cognito SOFTWARE_TOKEN_MFA or SMS_MFA after login returns a challenge. */
   completeMfaLogin: (
     email: string,
     session: string,
     code: string,
+    challenge?: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA',
   ) => Promise<{ error?: AuthError }>;
   /** Complete Cognito MFA_SETUP (enroll TOTP) after login returns a secret. */
   completeMfaSetupLogin: (
@@ -92,6 +113,7 @@ interface AuthContextValue {
       city?: string;
       state?: string;
       zipCode?: string;
+      phoneNumber?: string;
     },
     recaptchaToken?: string,
   ) => Promise<{ error?: AuthError }>;
@@ -109,6 +131,13 @@ interface AuthContextValue {
     otpauthUri?: string;
   }>;
   verifyMfaSetup: (code: string) => Promise<{ error?: AuthError }>;
+  /** SMS MFA: set phone on Cognito and send verification SMS. */
+  beginSmsMfaSetup: (phoneNumber: string) => Promise<{
+    error?: AuthError;
+    phoneNumber?: string;
+  }>;
+  /** SMS MFA: verify phone code and enable preferred SMS MFA. */
+  verifySmsMfaSetup: (code: string) => Promise<{ error?: AuthError }>;
   logout: () => void;
   getAuthHeaders: () => Promise<Record<string, string>>;
   refreshProfile: () => Promise<void>;
@@ -151,9 +180,7 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       user: bypassUser,
       isAuthenticated: !!bypassUser,
       isLoading: false,
-      accessToken: null,
       login,
-      loginOAuth: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeCognitoCallback: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeMfaLogin: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       completeMfaSetupLogin: async () => ({
@@ -170,6 +197,8 @@ function DisabledAuthProvider({ children }: { children: ReactNode }) {
       }),
       beginMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       verifyMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      beginSmsMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
+      verifySmsMfaSetup: async () => ({ error: { message: DISABLE_AUTH_FEATURE_MSG } }),
       logout,
       getAuthHeaders,
       refreshProfile: async () => {},
@@ -214,7 +243,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
       return '';
     }
   });
-  const [accessToken, setAccessToken] = useState<string | null>(null);
   const [profile, setProfile] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -327,13 +355,11 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     if (data.session_token) {
       setAuthMode('cookie');
       setDevUserId('');
-      setAccessToken((data.access_token as string | undefined) ?? null);
       setProfile(profileFromMePayload(data));
       return true;
     }
     if (data.userId) {
       setAuthMode('dev');
-      setAccessToken(null);
       setDevUserId(data.userId as string);
       setProfile(profileFromMePayload(data));
       return true;
@@ -373,8 +399,16 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         return { error: { message: data.error, code: data.code as string | undefined } };
       }
 
-      if (data.challenge === 'SOFTWARE_TOKEN_MFA' && data.session) {
-        return { mfa: { session: data.session as string } };
+      if (
+        (data.challenge === 'SOFTWARE_TOKEN_MFA' || data.challenge === 'SMS_MFA') &&
+        data.session
+      ) {
+        return {
+          mfa: {
+            session: data.session as string,
+            challenge: data.challenge as 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA',
+          },
+        };
       }
 
       if (
@@ -401,7 +435,12 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const completeMfaLogin = useCallback(
-    async (email: string, session: string, code: string) => {
+    async (
+      email: string,
+      session: string,
+      code: string,
+      challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' = 'SOFTWARE_TOKEN_MFA',
+    ) => {
       const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/mfa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -409,6 +448,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           email: (email || '').trim(),
           session,
           code: (code || '').trim(),
+          challenge,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -474,41 +514,6 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl, applyLoginSuccess],
   );
 
-  const loginOAuth = useCallback(
-    async (accessTokenValue: string) => {
-      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
-        return {
-          error: {
-            message:
-              'Google OAuth is temporarily unavailable while auth is migrating.',
-          },
-        };
-      }
-      const token = (accessTokenValue || '').trim();
-      if (!token) return { error: { message: 'Access token is required.' } };
-
-      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/login-oauth`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ access_token: token }),
-      });
-      const data = await res.json().catch(() => ({}));
-
-      if (data.error) {
-        return { error: { message: data.error } };
-      }
-
-      if (applyLoginSuccess(data)) {
-        return {
-          profileComplete: data.profileComplete as boolean | undefined,
-          role: data.role as string | undefined,
-        };
-      }
-      return { error: { message: 'Login failed.' } };
-    },
-    [apiUrl, applyLoginSuccess],
-  );
-
   const signUp = useCallback(
     async (
       email: string,
@@ -522,19 +527,19 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
         city?: string;
         state?: string;
         zipCode?: string;
+        phoneNumber?: string;
       },
       recaptchaToken?: string,
     ) => {
-      if (mediahubAuthDecommissioned && !cognitoAuthEnabled) {
+      if (!cognitoAuthEnabled) {
         return {
           error: {
             message:
-              'New account creation is temporarily unavailable while auth is migrating.',
+              'Sign up requires Cognito. Configure VITE_COGNITO_* env vars.',
           },
         };
       }
-      const signupPath = cognitoAuthEnabled ? '/auth/cognito/signup' : '/auth/signup';
-      const res = await fetch(`${apiUrl.replace(/\/$/, '')}${signupPath}`, {
+      const res = await fetch(`${apiUrl.replace(/\/$/, '')}/auth/cognito/signup`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -548,6 +553,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
           city: options?.city,
           state: options?.state,
           zipCode: options?.zipCode,
+          phoneNumber: options?.phoneNumber,
           recaptchaToken,
         }),
       });
@@ -698,11 +704,52 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     [apiUrl, refreshProfile],
   );
 
+  const beginSmsMfaSetup = useCallback(
+    async (phoneNumber: string) => {
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/phone/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber: (phoneNumber || '').trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'Could not send verification SMS.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      return { phoneNumber: data.phoneNumber as string | undefined };
+    },
+    [apiUrl],
+  );
+
+  const verifySmsMfaSetup = useCallback(
+    async (code: string) => {
+      const codeStr = (code || '').trim();
+      if (!codeStr) return { error: { message: 'Verification code is required.' } };
+
+      const res = await authFetch(`${apiUrl.replace(/\/$/, '')}/auth/mfa/phone/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: codeStr }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: { message: data?.error || 'Phone verification failed.' } };
+      }
+      if (data.error) {
+        return { error: { message: data.error } };
+      }
+      await refreshProfile();
+      return {};
+    },
+    [apiUrl, refreshProfile],
+  );
+
   const logout = useCallback(() => {
     const finishLogout = () => {
       setAuthMode(null);
       setDevUserId('');
-      setAccessToken(null);
       setProfile(null);
       try {
         if (typeof localStorage?.removeItem === 'function') {
@@ -742,9 +789,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
-    accessToken,
     login,
-    loginOAuth,
     completeCognitoCallback,
     completeMfaLogin,
     completeMfaSetupLogin,
@@ -755,6 +800,8 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     confirmPasswordReset,
     beginMfaSetup,
     verifyMfaSetup,
+    beginSmsMfaSetup,
+    verifySmsMfaSetup,
     logout,
     getAuthHeaders,
     refreshProfile,

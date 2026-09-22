@@ -76,6 +76,11 @@ export class ProgramResponseDto {
   @IsOptional()
   honorariumAmount?: number;
 
+  /** True when program has an honorarium; amount may be omitted for learners. */
+  @IsBoolean()
+  @IsOptional()
+  hasHonorarium?: boolean;
+
   @IsArray()
   videos: VideoDto[];
 

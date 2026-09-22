@@ -12,6 +12,7 @@ import { format, parseISO } from 'date-fns';
 
 import type { SurveyAnalyticsTimeSeriesPoint } from '../../../api/admin';
 import { MUTED, TEAL } from './chartTheme';
+import { submissionsTrendHeightPx } from './chartSizing';
 
 interface SubmissionsTrendChartProps {
   points: SurveyAnalyticsTimeSeriesPoint[];
@@ -60,8 +61,15 @@ export function SubmissionsTrendChart({ points }: SubmissionsTrendChartProps) {
     return <p className="py-6 text-center text-sm text-muted-foreground">No submissions yet.</p>;
   }
 
+  const height = submissionsTrendHeightPx(data.length);
+
   return (
-    <div className="h-44 w-full" data-testid="submissions-trend-chart">
+    <div
+      style={{ height }}
+      className="w-full"
+      data-testid="submissions-trend-chart"
+      data-point-count={data.length}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: -18 }}>
           <defs>
@@ -99,9 +107,7 @@ export function SubmissionsTrendChart({ points }: SubmissionsTrendChartProps) {
             fill="url(#submissionsTrendFill)"
             dot={false}
             activeDot={{ r: 4, fill: TEAL, stroke: '#fff', strokeWidth: 2 }}
-            isAnimationActive
-            animationDuration={800}
-            animationEasing="ease-out"
+            isAnimationActive={false}
           />
         </AreaChart>
       </ResponsiveContainer>

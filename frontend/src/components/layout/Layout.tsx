@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Menu, Search } from 'lucide-react';
 import AppSidebar from '../navigation/AppSidebar';
 import AppBottomNav from '../navigation/AppBottomNav';
-import { APP_NAV_ITEMS } from '../navigation/appNavItems';
+import { getAppNavItems } from '../navigation/appNavItems';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
@@ -62,6 +62,8 @@ export default function Layout() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
+  const navItems = getAppNavItems();
+
   return (
     <div className="app-shell flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
       <AppSidebar />
@@ -83,7 +85,7 @@ export default function Layout() {
         {/* Slide-reveal drawer: visible layer behind front pane on small screens */}
         <nav
           id="app-slide-drawer-nav"
-          className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-white to-zinc-50 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
+          className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-card to-muted pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
           aria-label="Primary navigation"
         >
           <Link
@@ -95,11 +97,13 @@ export default function Layout() {
             <ChmWordmarkOption2 className="h-8 w-[4rem]" />
           </Link>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
-            {APP_NAV_ITEMS.map(({ to, label, icon: Icon, iconTone, end }) => (
+            {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (
               <li key={to}>
                 <NavLink
                   to={to}
                   end={end}
+                  title={title ?? label}
+                  aria-label={title ?? label}
                   onClick={() => setMobileDrawerOpen(false)}
                   className={({ isActive }) =>
                     [
@@ -167,7 +171,7 @@ export default function Layout() {
             <div className="flex min-w-0 flex-1 items-center gap-2 pr-2 md:gap-3 md:pr-3">
               <button
                 type="button"
-                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card bg-white/95 text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden /95 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:text-steel-200"
+                className="flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-card bg-card text-steel-700 shadow-[0_1px_4px_rgba(0,0,0,0.06)] transition-[background-color,color,transform] duration-200 hover:bg-steel-50/90 hover:text-steel-800 active:scale-[0.96] md:hidden dark:bg-zinc-900 dark:text-steel-300 dark:shadow-[0_1px_5px_rgba(0,0,0,0.45)] dark:hover:text-steel-200"
                 aria-expanded={mobileDrawerOpen}
                 aria-controls="app-slide-drawer-nav"
                 aria-label={mobileDrawerOpen ? 'Close navigation menu' : 'Open navigation menu'}

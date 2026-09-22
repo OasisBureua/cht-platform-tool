@@ -29,12 +29,7 @@ export default () => ({
     clientId: process.env.AUTH0_CLIENT_ID,
   },
 
-  // GoTrue / shared CHT auth (mediahub.communityhealth.media/auth/v1)
-  gotrue: {
-    jwtSecret: process.env.GOTRUE_JWT_SECRET,
-  },
-
-  // Amazon Cognito (replaces GoTrue when COGNITO_USER_POOL_ID is set)
+  // Amazon Cognito
   cognito: {
     userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
     clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
@@ -45,21 +40,6 @@ export default () => ({
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
     domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
     jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
-  },
-
-  // Supabase Auth (for backend login validation)
-  supabase: {
-    url: process.env.SUPABASE_URL,
-    anonKey: process.env.SUPABASE_ANON_KEY,
-    /**
-     * When true, block MediaHub/GoTrue-backed user creation flows (signup + oauth login).
-     * Existing email/password login can remain temporarily available for migrated users.
-     */
-    authDecommissioned:
-      process.env.SUPABASE_AUTH_DECOMMISSIONED === undefined
-        ? true
-        : process.env.SUPABASE_AUTH_DECOMMISSIONED === 'true' ||
-          process.env.SUPABASE_AUTH_DECOMMISSIONED === '1',
   },
 
   // Idle session TTL in seconds (default 30 min). Slid on getSession activity.
@@ -104,6 +84,15 @@ export default () => ({
     })(),
   },
 
+  // Stripe Connect (Express) — when secret key is set, payments happy path uses Stripe (not Bill)
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY?.trim() || '',
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY?.trim() || '',
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET?.trim() || '',
+    connectWebhookSecret:
+      process.env.STRIPE_CONNECT_WEBHOOK_SECRET?.trim() || '',
+  },
+
   // AWS
   aws: {
     region: process.env.AWS_REGION || 'us-east-1',
@@ -123,6 +112,38 @@ export default () => ({
    */
   zoomRecordings: {
     s3Bucket: process.env.SESSION_ASSETS_S3_BUCKET?.trim() || '',
+    /** How many months back manual account Sync crawls on first run (default 24). */
+    syncMonthsBackDefault: (() => {
+      const parsed = parseInt(process.env.ZOOM_RECORDINGS_SYNC_MONTHS_BACK || '', 10);
+      if (Number.isNaN(parsed) || parsed < 1) return 24;
+      return Math.min(parsed, 120);
+    })(),
+    /** File types that always stream to S3 (large video/audio). */
+    streamFileTypes: ['MP4', 'M4A'],
+    multipartPartSizeMb: (() => {
+      const parsed = parseInt(process.env.ZOOM_RECORDINGS_MULTIPART_PART_MB || '', 10);
+      if (Number.isNaN(parsed) || parsed < 5) return 10;
+      return Math.min(parsed, 100);
+    })(),
+    /** How many months back manual attendance import crawls (default 12). */
+    attendanceImportMonthsBackDefault: (() => {
+      const parsed = parseInt(
+        process.env.ZOOM_ATTENDANCE_IMPORT_MONTHS_BACK || '',
+        10,
+      );
+      if (Number.isNaN(parsed) || parsed < 1) return 12;
+      return Math.min(parsed, 120);
+    })(),
+    /** Default for attendance import jobs unless admin opts in per job. */
+    attendanceImportAutoVerifyDefault: (() => {
+      const v = (process.env.ZOOM_ATTENDANCE_IMPORT_AUTO_VERIFY || 'false')
+        .trim()
+        .toLowerCase();
+      return v === 'true' || v === '1' || v === 'yes';
+    })(),
+    /** S3 object name for exported attendee CSV under each webinar prefix. */
+    attendanceReportFilename:
+      process.env.ZOOM_ATTENDANCE_REPORT_FILENAME?.trim() || 'attendees.csv',
   },
 
   // Transactional email (Amazon SES): e.g. registration approved for Live / Office Hours
@@ -160,15 +181,7 @@ export default () => ({
       'true',
   },
 
-  // MediaHub Public API (catalog - clips, tags, doctors, search)
-  mediahub: {
-    baseUrl:
-      process.env.MEDIAHUB_BASE_URL ||
-      'https://mediahub.communityhealth.media/api/public',
-    apiKey: process.env.MEDIAHUB_API_KEY,
-  },
-
-  // Content Hub: KOL GET /kols* and dual HCP upsert (with EC2 MediaHub when configured)
+  // Content Hub: catalog clips/tags/KOLs + HCP upsert
   contenthub: {
     baseUrl: process.env.CONTENTHUB_BASE_URL || '',
     adminBaseUrl: (() => {
@@ -181,7 +194,7 @@ export default () => ({
     apiKey: process.env.CONTENTHUB_API_KEY,
   },
 
-  // YouTube Data API v3 (for catalog playlists - fallback when MediaHub not configured)
+  // YouTube Data API v3 (for catalog playlists - fallback when Content Hub not configured)
   youtube: (() => {
     let ids: string[] =
       process.env.YOUTUBE_PLAYLIST_IDS?.split(',')
@@ -325,5 +338,17 @@ export default () => ({
       process.env.NPI_API_BASE_URL?.trim() ||
       'https://clinicaltables.nlm.nih.gov/api/npi_idv/v3/search',
     timeoutMs: parseInt(process.env.NPI_API_TIMEOUT_MS || '8000', 10),
+  },
+
+  appconfig: {
+    application: process.env.APPCONFIG_APPLICATION?.trim() || '',
+    environment: process.env.APPCONFIG_ENVIRONMENT?.trim() || '',
+    profile: process.env.APPCONFIG_PROFILE?.trim() || '',
+  },
+
+  /** CHT Companion (SSE RAG chat) — BFF proxies browser → Service Connect. */
+  companion: {
+    baseUrl: (process.env.COMPANION_BASE_URL || '').replace(/\/$/, ''),
+    internalSecret: process.env.COMPANION_INTERNAL_SECRET?.trim() || '',
   },
 });

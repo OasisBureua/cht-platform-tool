@@ -2,11 +2,7 @@ import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { programsApi, type ProgramRegistrationState } from '../../api/programs';
-import { BillComMark } from '../branding/BillComMark';
-
-function formatMoneyFromCents(cents: number) {
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
+import { StripeMark } from '../branding/StripeMark';
 
 export function PostEventAttendanceMessage(props: {
   myRegistration: ProgramRegistrationState | null | undefined;
@@ -18,8 +14,8 @@ export function PostEventAttendanceMessage(props: {
       <section className="bg-card border border-border rounded-card p-6 space-y-2">
         <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
         <p className="text-sm text-muted-foreground">
-          Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the live
-          session before the post-event survey and honorarium steps unlock here.
+          Your registration is approved. After the live session, attendance is recorded automatically when the
+          email on your HCP account matches the email Zoom saw. The post-event survey unlocks once that happens.
         </p>
       </section>
     );
@@ -153,20 +149,19 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-3">
           {nativeSurveyMode ? (
             <p className="text-sm text-muted-foreground">
-              When you are finished, tap <strong>Complete survey</strong> to save your responses
-              {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+              Please complete the survey below, then tap <strong>Complete survey</strong> to save your responses
+              {hasHonorarium ? ' before continuing to payout' : ''}.
             </p>
           ) : surveyReadyForAck ? (
             <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
                   Submit the embedded survey, then tap <strong>Complete survey</strong> to record your response
-                  {hasHonorarium ? ' before continuing to payout' : ''}. You can only submit this once.
+                  {hasHonorarium ? ' before continuing to payout' : ''}.
                 </>
               ) : (
                 <>
-                  We&apos;ve received your survey responses. Tap <strong>Complete survey</strong> to record your
-                  response
+                  Your survey answers were saved. Tap <strong>Complete survey</strong> to finish this step
                   {hasHonorarium ? ' before continuing to payout' : ''}.
                 </>
               )}
@@ -175,13 +170,12 @@ export function PostEventFeedbackLearnerActions(props: {
             <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
                 <>
-                  Submit the embedded survey below, then return here and tap <strong>Complete survey</strong>
+                  Complete the survey below, then tap <strong>Complete survey</strong>
                   {hasHonorarium ? ' before confirming your honorarium' : ''}.
                 </>
               ) : (
                 <>
-                  Use <strong>Start survey</strong> above (or open the embedded form), submit your responses, then return
-                  here and tap <strong>Complete survey</strong>
+                  Open and complete the post-event survey, then return here and tap <strong>Complete survey</strong>
                   {hasHonorarium ? ' before confirming your honorarium' : ''}.
                 </>
               )}
@@ -215,7 +209,7 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
             Review the payout details we will use for your honorarium. Add your{' '}
-            <BillComMark size="sm" className="translate-y-px" /> profile and W-9 under{' '}
+            <StripeMark size="sm" className="translate-y-px" /> bank and tax details under{' '}
             <Link to="/app/payments" className="font-semibold underline">
               Payments
             </Link>{' '}
@@ -236,10 +230,10 @@ export function PostEventFeedbackLearnerActions(props: {
               </li>
               <li>
                 <span className="font-medium text-foreground">Honorarium: </span>
-                {formatMoneyFromCents(preview.honorariumAmountCents)}
+                Eligible (amount set by admin)
               </li>
               <li>
-                <span className="font-medium text-foreground">Payee: </span>
+                <span className="font-medium text-foreground">Legal name / business: </span>
                 {preview.payeeDisplayName}
               </li>
               {preview.maskedBankLast4 ? (
@@ -264,8 +258,8 @@ export function PostEventFeedbackLearnerActions(props: {
               ) : null}
               {!preview.hasBillVendor ? (
                 <li className="text-amber-900 flex flex-wrap items-center gap-x-1 gap-y-1">
-                  Add your{' '}
-                  <BillComMark size="xs" className="translate-y-px" /> payout profile under{' '}
+                  Connect your{' '}
+                  <StripeMark size="xs" className="translate-y-px" /> payout account under{' '}
                   <Link to="/app/payments" className="font-semibold underline">
                     Payments
                   </Link>{' '}
@@ -274,7 +268,8 @@ export function PostEventFeedbackLearnerActions(props: {
               ) : null}
               {!preview.w9Submitted ? (
                 <li className="text-amber-900">
-                  Submit your W-9 under{' '}
+                  Finish tax details in your{' '}
+                  <StripeMark size="xs" className="translate-y-px" /> onboarding under{' '}
                   <Link to="/app/payments" className="font-semibold underline">
                     Payments
                   </Link>{' '}
@@ -308,6 +303,13 @@ export function PostEventFeedbackLearnerActions(props: {
           </button>
           {payMut.isError ? (
             <p className="text-sm text-destructive">Could not submit payment request. Fix any issues above and try again.</p>
+          ) : null}
+          {payMut.isSuccess || myRegistration.honorariumRequestedAt || myRegistration.honorariumPayment ? (
+            <p className="text-sm text-muted-foreground">
+              Request received. Payouts are typically sent within{' '}
+              <strong className="font-semibold text-foreground">14 calendar days</strong> after submission via ACH
+              once your bank and tax details are connected.
+            </p>
           ) : null}
         </div>
       ) : null}

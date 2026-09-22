@@ -8,9 +8,21 @@ variable "environment" {
   type        = string
 }
 
+variable "single_nat_gateway" {
+  description = "Use one NAT Gateway for all private subnets. False (default) keeps one NAT per AZ."
+  type        = bool
+  default     = false
+}
+
 variable "domain_name" {
-  description = "Domain name"
+  description = "Primary domain name (CloudFront alias + Route53 zone)"
   type        = string
+}
+
+variable "extra_cloudfront_aliases" {
+  description = "Additional CloudFront aliases (e.g. app.communityhealth.media). Must be covered by cloudfront_certificate_arn."
+  type        = list(string)
+  default     = []
 }
 
 variable "secondary_api_origin_domain" {
@@ -222,37 +234,6 @@ variable "ecr_repository_names" {
 }
 
 # Application secrets
-variable "supabase_url" {
-  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
-  type        = string
-}
-
-variable "supabase_anon_key" {
-  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-}
-
-variable "gotrue_jwt_secret" {
-  description = "GoTrue JWT secret for validating tokens (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "mediahub_base_url" {
-  description = "MediaHub Public API base URL"
-  type        = string
-  default     = "https://mediahub.communityhealth.media/api/public"
-}
-
-variable "mediahub_api_key" {
-  description = "MediaHub Public API key for catalog"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "contenthub_base_url" {
   description = "Content Hub API base URL for KOL network reads and HCP upsert"
   type        = string
@@ -406,6 +387,34 @@ variable "bill_mfa_device_name" {
   default     = ""
 }
 
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_publishable_key" {
+  description = "Stripe publishable key (pk_test_ / pk_live_). Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret for Your account destination. Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_connect_webhook_secret" {
+  description = "Stripe webhook signing secret for Connected accounts destination. Empty keeps existing Secrets Manager value (dev)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string
@@ -480,6 +489,12 @@ variable "cognito_mfa_configuration" {
   description = "MFA enforcement level: OPTIONAL (app soft-gate) or ON (required at Cognito sign-in). Flip to ON after users enroll."
   type        = string
   default     = "OPTIONAL"
+}
+
+variable "enable_cognito_sms_mfa" {
+  description = "Provision Cognito→SNS IAM role for SMS MFA / phone verification (pool wiring via cognito-sync-pool-config.sh)"
+  type        = bool
+  default     = true
 }
 
 variable "cognito_user_pool_tier" {
@@ -585,3 +600,23 @@ variable "cognito_mrr_associate_waf_replica" {
   type        = bool
   default     = false
 }
+
+variable "companion_base_url" {
+  description = "cht-companion Service Connect URL for Nest BFF (empty disables). Dev: http://cht-companion:8080"
+  type        = string
+  default     = ""
+}
+
+variable "companion_internal_secret" {
+  description = "Shared X-BFF-Auth secret for Nest → cht-companion"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Cloud Map HTTP namespace for ECS Service Connect client (e.g. cht-dev.local). Empty disables."
+  type        = string
+  default     = ""
+}
+

@@ -3,8 +3,9 @@ import { useQueryClient } from '@tanstack/react-query';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
 import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
-import { BillComMark } from '../branding/BillComMark';
+import { StripeMark } from '../branding/StripeMark';
 import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
+import { programHasHonorarium } from '../../utils/program-has-honorarium';
 
 type Phase = 'intro' | 'survey' | 'payout' | 'done';
 
@@ -38,6 +39,7 @@ export default function PostEventParticipantFlow(props: {
     | 'feedbackSurveyId'
     | 'feedbackUsesJotform'
     | 'honorariumAmount'
+    | 'hasHonorarium'
     | 'zoomSessionType'
     | 'startDate'
     | 'duration'
@@ -60,7 +62,7 @@ export default function PostEventParticipantFlow(props: {
   const hasSurvey =
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
-  const hasHonorarium = !!program.honorariumAmount && program.honorariumAmount > 0;
+  const hasHonorarium = programHasHonorarium(program);
   const timeUnlocked = isPostEventSurveyUnlocked(program);
   const att = myRegistration?.postEventAttendanceStatus;
   const attendancePending = att === 'PENDING_VERIFICATION';
@@ -153,8 +155,8 @@ export default function PostEventParticipantFlow(props: {
       <section className="bg-card border border-border rounded-card p-6 space-y-2">
         <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
         <p className="text-sm text-muted-foreground">
-          Your registration is approved. An administrator still needs to <strong>verify attendance</strong> after the
-          live session before the post-event survey and honorarium steps unlock here.
+          Your registration is approved. After the live session, attendance is recorded automatically when the
+          email on your HCP account matches the email Zoom saw. The post-event survey unlocks once that happens.
         </p>
       </section>
     );
@@ -186,11 +188,7 @@ export default function PostEventParticipantFlow(props: {
   const surveyStepLabel = hasSurvey
     ? surveyAcked
       ? 'Survey complete'
-      : jotformSubmitted
-        ? 'Survey in progress'
-        : flowStarted && phase === 'survey'
-          ? 'Survey pending'
-          : 'Survey required'
+      : 'Complete your survey'
     : 'Survey required';
 
   const steps = [
@@ -283,7 +281,7 @@ export default function PostEventParticipantFlow(props: {
                 {hasHonorarium ? (
                   <>
                     {' '}
-                    Honorarium amount and payout steps are shown there after you submit.
+                    Payout steps are shown there after you submit.
                   </>
                 ) : null}{' '}
                 You cannot return to a previous step after you continue.
@@ -291,7 +289,7 @@ export default function PostEventParticipantFlow(props: {
             ) : hasHonorarium ? (
               <>
                 Confirm you are ready to submit your honorarium request. Payout is processed by an administrator through{' '}
-                <BillComMark size="sm" className="mx-0.5 translate-y-px" />
+                <StripeMark size="sm" className="mx-0.5 translate-y-px" />
                 . After you continue, you <strong>cannot</strong> return to this step.
               </>
             ) : null}

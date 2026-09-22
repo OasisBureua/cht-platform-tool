@@ -209,3 +209,32 @@ variable "redis_url" {
   type        = string
   default     = ""
 }
+
+variable "appconfig_application" {
+  description = "AWS AppConfig application identifier for feature flags (empty disables polling)"
+  type        = string
+  default     = ""
+}
+
+variable "appconfig_environment" {
+  description = "AWS AppConfig environment identifier for feature flags"
+  type        = string
+  default     = ""
+}
+
+variable "appconfig_profile" {
+  description = "AWS AppConfig configuration profile identifier for auth-features"
+  type        = string
+  default     = ""
+}
+variable "companion_base_url" {
+  description = "cht-companion Service Connect base URL (e.g. http://cht-companion:8080). Empty disables chat proxy."
+  type        = string
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Cloud Map HTTP namespace name or ARN for ECS Service Connect client (e.g. cht-dev.local). Empty disables."
+  type        = string
+  default     = ""
+}

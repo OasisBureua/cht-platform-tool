@@ -9,7 +9,7 @@ import {
   SCHEDULER_TIMEZONES,
   formatTimezoneLabel,
 } from '../../utils/timezoneOptions';
-import { BillComMark } from '../../components/branding/BillComMark';
+import { StripeMark } from '../../components/branding/StripeMark';
 import { SessionHeroImageField } from '../../components/admin/SessionHeroImageField';
 import ZoomWebinarSettingsFields, {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
@@ -31,6 +31,7 @@ export default function AdminWebinarScheduler({
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
   const [honorariumUsd, setHonorariumUsd] = useState('');
+  const [chmProgramId, setChmProgramId] = useState('');
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -47,6 +48,8 @@ export default function AdminWebinarScheduler({
   const [zoomSettings, setZoomSettings] = useState<ZoomWebinarSettings>(
     DEFAULT_ZOOM_WEBINAR_SETTINGS,
   );
+  const [intakeSurveySourceId, setIntakeSurveySourceId] = useState('');
+  const [feedbackSurveySourceId, setFeedbackSurveySourceId] = useState('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
   const [zoomWarning, setZoomWarning] = useState<string | null>(null);
@@ -70,6 +73,15 @@ export default function AdminWebinarScheduler({
   const successPath = zoomSessionType === 'MEETING' ? '/admin/office-hours' : '/admin/programs';
   const isWebinar = zoomSessionType === 'WEBINAR';
   const isOfficeHoursOnly = lockSessionType && defaultZoomSessionType === 'MEETING';
+
+  const { data: reusableSurveys = [] } = useQuery({
+    queryKey: ['admin', 'surveys', 'reusable'],
+    queryFn: () => adminApi.listReusableSurveys(),
+    enabled: isWebinar,
+    staleTime: 60 * 1000,
+  });
+  const intakeSurveyOptions = reusableSurveys.filter((s) => s.type === 'INTAKE');
+  const feedbackSurveyOptions = reusableSurveys.filter((s) => s.type === 'FEEDBACK');
 
   const createMutation = useMutation({
     mutationFn: (payload: CreateWebinarPayload) => adminApi.createWebinar(payload),
@@ -150,10 +162,17 @@ export default function AdminWebinarScheduler({
       zoomSessionType,
       status: 'PUBLISHED',
       ...(isWebinar && honorariumNum != null && honorariumNum > 0 ? { honorariumAmount: honorariumNum } : {}),
+      ...(chmProgramId.trim() ? { chmProgramId: chmProgramId.trim() } : {}),
       ...(cleanSpeakers.length > 0 ? { speakers: cleanSpeakers } : {}),
       ...(sessionHeroImageUrl.trim() ? { sessionHeroImageUrl: sessionHeroImageUrl.trim() } : {}),
       ...(sessionDisclaimer.trim() ? { sessionDisclaimer: sessionDisclaimer.trim() } : {}),
       ...(isWebinar ? { zoomSettings } : {}),
+      ...(isWebinar && intakeSurveySourceId
+        ? { intakeSurveySourceId }
+        : {}),
+      ...(isWebinar && feedbackSurveySourceId
+        ? { feedbackSurveySourceId }
+        : {}),
     };
 
     createMutation.mutate(payload);
@@ -171,7 +190,7 @@ export default function AdminWebinarScheduler({
               Creates a Zoom Webinar and publishes it. The server automatically creates native registration intake and
               post-event surveys for this program. Learners complete intake before approval; post-event steps appear
               after the session. Honorarium payouts use{' '}
-              <BillComMark size="sm" className="translate-y-px" />.
+              <StripeMark size="sm" className="translate-y-px" />.
             </>
           ) : (
             'Creates Office Hours as a Zoom Meeting (type MEETING: conversational Q&A, waiting room). Registrations require admin approval before learners can join. Pair with Program hub time slots when you split the hour.'
@@ -367,7 +386,7 @@ export default function AdminWebinarScheduler({
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
               {isWebinar
-                ? 'Person moderating/running the session. Shown as "Host:" on the live session card.'
+                ? 'Person moderating/running the session. Shown as "Speaker:" on the live session card.'
                 : 'Person hosting Office Hours. Shown as "Get time with…" on the session card.'}
             </p>
           </div>
@@ -477,7 +496,7 @@ export default function AdminWebinarScheduler({
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1">
                 Honorarium (USD){' '}
-                <span className="font-normal text-muted-foreground">, optional; webinars only</span>
+                <span className="font-normal text-muted-foreground">, optional; webinars only; admin-only</span>
               </label>
               <input
                 type="number"
@@ -489,22 +508,79 @@ export default function AdminWebinarScheduler({
                 className="w-full max-w-xs rounded-xl border border-border px-4 py-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
               />
               <p className="mt-1 text-xs text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-                Learners can request this amount after post-event steps; admins pay via{' '}
-                <BillComMark size="xs" className="translate-y-px" />. Not available for Office Hours (Zoom Meetings).
+                Stored for admin payouts via <StripeMark size="xs" className="translate-y-px" />. Not shown to learners
+                under /app. Not available for Office Hours (Zoom Meetings).
               </p>
             </div>
           ) : null}
 
+          <div>
+            <label className="block text-sm font-semibold text-foreground mb-1">
+              Internal nomenclature / CHM Content ID{' '}
+              <span className="font-normal text-muted-foreground">, optional; admin-only</span>
+            </label>
+            <input
+              type="text"
+              value={chmProgramId}
+              onChange={(e) => setChmProgramId(e.target.value)}
+              placeholder="e.g. AZ-25-01_LIV001"
+              className="w-full max-w-md rounded-xl border border-border px-4 py-3 text-sm font-mono focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Hidden from learners. Used for billing, tagging, and recording asset naming.
+            </p>
+          </div>
+
           {isWebinar ? (
-            <div className="text-sm text-muted-foreground border border-border rounded-xl bg-muted px-4 py-3 space-y-2">
-              <p className="font-semibold text-foreground">Registration &amp; post-event surveys</p>
-              <p>
-                When you save a webinar, the platform creates two native surveys for this program: a{' '}
-                <strong>registration intake</strong> form (required before admin approval) and a{' '}
-                <strong>post-event feedback</strong> form (shown after the session). No Jotform URLs are required here.
-              </p>
+            <div className="text-sm text-muted-foreground border border-border rounded-xl bg-muted px-4 py-3 space-y-3">
+              <div>
+                <p className="font-semibold text-foreground">Registration &amp; post-event surveys</p>
+                <p className="mt-1">
+                  Defaults create a new registration intake and post-event feedback form for this program.
+                  Or reuse questions from a previously customized survey (e.g. another DB09 session).
+                </p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">
+                    Registration survey
+                  </label>
+                  <select
+                    value={intakeSurveySourceId}
+                    onChange={(e) => setIntakeSurveySourceId(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  >
+                    <option value="">Default registration template</option>
+                    {intakeSurveyOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.isCustomized ? '★ ' : ''}
+                        {s.program.title} — {s.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold text-foreground">
+                    Post-event survey
+                  </label>
+                  <select
+                    value={feedbackSurveySourceId}
+                    onChange={(e) => setFeedbackSurveySourceId(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-gray-900"
+                  >
+                    <option value="">Default post-event template</option>
+                    {feedbackSurveyOptions.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.isCustomized ? '★ ' : ''}
+                        {s.program.title} — {s.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
-                To replace or edit questions later, use Program hub or the admin Surveys list.
+                ★ = customized. Selected surveys are copied onto this program (source stays unchanged). Edit later from
+                Program hub.
               </p>
             </div>
           ) : (

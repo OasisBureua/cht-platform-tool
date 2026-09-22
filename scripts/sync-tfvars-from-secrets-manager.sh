@@ -30,12 +30,12 @@ github_file = var_dir / f"{env}.github.tfvars"
 out_file = var_dir / f"{env}.tfvars"
 
 SECRET_KEYS = [
-    "supabase_url", "supabase_anon_key", "gotrue_jwt_secret", "mediahub_base_url", "mediahub_api_key",
     "contenthub_base_url", "contenthub_api_key", "youtube_api_key", "youtube_playlist_ids",
     "zoom_account_id", "zoom_client_id", "zoom_client_secret", "zoom_webhook_secret", "zoom_sdk_key", "zoom_sdk_secret",
     "jotform_api_key", "jotform_webinar_default_intake_url", "jotform_webinar_post_event_shared_form_id",
     "bill_dev_key", "bill_username", "bill_password", "bill_org_id", "bill_funding_account_id",
     "bill_webhook_secret", "bill_mfa_remember_me_id", "bill_mfa_device_name",
+    "stripe_secret_key", "stripe_publishable_key", "stripe_webhook_secret", "stripe_connect_webhook_secret",
     "admin_bootstrap_secret", "hubspot_access_token", "recaptcha_secret_key", "internal_cache_secret",
     "cognito_google_client_id", "cognito_google_client_secret", "recaptcha_site_key",
 ]

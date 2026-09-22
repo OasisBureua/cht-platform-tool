@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { X, Loader2, Eye, EyeOff } from 'lucide-react';
 import { validateTaxId } from '../utils/w9Validation';
 import { getApiErrorMessage } from '../api/client';
-import { BillComMark } from './branding/BillComMark';
+import { StripeMark } from './branding/StripeMark';
 
 export function W9Modal({
   isOpen,
@@ -69,13 +69,13 @@ export function W9Modal({
           </div>
           <p className="text-sm text-muted-foreground mb-4 inline-flex flex-wrap items-center gap-x-1.5 gap-y-1">
             Complete this form so we can process your payouts. Your information is sent securely to{' '}
-            <BillComMark size="sm" className="translate-y-px" />.
+            <StripeMark size="sm" className="translate-y-px" />.
           </p>
           <div className="rounded-[6px] border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-700 leading-relaxed mb-4">
             <strong className="text-slate-900">Security:</strong> Community Health Media does not store full payment card
             data. Tax and banking details are handled by{' '}
-            <BillComMark size="xs" className="inline translate-y-px mx-0.5" /> using industry-standard safeguards. Only
-            provide information through official CHM screens or your vendor portal, never share passwords or full account
+            <StripeMark size="xs" className="inline translate-y-px mx-0.5" /> using industry-standard safeguards. Only
+            provide information through official CHM screens or Stripe Connect, never share passwords or full account
             numbers by email.
           </div>
 
@@ -134,7 +134,7 @@ export function W9Modal({
             <div>
               <label className="block text-sm font-semibold text-muted-foreground mb-1">
                 Business / LLC name{' '}
-                <span className="text-muted-foreground font-normal">(if payee is an organization)</span>
+                <span className="text-muted-foreground font-normal">(if payouts go to an organization)</span>
               </label>
               <input
                 type="text"
@@ -146,7 +146,7 @@ export function W9Modal({
               />
               <p className="mt-1 text-xs text-muted-foreground">
                 If payouts go to an LLC or other business, enter that entity&apos;s legal name here and select EIN as
-                the tax ID type so W-9 details match the payee of record on your payment setup.
+                the tax ID type so details match your legal name or business entity on payment setup.
               </p>
             </div>
 

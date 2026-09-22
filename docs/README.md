@@ -6,7 +6,7 @@ Operational docs for the CHT Platform. Start here:
 |-----|---------|
 | [engineering/getting-started.md](./engineering/getting-started.md) | Local development setup |
 | [engineering/architecture.md](./engineering/architecture.md) | System design and data flows |
-| [engineering/chmbot-migration-architecture.md](./engineering/chmbot-migration-architecture.md) | cht-chat on ECS Service Connect + cht-chat-db/pgvector |
+| [engineering/chmbot-migration-architecture.md](./engineering/chmbot-migration-architecture.md) | CHT Companion (cht-companion) on ECS Service Connect + cht-companion-db/pgvector |
 | [engineering/platform-cost-reduction.md](./engineering/platform-cost-reduction.md) | Cost cuts: MediaHub EC2 off, dev lightswitch, right-sizing |
 | [engineering/deployment.md](./engineering/deployment.md) | Staging and production deploys |
 | [engineering/integrations.md](./engineering/integrations.md) | Auth, Zoom, JotForm, Bill.com, MediaHub |

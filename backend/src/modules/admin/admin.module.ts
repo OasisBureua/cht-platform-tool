@@ -8,6 +8,7 @@ import { WebinarsModule } from '../webinars/webinars.module';
 import { EmailModule } from '../email/email.module';
 import { SessionHeroPresignService } from './session-hero-presign.service';
 import { ProgramZoomRecordingsService } from './program-zoom-recordings.service';
+import { ZoomRecordingsModule } from '../zoom-recordings/zoom-recordings.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { ProgramZoomRecordingsService } from './program-zoom-recordings.service'
     SurveysModule,
     WebinarsModule,
     EmailModule,
+    ZoomRecordingsModule,
   ],
   controllers: [AdminController],
   providers: [SessionHeroPresignService, ProgramZoomRecordingsService],

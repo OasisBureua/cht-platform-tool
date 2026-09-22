@@ -2,9 +2,8 @@ import { useState } from 'react';
 import { Link, useLocation, Navigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
-import { buildOAuthAuthorizeUrl } from '../../lib/supabase-oauth';
 import { buildCognitoAuthorizeUrl } from '../../lib/cognito-oauth';
-import { cognitoAuthEnabled, googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
+import { googleOAuthEnabled, googleOAuthMigrationMessage, recaptchaEnabled } from '../../lib/auth-config';
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { executeRecaptcha } from '../../lib/recaptcha';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
@@ -31,6 +30,9 @@ export default function Login() {
   const [submitting, setSubmitting] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [mfaSession, setMfaSession] = useState<string | null>(null);
+  const [mfaChallenge, setMfaChallenge] = useState<
+    'SOFTWARE_TOKEN_MFA' | 'SMS_MFA' | null
+  >(null);
   const [mfaCode, setMfaCode] = useState('');
   const [mfaSetup, setMfaSetup] = useState<{
     session: string;
@@ -47,9 +49,7 @@ export default function Login() {
     setError(null);
     setOauthLoading(provider);
     try {
-      const url = cognitoAuthEnabled
-        ? await buildCognitoAuthorizeUrl('Google', from)
-        : buildOAuthAuthorizeUrl(provider, from);
+      const url = await buildCognitoAuthorizeUrl('Google', from);
       if (import.meta.env.DEV) console.log('[OAuth] Redirecting to:', url);
       window.location.href = url;
     } catch (err) {
@@ -92,6 +92,7 @@ export default function Login() {
       }
       if (mfa?.session) {
         setMfaSession(mfa.session);
+        setMfaChallenge(mfa.challenge);
         return;
       }
       if (err) {
@@ -116,7 +117,12 @@ export default function Login() {
     setError(null);
     setErrorCode(null);
     setSubmitting(true);
-    const { error: err } = await completeMfaLogin(email, mfaSession, mfaCode);
+    const { error: err } = await completeMfaLogin(
+      email,
+      mfaSession,
+      mfaCode,
+      mfaChallenge ?? 'SOFTWARE_TOKEN_MFA',
+    );
     setSubmitting(false);
     if (err) {
       setError(err.message || 'MFA verification failed.');
@@ -140,6 +146,7 @@ export default function Login() {
 
   const backToPassword = () => {
     setMfaSession(null);
+    setMfaChallenge(null);
     setMfaSetup(null);
     setMfaCode('');
     setError(null);
@@ -253,7 +260,9 @@ export default function Login() {
             ) : mfaSession ? (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Enter the 6-digit code from your authenticator app.
+                  {mfaChallenge === 'SMS_MFA'
+                    ? 'Enter the 6-digit code we texted to your phone.'
+                    : 'Enter the 6-digit code from your authenticator app.'}
                 </p>
                 <Field
                   id="mfaCode"

@@ -18,7 +18,9 @@ export interface WebinarItem {
   intakeSurveyId?: string;
   hasIntakeSurvey?: boolean;
   registrationRequiresApproval?: boolean;
-  /** Whole dollars from API (converted from DB cents on the server). */
+  /** True when honorarium is configured; dollar amount is admin-only. */
+  hasHonorarium?: boolean;
+  /** @deprecated Prefer hasHonorarium; amount redacted for learners. */
   honorariumAmount?: number;
 }
 

@@ -71,6 +71,53 @@ describe('RecaptchaService', () => {
     });
   });
 
+  it('omits private remoteip when calling siteverify', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const svc = service();
+    await svc.verify('token', 'login', '10.0.0.5');
+    const body = (fetchMock.mock.calls[0][1] as { body: URLSearchParams }).body;
+    expect(body.get('remoteip')).toBeNull();
+  });
+
+  it('forwards public remoteip when calling siteverify', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const svc = service();
+    await svc.verify('token', 'login', '8.8.8.8');
+    const body = (fetchMock.mock.calls[0][1] as { body: URLSearchParams }).body;
+    expect(body.get('remoteip')).toBe('8.8.8.8');
+  });
+
+  it('returns refresh hint on timeout-or-duplicate', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({
+        success: false,
+        'error-codes': ['timeout-or-duplicate'],
+      }),
+    }) as unknown as typeof fetch;
+
+    const svc = service();
+    await expect(svc.verify('token', 'signup')).resolves.toEqual({
+      error: 'Captcha expired. Please refresh the page and try again.',
+    });
+  });
+
+  it('allows success when Google omits action', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      json: async () => ({ success: true, score: 0.9 }),
+    }) as unknown as typeof fetch;
+
+    const svc = service();
+    await expect(svc.verify('token', 'signup')).resolves.toEqual({ ok: true });
+  });
+
   it('still verifies normally in production when secret is configured', async () => {
     process.env.NODE_ENV = 'production';
     global.fetch = jest.fn().mockResolvedValue({

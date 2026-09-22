@@ -8,6 +8,12 @@ variable "secondary_api_origin_domain" {
   default     = ""
 }
 
+variable "single_nat_gateway" {
+  description = "Primary only: NAT count flag for us-east-1. This DR stack does not consume it."
+  type        = bool
+  default     = false
+}
+
 variable "rds_instance_class" {
   description = "Primary only: RDS instance class in us-east-1."
   type        = string
@@ -38,6 +44,12 @@ variable "cloudfront_certificate_arn" {
   default     = ""
 }
 
+variable "extra_cloudfront_aliases" {
+  description = "Primary only: additional CloudFront aliases (e.g. app.communityhealth.media)."
+  type        = list(string)
+  default     = []
+}
+
 variable "secrets_replica_regions" {
   description = "Primary only: Secrets Manager replica regions."
   type        = list(string)
@@ -66,39 +78,6 @@ variable "ecr_repository_names" {
   description = "Primary only: ECR repository names replicated to DR."
   type        = list(string)
   default     = ["cht-platform-backend", "cht-platform-worker"]
-}
-
-variable "supabase_url" {
-  description = "Primary only: Supabase/GoTrue base URL."
-  type        = string
-  default     = ""
-}
-
-variable "supabase_anon_key" {
-  description = "Primary only: Supabase anon key."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "gotrue_jwt_secret" {
-  description = "Primary only: GoTrue JWT secret."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "mediahub_base_url" {
-  description = "Primary only: MediaHub Public API base URL."
-  type        = string
-  default     = "https://mediahub.communityhealth.media/api/public"
-}
-
-variable "mediahub_api_key" {
-  description = "Primary only: MediaHub API key."
-  type        = string
-  sensitive   = true
-  default     = ""
 }
 
 variable "contenthub_base_url" {
@@ -301,6 +280,12 @@ variable "cognito_mfa_configuration" {
   default     = "OPTIONAL"
 }
 
+variable "enable_cognito_sms_mfa" {
+  description = "Primary only: provision Cognito→SNS IAM role for SMS MFA."
+  type        = bool
+  default     = true
+}
+
 variable "cognito_user_pool_tier" {
   description = "Primary only: Cognito user pool tier."
   type        = string
@@ -380,3 +365,23 @@ variable "cognito_mrr_associate_waf_replica" {
   type        = bool
   default     = false
 }
+
+variable "companion_base_url" {
+  description = "Primary only: companion Service Connect URL (unused in replica)."
+  type        = string
+  default     = ""
+}
+
+variable "companion_internal_secret" {
+  description = "Primary only: companion X-BFF-Auth secret (unused in replica)."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "service_connect_namespace" {
+  description = "Primary only: Service Connect namespace (unused in replica)."
+  type        = string
+  default     = ""
+}
+

@@ -2,8 +2,9 @@ name: Deploy to Platform
 
 # Mirror of deploy-dev.yml for testapp (us-east-1 only).
 # us-east-2 ECS / deploy-secondary.sh is intentional later, not part of this workflow.
-# Platform deploys only via workflow_dispatch (manual). Merging release/* or
-# hotfix/* into main does not auto-deploy — run Actions → Deploy to Platform.
+# Runs on main: when a release/* or hotfix/* PR merges into main (push to main),
+# or via manual dispatch. Pushes to release/* / hotfix/* do not deploy.
+# Scope detection deploys only changed lanes (backend / frontend / infra).
 on:
   workflow_dispatch:
     inputs:
@@ -15,6 +16,16 @@ on:
         description: 'Deploy all lanes (ignore change detection)'
         type: boolean
         default: false
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
+      - 'worker/**'
+      - 'infrastructure/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
 
 concurrency:
   group: deploy-platform
@@ -49,10 +60,33 @@ jobs:
     steps:
       - name: Evaluate trigger
         id: check
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          echo "should_deploy=true" >> "$GITHUB_OUTPUT"
-          echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
-          echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
+          case "$EVENT_NAME" in
+            workflow_dispatch)
+              echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+              echo "checkout_ref=${{ github.ref }}" >> "$GITHUB_OUTPUT"
+              echo "Trigger: manual workflow_dispatch on ${{ github.ref }}"
+              ;;
+            push)
+              if [ "$REF_NAME" = "main" ]; then
+                echo "should_deploy=true" >> "$GITHUB_OUTPUT"
+                echo "checkout_ref=refs/heads/main" >> "$GITHUB_OUTPUT"
+                echo "Trigger: push to main (${{ github.sha }}) — platform deploy from main"
+              else
+                echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+                echo "checkout_ref=" >> "$GITHUB_OUTPUT"
+                echo "Skipped: push is not on main ($REF_NAME)"
+              fi
+              ;;
+            *)
+              echo "should_deploy=false" >> "$GITHUB_OUTPUT"
+              echo "checkout_ref=" >> "$GITHUB_OUTPUT"
+              echo "Skipped: unsupported event ($EVENT_NAME)"
+              ;;
+          esac
 
   changes:
     name: Detect deploy scope
@@ -83,7 +117,7 @@ jobs:
             "${{ github.event_name }}" \
             "${{ github.event.before || '' }}" \
             "deploy-prod.yml" \
-            "${{ github.ref_name }}" \
+            "main" \
             "origin/main"
 
       - name: Detect changed paths
@@ -165,6 +199,24 @@ jobs:
         if: needs.changes.outputs.deploy_backend == 'true'
         working-directory: ./backend
         run: npm test
+
+      - name: Worker - Setup Python
+        if: needs.changes.outputs.deploy_backend == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: worker/requirements.txt
+
+      - name: Worker - Install dependencies
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pip install -r requirements.txt
+
+      - name: Worker - Run tests
+        if: needs.changes.outputs.deploy_backend == 'true'
+        working-directory: ./worker
+        run: pytest
 
       - name: Frontend - Install dependencies
         if: needs.changes.outputs.deploy_frontend == 'true'
@@ -276,9 +328,6 @@ jobs:
       - name: Verify GitHub Environment secrets
         if: needs.changes.outputs.deploy_backend == 'true' || needs.changes.outputs.deploy_infra == 'true'
         env:
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          GOTRUE_JWT_SECRET: ${{ secrets.GOTRUE_JWT_SECRET }}
-          MEDIAHUB_API_KEY: ${{ secrets.MEDIAHUB_API_KEY }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
           YOUTUBE_PLAYLIST_IDS: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
           ZOOM_ACCOUNT_ID: ${{ secrets.ZOOM_ACCOUNT_ID }}
@@ -333,9 +382,6 @@ jobs:
             "${EXTRA_VARS[@]}" \
             -out=tfplan
         env:
-          TF_VAR_supabase_anon_key: ${{ secrets.SUPABASE_ANON_KEY }}
-          TF_VAR_gotrue_jwt_secret: ${{ secrets.GOTRUE_JWT_SECRET }}
-          TF_VAR_mediahub_api_key: ${{ secrets.MEDIAHUB_API_KEY }}
           TF_VAR_youtube_api_key: ${{ secrets.YOUTUBE_API_KEY }}
           TF_VAR_youtube_playlist_ids: ${{ secrets.YOUTUBE_PLAYLIST_IDS }}
           TF_VAR_zoom_account_id: ${{ secrets.ZOOM_ACCOUNT_ID }}
@@ -355,6 +401,10 @@ jobs:
           TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
           TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
           TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
+          TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
+          TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
+          TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}
+          TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
           TF_VAR_admin_bootstrap_secret: ${{ secrets.ADMIN_BOOTSTRAP_SECRET }}
           TF_VAR_hubspot_access_token: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
           TF_VAR_cognito_google_client_id: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
@@ -452,14 +502,11 @@ jobs:
           VITE_COGNITO_CLIENT_ID: ${{ steps.outputs.outputs.cognito_client_id }}
           VITE_COGNITO_DOMAIN: ${{ steps.outputs.outputs.cognito_hosted_ui_base_url }}
           VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
-          VITE_MEDIAHUB_AUTH_DECOMMISSIONED: 'true'
           VITE_DISABLE_AUTH: 'false'
           VITE_USE_DEV_AUTH: 'false'
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
           VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_CATALOG_WORDPRESS_ONLY: 'true'
-          VITE_SUPABASE_URL: https://mediahub.communityhealth.media
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
 
       - name: Upload to S3
         if: needs.changes.outputs.deploy_frontend == 'true' && github.event.inputs.plan_only != 'true'

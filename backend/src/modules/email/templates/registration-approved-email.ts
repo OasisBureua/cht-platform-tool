@@ -24,6 +24,8 @@ export type RegistrationApprovedTemplateInput = {
   supportEmail: string;
   /** Optional Google Calendar deep link */
   googleCalendarUrl?: string | null;
+  /** True when email includes an .ics attachment (copy mentions calendar file). */
+  calendarInviteIncluded?: boolean;
 };
 
 /**
@@ -57,10 +59,19 @@ export function buildRegistrationApprovedEmail(
   const subject = `You're approved: ${p.programTitle}`;
 
   // ── Calendar block (plain text) ──────────────────────────────────────────────
-  // SCRUM-185: no .ics attachment; render Google Calendar link only when available.
   const calendarBlock: string[] = [];
-  if (p.googleCalendarUrl && p.startDate) {
-    calendarBlock.push('', 'Add to your calendar:', p.googleCalendarUrl);
+  if (p.calendarInviteIncluded && p.startDate) {
+    calendarBlock.push('');
+    if (p.googleCalendarUrl) {
+      calendarBlock.push(
+        'Calendar: open the attached live-session.ics file, or add to Google Calendar:',
+        p.googleCalendarUrl,
+      );
+    } else {
+      calendarBlock.push(
+        'Calendar: open the attached live-session.ics file to add this session to your calendar.',
+      );
+    }
   }
 
   // ── Plain text ───────────────────────────────────────────────────────────────
@@ -95,9 +106,13 @@ export function buildRegistrationApprovedEmail(
 
   // ── HTML ─────────────────────────────────────────────────────────────────────
   const calendarHtml =
-    p.googleCalendarUrl && p.startDate
+    p.calendarInviteIncluded && p.startDate
       ? `<p style="margin:20px 0 0;font-size:13px;line-height:1.65;color:${E.MUTED}">
-        <a href="${escape(p.googleCalendarUrl)}" style="color:${E.LINK};font-weight:600">Add to Google Calendar</a>
+        <strong style="color:${E.BODY_TEXT}">Calendar invite</strong>, A <code style="font-size:12px">live-session.ics</code> file is attached to this email.${
+          p.googleCalendarUrl
+            ? ` You can also <a href="${escape(p.googleCalendarUrl)}" style="color:${E.LINK};font-weight:600">add to Google Calendar</a>.`
+            : ''
+        }
       </p>`
       : '';
 

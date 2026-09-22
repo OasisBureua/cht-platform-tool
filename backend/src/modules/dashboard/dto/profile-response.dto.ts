@@ -38,6 +38,10 @@ export class ProfileResponseDto {
   zipCode?: string;
 
   @IsString()
+  @IsOptional()
+  phoneNumber?: string;
+
+  @IsString()
   role: string;
 
   @IsDateString()

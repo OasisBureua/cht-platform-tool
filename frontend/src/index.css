@@ -370,8 +370,17 @@
   .dark .bg-white\/90 {
     background-color: rgb(9 9 11 / 0.9) !important;
   }
+  .dark .bg-white\/85 {
+    background-color: rgb(9 9 11 / 0.85) !important;
+  }
   .dark .bg-white\/80 {
     background-color: rgb(9 9 11 / 0.8) !important;
+  }
+  .dark .bg-white\/75 {
+    background-color: rgb(9 9 11 / 0.75) !important;
+  }
+  .dark .bg-white\/70 {
+    background-color: rgb(9 9 11 / 0.7) !important;
   }
   .dark .bg-white\/60 {
     background-color: rgb(9 9 11 / 0.6) !important;
@@ -396,24 +405,58 @@
     background-color: rgb(0 0 0) !important;
   }
 
+  /* Near-black body/heading utilities → light text in dark mode.
+     Covers gray / zinc / slate / neutral ramps used across app + admin.
+     Light mode keeps the original utilities (no remap) so white↔black
+     contrast flips correctly both ways via theme tokens + these rules. */
+  .dark .text-gray-950,
   .dark .text-gray-900,
+  .dark .text-zinc-950,
+  .dark .text-zinc-900,
+  .dark .text-slate-950,
+  .dark .text-slate-900,
+  .dark .text-neutral-950,
+  .dark .text-neutral-900,
   .dark .text-black {
     color: rgb(244 244 245) !important;
   }
-  .dark .text-gray-800 {
+  .dark .text-gray-800,
+  .dark .text-zinc-800,
+  .dark .text-slate-800,
+  .dark .text-neutral-800 {
     color: rgb(228 228 231) !important;
   }
-  .dark .text-gray-700 {
+  .dark .text-gray-700,
+  .dark .text-zinc-700,
+  .dark .text-slate-700,
+  .dark .text-neutral-700 {
     color: rgb(212 212 216) !important;
   }
   .dark .text-gray-600,
   .dark .text-gray-500,
-  .dark .text-gray-400 {
+  .dark .text-gray-400,
+  .dark .text-zinc-600,
+  .dark .text-zinc-500,
+  .dark .text-zinc-400,
+  .dark .text-slate-600,
+  .dark .text-slate-500,
+  .dark .text-slate-400,
+  .dark .text-neutral-600,
+  .dark .text-neutral-500,
+  .dark .text-neutral-400 {
     color: rgb(161 161 170) !important;
   }
-  .dark .text-zinc-500,
-  .dark .text-zinc-400 {
-    color: rgb(174 174 183) !important;
+  .dark .fill-black,
+  .dark .fill-gray-900,
+  .dark .fill-zinc-900,
+  .dark .fill-slate-900,
+  .dark .fill-neutral-900 {
+    fill: rgb(244 244 245) !important;
+  }
+  .dark .stroke-black,
+  .dark .stroke-gray-900,
+  .dark .stroke-zinc-900 {
+    stroke: rgb(244 244 245) !important;
   }
 
   /* Brand used AS TEXT has to lift on a dark ground; the mid steps of

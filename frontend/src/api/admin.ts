@@ -49,6 +49,8 @@ export interface AdminWebinar {
   creditAmount: number;
   /** USD; webinars only (Office Hours sessions omit this). */
   honorariumAmount?: number;
+  /** Admin-only internal nomenclature / CHM Content ID. */
+  chmProgramId?: string | null;
   createdAt: string;
   /** Persisted panelist join URLs (Host + Speakers + CHM Staff). Available in list after creation. */
   zoomPanelistLinks?: ZoomPanelistLink[];
@@ -95,8 +97,14 @@ export interface CreateWebinarPayload {
   sessionDisclaimer?: string;
   /** Optional HTTPS image URL for session branding. */
   sessionHeroImageUrl?: string;
+  /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+  chmProgramId?: string;
   /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
   zoomSettings?: ZoomWebinarSettings;
+  /** Optional. Clone registration (INTAKE) questions from an existing survey. */
+  intakeSurveySourceId?: string;
+  /** Optional. Clone post-event (FEEDBACK) questions from an existing survey. */
+  feedbackSurveySourceId?: string;
 }
 
 export interface UpdateWebinarPayload {
@@ -115,6 +123,8 @@ export interface UpdateWebinarPayload {
   speakers?: string[];
   sessionDisclaimer?: string | null;
   sessionHeroImageUrl?: string | null;
+  /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+  chmProgramId?: string | null;
   /** WEBINAR only. Written to the linked Zoom webinar. */
   zoomSettings?: ZoomWebinarSettings;
 }
@@ -155,6 +165,7 @@ export interface AdminUser {
   city?: string | null;
   /** Organization / institution from profile */
   institution?: string | null;
+  npiNumber?: string | null;
   createdAt: string;
 }
 
@@ -189,11 +200,20 @@ export interface PendingPayment {
     firstName: string;
     lastName: string;
     billVendorId: string | null;
+    stripeAccountId?: string | null;
+    stripePayoutsEnabled?: boolean;
     w9Submitted?: boolean;
     preferredPaymentMethod?: 'ACH' | 'CHECK' | null;
     bankAccountLast4?: string | null;
   };
-  program: { id: string; title: string } | null;
+  program: {
+    id: string;
+    title: string;
+    /** Internal CHM nomenclature / Content ID for reconciliation. */
+    chmProgramId?: string | null;
+    /** Sponsor / client name used as campaign label. */
+    sponsorName?: string | null;
+  } | null;
 }
 
 export interface FailedPayment extends PendingPayment {
@@ -280,14 +300,188 @@ export type ProgramZoomRecordingRow = {
   topic?: string | null;
   recordingStart?: string | null;
   recordingEnd?: string | null;
-  pulledAt: string;
+  pulledAt: string | null;
   pulledByUserId?: string | null;
+  pullStatus?: string;
+  pullError?: string | null;
+  storedInS3?: boolean;
 };
 
 export type ProgramZoomRecordingsList = {
   storageConfigured: boolean;
   zoomConfigured: boolean;
   recordings: ProgramZoomRecordingRow[];
+};
+
+export type ZoomRecordingCatalogSession = {
+  id: string;
+  zoomMeetingId: string;
+  topic: string | null;
+  hostEmail: string | null;
+  startTime: string | null;
+  sessionType: string;
+  programId: string | null;
+  programTitle: string | null;
+  chmProgramId: string | null;
+  linked: boolean;
+  fileCount: number;
+  filesInS3Count: number;
+  attendeesImported?: boolean;
+  attendeeImportCount?: number;
+  attendanceLastImportedAt?: string | null;
+  attendeeCount?: number;
+  attendeeReportStoredInS3?: boolean;
+  attendeeReportExportedAt?: string | null;
+  attendeeReportParticipantCount?: number | null;
+  lastSyncedAt: string;
+};
+
+export type ZoomRecordingCatalogList = {
+  storageConfigured: boolean;
+  zoomConfigured: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  sessions: ZoomRecordingCatalogSession[];
+};
+
+export type ZoomRecordingCatalogDetail = {
+  storageConfigured: boolean;
+  zoomConfigured: boolean;
+  session: ZoomRecordingCatalogSession;
+  files: ProgramZoomRecordingRow[];
+};
+
+export type ZoomSyncJobProgress = {
+  monthsTotal: number;
+  monthsDone: number;
+  usersTotal?: number;
+  usersDone?: number;
+  windowsTotal?: number;
+  windowsDone?: number;
+  sessionsUpserted: number;
+  fileStubsUpserted: number;
+  errors: string[];
+};
+
+export type ZoomSyncJob = {
+  id: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  monthsBack: number;
+  sessionTypeFilter: string | null;
+  fromDate: string;
+  toDate: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  startedByUserId: string | null;
+  progress: ZoomSyncJobProgress | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ZoomAttendanceImportJobProgress = {
+  sessionsTotal: number;
+  sessionsDone: number;
+  participantsUpserted: number;
+  registrationsAutoVerified: number;
+  reportsExported: number;
+  reportExportErrors: string[];
+  errors: string[];
+};
+
+export type ZoomAttendanceImportJob = {
+  id: string;
+  status: 'QUEUED' | 'RUNNING' | 'COMPLETED' | 'FAILED';
+  monthsBack: number;
+  sessionTypeFilter: string | null;
+  runAutoVerify: boolean;
+  fromDate: string;
+  toDate: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  startedByUserId: string | null;
+  progress: ZoomAttendanceImportJobProgress | null;
+  errorMessage: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ZoomAttendanceParticipant = {
+  id: string;
+  zoomParticipantId: string;
+  participantName: string | null;
+  participantEmail: string | null;
+  joinTime: string;
+  leaveTime: string | null;
+  durationSeconds: number | null;
+  isHost: boolean;
+  source: string;
+  matchedRegistration: boolean;
+};
+
+export type ZoomSessionAttendanceList = {
+  sessionId: string;
+  linked: boolean;
+  page: number;
+  pageSize: number;
+  total: number;
+  search: string | null;
+  participants: ZoomAttendanceParticipant[];
+};
+
+export type ZoomSessionSurvey = {
+  id: string;
+  title: string;
+  type: string;
+  source: 'native' | 'jotform';
+  jotformFormId: string | null;
+  jotformFormUrl: string | null;
+  responseCount: number;
+  lastResponseAt: string | null;
+  isCustomized: boolean;
+  createdAt: string;
+};
+
+export type ZoomSessionSurveysPayload = {
+  linked: boolean;
+  canFetchSurveys: boolean;
+  reason: string | null;
+  programId: string | null;
+  programTitle: string | null;
+  surveys: ZoomSessionSurvey[];
+  legacyForms: Array<{
+    kind: 'intake' | 'post_event';
+    label: string;
+    url: string;
+  }>;
+};
+
+export type ZoomSessionSurveyItem = {
+  id: string;
+  title: string;
+  type: string;
+  source: 'native' | 'jotform';
+  jotformFormId: string | null;
+  jotformFormUrl: string | null;
+  responseCount: number;
+  lastResponseAt: string | null;
+  isCustomized: boolean;
+  createdAt: string;
+};
+
+export type ZoomSessionSurveysList = {
+  linked: boolean;
+  canFetchSurveys: boolean;
+  reason: string | null;
+  programId: string | null;
+  programTitle: string | null;
+  surveys: ZoomSessionSurveyItem[];
+  legacyForms: Array<{
+    kind: 'intake' | 'post_event';
+    label: string;
+    url: string;
+  }>;
 };
 
 export interface PostEventAttendanceAdminRow {
@@ -1022,6 +1216,56 @@ export const adminApi = {
     return data;
   },
 
+  listReusableSurveys: async (
+    type?: 'INTAKE' | 'FEEDBACK',
+  ): Promise<
+    Array<{
+      id: string;
+      title: string;
+      type: 'INTAKE' | 'FEEDBACK' | string;
+      isCustomized: boolean;
+      schemaVersion: number;
+      updatedAt: string;
+      responseCount: number;
+      program: { id: string; title: string; startDate: string | null };
+    }>
+  > => {
+    const { data } = await apiClient.get('/admin/surveys/reusable', {
+      params: type ? { type } : undefined,
+    });
+    return data as Array<{
+      id: string;
+      title: string;
+      type: string;
+      isCustomized: boolean;
+      schemaVersion: number;
+      updatedAt: string;
+      responseCount: number;
+      program: { id: string; title: string; startDate: string | null };
+    }>;
+  },
+
+  cloneSurveyOntoProgram: async (
+    programId: string,
+    sourceSurveyId: string,
+  ): Promise<{
+    surveyId: string;
+    type: string;
+    created: boolean;
+    replaced: boolean;
+  }> => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/surveys/clone`,
+      { sourceSurveyId },
+    );
+    return data as {
+      surveyId: string;
+      type: string;
+      created: boolean;
+      replaced: boolean;
+    };
+  },
+
   deleteSurvey: async (id: string) => {
     await apiClient.delete(`/admin/surveys/${id}`);
   },
@@ -1211,6 +1455,169 @@ export const adminApi = {
     };
   },
 
+  listZoomRecordingSessions: async (params?: {
+    page?: number;
+    pageSize?: number;
+    linked?: boolean;
+    q?: string;
+  }) => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/sessions', {
+      params: {
+        page: params?.page,
+        pageSize: params?.pageSize,
+        linked:
+          params?.linked === true
+            ? 'true'
+            : params?.linked === false
+              ? 'false'
+              : undefined,
+        q: params?.q?.trim() || undefined,
+      },
+    });
+    return data as ZoomRecordingCatalogList;
+  },
+
+  getZoomRecordingSession: async (sessionId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}`,
+    );
+    return data as ZoomRecordingCatalogDetail;
+  },
+
+  pullZoomRecordingSession: async (
+    sessionId: string,
+    body?: { fileTypes?: string[]; zoomRecordingFileIds?: string[] },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/pull`,
+      body ?? {},
+    );
+    return data as ZoomRecordingCatalogDetail & {
+      pulledCount: number;
+      errors?: string[];
+    };
+  },
+
+  getZoomRecordingCatalogDownloadUrl: async (
+    sessionId: string,
+    fileId: string,
+    disposition: 'inline' | 'attachment' = 'attachment',
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/files/${encodeURIComponent(fileId)}/download-url`,
+      { params: { disposition } },
+    );
+    return data as {
+      url: string;
+      expiresInSeconds: number;
+      recording: ProgramZoomRecordingRow;
+    };
+  },
+
+  linkZoomRecordingSession: async (sessionId: string, programId: string) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/link`,
+      { programId },
+    );
+    return data as ZoomRecordingCatalogDetail;
+  },
+
+  startZoomRecordingsSync: async (body?: { monthsBack?: number }) => {
+    const { data } = await apiClient.post('/admin/zoom-recordings/sync', body ?? {});
+    return data as ZoomSyncJob;
+  },
+
+  getLatestZoomSyncJob: async () => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/sync/latest');
+    return (data as ZoomSyncJob | null) ?? null;
+  },
+
+  getZoomSyncJob: async (jobId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sync/${encodeURIComponent(jobId)}`,
+    );
+    return data as ZoomSyncJob;
+  },
+
+  startZoomAttendanceImport: async (body?: {
+    monthsBack?: number;
+    runAutoVerify?: boolean;
+  }) => {
+    const { data } = await apiClient.post(
+      '/admin/zoom-recordings/attendance/import',
+      body ?? {},
+    );
+    return data as ZoomAttendanceImportJob;
+  },
+
+  getLatestZoomAttendanceImportJob: async () => {
+    const { data } = await apiClient.get('/admin/zoom-recordings/attendance/import/latest');
+    return (data as ZoomAttendanceImportJob | null) ?? null;
+  },
+
+  getZoomAttendanceImportJob: async (jobId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/attendance/import/${encodeURIComponent(jobId)}`,
+    );
+    return data as ZoomAttendanceImportJob;
+  },
+
+  listZoomSessionAttendance: async (
+    sessionId: string,
+    params?: { page?: number; pageSize?: number; search?: string },
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance`,
+      {
+        params: {
+          page: params?.page,
+          pageSize: params?.pageSize,
+          search: params?.search || undefined,
+        },
+      },
+    );
+    return data as ZoomSessionAttendanceList;
+  },
+
+  listZoomSessionSurveys: async (sessionId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/surveys`,
+    );
+    return data as ZoomSessionSurveysPayload;
+  },
+
+  getZoomSessionAttendanceReportDownloadUrl: async (sessionId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance/report/download-url`,
+    );
+    return data as {
+      url: string;
+      expiresInSeconds: number;
+      filename: string;
+      participantCount: number | null;
+      exportedAt: string | null;
+      zoomMeetingId: string;
+    };
+  },
+
+  importZoomSessionAttendance: async (
+    sessionId: string,
+    body?: { runAutoVerify?: boolean },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/zoom-recordings/sessions/${encodeURIComponent(sessionId)}/attendance/import`,
+      body ?? {},
+    );
+    return data as ZoomRecordingCatalogDetail & {
+      participantsUpserted: number;
+      registrationsAutoVerified: number;
+      reportExported?: boolean;
+      reportParticipantCount?: number;
+      reportExportError?: string | null;
+      errors?: string[];
+    };
+  },
+
   listProgramEnrollments: async (programId: string) => {
     const { data } = await apiClient.get(`/admin/programs/${encodeURIComponent(programId)}/enrollments`);
     return data as Array<{
@@ -1243,6 +1650,8 @@ export const adminApi = {
         honorariumAmount: number | null;
         zoomSessionType?: 'WEBINAR' | 'MEETING';
         startDate?: string | null;
+        chmProgramId?: string | null;
+        sponsorName?: string | null;
       };
     }>;
   },
@@ -1257,8 +1666,19 @@ export const adminApi = {
     return data as PostEventAttendanceAdminRow[];
   },
 
-  listSurveyResponses: async (surveyId: string) => {
-    const { data } = await apiClient.get(`/admin/surveys/${encodeURIComponent(surveyId)}/responses`);
+  listSurveyResponses: async (
+    surveyId: string,
+    params?: { page?: number; pageSize?: number },
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/surveys/${encodeURIComponent(surveyId)}/responses`,
+      {
+        params: {
+          page: params?.page,
+          pageSize: params?.pageSize,
+        },
+      },
+    );
     return data as {
       survey: {
         id: string;
@@ -1284,6 +1704,11 @@ export const adminApi = {
           postEventAttendanceStatus: string;
         } | null;
       }>;
+      pagination: {
+        page: number;
+        pageSize: number;
+        total: number;
+      };
     };
   },
 

@@ -13,7 +13,6 @@ import {
   ChevronLeft,
   CheckCircle2,
   Circle,
-  DollarSign,
   ExternalLink,
   MonitorPlay,
   Video,
@@ -24,11 +23,12 @@ import {
 import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { isRegistrationClosed } from '../utils/live-session-timing';
-
-function formatMoney(value?: number | null) {
-  if (!value) return '$0';
-  return `$${value.toLocaleString()}`;
-}
+import {
+  isApiNotFoundError,
+  removeSessionFromLiveListCaches,
+} from '../utils/live-session-list-query';
+import { getApiErrorMessage } from '../api/client';
+import { programHasHonorarium } from '../utils/program-has-honorarium';
 
 function formatEventDate(iso?: string | null) {
   if (!iso) return null;
@@ -88,6 +88,17 @@ export default function WebinarDetail() {
     queryFn: () => programsApi.getById(id!),
     enabled: !!id && !isZoomWebinar,
     retry: false,
+    refetchInterval: (query) => {
+      const p = query.state.data;
+      if (!p) return false;
+      if (p.canJoinSession) return 60_000;
+      if (!p.joinSessionOpensAt) return false;
+      const opensAt = new Date(p.joinSessionOpensAt).getTime();
+      if (Number.isNaN(opensAt)) return false;
+      const msUntilOpen = opensAt - Date.now();
+      if (msUntilOpen > 2 * 60 * 60 * 1000) return false;
+      return 15_000;
+    },
   });
 
   const { data: slots = [] } = useQuery({
@@ -182,6 +193,29 @@ export default function WebinarDetail() {
     }
   }, [myRegistration?.status, userId, queryClient]);
 
+  useEffect(() => {
+    if (!id || !isError || !isApiNotFoundError(error)) return;
+    removeSessionFromLiveListCaches(queryClient, id);
+    queryClient.removeQueries({ queryKey: ['program', id] });
+  }, [id, isError, error, queryClient]);
+
+  const sessionUnavailable = (
+    <div className="rounded-card border border-border bg-muted p-10 text-center">
+      <p className="font-semibold text-foreground">Session no longer available</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        This live session was removed or is no longer published.
+      </p>
+      <div className="mt-5">
+        <Link
+          to="/app/live"
+          className="inline-flex items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
+        >
+          Back to Live
+        </Link>
+      </div>
+    </div>
+  );
+
   if (isZoomWebinar) {
     if (zoomLoading) return <LoadingSpinner />;
     if (!zoomWebinar) {
@@ -236,11 +270,12 @@ export default function WebinarDetail() {
   if (isLoading) return <LoadingSpinner />;
 
   if (isError) {
+    if (isApiNotFoundError(error)) return sessionUnavailable;
     return (
       <div className="rounded-card border border-border bg-muted p-10 text-center">
         <p className="font-semibold text-foreground">We could not load this session.</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          {String((error as any)?.message || 'Please try again.')}
+          {getApiErrorMessage(error, 'Please try again.')}
         </p>
         <div className="mt-5">
           <Link
@@ -254,21 +289,8 @@ export default function WebinarDetail() {
     );
   }
 
-  if (!program) {
-    return (
-      <div className="rounded-card border border-border bg-muted p-10 text-center">
-        <p className="font-semibold text-foreground">Session not found</p>
-        <p className="mt-1 text-sm text-muted-foreground">That link may be invalid.</p>
-        <div className="mt-5">
-          <Link
-            to="/app/live"
-            className="inline-flex items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
-          >
-            Back to Live
-          </Link>
-        </div>
-      </div>
-    );
+  if (!program || (!isAdmin && program.status !== 'PUBLISHED')) {
+    return sessionUnavailable;
   }
 
   const enrolled =
@@ -290,16 +312,20 @@ export default function WebinarDetail() {
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const postEventSurveyWindowOpen = hasPostEventSurvey && isPostEventSurveyUnlocked(program);
   const wantsPostEventExtras =
-    hasPostEventSurvey || !!(program.honorariumAmount && program.honorariumAmount > 0);
+    hasPostEventSurvey || programHasHonorarium(program);
+  const attendanceAllowsPostEvent =
+    myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
+    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
+  /** Only mark survey complete after the learner actually finished (ack), not merely because the window opened. */
   const surveyDone =
     enrolled &&
-    (!hasPostEventSurvey || (postEventSurveyWindowOpen && !postEventReminder));
+    (!hasPostEventSurvey || !!myRegistration?.postEventSurveyAcknowledgedAt);
   const surveyInProgress =
     enrolled &&
     hasPostEventSurvey &&
     !surveyDone &&
-    !!myRegistration?.postEventSurveySubmitted &&
-    !myRegistration?.postEventSurveyAcknowledgedAt;
+    attendanceAllowsPostEvent &&
+    postEventSurveyWindowOpen;
 
   const registrationPendingApproval = myRegistration?.status === 'PENDING';
   const surveySubmittedOnly = myRegistration?.status === 'SURVEY_SUBMITTED';
@@ -333,9 +359,6 @@ export default function WebinarDetail() {
     enrollMutation.isPending ||
     myRegistration?.status === 'PENDING';
 
-  const attendanceAllowsPostEvent =
-    myRegistration?.postEventAttendanceStatus === 'VERIFIED' ||
-    myRegistration?.postEventAttendanceStatus === 'NOT_REQUIRED';
   const showPostEventReminderBanner =
     program.zoomSessionType === 'WEBINAR' &&
     postEventReminder &&
@@ -452,16 +475,15 @@ export default function WebinarDetail() {
 
             {/* Reward chips */}
             <div className="flex flex-wrap items-center gap-2">
-              {program.creditAmount > 0 ? (
+              {program.creditAmount != null && program.creditAmount > 0 ? (
                 <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted border border-border rounded-[6px] px-2.5 py-1">
                   <Award className="h-3.5 w-3.5" />
                   {program.creditAmount} CME Credits
                 </span>
               ) : null}
-              {program.honorariumAmount ? (
+              {programHasHonorarium(program) ? (
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-success/10 border border-success/25 rounded-[6px] px-2.5 py-1">
-                  <DollarSign className="h-3.5 w-3.5" aria-hidden />
-                  {program.honorariumAmount.toLocaleString()} honorarium
+                  Honorarium eligible
                 </span>
               ) : null}
             </div>
@@ -689,7 +711,7 @@ export default function WebinarDetail() {
         </section>
       ) : null}
 
-      {enrolled && program.honorariumAmount ? (
+      {enrolled && programHasHonorarium(program) ? (
         <section className="bg-card border border-border rounded-card p-6 space-y-3">
           <h2 className="text-base font-semibold text-foreground">Payments and honorarium</h2>
           <p className="text-sm text-muted-foreground">
@@ -774,8 +796,8 @@ export default function WebinarDetail() {
           <div className="min-w-0">
             <p className="text-xs font-semibold text-foreground truncate">{program.title}</p>
             <p className="text-xs text-muted-foreground truncate">
-              {program.honorariumAmount ? `${formatMoney(program.honorariumAmount)} honorarium` : 'Honorarium available'} •{' '}
-              {program.creditAmount > 0 ? `${program.creditAmount} CME` : 'Live session'}
+              {programHasHonorarium(program) ? 'Honorarium available' : 'Live session'} •{' '}
+              {program.creditAmount != null && program.creditAmount > 0 ? `${program.creditAmount} CME` : 'Live session'}
             </p>
           </div>
 

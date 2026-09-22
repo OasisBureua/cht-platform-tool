@@ -47,4 +47,10 @@ export class UpdateProfileDto {
     message: 'zipCode must be exactly 5 digits',
   })
   zipCode?: string;
+
+  /** US mobile; digits or E.164 — normalized server-side to +1XXXXXXXXXX. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  phoneNumber?: string;
 }

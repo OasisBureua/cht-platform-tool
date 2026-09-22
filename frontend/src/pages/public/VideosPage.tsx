@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ArrowRight, ListVideo, Loader2, Play, Search } from 'lucide-react';
-import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
+import { catalogApi, type CatalogItem, type MediaHubClip, type WordPressTermItem } from '../../api/catalog';
 import { ChmMark } from '../../components/brand/ChmMark';
 import { Button, Chip, SegmentedControl } from '../../components/ui';
 import {
@@ -17,6 +17,7 @@ import {
 import {
   APP_CATALOG_CLIPS_GRID,
   APP_CATALOG_PLAYLISTS_BROWSE,
+  APP_CATALOG_SERIES_BROWSE,
 } from '../../components/navigation/appNavItems';
 import DISEASE_AREAS from '../../data/disease-areas';
 import {
@@ -330,6 +331,47 @@ function PlaylistCard({ item, href }: { item: CatalogItem; href: string }) {
 }
 
 /**
+ * A WordPress series has no thumbnail (unlike a YouTube playlist), so this
+ * is a distinct card from PlaylistCard rather than a reuse: the poster slot
+ * becomes a brand-tinted panel carrying the mark and session count, in the
+ * same spirit as HeroPanel's tinted field below.
+ */
+function SeriesCard({ item, href }: { item: WordPressTermItem; href: string }) {
+  return (
+    <Link
+      to={href}
+      className="card group flex h-full flex-col p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-4"
+    >
+      <div className="relative">
+        <span
+          aria-hidden
+          className="img-ring absolute inset-x-3 -top-1.5 h-3 rounded-t-[6px] bg-surface-2"
+        />
+        <div
+          aria-hidden
+          className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-[6px]"
+          style={{
+            background:
+              'radial-gradient(60% 60% at 30% 30%, color-mix(in oklab, var(--color-beam) 28%, transparent), transparent 70%), radial-gradient(50% 50% at 75% 70%, color-mix(in oklab, var(--color-pink) 22%, transparent), transparent 70%)',
+          }}
+        >
+          <div className="img-ring absolute inset-0 rounded-[inherit]" />
+          <ChmMark className="size-8 text-text/70" />
+        </div>
+      </div>
+      <div className="flex flex-1 flex-col px-1 pt-3.5 pb-1">
+        <h3 className="display line-clamp-2 text-body-s text-text group-hover:text-anchor sm:text-body-m">
+          {item.name}
+        </h3>
+        <p className="meta mt-auto line-clamp-1 pt-3 text-faint">
+          {item.post_count} {item.post_count === 1 ? 'session' : 'sessions'}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
+/**
  * Shared frame for the hero visual: a raised panel on a soft brand-tinted
  * field, with a bevel highlight along the top edge. Depth only, no outlines.
  */
@@ -516,8 +558,8 @@ export default function VideosPage() {
 
   // Back-compat: legacy `?sort=recent` was byte-identical to `?sort=posted`
   // at the backend (2026-05-16 audit). Redirect old links to `posted`.
-  const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
-  const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
+    const sortRaw = params.get('sort') ?? params.get('sort_by') ?? '';
+    const sortNormalized = sortRaw === 'recent' ? 'posted' : sortRaw;
   const sortBy = SORT_PARAM_VALUES.has(sortNormalized) ? sortNormalized : DEFAULT_SORT;
 
   const areaDef = area === 'all' ? null : (DISEASE_AREAS.find((d) => d.slug === area) ?? null);
@@ -588,6 +630,16 @@ export default function VideosPage() {
     queryFn: catalogApi.getPlaylists,
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
+
+  const { data: wpSeriesData } = useQuery({
+    queryKey: ['catalog', 'wordpress-series'],
+    queryFn: () => catalogApi.getWordPressSeries(),
+    staleTime: WORDPRESS_CATALOG_STALE_MS,
+  });
+  const wpSeries = useMemo(
+    () => (wpSeriesData?.items ?? []).filter((s) => s.post_count > 0),
+    [wpSeriesData],
+  );
 
   // The featured rail is the newest of the whole catalogue, not of the
   // current filter: it stays put while the grid underneath narrows.
@@ -723,8 +775,10 @@ export default function VideosPage() {
      paging the whole catalogue in before you could reach them. They are
      a view now, not a footer. */
   const [viewParams, setViewParams] = useSearchParams();
-  const view = viewParams.get('view') === 'playlists' ? 'playlists' : 'clips';
-  const setView = (next: 'clips' | 'playlists') => {
+  const viewParam = viewParams.get('view');
+  const view: 'clips' | 'playlists' | 'series' =
+    viewParam === 'playlists' ? 'playlists' : viewParam === 'series' ? 'series' : 'clips';
+  const setView = (next: 'clips' | 'playlists' | 'series') => {
     const p = new URLSearchParams(viewParams);
     if (next === 'clips') p.delete('view');
     else p.set('view', next);
@@ -789,7 +843,7 @@ export default function VideosPage() {
                 className="display mt-6 max-w-[16ch] text-[2.5rem] leading-[1.04] tracking-[-0.03em] text-text md:text-display-l"
               >
                 Every conversation, every cut
-              </h1>
+            </h1>
               <p className="prose-lede mt-6 max-w-[50ch] text-body-l text-muted2">
                 Filter by format and disease state at the same time. Every session exists as
                 long-form video, an audio cut, a written explainer and a set of clips.
@@ -800,13 +854,13 @@ export default function VideosPage() {
                   <ArrowRight className="size-4" strokeWidth={1.75} />
                 </Button>
                 <Button
-                  to="/kol-network"
+                  to="/kols"
                   variant="outline"
                   className={`${BTN} bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
                 >
                   Browse by faculty
                 </Button>
-              </div>
+          </div>
             </div>
 
             <FeaturedCarousel clips={featured} hrefFor={clipHref} />
@@ -821,6 +875,7 @@ export default function VideosPage() {
           segments={[
             { value: 'clips', label: 'Videos' },
             { value: 'playlists', label: 'Playlists', count: playlists.length || undefined },
+            { value: 'series', label: 'Series', count: wpSeries.length || undefined },
           ]}
           value={view}
           onChange={setView}
@@ -828,21 +883,21 @@ export default function VideosPage() {
       </div>
 
       {/* ── search ─────────────────────────────────────── */}
-      <div className={`${RAIL} ${isInApp ? 'pt-6 md:pt-8' : 'pt-6'} ${view === 'playlists' ? 'hidden' : ''}`}>
+      <div className={`${RAIL} ${isInApp ? 'pt-6 md:pt-8' : 'pt-6'} ${view !== 'clips' ? 'hidden' : ''}`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
           <div className="relative min-w-0 flex-1">
-            <Search
+              <Search
               className="pointer-events-none absolute start-5 top-1/2 size-5 -translate-y-1/2 text-faint"
               strokeWidth={1.5}
-              aria-hidden
-            />
+                aria-hidden
+              />
             <label htmlFor="library-search" className="sr-only">
               Search the content library
             </label>
-            <input
+              <input
               id="library-search"
               type="search"
-              value={query}
+                value={query}
               onChange={(e) => setFilters({ q: e.target.value })}
               placeholder="Search sessions, trials, faculty"
               className="h-14 w-full rounded-[6px] bg-surface ps-14 pe-5 text-base text-text shadow-card outline-none placeholder:text-faint focus:bg-ground focus:shadow-card-hover"
@@ -852,14 +907,14 @@ export default function VideosPage() {
               poster, so the faculty route lives beside the search. */}
           {isInApp ? (
             <Button
-              to="/kol-network"
+              to="/kols"
               variant="outline"
               className={`${BTN} h-14 shrink-0 bg-surface text-text hover:bg-ground hover:text-text hover:shadow-card-hover`}
             >
               Browse by faculty
             </Button>
           ) : null}
-        </div>
+            </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
           {FORMATS.map((f) => (
@@ -951,9 +1006,9 @@ export default function VideosPage() {
                       </button>
                     ))}
                   </div>
-                </div>
-              ) : null}
             </div>
+              ) : null}
+                </div>
           ) : null}
           {filtersActive ? (
             <button
@@ -963,9 +1018,9 @@ export default function VideosPage() {
             >
               Clear all
             </button>
-          ) : null}
-        </div>
-      </div>
+                ) : null}
+              </div>
+                </div>
 
       {/* ── rails (app, unfiltered) / grid ─────────────── */}
       <div className={`${RAIL} pt-12 pb-20`}>
@@ -992,19 +1047,44 @@ export default function VideosPage() {
               <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
                 Curated lists appear here as faculty group sessions into series.
               </p>
+                </div>
+          )
+        ) : view === 'series' ? (
+          wpSeries.length > 0 ? (
+            <section aria-labelledby="all-series">
+              <h2 id="all-series" className="sr-only">
+                Series
+              </h2>
+              <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 md:gap-5 xl:grid-cols-4">
+                {wpSeries.map((s) => (
+                  <li key={s.slug} className="min-w-0">
+                    <SeriesCard
+                      item={s}
+                      href={`${isInApp ? '/app' : ''}/catalog/playlist/series/${encodeURIComponent(s.slug)}`}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : (
+            <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
+              <p className="display text-display-s text-text">No series yet</p>
+              <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
+                Series appear here as WordPress groups sessions under a shared topic.
+              </p>
             </div>
           )
         ) : isFirstLoad ? (
           <div className="flex items-center justify-center py-16" aria-busy="true">
             <Loader2 className="size-10 animate-spin text-faint" aria-hidden />
-          </div>
+                </div>
         ) : clipsError ? (
           <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
             <p className="display text-display-s text-text">Could not load the library</p>
             <p className="prose-lede mx-auto mt-3 max-w-[34rem] text-body-m text-muted2">
               The catalogue did not answer. Try again in a moment.
             </p>
-          </div>
+                </div>
         ) : results.length === 0 ? (
           <div className="rounded-[6px] px-8 py-16 text-center shadow-card">
             <p className="display text-display-s text-text">Nothing matches that yet</p>
@@ -1021,15 +1101,15 @@ export default function VideosPage() {
               >
                 Clear all filters
               </Button>
-            </div>
-          </div>
+              </div>
+                </div>
         ) : showRails ? (
           <div className="space-y-14 md:space-y-16">
             {railItems.length > 0 ? (
               <CatalogRow
                 title="Recently added"
                 subtitle={`${railItems.length} video${railItems.length !== 1 ? 's' : ''}`}
-                seeAllHref={APP_CATALOG_CLIPS_GRID}
+                    seeAllHref={APP_CATALOG_CLIPS_GRID}
                 seeAllLabel="See all in library"
               >
                 {railItems.map((item) => (
@@ -1037,18 +1117,18 @@ export default function VideosPage() {
                     key={`recent-${item.id}`}
                     clip={item}
                     to={clipHref(item)}
-                    title={item.title}
-                    imageUrl={getMediaHubThumbnail(item)}
+                        title={item.title}
+                        imageUrl={getMediaHubThumbnail(item)}
                     duration={clipDuration(item.duration_seconds)}
                     description={
                       item.doctors?.[0]
                         ? doctorLabelFromSlug(item.doctors[0])
                         : clipStripeSubtitle(item) || 'Conversation'
                     }
-                  />
-                ))}
+                      />
+                    ))}
               </CatalogRow>
-            ) : null}
+                ) : null}
 
             {playlists.length > 0 ? (
               <CatalogRow
@@ -1070,10 +1150,28 @@ export default function VideosPage() {
               </CatalogRow>
             ) : null}
 
+            {wpSeries.length > 0 ? (
+              <CatalogRow
+                title="Browse by series"
+                subtitle={`${wpSeries.length} series`}
+                seeAllHref={APP_CATALOG_SERIES_BROWSE}
+                seeAllLabel="See all series"
+              >
+                {wpSeries.slice(0, PLAYLIST_RAIL_LIMIT).map((s) => (
+                  <li
+                    key={`series-${s.slug}`}
+                    className="w-[15.5rem] shrink-0 snap-start sm:w-[17.5rem]"
+                  >
+                    <SeriesCard item={s} href={`/app/catalog/playlist/series/${encodeURIComponent(s.slug)}`} />
+                  </li>
+                ))}
+              </CatalogRow>
+            ) : null}
+
             {/* The themed lanes, driven by `carousels.config.ts`. Same
                 contract as the dashboard's rows; `catalog` only swaps the
                 presentation onto the design's cards and type. */}
-            {BIOMARKER_CAROUSEL_IDS.map((id) => (
+                {BIOMARKER_CAROUSEL_IDS.map((id) => (
               <BiomarkerConversationRow key={id} carouselId={id} isInApp variant="catalog" />
             ))}
           </div>
@@ -1093,10 +1191,10 @@ export default function VideosPage() {
                       <span className="absolute top-3 start-3">
                         <FormatBadge clip={item} />
                       </span>
-                    </div>
+                </div>
                     <div className="flex flex-1 flex-col px-1 pt-4 pb-1">
                       <h3 className="display line-clamp-2 text-body-m text-text">{item.title}</h3>
-                      <p className="mt-auto pt-5 text-[0.8125rem] text-faint">{lead}</p>
+                      <p className="meta mt-auto pt-5 text-faint">{lead}</p>
                     </div>
                   </Link>
                 </li>
@@ -1113,7 +1211,7 @@ export default function VideosPage() {
             {isFetchingNextPage ? (
               <Loader2 className="size-8 animate-spin text-faint" aria-hidden />
             ) : null}
-          </div>
+            </div>
         ) : null}
       </div>
     </div>

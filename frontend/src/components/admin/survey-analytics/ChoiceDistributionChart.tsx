@@ -59,7 +59,12 @@ export function ChoiceDistributionChart({ options }: ChoiceDistributionChartProp
   const height = Math.max(120, data.length * 44);
 
   return (
-    <div style={{ height }} className="w-full" data-testid="choice-distribution-chart">
+    <div
+      style={{ height }}
+      className="w-full"
+      data-testid="choice-distribution-chart"
+      data-option-count={data.length}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
@@ -77,7 +82,7 @@ export function ChoiceDistributionChart({ options }: ChoiceDistributionChartProp
             tick={{ fontSize: 11, fill: MUTED }}
           />
           <Tooltip cursor={{ fill: 'rgba(61,164,192,0.08)' }} content={<ChoiceTooltip />} />
-          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive animationDuration={600}>
+          <Bar dataKey="count" radius={[0, 4, 4, 0]} isAnimationActive={false}>
             {data.map((entry) => (
               <Cell key={entry.label} fill={TEAL} />
             ))}

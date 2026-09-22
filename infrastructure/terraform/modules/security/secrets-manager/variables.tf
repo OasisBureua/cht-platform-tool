@@ -57,37 +57,6 @@ variable "db_connection_string" {
 }
 
 # Application secrets
-variable "supabase_url" {
-  description = "Supabase/GoTrue base URL for auth (set via platform.tfvars or TF_VAR_supabase_url)"
-  type        = string
-}
-
-variable "supabase_anon_key" {
-  description = "Supabase anon key - valid JWT signed with GoTrue secret (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-}
-
-variable "gotrue_jwt_secret" {
-  description = "GoTrue JWT secret for validating tokens (set via platform.tfvars or TF_VAR)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "mediahub_base_url" {
-  description = "MediaHub Public API base URL"
-  type        = string
-  default     = "https://mediahub.communityhealth.media/api/public"
-}
-
-variable "mediahub_api_key" {
-  description = "MediaHub Public API key for catalog (clips, tags, doctors, search)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "contenthub_base_url" {
   description = "Content Hub public API base URL for KOL network (GET /kols*)"
   type        = string
@@ -234,6 +203,34 @@ variable "bill_mfa_device_name" {
   default     = ""
 }
 
+variable "stripe_secret_key" {
+  description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps the existing Secrets Manager value."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_publishable_key" {
+  description = "Stripe publishable key (pk_test_ / pk_live_). Empty keeps the existing Secrets Manager value."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_webhook_secret" {
+  description = "Stripe webhook signing secret for Your account destination. Empty keeps the existing Secrets Manager value."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "stripe_connect_webhook_secret" {
+  description = "Stripe webhook signing secret for Connected accounts destination. Empty keeps the existing Secrets Manager value."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "admin_bootstrap_secret" {
   description = "One-time secret to promote the first admin via POST /api/admin/bootstrap"
   type        = string
@@ -257,6 +254,12 @@ variable "recaptcha_secret_key" {
 
 variable "internal_cache_secret" {
   description = "Shared secret for POST /api/internal/cache/clear (Content Hub Lambda + ops scripts)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+variable "companion_internal_secret" {
+  description = "Shared X-BFF-Auth secret for Nest → cht-companion chat proxy"
   type        = string
   sensitive   = true
   default     = ""

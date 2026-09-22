@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, Film, Loader2 } from 'lucide-react';
 import type { DolEntry } from '../../data/dol-network';
 import { useKolCatalogClips } from '../../hooks/useKolCatalogClips';
 import { kolCatalogBrowseHref, kolCatalogClipHref } from '../../utils/kol-catalog-link';
+import { kolCatalogBaseFromPath } from '../../utils/kol-network-paths';
 import { ConversationsClipCard } from '../content/ConversationsClipCard';
 import { ConversationRow } from '../home/ConversationRow';
 
@@ -14,13 +15,20 @@ type Props = {
 };
 
 export function KolCatalogContentSection({ entry, variant = 'overview', limit = 8 }: Props) {
-  const { clips, total, loadState } = useKolCatalogClips(entry, limit);
-  const browseHref = kolCatalogBrowseHref(entry);
-  const shootLabel =
-    entry.shootCount && entry.shootCount > 0
-      ? `${entry.shootCount} CHM shoot${entry.shootCount === 1 ? '' : 's'}`
-      : total > 0
-        ? `${total} video${total === 1 ? '' : 's'} in catalog`
+  const { pathname } = useLocation();
+  const { clips, total, loadState, doctorSlug } = useKolCatalogClips(entry, limit);
+  // Prefer the slug that actually returned clips so View all matches the grid count.
+  const catalogBase = kolCatalogBaseFromPath(pathname);
+  const browseHref = doctorSlug?.trim()
+    ? `${catalogBase}?${new URLSearchParams({ doctor: doctorSlug.trim() }).toString()}`
+    : kolCatalogBrowseHref(entry, pathname);
+  // Prefer catalog video total (matches View all). Shoot count is a weaker
+  // fallback and was incorrectly shown instead of the real video count.
+  const catalogCountLabel =
+    total > 0
+      ? `${total} video${total === 1 ? '' : 's'} in catalog`
+      : entry.shootCount && entry.shootCount > 0
+        ? `${entry.shootCount} CHM shoot${entry.shootCount === 1 ? '' : 's'}`
         : null;
 
   if (loadState === 'loading') {
@@ -60,13 +68,13 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
       <article className="rounded-card border border-border bg-card p-4 shadow-card sm:p-5">
         <ConversationRow
           title="CHM catalog content"
-          subtitle={shootLabel ?? undefined}
+          subtitle={catalogCountLabel ?? (doctorSlug ? `Filtered · ${doctorSlug}` : undefined)}
           seeAllHref={browseHref}
           seeAllLabel="View all"
         >
           {clips.map((clip) => (
             <div key={clip.id} className="w-56 shrink-0 sm:w-64" style={{ scrollSnapAlign: 'start' }}>
-              <ConversationsClipCard item={clip} href={kolCatalogClipHref(clip.id)} />
+              <ConversationsClipCard item={clip} href={kolCatalogClipHref(clip.id, pathname)} />
             </div>
           ))}
         </ConversationRow>
@@ -82,13 +90,13 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
             <Film className="h-4 w-4 text-brand-600 dark:text-brand-400" aria-hidden />
             CHM catalog content
           </h2>
-          {shootLabel ? (
-            <p className="mt-1 text-xs text-muted-foreground">{shootLabel}</p>
+          {catalogCountLabel ? (
+            <p className="mt-1 text-xs text-muted-foreground">{catalogCountLabel}</p>
           ) : null}
         </div>
         <Link
           to={browseHref}
-          className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-foreground transition"
+          className="inline-flex min-h-[36px] items-center gap-1 rounded-[6px] border border-border bg-muted px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-muted/80"
         >
           View all
           <ArrowRight className="h-3.5 w-3.5" aria-hidden />
@@ -97,7 +105,7 @@ export function KolCatalogContentSection({ entry, variant = 'overview', limit = 
 
       <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-4">
         {clips.map((clip) => (
-          <ConversationsClipCard key={clip.id} item={clip} href={kolCatalogClipHref(clip.id)} />
+          <ConversationsClipCard key={clip.id} item={clip} href={kolCatalogClipHref(clip.id, pathname)} />
         ))}
       </div>
     </article>

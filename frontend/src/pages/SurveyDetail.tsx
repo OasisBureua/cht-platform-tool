@@ -15,6 +15,7 @@ import {
 import { NativeSurveyForm } from '../components/surveys/NativeSurveyForm';
 import { surveyHasNativeQuestions } from '../utils/survey-questions';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
+import { programHasHonorarium } from '../utils/program-has-honorarium';
 
 const SURVEY_DETAIL_NATIVE_FORM_ID = 'survey-detail-native-form';
 
@@ -24,11 +25,6 @@ function typeLabel(type?: Survey['type']) {
   if (type === 'POST_TEST') return 'Post-test';
   if (type === 'FEEDBACK') return 'Post-event';
   return 'Survey';
-}
-
-function formatHonorarium(cents?: number | null) {
-  if (cents == null || cents <= 0) return null;
-  return `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 }
 
 export default function SurveyDetail() {
@@ -169,10 +165,10 @@ export default function SurveyDetail() {
         <p className="text-sm text-muted-foreground max-w-3xl">
           {survey.description || 'Complete this survey to contribute your perspective.'}
         </p>
-        {survey.type === 'FEEDBACK' && formatHonorarium(survey.program?.honorariumAmount) ? (
+        {survey.type === 'FEEDBACK' && programHasHonorarium(survey.program) ? (
           <p className="text-sm text-muted-foreground max-w-3xl">
-            Listed honorarium for this program:{' '}
-            <strong>{formatHonorarium(survey.program?.honorariumAmount)}</strong>.
+            This program includes an honorarium after you complete post-event steps. Amounts are not shown here;
+            payouts are processed by an administrator.
           </p>
         ) : null}
       </header>
@@ -235,7 +231,7 @@ export default function SurveyDetail() {
                     programId={survey.programId}
                     userId={userId}
                     myRegistration={programRegistration}
-                    hasHonorarium={Boolean(survey.program?.honorariumAmount && survey.program.honorariumAmount > 0)}
+                    hasHonorarium={programHasHonorarium(survey.program)}
                     surveyReadyForAck={surveySaved && !useNativeRenderer}
                     nativeSurveyMode={isPostEventFeedback && useNativeRenderer}
                     surveyFormSubmitting={submitMutation.isPending}

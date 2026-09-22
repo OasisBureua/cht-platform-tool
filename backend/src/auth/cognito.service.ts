@@ -13,6 +13,9 @@ import {
   AssociateSoftwareTokenCommand,
   VerifySoftwareTokenCommand,
   SetUserMFAPreferenceCommand,
+  UpdateUserAttributesCommand,
+  GetUserAttributeVerificationCodeCommand,
+  VerifyUserAttributeCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
   AdminGetUserCommand,
@@ -63,9 +66,11 @@ export interface CognitoAccessTokenClaims {
   scope?: string;
 }
 
+export type CognitoMfaChallenge = 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA';
+
 export type CognitoLoginResult =
   | { kind: 'tokens'; tokens: CognitoTokens }
-  | { kind: 'mfa'; challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+  | { kind: 'mfa'; challenge: CognitoMfaChallenge; session: string }
   | { kind: 'mfa_setup'; session: string; secretCode: string };
 
 @Injectable()
@@ -367,16 +372,24 @@ export class CognitoService {
     session: string,
     code: string,
     email: string,
+    challenge: CognitoMfaChallenge = 'SOFTWARE_TOKEN_MFA',
   ): Promise<CognitoTokens> {
+    const username = email.trim().toLowerCase();
+    const challengeResponses: Record<string, string> = {
+      USERNAME: username,
+    };
+    if (challenge === 'SMS_MFA') {
+      challengeResponses.SMS_MFA_CODE = code.trim();
+    } else {
+      challengeResponses.SOFTWARE_TOKEN_MFA_CODE = code.trim();
+    }
+
     const response = await this.client.send(
       new RespondToAuthChallengeCommand({
         ClientId: this.clientId,
-        ChallengeName: 'SOFTWARE_TOKEN_MFA',
+        ChallengeName: challenge,
         Session: session,
-        ChallengeResponses: {
-          USERNAME: email.trim().toLowerCase(),
-          SOFTWARE_TOKEN_MFA_CODE: code.trim(),
-        },
+        ChallengeResponses: challengeResponses,
       }),
       { abortSignal: this.cognitoAbortSignal() },
     );
@@ -403,13 +416,16 @@ export class CognitoService {
     },
     username: string,
   ): Promise<CognitoLoginResult> {
-    if (response.ChallengeName === 'SOFTWARE_TOKEN_MFA') {
+    if (
+      response.ChallengeName === 'SOFTWARE_TOKEN_MFA' ||
+      response.ChallengeName === 'SMS_MFA'
+    ) {
       if (!response.Session) {
         throw new Error('MFA challenge missing session');
       }
       return {
         kind: 'mfa',
-        challenge: 'SOFTWARE_TOKEN_MFA',
+        challenge: response.ChallengeName,
         session: response.Session,
       };
     }
@@ -469,6 +485,8 @@ export class CognitoService {
     password: string,
     firstName?: string,
     lastName?: string,
+    /** Optional E.164 (+1…) — verified after email confirm via MFA SMS flow. */
+    phoneE164?: string,
   ): Promise<{ userSub: string; userConfirmed: boolean }> {
     const response = await this.client.send(
       new SignUpCommand({
@@ -482,6 +500,9 @@ export class CognitoService {
             : []),
           ...(lastName?.trim()
             ? [{ Name: 'family_name', Value: lastName.trim() }]
+            : []),
+          ...(phoneE164?.trim()
+            ? [{ Name: 'phone_number', Value: phoneE164.trim() }]
             : []),
         ],
       }),
@@ -610,9 +631,62 @@ export class CognitoService {
   }
 
   /**
-   * Whether a pool user has software-token MFA enabled (IAM AdminGetUser).
+   * Set Cognito phone_number and send the SMS attribute-verification code.
+   * Phone must be E.164 (e.g. +15551234567).
    */
-  private async adminUserHasSoftwareMfa(username: string): Promise<boolean> {
+  async setPhoneAndSendVerification(
+    accessToken: string,
+    phoneE164: string,
+  ): Promise<void> {
+    await this.client.send(
+      new UpdateUserAttributesCommand({
+        AccessToken: accessToken,
+        UserAttributes: [{ Name: 'phone_number', Value: phoneE164 }],
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+    await this.client.send(
+      new GetUserAttributeVerificationCodeCommand({
+        AccessToken: accessToken,
+        AttributeName: 'phone_number',
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+  }
+
+  /** Confirm phone_number with the SMS code Cognito sent. */
+  async verifyPhoneAttribute(
+    accessToken: string,
+    code: string,
+  ): Promise<void> {
+    await this.client.send(
+      new VerifyUserAttributeCommand({
+        AccessToken: accessToken,
+        AttributeName: 'phone_number',
+        Code: code.trim(),
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+  }
+
+  /** Enable SMS MFA as the preferred second factor (phone must already be verified). */
+  async enableSmsMfa(accessToken: string): Promise<void> {
+    await this.client.send(
+      new SetUserMFAPreferenceCommand({
+        AccessToken: accessToken,
+        SMSMfaSettings: {
+          Enabled: true,
+          PreferredMfa: true,
+        },
+      }),
+      { abortSignal: this.cognitoAbortSignal() },
+    );
+  }
+
+  /**
+   * Whether a pool user has any MFA method enabled (IAM AdminGetUser).
+   */
+  private async adminUserHasMfa(username: string): Promise<boolean> {
     try {
       const user = await this.client.send(
         new AdminGetUserCommand({
@@ -622,7 +696,10 @@ export class CognitoService {
         { abortSignal: this.cognitoAbortSignal() },
       );
       const settings = user.UserMFASettingList ?? [];
-      return settings.includes('SOFTWARE_TOKEN_MFA');
+      return (
+        settings.includes('SOFTWARE_TOKEN_MFA') ||
+        settings.includes('SMS_MFA')
+      );
     } catch (err) {
       this.logger.warn(
         `[Cognito] AdminGetUser MFA status failed for ${username}: ${err instanceof Error ? err.message : String(err)}`,
@@ -646,7 +723,7 @@ export class CognitoService {
         ? (decoded as { username: string }).username.trim()
         : '';
     if (!username) return false;
-    return this.adminUserHasSoftwareMfa(username);
+    return this.adminUserHasMfa(username);
   }
 
   /**
@@ -672,10 +749,10 @@ export class CognitoService {
         .filter((u): u is string => !!u?.trim());
       if (usernames.length === 0) {
         // Fall back to email-as-username (native pools).
-        return this.adminUserHasSoftwareMfa(normalized);
+        return this.adminUserHasMfa(normalized);
       }
       for (const username of usernames) {
-        if (await this.adminUserHasSoftwareMfa(username)) return true;
+        if (await this.adminUserHasMfa(username)) return true;
       }
       return false;
     } catch (err) {

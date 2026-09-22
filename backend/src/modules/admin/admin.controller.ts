@@ -2,6 +2,7 @@ import {
   Controller,
   Delete,
   Get,
+  Header,
   Patch,
   Post,
   Body,
@@ -68,6 +69,7 @@ import {
   buildUserRecipientWhere,
   parseCsvQueryParam,
   registrationInviteUserSelect,
+  adminUserListSelect,
 } from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
 
@@ -207,36 +209,23 @@ export class AdminController {
       'Operational diagnostics for auth migration. Returns booleans only; no secrets are exposed.',
   })
   getAuthStatus() {
-    const supabaseUrl = this.config.get<string>('supabase.url')?.trim() || '';
-    const supabaseAnonKey =
-      this.config.get<string>('supabase.anonKey')?.trim() || '';
-    const gotrueJwtSecret =
-      this.config.get<string>('gotrue.jwtSecret')?.trim() || '';
-    const mediahubApiKey =
-      this.config.get<string>('mediahub.apiKey')?.trim() || '';
-    const mediahubBaseUrl =
-      this.config.get<string>('mediahub.baseUrl')?.trim() ||
-      'https://mediahub.communityhealth.media/api/public';
-    const supabaseAuthDecommissioned =
-      this.config.get<boolean>('supabase.authDecommissioned') ?? true;
+    const cognitoPoolId =
+      this.config.get<string>('cognito.userPoolId')?.trim() || '';
+    const contenthubApiKey =
+      this.config.get<string>('contenthub.apiKey')?.trim() || '';
+    const contenthubBaseUrl =
+      this.config.get<string>('contenthub.baseUrl')?.trim() || '';
 
     return {
-      authMigration: {
-        supabaseAuthDecommissioned,
-        signupEnabled: !supabaseAuthDecommissioned,
-        oauthLoginEnabled: !supabaseAuthDecommissioned,
+      auth: {
+        cognitoConfigured: !!cognitoPoolId,
+        signupEnabled: !!cognitoPoolId,
+        oauthLoginEnabled: !!cognitoPoolId,
       },
-      legacySupabaseAuth: {
-        configured: !!(supabaseUrl && supabaseAnonKey),
-        supabaseUrlConfigured: !!supabaseUrl,
-        supabaseAnonKeyConfigured: !!supabaseAnonKey,
-        gotrueJwtValidationEnabled: !!gotrueJwtSecret,
-      },
-      mediahubIntegration: {
-        mediahubBaseUrl,
-        apiKeyConfigured: !!mediahubApiKey,
-        hcpUpsertEnabled: !!mediahubApiKey,
-        userCreationEnabled: false,
+      contenthubIntegration: {
+        contenthubBaseUrl,
+        apiKeyConfigured: !!contenthubApiKey,
+        hcpUpsertEnabled: !!contenthubApiKey,
       },
     };
   }
@@ -603,13 +592,28 @@ export class AdminController {
   }
 
   @Get('surveys/:id/responses')
+  @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List all learner responses for a survey' })
+  @ApiOperation({ summary: 'List learner responses for a survey (paginated)' })
   @ApiParam({ name: 'id', description: 'Survey ID' })
-  listSurveyResponses(@Param('id') id: string) {
-    return this.surveysService.listResponsesForAdmin(id);
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Default 10, max 100',
+  })
+  listSurveyResponses(
+    @Param('id') id: string,
+    @Query('page') page?: string,
+    @Query('pageSize') pageSize?: string,
+  ) {
+    return this.surveysService.listResponsesForAdmin(id, {
+      page: page ? Number(page) : 1,
+      pageSize: pageSize ? Number(pageSize) : 10,
+    });
   }
 
   @Get('surveys/:id/analytics')
@@ -663,9 +667,11 @@ export class AdminController {
   ) {
     const { filename, body } =
       await this.surveysService.buildResponsesCsvForAdmin(id);
+    // Send as a UTF-8 buffer so Express does not re-encode and so the BOM
+    // from buildSurveyResponsesCsv survives for Excel on Windows.
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.send(body);
+    res.send(Buffer.from(body, 'utf8'));
   }
 
   @Get('users/registration-invite-filter-options')
@@ -851,9 +857,15 @@ export class AdminController {
         : {}),
     });
 
+    // Also match on NPI — admin-users-specific, not part of the shared
+    // registration-invite recipient search (which has no NPI use case).
+    if (q?.trim() && where.OR) {
+      where.OR = [...where.OR, { npiNumber: { contains: q.trim() } }];
+    }
+
     const users = await this.prisma.user.findMany({
       where,
-      select: registrationInviteUserSelect,
+      select: adminUserListSelect,
       orderBy: { createdAt: 'desc' },
       take,
     });
@@ -1037,6 +1049,7 @@ export class AdminController {
           p.zoomSessionType === 'WEBINAR' && p.honorariumAmount != null
             ? p.honorariumAmount / 100
             : undefined,
+        chmProgramId: p.chmProgramId ?? null,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks:
           (p.zoomPanelistLinks as Array<{
@@ -1171,6 +1184,16 @@ export class AdminController {
           description:
             'Optional (WEBINAR). Zoom webinar toggles. Omitted fields use CHT defaults (Q&A on, Backstage off, HD screen share on, 1080p off, email in report off, cloud recording on).',
         },
+        intakeSurveySourceId: {
+          type: 'string',
+          description:
+            'Optional (WEBINAR). Existing INTAKE survey id whose questions are cloned onto the new program.',
+        },
+        feedbackSurveySourceId: {
+          type: 'string',
+          description:
+            'Optional (WEBINAR). Existing FEEDBACK survey id whose questions are cloned onto the new program.',
+        },
       },
     },
   })
@@ -1197,8 +1220,14 @@ export class AdminController {
       sessionDisclaimer?: string;
       /** Optional. Banner image URL for learners (HTTPS). */
       sessionHeroImageUrl?: string;
+      /** Optional. Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string;
       /** Optional. Zoom webinar settings (Q&A, Backstage, HD, recording). Ignored for MEETING. */
       zoomSettings?: Record<string, unknown>;
+      /** Optional. Clone registration (INTAKE) questions from this survey id. */
+      intakeSurveySourceId?: string;
+      /** Optional. Clone post-event (FEEDBACK) questions from this survey id. */
+      feedbackSurveySourceId?: string;
     },
   ) {
     if (!body.title?.trim()) throw new BadRequestException('title is required');
@@ -1343,6 +1372,9 @@ export class AdminController {
       ...(body.sessionHeroImageUrl?.trim()
         ? { sessionHeroImageUrl: body.sessionHeroImageUrl.trim() }
         : {}),
+      ...(body.chmProgramId !== undefined
+        ? { chmProgramId: body.chmProgramId?.trim() || null }
+        : {}),
     });
 
     if (sessionType === 'WEBINAR') {
@@ -1350,6 +1382,10 @@ export class AdminController {
         await this.surveysService.attachSurveysForNewWebinar(
           program.id,
           program.title,
+          {
+            intakeSurveySourceId: body.intakeSurveySourceId,
+            feedbackSurveySourceId: body.feedbackSurveySourceId,
+          },
         );
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -1556,6 +1592,68 @@ export class AdminController {
       program.id,
       program.title,
     );
+  }
+
+  @Get('surveys/reusable')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['INTAKE', 'FEEDBACK'],
+  })
+  async listReusableSurveys(@Query('type') type?: string) {
+    const normalized = type?.toUpperCase();
+    if (
+      normalized &&
+      normalized !== 'INTAKE' &&
+      normalized !== 'FEEDBACK'
+    ) {
+      throw new BadRequestException('type must be INTAKE or FEEDBACK');
+    }
+    return this.surveysService.listReusableSurveyTemplates(
+      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
+    );
+  }
+
+  @Post('programs/:id/surveys/clone')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Clone an existing INTAKE/FEEDBACK survey onto this program (creates or replaces empty row)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['sourceSurveyId'],
+      properties: {
+        sourceSurveyId: { type: 'string' },
+      },
+    },
+  })
+  async cloneSurveyOntoProgram(
+    @Param('id') id: string,
+    @Body() body: { sourceSurveyId?: string },
+  ) {
+    const sourceSurveyId = body.sourceSurveyId?.trim();
+    if (!sourceSurveyId) {
+      throw new BadRequestException('sourceSurveyId is required');
+    }
+    const program = await this.prisma.program.findUnique({
+      where: { id },
+      select: { id: true, title: true },
+    });
+    if (!program) throw new NotFoundException('Program not found');
+    return this.surveysService.cloneSurveyOntoProgram(program.id, sourceSurveyId, {
+      programTitle: program.title,
+    });
   }
 
   @Post('webinars/ensure-native-surveys')
@@ -2391,6 +2489,8 @@ export class AdminController {
       speakers?: string[];
       sessionDisclaimer?: string | null;
       sessionHeroImageUrl?: string | null;
+      /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
+      chmProgramId?: string | null;
       /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -2534,6 +2634,11 @@ export class AdminController {
         body.sessionHeroImageUrl === null || body.sessionHeroImageUrl === ''
           ? null
           : body.sessionHeroImageUrl.trim() || null;
+    if (body.chmProgramId !== undefined)
+      updateData.chmProgramId =
+        body.chmProgramId === null || body.chmProgramId === ''
+          ? null
+          : body.chmProgramId.trim() || null;
 
     if (
       speakersChanged &&

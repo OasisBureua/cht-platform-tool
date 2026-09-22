@@ -1,5 +1,6 @@
 import { ProgramZoomSessionType, SurveyType } from '@prisma/client';
 import { surveyQuestionsAreNative } from './native-survey-questions';
+import { scheduledPostEventUnlockMs } from './live-session-timing';
 
 /** Learners may complete post-event FEEDBACK surveys within this window after the session unlocks. */
 export const POST_EVENT_SURVEY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -12,7 +13,7 @@ type PostEventUnlockProgram = {
 };
 
 /**
- * When the post-event survey becomes available (session ended or scheduled end).
+ * When the post-event survey becomes available (session ended or scheduled end + buffer).
  * Office-hours MEETING without schedule unlocks immediately (null → treat as epoch).
  */
 export function getPostEventSurveyUnlockAt(
@@ -27,8 +28,12 @@ export function getPostEventSurveyUnlockAt(
   if (!program.startDate) {
     return null;
   }
-  const durMin = program.duration ?? 60;
-  return new Date(program.startDate.getTime() + durMin * 60_000);
+  return new Date(
+    scheduledPostEventUnlockMs(
+      program.startDate.getTime(),
+      program.duration,
+    ),
+  );
 }
 
 export function isPostEventSurveyWithinWindow(

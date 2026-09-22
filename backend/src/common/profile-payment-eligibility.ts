@@ -3,6 +3,8 @@ import { BadRequestException } from '@nestjs/common';
 export type ProfilePaymentFields = {
   specialty: string | null;
   npiNumber: string | null;
+  /** E.164 mobile; required for profile completeness (SMS MFA + contact). */
+  phoneNumber?: string | null;
 };
 
 /**
@@ -25,6 +27,7 @@ export function isProfileCompleteForPayments(
   user: ProfilePaymentFields | null | undefined,
 ): boolean {
   if (!user || !user.specialty?.trim()) return false;
+  if (!user.phoneNumber?.trim()) return false;
   if (NON_HCP_SPECIALTIES.has(user.specialty.trim())) return true;
   const npi = (user.npiNumber || '').replace(/\D/g, '');
   return npi.length === 10;
@@ -37,6 +40,11 @@ export function assertProfileCompleteForPayments(
   if (!user?.specialty?.trim()) {
     throw new BadRequestException(
       'Add your profession under Settings before you can set up payments or request an honorarium.',
+    );
+  }
+  if (!user?.phoneNumber?.trim()) {
+    throw new BadRequestException(
+      'Add your mobile phone number under Settings before you can set up payments or request an honorarium.',
     );
   }
   throw new BadRequestException(

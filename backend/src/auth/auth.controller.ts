@@ -8,11 +8,14 @@ import {
   Logger,
   Req,
   Res,
+  ForbiddenException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import { CognitoService, CognitoTokens } from './cognito.service';
@@ -57,24 +60,9 @@ function passwordMeetsSignupPolicy(password: string): string | null {
 import { isProductionEnv } from '../utils/is-production-env';
 import { AuditService } from '../audit/audit.service';
 import type { Prisma } from '@prisma/client';
-
-/** Supabase/GoTrue external call timeout (ms). Prevents login hanging on slow/unreachable auth. */
-const SUPABASE_FETCH_TIMEOUT_MS = 15000;
-
-async function fetchWithTimeout(
-  url: string,
-  options: RequestInit,
-  timeoutMs: number,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    const res = await fetch(url, { ...options, signal: controller.signal });
-    return res;
-  } finally {
-    clearTimeout(timeout);
-  }
-}
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
+import type { MfaFeatureFlags } from '../feature-flags/feature-flags.types';
+import { normalizeUsPhoneE164 } from '../common/phone';
 
 interface LoginSuccess {
   session_token: string;
@@ -89,12 +77,12 @@ interface LoginSuccess {
   profileComplete?: boolean;
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
+  mfaFeature?: MfaFeatureFlags;
 }
 
 @Controller('auth')
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
-  private readonly supabaseAuthDecommissioned: boolean;
 
   constructor(
     private readonly authService: AuthService,
@@ -104,10 +92,8 @@ export class AuthController {
     private readonly npiRegistry: NpiRegistryService,
     private readonly configService: ConfigService,
     private readonly audit: AuditService,
-  ) {
-    this.supabaseAuthDecommissioned =
-      this.configService.get<boolean>('supabase.authDecommissioned') ?? true;
-  }
+    private readonly featureFlags: FeatureFlagsService,
+  ) {}
 
   private clientIp(req: Request): string {
     return (req.ip || '').trim() || 'unknown';
@@ -141,20 +127,22 @@ export class AuthController {
   }
 
   /**
-   * Soft MFA enrollment gate (redirect to /mfa/setup) for all roles.
-   * Enabled in deployed Cognito environments; local NODE_ENV=development stays optional.
-   * Cognito pool MFA remains OPTIONAL until flipped to ON via Terraform.
+   * MFA enrollment gate from AppConfig `mfa.enabled` (default off until SMS/10DLC is ready).
    */
   private isMfaEnrollmentEnforced(): boolean {
-    const env = (
-      this.configService.get<string>('app.environment') || ''
-    ).toLowerCase();
-    return (
-      env === 'dev' ||
-      env === 'platform' ||
-      env === 'prod' ||
-      env === 'staging'
-    );
+    return this.featureFlags.isMfaEnrollmentEnabled();
+  }
+
+  private mfaFeaturePayload(): MfaFeatureFlags {
+    return this.featureFlags.getAuthFeatures().mfa;
+  }
+
+  private assertMfaEnrollmentAllowed(): void {
+    if (!this.featureFlags.isMfaEnrollmentEnabled()) {
+      throw new ForbiddenException(
+        'Multi-factor authentication enrollment is not available yet.',
+      );
+    }
   }
 
   private async rejectIfLocked(
@@ -281,6 +269,7 @@ export class AuthController {
       profileComplete,
       mfaEnabled,
       mfaEnrollmentRequired,
+      mfaFeature: this.mfaFeaturePayload(),
     };
   }
 
@@ -301,7 +290,7 @@ export class AuthController {
     | LoginSuccess
     | MappedCognitoLoginError
     | { error: string }
-    | { challenge: 'SOFTWARE_TOKEN_MFA'; session: string }
+    | { challenge: 'SOFTWARE_TOKEN_MFA' | 'SMS_MFA'; session: string }
     | {
         challenge: 'MFA_SETUP';
         session: string;
@@ -417,7 +406,7 @@ export class AuthController {
 
   /**
    * POST /api/auth/cognito/mfa
-   * Complete SOFTWARE_TOKEN_MFA challenge after cognito/login.
+   * Complete SOFTWARE_TOKEN_MFA or SMS_MFA challenge after cognito/login.
    */
   @SkipThrottle({ short: true, medium: true, long: true, auth: true })
   @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
@@ -426,6 +415,7 @@ export class AuthController {
     @Body('email') email: string,
     @Body('session') session: string,
     @Body('code') code: string,
+    @Body('challenge') challenge: string | undefined,
     @Req() req: Request,
     @Res({ passthrough: true }) res: ExpressResponse,
   ): Promise<LoginSuccess | { error: string }> {
@@ -436,6 +426,8 @@ export class AuthController {
     const emailStr = (email || '').trim();
     const sessionStr = (session || '').trim();
     const codeStr = (code || '').trim();
+    const challengeName =
+      challenge === 'SMS_MFA' ? 'SMS_MFA' : 'SOFTWARE_TOKEN_MFA';
     const ip = this.clientIp(req);
     if (!emailStr) return { error: 'Email is required.' };
     if (!sessionStr) return { error: 'MFA session is required.' };
@@ -449,6 +441,7 @@ export class AuthController {
         sessionStr,
         codeStr,
         emailStr,
+        challengeName,
       );
       const loginResult = await this.sessionFromCognitoTokens(tokens, res);
       if ('error' in loginResult) {
@@ -457,13 +450,13 @@ export class AuthController {
       }
       await this.lockout.recordSuccess('mfa', emailStr, ip);
       this.logger.log(
-        `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email}`,
+        `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email} challenge=${challengeName}`,
       );
       this.auditAuthEvent(req, 'auth.mfa_login', {
         userId: loginResult.userId,
         email: loginResult.email,
         role: loginResult.role,
-      }, { method: 'cognito' });
+      }, { method: 'cognito', challenge: challengeName });
       return loginResult;
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
@@ -497,6 +490,8 @@ export class AuthController {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Cognito login is not configured.' };
     }
+
+    this.assertMfaEnrollmentAllowed();
 
     const emailStr = (email || '').trim();
     const sessionStr = (session || '').trim();
@@ -684,6 +679,7 @@ export class AuthController {
     @Body('city') city?: string,
     @Body('state') state?: string,
     @Body('zipCode') zipCode?: string,
+    @Body('phoneNumber') phoneNumber?: string,
   ): Promise<{ error?: string; userConfirmed?: boolean }> {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'Sign up is not configured. Contact support.' };
@@ -709,6 +705,11 @@ export class AuthController {
     if (!firstName?.trim()) return { error: 'First name is required.' };
     if (!lastName?.trim()) return { error: 'Last name is required.' };
     if (!profession?.trim()) return { error: 'Profession is required.' };
+
+    const phoneE164 = normalizeUsPhoneE164(phoneNumber);
+    if (!phoneE164) {
+      return { error: 'Enter a valid US mobile number (10 digits).' };
+    }
 
     const professionTrim = profession.trim();
     const npiRequiredProfessions = new Set([
@@ -751,6 +752,7 @@ export class AuthController {
         password,
         firstName,
         lastName,
+        phoneE164,
       );
 
       await this.authService.findOrCreateByAuthId(
@@ -764,6 +766,7 @@ export class AuthController {
         cityNorm,
         stateNorm,
         zipNorm,
+        phoneE164,
       );
 
       await this.cognitoService.syncGroupsForRole(emailStr, UserRole.HCP);
@@ -862,289 +865,35 @@ export class AuthController {
 
   /**
    * POST /api/auth/signup
-   * Proxies to GoTrue signup (avoids CORS when frontend calls from localhost).
+   * Legacy GoTrue signup removed. Use POST /auth/cognito/signup.
    */
   @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
   @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('signup')
-  async signup(
-    @Req() req: Request,
-    @Body('email') email: string,
-    @Body('password') password: string,
-    @Body('firstName') firstName?: string,
-    @Body('lastName') lastName?: string,
-    @Body('profession') profession?: string,
-    @Body('npiNumber') npiNumber?: string,
-    @Body('institution') institution?: string,
-    @Body('city') city?: string,
-    @Body('state') state?: string,
-    @Body('zipCode') zipCode?: string,
-  ): Promise<{ error?: string }> {
-    if (this.supabaseAuthDecommissioned) {
-      return {
-        error:
-          'New account creation is temporarily disabled while auth is migrating. Please contact support.',
-      };
-    }
-
-    const emailStr = (email || '').trim();
-    const ip = this.clientIp(req);
-    const locked = await this.rejectIfLocked('signup', emailStr, ip);
-    if (locked) return locked;
-    if (!emailStr) return { error: 'Email is required.' };
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailStr))
-      return { error: 'Please enter a valid email address.' };
-    if (!password) return { error: 'Password is required.' };
-    const passwordError = passwordMeetsSignupPolicy(password);
-    if (passwordError) return { error: passwordError };
-    if (!firstName?.trim()) return { error: 'First name is required.' };
-    if (!lastName?.trim()) return { error: 'Last name is required.' };
-    if (!profession?.trim()) return { error: 'Profession is required.' };
-
-    const professionTrim = profession.trim();
-    /** Same role list as Join.tsx NPI_REQUIRED_PROFESSIONS */
-    const npiRequiredProfessions = new Set([
-      'Physician',
-      'Nurse Practitioner',
-      'Physician Assistant',
-      'Pharmacist',
-      'Nurse',
-      'Other HCP',
-    ]);
-    const npiOptional = !npiRequiredProfessions.has(professionTrim);
-    const npi = (npiNumber || '').replace(/\D/g, '');
-    if (!npiOptional && npi.length !== 10)
-      return { error: 'NPI number must be 10 digits.' };
-    if (npiOptional && npi.length > 0 && npi.length !== 10) {
-      return { error: 'If provided, NPI must be exactly 10 digits.' };
-    }
-
-    if (npi.length === 10) {
-      const npiError = await this.assertNpiAllowedForSignup(npi);
-      if (npiError) return npiError;
-    }
-
-    const locationError = validateRegistrationLocation({ state, zipCode });
-    if (locationError) return { error: locationError };
-    const stateNorm = normalizeUsStateCode(state)!;
-    const zipNorm = normalizeUsZip5(zipCode)!;
-    const cityNorm = (city || '').trim() || undefined;
-
-    const supabaseUrl = this.configService.get<string>('supabase.url');
-    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
-
-    if (!supabaseUrl || !supabaseAnon) {
-      return { error: 'Sign up is not configured. Contact support.' };
-    }
-
-    const signupStart = Date.now();
-    this.logger.log(`[Auth] Signup attempt for email: ${emailStr}`);
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(
-        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/signup`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: supabaseAnon,
-          },
-          body: JSON.stringify({
-            email: emailStr,
-            password,
-            data: {
-              first_name: (firstName || '').trim(),
-              last_name: (lastName || '').trim(),
-              full_name: [firstName, lastName]
-                .map((s) => (s || '').trim())
-                .filter(Boolean)
-                .join(' '),
-              profession,
-              npi_number: npiOptional ? npi || undefined : npi,
-              institution: (institution || '').trim() || undefined,
-              city: cityNorm,
-              state: stateNorm,
-              zip_code: zipNorm,
-            },
-          }),
-        },
-        SUPABASE_FETCH_TIMEOUT_MS,
-      );
-    } catch (err) {
-      const msg =
-        err instanceof Error && err.name === 'AbortError'
-          ? 'Sign up request timed out. Please try again.'
-          : 'Sign up failed. Please try again.';
-      this.logger.warn(
-        `[Auth] Signup error for ${emailStr} after ${Date.now() - signupStart}ms:`,
-        err,
-      );
-      await this.lockout.recordFailure('signup', emailStr, ip);
-      return { error: msg };
-    }
-    this.logger.log(
-      `[Auth] Supabase signup fetch completed in ${Date.now() - signupStart}ms`,
-    );
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg =
-        data?.msg ||
-        data?.error_description ||
-        data?.error ||
-        'Sign up failed. Please try again.';
-      this.logger.warn(`[Auth] Signup failed for ${emailStr}: ${msg}`);
-      if (msg.toLowerCase().includes('confirmation mail')) {
-        this.logger.log(
-          `[Auth] Signup likely succeeded for ${emailStr} (email send failed)`,
-        );
-        await this.lockout.recordSuccess('signup', emailStr, ip);
-        return {};
-      }
-      // GoTrue often returns "User already registered" — do not leak that to clients.
-      if (
-        /already\s+(registered|exists)|user.*exist|email.*exist/i.test(
-          String(msg),
-        )
-      ) {
-        await this.lockout.recordSuccess('signup', emailStr, ip);
-        return {};
-      }
-      const lock = await this.lockout.recordFailure('signup', emailStr, ip);
-      if (lock.locked) {
-        return { error: lock.message || 'Too many attempts. Please try again later.' };
-      }
-      return { error: msg };
-    }
-
-    this.logger.log(`[Auth] Signup success for ${emailStr}`);
-    await this.lockout.recordSuccess('signup', emailStr, ip);
-    return {};
+  async signup(): Promise<{ error?: string }> {
+    return {
+      error:
+        'Legacy signup is unavailable. Use Cognito signup (/auth/cognito/signup).',
+    };
   }
 
   /**
    * POST /api/auth/login-oauth
-   * Exchange GoTrue OAuth access_token (Google/Apple) for CHT session.
-   * Body: { access_token: string }
-   * Validates the token against GoTrue /auth/v1/user instead of local JWT verify,
-   * so it works regardless of signing algorithm (HS256 or ES256).
+   * Legacy GoTrue OAuth exchange removed. Use Cognito Hosted UI + /auth/cognito/callback.
    */
   @Post('login-oauth')
-  async loginOAuth(
-    @Body('access_token') accessToken: string,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: ExpressResponse,
-  ): Promise<LoginSuccess | { error: string }> {
-    if (this.supabaseAuthDecommissioned) {
-      return {
-        error:
-          'Google OAuth is temporarily disabled while auth is migrating. Please sign in with email/password.',
-      };
-    }
-
-    const token = accessToken?.trim();
-    if (!token) {
-      return { error: 'access_token is required.' };
-    }
-
-    const supabaseUrl = this.configService.get<string>('supabase.url');
-    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
-    if (!supabaseUrl || !supabaseAnon) {
-      this.logger.warn('[Auth] login-oauth: Supabase not configured');
-      return { error: 'OAuth login is not configured.' };
-    }
-
-    let userData: {
-      id?: string;
-      email?: string;
-      user_metadata?: Record<string, unknown>;
-    };
-    try {
-      const res = await fetchWithTimeout(
-        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/user`,
-        {
-          method: 'GET',
-          headers: {
-            apikey: supabaseAnon,
-            Authorization: `Bearer ${token}`,
-          },
-        },
-        SUPABASE_FETCH_TIMEOUT_MS,
-      );
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const msg = (body as { msg?: string })?.msg || res.statusText;
-        this.logger.warn(
-          `[Auth] login-oauth GoTrue rejected token: ${res.status} ${msg}`,
-        );
-        return { error: 'Invalid or expired token.' };
-      }
-      userData = await res.json();
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`[Auth] login-oauth GoTrue fetch failed: ${msg}`);
-      return { error: 'Could not verify token. Please try again.' };
-    }
-
-    const authId = userData?.id;
-    if (!authId) return { error: 'Invalid token.' };
-
-    const meta = (userData.user_metadata || {}) as Record<string, string>;
-    const firstName =
-      meta.first_name ||
-      (meta.full_name ? String(meta.full_name).split(' ')[0] : undefined);
-    const lastName =
-      meta.last_name ||
-      (meta.full_name
-        ? String(meta.full_name).split(' ').slice(1).join(' ')
-        : undefined);
-
-    const user = await this.authService.findOrCreateByAuthId(
-      authId,
-      userData.email,
-      firstName || meta.full_name,
-      lastName,
-      meta.npi_number || null,
-      meta.profession || meta.specialty || null,
-      meta.institution || null,
-      meta.city || null,
-      meta.state || null,
-      meta.zip_code || null,
-    );
-    if (!user) return { error: 'User not found.' };
-
-    const sessionToken = await this.authService.createSession(user, token);
-    const dbUser = await this.authService.getUserById(user.userId);
-    const profileComplete = this.authService.isProfileComplete(dbUser);
-
-    this.logger.log(
-      `[Auth] OAuth login success: userId=${user.userId} email=${user.email}`,
-    );
-    this.attachSessionCookie(res, sessionToken);
-    this.auditAuthEvent(req, 'auth.login', {
-      userId: user.userId,
-      email: user.email,
-      role: user.role,
-    }, { method: 'oauth' });
+  async loginOAuth(): Promise<{ error: string }> {
     return {
-      session_token: sessionToken,
-      access_token: token,
-      userId: user.userId,
-      email: user.email,
-      name: user.name,
-      firstName: dbUser?.firstName ?? firstName ?? 'User',
-      lastName: dbUser?.lastName ?? lastName ?? '',
-      role: user.role,
-      profileComplete,
+      error:
+        'Legacy OAuth login is unavailable. Use Cognito Google sign-in.',
     };
   }
 
   /**
    * POST /api/auth/login
-   * Validates email/password against Supabase when configured.
-   * When Supabase not configured (dev only): lookup by email in DB, password
-   * ignored: for local development against a seeded DB. Production refuses
-   * the DB-fallback path outright (SCRUM-101).
+   * Legacy password login. When Cognito is configured, clients must use
+   * POST /auth/cognito/login. Otherwise: local/dev DB fallback only
+   * (password ignored). Production refuses the DB-fallback path (SCRUM-101).
    */
   @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
   @Throttle({ auth: { limit: 10, ttl: 900_000 } })
@@ -1165,138 +914,17 @@ export class AuthController {
     const locked = await this.rejectIfLocked('login', emailStr, ip);
     if (locked) return locked;
 
-    const supabaseUrl = this.configService.get<string>('supabase.url');
-    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
-
-    if (supabaseUrl && supabaseAnon) {
-      const loginStart = Date.now();
-      this.logger.log(
-        `[Auth] Login attempt via Supabase for email: ${emailStr}`,
+    if (this.cognitoService.isConfigured()) {
+      throw new ServiceUnavailableException(
+        'Legacy login is unavailable. Use Cognito login (/auth/cognito/login).',
       );
-      let res: Response;
-      try {
-        const supabaseStart = Date.now();
-        res = await fetchWithTimeout(
-          `${supabaseUrl.replace(/\/$/, '')}/auth/v1/token?grant_type=password`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              apikey: supabaseAnon,
-            },
-            body: JSON.stringify({ email: emailStr, password: password || '' }),
-          },
-          SUPABASE_FETCH_TIMEOUT_MS,
-        );
-        this.logger.log(
-          `[Auth] Supabase fetch completed in ${Date.now() - supabaseStart}ms (status=${res.status})`,
-        );
-      } catch (err) {
-        const msg =
-          err instanceof Error && err.name === 'AbortError'
-            ? 'Login request timed out. Please try again.'
-            : 'Login failed. Please try again.';
-        this.logger.warn(
-          `[Auth] Supabase login error for ${emailStr} after ${Date.now() - loginStart}ms:`,
-          err,
-        );
-        await this.lockout.recordFailure('login', emailStr, ip);
-        return { error: msg };
-      }
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
-        const msg =
-          data?.error_description || data?.msg || 'Invalid email or password.';
-        this.logger.warn(
-          `[Auth] Supabase login failed for ${emailStr}: ${msg}`,
-        );
-        const lock = await this.lockout.recordFailure('login', emailStr, ip);
-        if (lock.locked) {
-          return {
-            error:
-              lock.message || 'Too many attempts. Please try again later.',
-          };
-        }
-        return { error: msg };
-      }
-
-      const authId = data?.user?.id;
-      if (!authId) {
-        await this.lockout.recordFailure('login', emailStr, ip);
-        return { error: 'Login failed.' };
-      }
-
-      const metadata = data.user?.user_metadata || {};
-      const firstName = metadata.first_name || 'User';
-      const lastName = metadata.last_name || '';
-      const npiNumber = metadata.npi_number || null;
-      const specialty = metadata.profession || metadata.specialty || null;
-
-      const dbStart = Date.now();
-      const user = await this.authService.findOrCreateByAuthId(
-        authId,
-        data.user?.email,
-        firstName,
-        lastName,
-        npiNumber,
-        specialty,
-        metadata.institution || null,
-        metadata.city || null,
-        metadata.state || null,
-        metadata.zip_code || null,
-      );
-      this.logger.log(
-        `[Auth] findOrCreateByAuthId completed in ${Date.now() - dbStart}ms`,
-      );
-
-      if (!user) {
-        await this.lockout.recordFailure('login', emailStr, ip);
-        return { error: 'User not found.' };
-      }
-
-      const sessionStart = Date.now();
-      const sessionToken = await this.authService.createSession(
-        user,
-        data.access_token,
-      );
-      this.logger.log(
-        `[Auth] createSession completed in ${Date.now() - sessionStart}ms`,
-      );
-
-      const dbUser = await this.authService.getUserById(user.userId);
-      const profileComplete = this.authService.isProfileComplete(dbUser);
-      this.logger.log(
-        `[Auth] Supabase login success: userId=${user.userId} email=${user.email} total=${Date.now() - loginStart}ms`,
-      );
-      await this.lockout.recordSuccess('login', emailStr, ip);
-      this.attachSessionCookie(expressRes, sessionToken);
-      this.auditAuthEvent(req, 'auth.login', {
-        userId: user.userId,
-        email: user.email,
-        role: user.role,
-      }, { method: 'supabase' });
-      return {
-        session_token: sessionToken,
-        access_token: data.access_token,
-        userId: user.userId,
-        email: user.email,
-        name: user.name,
-        firstName: dbUser?.firstName ?? firstName,
-        lastName: dbUser?.lastName ?? lastName,
-        role: user.role,
-        profileComplete,
-      };
     }
 
     // SCRUM-101: fail-closed in production. The dev-fallback path below logs
-    // a user in by email with the password IGNORED, a critical vulnerability
-    // if SUPABASE_URL/SUPABASE_ANON_KEY are ever missing in prod (config
-    // drift, secret rotation, misdeploy). Never allow this path outside of
-    // local/test environments.
+    // a user in by email with the password IGNORED.
     if (isProductionEnv()) {
       this.logger.warn(
-        `[Auth] Login refused: Supabase env not configured in production for ${emailStr}`,
+        `[Auth] Login refused: Cognito not configured in production for ${emailStr}`,
       );
       return { error: 'Login is not available. Please contact support.' };
     }
@@ -1337,7 +965,7 @@ export class AuthController {
 
   /**
    * POST /api/auth/recover
-   * Proxies to GoTrue password reset (avoids CORS).
+   * Cognito password reset when configured.
    */
   @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
   @Throttle({ auth: { limit: 10, ttl: 900_000 } })
@@ -1379,62 +1007,7 @@ export class AuthController {
       }
     }
 
-    const supabaseUrl = this.configService.get<string>('supabase.url');
-    const supabaseAnon = this.configService.get<string>('supabase.anonKey');
-
-    if (!supabaseUrl || !supabaseAnon) {
-      return { error: 'Password reset is not configured.' };
-    }
-
-    const recoverStart = Date.now();
-    this.logger.log(`[Auth] Password reset request for: ${emailStr}`);
-    let res: Response;
-    try {
-      res = await fetchWithTimeout(
-        `${supabaseUrl.replace(/\/$/, '')}/auth/v1/recover`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            apikey: supabaseAnon,
-          },
-          body: JSON.stringify({ email: emailStr }),
-        },
-        SUPABASE_FETCH_TIMEOUT_MS,
-      );
-    } catch (err) {
-      const msg =
-        err instanceof Error && err.name === 'AbortError'
-          ? 'Request timed out. Please try again.'
-          : 'Password reset failed. Please try again.';
-      this.logger.warn(
-        `[Auth] Recover error for ${emailStr} after ${Date.now() - recoverStart}ms:`,
-        err,
-      );
-      await this.lockout.recordFailure('recover', emailStr, ip);
-      return { error: msg };
-    }
-    this.logger.log(
-      `[Auth] Supabase recover fetch completed in ${Date.now() - recoverStart}ms`,
-    );
-    const data = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      const msg =
-        data?.msg || data?.error_description || 'Password reset failed.';
-      this.logger.warn(`[Auth] Recover failed for ${emailStr}: ${msg}`);
-      const lock = await this.lockout.recordFailure('recover', emailStr, ip);
-      if (lock.locked) {
-        return {
-          error: lock.message || 'Too many attempts. Please try again later.',
-        };
-      }
-      return { error: msg };
-    }
-
-    this.logger.log(`[Auth] Recover email sent to ${emailStr}`);
-    await this.lockout.recordFailure('recover', emailStr, ip);
-    return {};
+    return { error: 'Password reset is not configured. Use Cognito.' };
   }
 
   /**
@@ -1612,6 +1185,8 @@ export class AuthController {
       return { error: 'MFA is not configured.' };
     }
 
+    this.assertMfaEnrollmentAllowed();
+
     const sessionToken = getSessionTokenFromRequest(req);
     if (!sessionToken) return { error: 'Session required.' };
 
@@ -1669,6 +1244,8 @@ export class AuthController {
       return { error: 'MFA is not configured.' };
     }
 
+    this.assertMfaEnrollmentAllowed();
+
     const codeStr = (code || '').trim();
     if (!/^\d{6}$/.test(codeStr)) {
       return { error: 'Enter the 6-digit code from your authenticator app.' };
@@ -1720,6 +1297,144 @@ export class AuthController {
     }
   }
 
+  /**
+   * POST /api/auth/mfa/phone/start
+   * Save phone on Cognito and send SMS verification code (SMS MFA enrollment).
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('mfa/phone/start')
+  @UseGuards(JwtAuthGuard)
+  async mfaPhoneStart(
+    @CurrentUser() user: AuthUser,
+    @Body('phoneNumber') phoneNumber: string,
+    @Req() req: Request,
+  ): Promise<{ ok?: true; phoneNumber?: string; error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+    this.assertMfaEnrollmentAllowed();
+
+    const e164 = normalizeUsPhoneE164(phoneNumber);
+    if (!e164) {
+      return {
+        error: 'Enter a valid US mobile number (10 digits).',
+      };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'Phone setup requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('mfa', user.email, ip);
+    if (locked) return locked;
+
+    try {
+      await this.cognitoService.setPhoneAndSendVerification(accessToken, e164);
+      // Hold pending number in Postgres only after Cognito accepts it; still
+      // unverified until /mfa/phone/verify succeeds.
+      await this.authService.setPhoneNumber(user.userId, e164);
+      this.logger.log(`[Auth] SMS MFA phone start for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_phone_start', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
+      return { ok: true, phoneNumber: e164 };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Could not send verification SMS.';
+      this.logger.warn(`[Auth] MFA phone start failed for ${user.email}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', user.email, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
+      if (/InvalidParameterException|InvalidPhoneNumber/i.test(msg)) {
+        return { error: 'That phone number is not valid for SMS.' };
+      }
+      if (/LimitExceededException/i.test(msg)) {
+        return { error: 'Too many SMS attempts. Please try again later.' };
+      }
+      return { error: msg };
+    }
+  }
+
+  /**
+   * POST /api/auth/mfa/phone/verify
+   * Verify Cognito phone_number and enable preferred SMS MFA.
+   */
+  @SkipThrottle({ short: true, medium: true, long: true, auth: true })
+  @Throttle({ authMfa: { limit: 5, ttl: 300_000 } })
+  @Post('mfa/phone/verify')
+  @UseGuards(JwtAuthGuard)
+  async mfaPhoneVerify(
+    @CurrentUser() user: AuthUser,
+    @Body('code') code: string,
+    @Req() req: Request,
+  ): Promise<{ ok?: true; error?: string }> {
+    if (!this.cognitoService.isConfigured()) {
+      return { error: 'MFA is not configured.' };
+    }
+    this.assertMfaEnrollmentAllowed();
+
+    const codeStr = (code || '').trim();
+    if (!/^\d{6}$/.test(codeStr)) {
+      return { error: 'Enter the 6-digit code from the SMS.' };
+    }
+
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (!sessionToken) return { error: 'Session required.' };
+    const accessToken =
+      await this.authService.getSessionAccessToken(sessionToken);
+    if (!accessToken) {
+      return {
+        error:
+          'Phone verification requires a Cognito session. Please sign out and sign back in, then try again.',
+      };
+    }
+
+    const ip = this.clientIp(req);
+    const locked = await this.rejectIfLocked('mfa', user.email, ip);
+    if (locked) return locked;
+
+    try {
+      await this.cognitoService.verifyPhoneAttribute(accessToken, codeStr);
+      await this.cognitoService.enableSmsMfa(accessToken);
+      await this.lockout.recordSuccess('mfa', user.email, ip);
+      this.logger.log(`[Auth] SMS MFA enabled for ${user.email}`);
+      this.auditAuthEvent(req, 'auth.mfa_sms_enabled', {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      });
+      return { ok: true };
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Phone verification failed.';
+      this.logger.warn(`[Auth] MFA phone verify failed for ${user.email}: ${msg}`);
+      const lock = await this.lockout.recordFailure('mfa', user.email, ip);
+      if (lock.locked) {
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
+      }
+      if (/CodeMismatchException|ExpiredCodeException/i.test(msg)) {
+        return { error: 'Invalid or expired code. Please try again.' };
+      }
+      return { error: msg };
+    }
+  }
+
   @Post('logout')
   async logout(
     @Req() req: Request,
@@ -1741,27 +1456,37 @@ export class AuthController {
   }
 
   /**
-   * GET /api/auth/chatbot-token
-   * Returns GoTrue JWT for chatbot (unlimited queries). Requires session auth.
-   */
-  @Get('chatbot-token')
-  @UseGuards(JwtAuthGuard)
-  async getChatbotToken(@CurrentUser() user: AuthUser, @Req() req: Request) {
-    void user;
-    const sessionToken = getSessionTokenFromRequest(req);
-    if (!sessionToken) return { token: null };
-    const token = await this.authService.getChatbotToken(sessionToken);
-    return { token };
-  }
-
-  /**
    * GET /api/auth/me
-   * Returns the current authenticated user's profile (userId, email, firstName, lastName, role).
-   * Frontend uses this to get the DB userId for API calls.
+   * Returns the current authenticated user's profile when a session cookie is present.
+   * Anonymous visitors get 200 `{ authenticated: false }` (not 401) so the SPA bootstrap
+   * probe does not spam DevTools with Unauthorized noise on public pages.
    */
   @Get('me')
-  @UseGuards(JwtAuthGuard)
-  async getMe(@CurrentUser() user: AuthUser, @Req() req: Request) {
+  @UseGuards(OptionalJwtAuthGuard)
+  async getMe(
+    @Req() req: Request & { user?: AuthUser },
+  ): Promise<
+    | {
+        userId: string;
+        authId: string;
+        email: string;
+        name?: string;
+        firstName: string;
+        lastName: string;
+        role: string;
+        profileComplete: boolean;
+        phoneNumber: string | null;
+        mfaEnabled: boolean;
+        mfaEnrollmentRequired: boolean;
+        mfaFeature: MfaFeatureFlags;
+      }
+    | { authenticated: false }
+  > {
+    const user = req.user;
+    if (!user?.userId) {
+      return { authenticated: false };
+    }
+
     const dbUser = await this.authService.getUserById(user.userId);
     const nameParts = (user.name ?? '').trim().split(/\s+/).filter(Boolean);
     const dbFirst = dbUser?.firstName?.trim();
@@ -1800,7 +1525,7 @@ export class AuthController {
       }
     }
 
-    // Soft enforce for all roles in deployed Cognito envs while pool MFA is OPTIONAL.
+    // MFA enrollment gate from AppConfig while pool MFA is OPTIONAL.
     const mfaEnrollmentRequired =
       this.isMfaEnrollmentEnforced() &&
       this.cognitoService.isConfigured() &&
@@ -1818,8 +1543,10 @@ export class AuthController {
       lastName,
       role: user.role,
       profileComplete,
+      phoneNumber: dbUser?.phoneNumber ?? null,
       mfaEnabled,
       mfaEnrollmentRequired,
+      mfaFeature: this.mfaFeaturePayload(),
     };
   }
 }

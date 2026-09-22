@@ -473,7 +473,7 @@ export default function Home() {
                   the document rather than a button above a box. */}
               <SessionWidget poster={sessionPoster} />
             </Reveal>
-          </div>
+                </div>
         </Band>
       </>
     ),
@@ -586,8 +586,8 @@ export default function Home() {
                                 <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
                                   Video
                                 </span>
-                              </div>
-                            </div>
+          </div>
+          </div>
                             <div className="flex flex-1 flex-col px-1 pb-1">
                               <h3 className="display line-clamp-2 text-body-m text-text">{v.title}</h3>
                               {/* Tags are spans, not links: the card is already
@@ -640,7 +640,7 @@ export default function Home() {
             id="kol-heading"
             title="In conversation"
             sub="Practising specialists who bring their own audiences."
-            seeAll={{ noun: 'profiles', to: '/kol-network' }}
+            seeAll={{ noun: 'profiles', to: '/kols' }}
           />
           <ul className="mt-12 grid gap-x-6 gap-y-10 sm:grid-cols-6">
             {faculty.map((k, i) => (
@@ -653,7 +653,7 @@ export default function Home() {
                 className={i < 3 ? 'sm:col-span-2' : 'sm:col-span-3'}
               >
                 <Link
-                  to={`/kol-network/profile/${encodeURIComponent(k.id)}`}
+                  to={`/kols/${encodeURIComponent(k.id)}`}
                   className="press group block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {k.photoUrl ? (
@@ -709,7 +709,7 @@ export default function Home() {
             id="shows-heading"
             title="CHM Podcast Network"
             sub="Four shows, each with its own voice and its own audience."
-            seeAll={{ noun: 'shows', to: '/catalog' }}
+            seeAll={{ noun: 'shows', to: '/podcast-network' }}
           />
           <div className="mt-[2.375rem]">
             {/* Headroom lives inside the scroller: overflow-x also clips
@@ -718,8 +718,8 @@ export default function Home() {
               <ul className="scrollbar-none bleed-x flex snap-x snap-mandatory gap-4 overflow-x-auto py-5">
                 {shows.map((s) => (
                   <li key={s.slug} className="w-[15rem] shrink-0 snap-start">
-                    <Link
-                      to="/catalog"
+            <Link
+                      to="/podcast-network"
                       className="press lift group flex h-full flex-col overflow-hidden rounded-[6px] bg-surface shadow-card hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                     >
                       <div className="relative aspect-square overflow-hidden">
@@ -740,7 +740,7 @@ export default function Home() {
                             Español
                           </span>
                         ) : null}
-                      </div>
+            </div>
                       <div className="flex flex-1 flex-col px-4 pb-4 pt-3.5">
                         <h3 className="display text-body-m text-text">{s.title}</h3>
                         <p className="prose-lede mt-1 line-clamp-2 max-w-[38ch] text-body-s text-muted2">
@@ -749,7 +749,7 @@ export default function Home() {
                         <p className="mt-3 text-[0.8125rem] text-faint">
                           {s.episodes} episodes · {s.hosts}
                         </p>
-                      </div>
+            </div>
                     </Link>
                   </li>
                 ))}
@@ -771,7 +771,7 @@ export default function Home() {
           <ul className="mt-12 space-y-3">
             {ARTICLES.map((a, i) => (
               <Reveal as="li" key={a.slug} delay={i * 45}>
-                <Link
+              <Link
                   to="/catalog"
                   className="press group -mx-4 grid items-baseline gap-x-8 gap-y-2 rounded-[8px] px-4 py-7 transition-[background-color] duration-150 hover:bg-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring md:grid-cols-[9rem_1fr_5rem]"
                 >
@@ -781,7 +781,7 @@ export default function Home() {
                     <p className="prose-lede mt-2 max-w-[62ch] text-body-s text-muted2">{a.dek}</p>
                   </span>
                   <span className="meta text-faint md:text-end">{a.read}</span>
-                </Link>
+              </Link>
               </Reveal>
             ))}
           </ul>

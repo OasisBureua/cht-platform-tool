@@ -175,6 +175,7 @@ export class AuthService {
     city?: string | null,
     state?: string | null,
     zipCode?: string | null,
+    phoneNumber?: string | null,
   ): Promise<AuthUser | null> {
     let user = await this.prisma.user.findUnique({
       where: { authId },
@@ -191,7 +192,12 @@ export class AuthService {
         );
         user = await this.prisma.user.update({
           where: { id: byEmail.id },
-          data: { authId },
+          data: {
+            authId,
+            ...(phoneNumber?.trim()
+              ? { phoneNumber: phoneNumber.trim() }
+              : {}),
+          },
         });
         this.cognitoService
           .syncGroupsForRole(user.email, user.role)
@@ -221,9 +227,10 @@ export class AuthService {
           city: city?.trim() || undefined,
           state: state?.trim() || undefined,
           zipCode: zipCode?.trim() || undefined,
+          phoneNumber: phoneNumber?.trim() || undefined,
         },
       });
-      // Fan out to HubSpot + MediaHub/Content Hub. Fire-and-forget: a slow
+      // Fan out to HubSpot + Content Hub. Fire-and-forget: a slow
       // downstream must not block signup.
       this.outboundSync
         .syncUser({
@@ -357,7 +364,7 @@ export class AuthService {
   /**
    * Create a session in Postgres and mirror it in Redis.
    * Idle expiry starts at now + SESSION_TTL_SECONDS; absolute cap uses createdAt.
-   * @param accessToken - Optional Cognito/legacy access token (MFA, password, chatbot)
+   * @param accessToken - Optional Cognito/legacy access token (MFA, password change)
    */
   async createSession(
     user: AuthUser,
@@ -394,23 +401,6 @@ export class AuthService {
       this.prisma.session.deleteMany({ where: { token } }),
       this.deleteSessionCache(token),
     ]);
-  }
-
-  /**
-   * Get chatbot token for the given session. Returns null if missing or timed out.
-   */
-  async getChatbotToken(sessionToken: string): Promise<string | null> {
-    const session = await this.prisma.session.findUnique({
-      where: { token: sessionToken.trim() },
-      select: { accessToken: true, expiresAt: true, createdAt: true },
-    });
-    if (
-      !session ||
-      this.isSessionTimedOut(new Date(), session.expiresAt, session.createdAt)
-    ) {
-      return null;
-    }
-    return session.accessToken;
   }
 
   /**
@@ -582,6 +572,7 @@ export class AuthService {
     city: string | null;
     state: string | null;
     zipCode: string | null;
+    phoneNumber: string | null;
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -594,9 +585,18 @@ export class AuthService {
         city: true,
         state: true,
         zipCode: true,
+        phoneNumber: true,
       },
     });
     return user;
+  }
+
+  /** Persist verified E.164 phone used for SMS MFA. */
+  async setPhoneNumber(userId: string, phoneE164: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { phoneNumber: phoneE164 },
+    });
   }
 
   /**
@@ -604,7 +604,11 @@ export class AuthService {
    * Requires: specialty. NPI required unless profession is Pharmaceuticals.
    */
   isProfileComplete(
-    user: { specialty: string | null; npiNumber: string | null } | null,
+    user: {
+      specialty: string | null;
+      npiNumber: string | null;
+      phoneNumber?: string | null;
+    } | null,
   ): boolean {
     return isProfileCompleteForPayments(user);
   }
