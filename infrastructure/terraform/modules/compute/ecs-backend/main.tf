@@ -268,10 +268,6 @@ resource "aws_ecs_task_definition" "backend" {
             valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
           },
           {
-            name      = "INTERNAL_REPORTS_SECRET"
-            valueFrom = "${var.app_secrets_arn}:internal_reports_secret::"
-          },
-          {
             name      = "COMPANION_INTERNAL_SECRET"
             valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
           }

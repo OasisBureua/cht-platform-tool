@@ -254,13 +254,6 @@ variable "internal_cache_secret" {
   default     = ""
 }
 
-variable "internal_reports_secret" {
-  description = "Shared secret for GET /internal/programs/:id/registrations (cht-reports report-packet pipeline)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "youtube_api_key" {
   description = "YouTube Data API v3 key for catalog playlists (fallback when MediaHub not configured)"
   type        = string

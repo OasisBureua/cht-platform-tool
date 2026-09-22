@@ -329,10 +329,6 @@ export default () => ({
     secret: process.env.INTERNAL_CACHE_SECRET?.trim() || '',
   },
 
-  internalReports: {
-    secret: process.env.INTERNAL_REPORTS_SECRET?.trim() || '',
-  },
-
   /**
    * NIH Clinical Tables individual NPI search (CMS NPPES-backed).
    * Public free API — no secret/API key. Override only if the endpoint moves.
