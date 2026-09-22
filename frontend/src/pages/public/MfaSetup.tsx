@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthFormCard from './components/AuthFormCard';
@@ -11,6 +11,8 @@ export default function MfaSetup() {
     beginSmsMfaSetup,
     verifySmsMfaSetup,
     user,
+    isAuthenticated,
+    isLoading,
   } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -34,6 +36,7 @@ export default function MfaSetup() {
 
   // Prefill + send SMS when profile already has a phone (e.g. from Join).
   useEffect(() => {
+    if (user?.mfaEnabled) return;
     if (method !== 'sms' || autoStarted || phoneSent || !user?.phoneNumber) return;
     setAutoStarted(true);
     setPhone(user.phoneNumber.replace(/^\+1/, ''));
@@ -47,7 +50,7 @@ export default function MfaSetup() {
       }
       setPhoneSent(true);
     })();
-  }, [method, autoStarted, phoneSent, user?.phoneNumber, beginSmsMfaSetup]);
+  }, [method, autoStarted, phoneSent, user?.phoneNumber, user?.mfaEnabled, beginSmsMfaSetup]);
 
   // Keep local phone field in sync if /me loads phone after first paint.
   useEffect(() => {
@@ -55,6 +58,10 @@ export default function MfaSetup() {
     setPhone((prev) => prev || user.phoneNumber!.replace(/^\+1/, ''));
   }, [user?.phoneNumber, phoneSent]);
 
+  // Already enrolled via Cognito challenge or a prior soft setup — do not re-prompt.
+  if (!isLoading && isAuthenticated && user?.mfaEnabled) {
+    return <Navigate to={from} replace />;
+  }
   const handleStartTotpSetup = async () => {
     setError(null);
     setLoadingSetup(true);
