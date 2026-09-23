@@ -148,6 +148,31 @@ output "cognito_client_id" {
   value       = var.enable_cognito_pools ? module.cognito[0].client_id : null
 }
 
+output "cognito_m2m_export_client_id" {
+  description = "Cognito M2M client ID for Content Hub → /api/export (client_credentials)"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_client_id : null
+}
+
+output "cognito_m2m_export_scope" {
+  description = "OAuth scope for export M2M (platform/export.read)"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_scope : null
+}
+
+output "cognito_m2m_export_token_url" {
+  description = "Cognito token URL for Hub client_credentials"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_token_url : null
+}
+
+output "cognito_m2m_export_secret_arn" {
+  description = "Secrets Manager ARN with Hub M2M credentials (client_id, client_secret, token_url, scope)"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_secret_arn : null
+}
+
+output "cognito_m2m_export_secret_name" {
+  description = "Secrets Manager name for Hub M2M credentials"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_secret_name : null
+}
+
 output "cognito_hosted_ui_base_url" {
   description = "Cognito Hosted UI base URL (used for Google OAuth)"
   value       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : null

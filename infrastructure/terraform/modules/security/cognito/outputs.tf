@@ -13,9 +13,34 @@ output "client_id" {
   value       = aws_cognito_user_pool_client.cht_web.id
 }
 
+output "m2m_export_client_id" {
+  description = "cht-content-hub-export confidential client ID (client_credentials)"
+  value       = aws_cognito_user_pool_client.content_hub_export.id
+}
+
+output "m2m_export_scope" {
+  description = "OAuth scope required for GET /api/export/* (space-delimited claim value)"
+  value       = local.m2m_export_scope
+}
+
+output "m2m_export_token_url" {
+  description = "Cognito OAuth2 token endpoint for M2M client_credentials"
+  value       = "${local.hosted_ui_base_url}/oauth2/token"
+}
+
+output "m2m_export_secret_arn" {
+  description = "Secrets Manager ARN with Hub M2M client_id, client_secret, token_url, scope"
+  value       = aws_secretsmanager_secret.m2m_export.arn
+}
+
+output "m2m_export_secret_name" {
+  description = "Secrets Manager name for Hub M2M credentials"
+  value       = aws_secretsmanager_secret.m2m_export.name
+}
+
 output "hosted_ui_base_url" {
   description = "Cognito Hosted UI base URL (used for Google OAuth redirect)"
-  value       = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+  value       = local.hosted_ui_base_url
 }
 
 output "jwks_uri" {

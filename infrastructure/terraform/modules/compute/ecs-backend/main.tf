@@ -130,6 +130,7 @@ resource "aws_ecs_task_definition" "backend" {
             : [],
             var.cognito_user_pool_id != "" ? [{ name = "COGNITO_USER_POOL_ID", value = var.cognito_user_pool_id }] : [],
             var.cognito_client_id != "" ? [{ name = "COGNITO_CLIENT_ID", value = var.cognito_client_id }] : [],
+            var.cognito_m2m_export_client_id != "" ? [{ name = "COGNITO_M2M_EXPORT_CLIENT_ID", value = var.cognito_m2m_export_client_id }] : [],
             var.cognito_user_pool_id != "" ? [{ name = "COGNITO_REGION", value = var.cognito_region != "" ? var.cognito_region : var.aws_region }] : [],
             var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
             var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],

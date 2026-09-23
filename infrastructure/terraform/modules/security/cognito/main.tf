@@ -15,6 +15,10 @@ locals {
     var.ses_source_arn != "" ? var.ses_source_arn :
     "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${local.ses_domain}"
   ) : ""
+
+  hosted_ui_base_url = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+
+  m2m_export_scope = "${aws_cognito_resource_server.platform.identifier}/export.read"
 }
 
 # ============================================
@@ -182,6 +186,68 @@ resource "aws_cognito_user_pool_client" "cht_web" {
   prevent_user_existence_errors = "ENABLED"
 
   depends_on = [aws_cognito_identity_provider.google]
+}
+
+# ============================================
+# Resource server + M2M client (Content Hub → /api/export/*)
+# Scope in tokens: platform/export.read
+# ============================================
+resource "aws_cognito_resource_server" "platform" {
+  identifier   = "platform"
+  name         = "CHT Platform API"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  scope {
+    scope_name        = "export.read"
+    scope_description = "Read platform export endpoints (Hub scheduled ingest)"
+  }
+}
+
+resource "aws_cognito_user_pool_client" "content_hub_export" {
+  name         = "cht-content-hub-export"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  # Confidential client: Hub stores secret and uses client_credentials only
+  generate_secret = true
+
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes                 = ["${aws_cognito_resource_server.platform.identifier}/export.read"]
+
+  # No Hosted UI / user auth on this client
+  supported_identity_providers = ["COGNITO"]
+
+  token_validity_units {
+    access_token = "hours"
+  }
+  access_token_validity = 1
+
+  enable_token_revocation       = true
+  prevent_user_existence_errors = "ENABLED"
+
+  depends_on = [aws_cognito_resource_server.platform]
+}
+
+resource "aws_secretsmanager_secret" "m2m_export" {
+  name                    = "${local.name_prefix}-cognito-m2m-export"
+  description             = "Cognito M2M client credentials for Content Hub → platform /api/export (scope platform/export.read). Production = environment platform (platform.tfvars)."
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = "${local.name_prefix}-cognito-m2m-export"
+    Environment = var.environment
+    Purpose     = "hub-export-m2m"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "m2m_export" {
+  secret_id = aws_secretsmanager_secret.m2m_export.id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.content_hub_export.id
+    client_secret = aws_cognito_user_pool_client.content_hub_export.client_secret
+    token_url     = "${local.hosted_ui_base_url}/oauth2/token"
+    scope         = local.m2m_export_scope
+  })
 }
 
 # ============================================

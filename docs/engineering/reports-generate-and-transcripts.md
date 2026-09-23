@@ -51,7 +51,7 @@ Zoom VTT keys use **programId**, not Hub campaign id:
 | `GET` | `/api/reports/:id` | not built | Poll DDB |
 | `GET` | `/api/reports?campaignId=` | not built | GSI list |
 | `POST` | `/api/reports/:id/regenerate` | not built | 409 if not complete or `edit_attempts >= 3` |
-| `GET` | `/api/export/reports/campaigns/:campaignId/input-packet` | not built | **S2S.** Hub ingest: sessions, attendance, surveys, transcript keys + `campaignId` |
+| `GET` | `/api/export/reports/campaigns/:campaignId/input-packet` | **auth shipped** (501 stub) | **S2S Cognito M2M** `platform/export.read` + `X-Request-Id`. Packet body TBD. |
 
 Download: CHT signed S3 URL from DDB. Not a cht-reports HTTP route.
 
@@ -66,8 +66,44 @@ Existing CHT admin UI proxy (`/api/admin/content-hub/...`) is the platform-tool 
 
 ## Still to build (CPR-13/14)
 
-- Export + `Program.campaignId` as above.
-- S2S auth (Cognito M2M `platform/export.read` or scoped service key). `X-Request-Id`.
+- Export packet body + `Program.campaignId` as above.
+- Hub scheduled pull consuming Cognito M2M (see below).
+
+## Cognito M2M (Hub → `/api/export/*`)
+
+Locked auth for Content Hub ingest. Companion and admin `/api/reports*` are unchanged.
+
+| Item | Value |
+|------|--------|
+| Scope | `platform/export.read` |
+| Grant | `client_credentials` only |
+| App client | `cht-content-hub-export` (confidential) |
+| Secrets Manager | `{name_prefix}-cognito-m2m-export` — prod = `cht-platform-cognito-m2m-export` (`platform.tfvars`) |
+| Secret JSON | `client_id`, `client_secret`, `token_url`, `scope` |
+| Backend env | `COGNITO_M2M_EXPORT_CLIENT_ID` (validates tokens; secret stays in SM for Hub) |
+
+### Smoke (Hub)
+
+```bash
+# Resolve credentials (prod / platform.tfvars → cht-platform-cognito-m2m-export)
+SECRET_JSON=$(aws secretsmanager get-secret-value \
+  --secret-id "$M2M_SECRET_NAME" --query SecretString --output text)
+CLIENT_ID=$(echo "$SECRET_JSON" | jq -r .client_id)
+CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r .client_secret)
+TOKEN_URL=$(echo "$SECRET_JSON" | jq -r .token_url)
+SCOPE=$(echo "$SECRET_JSON" | jq -r .scope)
+
+AT=$(curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
+  -d "grant_type=client_credentials&scope=$SCOPE" \
+  "$TOKEN_URL" | jq -r .access_token)
+
+# 401 without token; with token → 501 until input-packet is implemented (auth OK)
+curl -i -H "Authorization: Bearer $AT" \
+  -H "X-Request-Id: $(uuidgen)" \
+  "https://$PLATFORM_HOST/api/export/reports/campaigns/{campaignId}/input-packet"
+```
+
+Hub implements token POST + Bearer only — no Cognito pool provisioning in Hub.
 
 ## Speech-to-text (not v1)
 

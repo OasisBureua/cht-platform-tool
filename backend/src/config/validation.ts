@@ -25,6 +25,8 @@ export const validationSchema = Joi.object({
   // Cognito (optional in local/dev; required for production auth)
   COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
   COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_EXPORT_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_EXPORT_SCOPE: Joi.string().allow('').optional(),
   COGNITO_REGION: Joi.string().allow('').optional(),
   COGNITO_HOSTED_UI_BASE_URL: Joi.string().allow('').optional(),
   COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),

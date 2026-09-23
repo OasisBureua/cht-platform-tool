@@ -180,6 +180,12 @@ variable "cognito_client_id" {
   default     = ""
 }
 
+variable "cognito_m2m_export_client_id" {
+  description = "Cognito M2M client ID allowed for /api/export (client_credentials)"
+  type        = string
+  default     = ""
+}
+
 variable "cognito_hosted_ui_base_url" {
   description = "Cognito Hosted UI base URL for OAuth token exchange"
   type        = string
