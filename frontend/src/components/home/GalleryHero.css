@@ -1,0 +1,106 @@
+/* The homepage gallery room. Ported from the CHM WordPress theme's
+   home.css so the two builds stay one design. Class names are kept as
+   they are there (no collisions in this app) so the JS selectors in
+   galleryRoom.js need no changes. */
+
+.hero {
+  position: relative;
+  /* One viewport minus the sticky bar, so the heading, the lede and the
+     room are all above the fold. dvh because vh measures past the
+     browser chrome on iOS Safari. */
+  height: calc(100dvh - 80px);
+  min-height: 30rem;
+  max-height: 44rem;
+  overflow: hidden;
+  touch-action: auto;
+}
+
+/* The room rises into frame: held 1.5s, then 1.9s on a decelerating
+   curve. */
+.hero__canvas {
+  position: absolute; inset: 0; z-index: 1;
+  display: block; width: 100%; height: 100%;
+  animation: hero-rise 1.9s cubic-bezier(0, 0, .2, 1) 1.5s backwards;
+}
+@keyframes hero-rise { from { transform: translateY(100%); } }
+
+/* Behind the room, faded through the middle band so it reads as depth
+   rather than noise over the work. */
+.hero__field {
+  position: absolute; inset: 0; z-index: 0;
+  display: block; width: 100%; height: 100%;
+  opacity: .55;
+  -webkit-mask-image: linear-gradient(to bottom,
+    transparent 0%, #000 14%, #000 26%, rgb(0 0 0 / .12) 46%,
+    rgb(0 0 0 / .12) 72%, #000 88%, transparent 100%);
+  mask-image: linear-gradient(to bottom,
+    transparent 0%, #000 14%, #000 26%, rgb(0 0 0 / .12) 46%,
+    rgb(0 0 0 / .12) 72%, #000 88%, transparent 100%);
+  pointer-events: none;
+}
+
+.hero__copy {
+  position: absolute; z-index: 4; inset-inline: 0;
+  display: flex; flex-direction: column; align-items: center; gap: 0.9rem;
+  text-align: center; pointer-events: none;
+  padding-inline: var(--page-gutter, 1.5rem);
+}
+.hero__copy--top { top: calc(clamp(1.25rem, 4%, 2.5rem) + 25px); }
+.hero__copy--bottom { bottom: calc(clamp(1.25rem, 4%, 2.5rem) + 20px); }
+
+/* Wide enough for "Medicine moves through" to hold one line, so the
+   authored break gives two lines rather than three. */
+.hero__copy h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 500;
+  font-size: clamp(2.779rem, 6.033vw, 5.244rem);
+  line-height: 1.02; letter-spacing: -0.035em;
+  color: hsl(var(--foreground));
+  max-width: 26ch;
+  text-wrap: balance;
+}
+.hero__copy p {
+  margin: 0;
+  color: hsl(var(--muted-foreground));
+  font-size: clamp(1.0125rem, 1.296vw, 1.215rem);
+  line-height: 1.6;
+  max-width: 56ch;
+}
+
+/* The real content: a list of links, so crawlers and screen readers get
+   every title and the works are reachable by keyboard. The canvas is
+   decoration drawn on top. */
+.hero__works { position: absolute; inset: 0; z-index: 2; list-style: none; margin: 0; padding: 0; }
+.hero__works li { position: absolute; inset: 0; }
+
+/* With the canvas live, galleryRoom.js parks each anchor over its piece
+   every frame and hides the contents, so clicking a moving work opens
+   that work. opacity:0 keeps the text for screen readers. */
+.hero[data-gl="on"] .hero__works li { position: static; }
+.hero[data-gl="on"] .hero__works li > a { position: absolute; display: block; cursor: pointer; }
+.hero[data-gl="on"] .hero__works li > a > * { opacity: 0; }
+.hero[data-gl="on"] .hero__works li > a:focus-visible {
+  outline: 2px solid hsl(var(--ring)); outline-offset: 4px; border-radius: var(--radius);
+}
+
+/* No WebGL: the same list becomes an ordinary grid, a usable index
+   rather than a blank screen. */
+.hero[data-gl="off"] { height: auto; max-height: none; padding-block: 3rem 4rem; }
+.hero[data-gl="off"] .hero__canvas,
+.hero[data-gl="off"] .hero__field { display: none; }
+.hero[data-gl="off"] .hero__copy { position: static; padding: 0; }
+.hero[data-gl="off"] .hero__works {
+  position: static; display: grid; gap: 1.5rem; margin-top: 2.5rem;
+  padding-inline: var(--page-gutter, 1.5rem);
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+}
+.hero[data-gl="off"] .hero__works li { position: static; }
+
+.work-card img { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: var(--radius); background: hsl(var(--card)); }
+.work-card h3 { margin: 0.75rem 0 0; font-size: 1rem; font-weight: 500; color: hsl(var(--foreground)); }
+.work-card span { margin-top: 0.35rem; display: block; font-size: 0.75rem; color: hsl(var(--muted-foreground)); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__canvas { animation: none; }
+}

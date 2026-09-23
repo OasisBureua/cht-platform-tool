@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Pipeline } from './Pipeline';
 import { Thumb } from '../ui/Thumb';
@@ -33,13 +33,26 @@ const CHAPTERS: [string, string][] = [
   ['08:40', 'Where the guidelines lag'],
 ];
 
+/**
+ * Card labels in the brand guide's colours: Knowledge Blue, Amber and
+ * Deep Expertise, with Amber on Live as the guide reserves it. Each is
+ * the deepest tone of its hue that clears 4.5:1 as 11px text on the
+ * white card; the guide's own amber and Knowledge Blue sit at 1.9:1 and
+ * 2.6:1 there.
+ */
+const LABEL_TONE = {
+  blue: 'hsl(193 63% 35%)',
+  amber: 'hsl(37 91% 32%)',
+  deep: 'hsl(196 66% 23%)',
+} as const;
+
 function Card({
   label,
   meta,
   title,
   body,
   to,
-  accent,
+  tone,
   className = '',
   height = 'h-[21.25rem]',
   span = 'md:col-span-4',
@@ -50,7 +63,8 @@ function Card({
   title: string;
   body: string;
   to: string;
-  accent?: boolean;
+  /** Label colour, from LABEL_TONE. */
+  tone: string;
   className?: string;
   /** Fixed, so one card's content cannot set every sibling's height. */
   height?: string;
@@ -64,7 +78,9 @@ function Card({
       className={`group card lift press flex flex-col overflow-hidden p-4 ${height} ${span} focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-anchor ${className}`}
     >
       <div className="flex items-center justify-between">
-        <span className={`eyebrow ${accent ? 'text-ink-pink' : 'text-faint'}`}>{label}</span>
+        <span className="eyebrow" style={{ color: tone }}>
+          {label}
+        </span>
         <span className="meta tabular-nums text-faint">{meta}</span>
       </div>
       <div className="my-3 min-h-0 flex-1 overflow-hidden">{children}</div>
@@ -76,32 +92,118 @@ function Card({
   );
 }
 
-/** The audio cut. Runs continuously. */
+/**
+ * The audio cut: flowing line traces rather than a bar meter, ported
+ * from the CHM WordPress theme. Forty-two thin curves, each a sum of two
+ * sines under a travelling envelope, so the field gathers into packets
+ * and thins out between them.
+ *
+ * Two colour families, warm and cool, interpolated separately and
+ * interleaved. A single ramp from amber (37) to coral (359) walks the
+ * hue wheel the long way round and comes out magenta.
+ */
 function Wave() {
-  const [tick, setTick] = useState(0);
+  const ref = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const id = window.setInterval(() => setTick((t) => t + 1), 220);
-    return () => window.clearInterval(id);
+    const cv = ref.current;
+    if (!cv) return;
+    const ctx = cv.getContext('2d');
+    if (!ctx) return;
+
+    const LINES = 42;
+    const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const WARM = [[37, 91, 55], [14, 74, 52]] as const; // amber to rust
+    const COOL = [[193, 63, 49], [196, 66, 32]] as const; // knowledge blue to deep expertise
+    let w = 0;
+    let h = 0;
+    let frame = 0;
+    let pending = 0;
+    let onScreen = true;
+    let phase = 0;
+    let disposed = false;
+
+    const fit = () => {
+      const r = cv.getBoundingClientRect();
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      cv.width = Math.max(1, Math.round(r.width * dpr));
+      cv.height = Math.max(1, Math.round(r.height * dpr));
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      w = r.width;
+      h = r.height;
+    };
+
+    const traceColour = (i: number) => {
+      // A slow sine clumps the families instead of hard-alternating them.
+      const [a, b] = Math.sin(i * 0.62) > 0.1 ? COOL : WARM;
+      const u = (Math.sin(i * 1.7) + 1) / 2;
+      const m = (k: number) => a[k] + (b[k] - a[k]) * u;
+      return `hsl(${m(0).toFixed(1)} ${m(1).toFixed(1)}% ${m(2).toFixed(1)}%)`;
+    };
+
+    const draw = () => {
+      ctx.clearRect(0, 0, w, h);
+      ctx.lineWidth = 0.7;
+      ctx.globalAlpha = 0.5;
+      for (let i = 0; i < LINES; i++) {
+        const t = i / (LINES - 1);
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 2) {
+          const u = x / w;
+          // Envelope: three travelling packets across the width.
+          const env = Math.pow(Math.abs(Math.sin(u * Math.PI * 3.1 + phase * 0.35)), 1.7) * 0.86 + 0.14;
+          const y =
+            h / 2 +
+            Math.sin(u * 15 + i * 0.19 + phase) * h * 0.2 * env +
+            Math.sin(u * 27 - i * 0.31 - phase * 1.4) * h * 0.13 * env +
+            (t - 0.5) * h * 0.5 * env;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = traceColour(i);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+      if (!disposed && !still && onScreen) {
+        phase += 0.006;
+        frame = requestAnimationFrame(draw);
+      }
+    };
+
+    fit();
+    draw();
+
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (disposed || e.isIntersecting === onScreen) return;
+        onScreen = e.isIntersecting;
+        if (onScreen) draw();
+        else cancelAnimationFrame(frame);
+      },
+      { rootMargin: '120px' },
+    );
+    io.observe(cv);
+
+    const onResize = () => {
+      cancelAnimationFrame(pending);
+      pending = requestAnimationFrame(() => {
+        if (disposed) return;
+        fit();
+        if (still) draw();
+      });
+    };
+    window.addEventListener('resize', onResize);
+
+    return () => {
+      disposed = true;
+      cancelAnimationFrame(frame);
+      cancelAnimationFrame(pending);
+      io.disconnect();
+      window.removeEventListener('resize', onResize);
+    };
   }, []);
 
-  const bars = Array.from(
-    { length: 26 },
-    (_, i) => 22 + Math.abs(Math.sin(i * 0.7 + tick * 0.35)) * 72,
-  );
-
-  return (
-    <div className="flex h-full items-end gap-[3px]" aria-hidden>
-      {bars.map((h, i) => (
-        <span
-          key={i}
-          style={{ height: `${h}%` }}
-          className="w-full rounded-[6px] bg-ink-pink/45 transition-[height] duration-200 ease-out"
-        />
-      ))}
-    </div>
-  );
+  return <canvas ref={ref} className="block h-full w-full" aria-hidden />;
 }
 
 /** The written cut, drifting under a fade at both edges. */
@@ -139,6 +241,7 @@ export function FormatBento({ poster }: { poster: string }) {
     <div className="mt-12 grid gap-4 md:grid-cols-12">
       <Card
         label="Video"
+        tone={LABEL_TONE.blue}
         meta="18:40"
         title="The long-form conversation"
         body="Two clinicians work a case end to end."
@@ -159,17 +262,18 @@ export function FormatBento({ poster }: { poster: string }) {
 
       <Card
         label="Podcast"
+        tone={LABEL_TONE.amber}
         meta="34:02"
         title="The audio cut"
         body="The same conversation, for the commute."
         to="/podcast-network"
-        accent
       >
         <Wave />
       </Card>
 
       <Card
         label="Editorial"
+        tone={LABEL_TONE.deep}
         meta="6 min"
         title="The written explainer"
         body="What changed, and what it changes."
@@ -181,6 +285,7 @@ export function FormatBento({ poster }: { poster: string }) {
       {/* Row two: the two things that are not a cut of a recording. */}
       <Card
         label="Live"
+        tone={LABEL_TONE.amber}
         meta="Next: 4 Sep"
         title="Office Hours"
         body="Send the case you are stuck on. Two faculty work it live, without the answer in advance."
@@ -211,6 +316,7 @@ export function FormatBento({ poster }: { poster: string }) {
 
       <Card
         label="For clinicians"
+        tone={LABEL_TONE.blue}
         meta="Free"
         title="The HCP platform"
         body="Every session, every format, filed by disease state. Free, and it stays free."

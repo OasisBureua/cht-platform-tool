@@ -192,7 +192,7 @@ export default function AdminSidebar() {
     >
       <div className="flex h-[82px] w-full shrink-0 items-center justify-center">
         <Link to="/admin" className="flex h-full w-full items-center justify-center">
-          <ChmWordmarkOption2 className="h-8 w-[4.5rem]" />
+          <ChmWordmarkOption2 className="h-auto w-[4.5rem]" />
         </Link>
       </div>
 

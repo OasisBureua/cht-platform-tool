@@ -12,7 +12,7 @@ export default function AppSidebar() {
           className="flex h-[clamp(56px,8.5vh,76px)] w-[88px] items-center justify-center rounded-card text-text transition-[color,opacity,transform] duration-200 ease-out hover:opacity-80 active:scale-[0.96]"
           aria-label="Community Health Media, app home"
         >
-          <ChmWordmarkOption2 className="h-9 w-[4.75rem]" />
+          <ChmWordmarkOption2 className="h-auto w-[4.75rem]" />
         </Link>
       </div>
 

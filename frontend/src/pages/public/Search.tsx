@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Search as SearchIcon, SlidersHorizontal, X, Loader2, ArrowRight } from 'lucide-react';
+import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
 import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import { clipStripeSubtitle } from '../../utils/mediaHubClipText';

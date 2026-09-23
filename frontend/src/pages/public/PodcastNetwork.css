@@ -1,0 +1,110 @@
+/* Podcast network hero. Ported from the CHM WordPress theme
+   (chm-wp-home/assets/css/home.css) so the two builds are one design. */
+
+/* ── podcast network hero ──────────────────────────────────────────
+   The covers carry it. Four of them fanned reads as a network in a
+   way a headline alone does not, and they are what a listener
+   actually recognises.
+
+   The drift is a long, slow float on each card with a staggered
+   delay, not a slide: ambient motion that never asks to be watched.
+   Nothing here moves more than a few pixels, and the whole thing
+   stops under prefers-reduced-motion.
+   ───────────────────────────────────────────────────────────────── */
+
+.pod-hero { position: relative; overflow: hidden; }
+
+/* A single soft wash of the signature colour behind the stack, so the
+   covers sit on something rather than floating on flat page. */
+.pod-hero__glow {
+  position: absolute; inset-block-start: -18%; inset-inline-end: -8%;
+  width: min(46rem, 72%); aspect-ratio: 1;
+  background: radial-gradient(circle at 50% 50%,
+    hsl(var(--signature) / .17), hsl(var(--signature) / 0) 68%);
+  pointer-events: none;
+}
+
+.pod-hero__in {
+  position: relative; z-index: 1;
+  display: grid; gap: clamp(2.5rem, 5vw, 4rem);
+  align-items: center;
+  padding-block: clamp(2.75rem, 5.5vw, 4.75rem);
+}
+@media (min-width: 60rem) {
+  .pod-hero__in { grid-template-columns: minmax(0, 1fr) minmax(0, 0.95fr); }
+}
+
+.pod-hero__copy h1 {
+  margin-top: 0.7rem;
+  font-size: clamp(2.1rem, 4.6vw, 3.4rem);
+  line-height: 1.04; letter-spacing: -0.032em;
+  max-width: 16ch; text-wrap: balance;
+}
+.pod-hero__lede {
+  margin-top: 1.1rem; max-width: 50ch;
+  color: hsl(var(--muted2)); font-size: 1.125rem; line-height: 1.6;
+}
+.pod-hero__actions { margin-top: 1.9rem; }
+
+/* ── the fan ───────────────────────────────────────────────────── */
+
+.pod-fan {
+  position: relative;
+  display: grid; place-items: center;
+  min-height: clamp(17rem, 32vw, 24rem);
+  list-style: none; margin: 0; padding: 0;
+}
+.pod-fan li {
+  position: absolute;
+  width: clamp(8.5rem, 15.5vw, 12.5rem);
+  aspect-ratio: 1;
+  border-radius: 0.875rem;
+  overflow: hidden;
+  box-shadow: 0 2px 6px hsl(208 28% 18% / .10), 0 22px 48px -18px hsl(208 28% 18% / .38);
+  /* The four sit on an arc: each step out is also a step down and a
+     few degrees round, which is what makes it read as a fan rather
+     than a stack of four squares. */
+  --step: calc(var(--i) - 1.5);
+  /* The spread is about half a cover wide. Tighter than that and only
+     the front one reads, which defeats the point of showing four. */
+  transform:
+    translateX(calc(var(--step) * clamp(3.1rem, 7.6vw, 6.2rem)))
+    translateY(calc(abs(var(--step)) * 0.6rem))
+    rotate(calc(var(--step) * 5deg));
+  z-index: calc(10 - var(--i));
+  animation: pod-float 9s var(--ease-standard) infinite;
+  animation-delay: calc(var(--i) * -2.25s);
+}
+.pod-fan img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* Six pixels of travel. Enough to read as alive, not enough to
+   distract from the copy beside it. */
+@keyframes pod-float {
+  0%, 100% { translate: 0 0; }
+  50%      { translate: 0 -6px; }
+}
+
+/* Safari does not support abs() in every build; the fallback drops the
+   vertical arc and keeps the spread and rotation. */
+@supports not (width: abs(1px)) {
+  .pod-fan li {
+    transform:
+      translateX(calc(var(--step) * clamp(3.1rem, 7.6vw, 6.2rem)))
+      rotate(calc(var(--step) * 5deg));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pod-fan li { animation: none; }
+}
+
+/* On a phone the fan would run off both edges, so it tightens and the
+   two outer covers step behind rather than beside. */
+@media (max-width: 40rem) {
+  .pod-fan li {
+    width: clamp(8rem, 38vw, 10.5rem);
+    transform:
+      translateX(calc(var(--step) * 2.3rem))
+      rotate(calc(var(--step) * 4deg));
+  }
+}
