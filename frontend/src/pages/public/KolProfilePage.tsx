@@ -55,9 +55,12 @@ function IconLinkedIn({ className }: { className?: string }) {
   );
 }
 
-function avatarUrl(name: string): string {
-  const q = name.replace(/^Dr\.\s*/i, '').trim() || name;
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(q)}&size=256&background=c2410c&color=fff&bold=true`;
+function profileInitials(name: string): string {
+  return name
+    .replace(/^Dr\.\s*/i, '')
+    .split(' ')
+    .map((w) => w[0])
+    .join('');
 }
 
 function inferredSpecialty(entry: DolEntry): string {
@@ -146,11 +149,20 @@ export default function KolProfilePage() {
           <div className="grid gap-6 lg:grid-cols-[minmax(14rem,18rem)_1fr] lg:gap-8">
             <aside className="min-w-0">
               <div className="flex items-start gap-3">
-                <img
-                  src={entry.photoUrl || avatarUrl(entry.name)}
-                  alt=""
-                  className="size-16 shrink-0 rounded-full object-cover ring-1 ring-border sm:size-20"
-                />
+                {entry.photoUrl ? (
+                  <img
+                    src={entry.photoUrl}
+                    alt=""
+                    className="size-16 shrink-0 rounded-full object-cover ring-1 ring-border sm:size-20"
+                  />
+                ) : (
+                  <span
+                    aria-hidden
+                    className="grid size-16 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground ring-1 ring-border sm:size-20"
+                  >
+                    {profileInitials(entry.name)}
+                  </span>
+                )}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <h1 className="text-balance text-xl font-bold tracking-tight text-foreground md:text-2xl">
@@ -344,11 +356,20 @@ export default function KolProfilePage() {
 
         <div className="rail grid gap-8 pb-6 lg:grid-cols-[21rem_1fr] lg:gap-12">
           <aside className="lg:sticky lg:top-24 lg:h-fit lg:self-start">
-            <img
-              src={entry.photoUrl || avatarUrl(entry.name)}
-              alt=""
-              className="-mt-12 size-24 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-28"
-            />
+            {entry.photoUrl ? (
+              <img
+                src={entry.photoUrl}
+                alt=""
+                className="-mt-12 size-24 rounded-full bg-surface-2 object-cover shadow-card-hover ring-4 ring-ground sm:size-28"
+              />
+            ) : (
+              <span
+                aria-hidden
+                className="-mt-12 grid size-24 place-items-center rounded-full bg-surface-2 text-base font-semibold text-muted2 shadow-card-hover ring-4 ring-ground sm:size-28"
+              >
+                {profileInitials(entry.name)}
+              </span>
+            )}
 
             <div className="mt-5 flex flex-wrap items-center gap-2">
               <h1 className="display text-[1.75rem] leading-[1.06] tracking-[-0.028em] text-text">
