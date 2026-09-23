@@ -333,8 +333,6 @@ function initials(name: string): string {
 function institutionLine(k: DolEntry): string {
   const inst = k.institution?.trim();
   if (inst && inst !== '-') return inst;
-  const affiliation = k.intel?.affiliation?.split('·')[0]?.trim();
-  if (affiliation) return affiliation;
   const roleLead = k.role.split(/[.;]/)[0]?.trim() ?? k.role;
   return roleLead.length > 46 ? `${roleLead.slice(0, 45)}…` : roleLead;
 }
@@ -386,7 +384,8 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   const { regions } = useKolDirectory({ surface: 'public' });
   const faculty: DolEntry[] = useMemo(() => {
     const live = regions.flatMap((r) => r.entries);
-    const roster = live.length > 0 ? live : kolStaticEnrichment;
+    const roster: DolEntry[] =
+      live.length > 0 ? live : kolStaticEnrichment.map((k) => ({ ...k, role: '', bio: '' }));
     // Faces first. A cut-out counts, not just a photo URL: the built-in
     // roster the row falls back to when the directory is unreachable has
     // no photo URLs, and without this it showed four monograms.
