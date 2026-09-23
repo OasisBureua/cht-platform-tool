@@ -5,6 +5,7 @@ import { catalogApi } from '../../api/catalog';
 import { getShortClipId, extractYoutubeVideoIdFromUrl } from '../../utils/clipUrl';
 import { GalleryHero } from '../../components/home/GalleryHero';
 import { AreasSection, MomentsSection, PeopleSection, ShowsSection } from '../../components/home/HomeSkinSections';
+import { cutoutFor } from '../../components/home/kolCutouts';
 import { FormatBento } from '../../components/home/FormatBento';
 import { LatestTabs } from '../../components/home/LatestTabs';
 import { Thumb } from '../../components/ui/Thumb';
@@ -386,7 +387,11 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
   const faculty: DolEntry[] = useMemo(() => {
     const live = regions.flatMap((r) => r.entries);
     const roster = live.length > 0 ? live : kolStaticEnrichment;
-    return [...roster].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)).slice(0, 4);
+    // Faces first. A cut-out counts, not just a photo URL: the built-in
+    // roster the row falls back to when the directory is unreachable has
+    // no photo URLs, and without this it showed four monograms.
+    const hasFace = (k: DolEntry) => Number(!!k.photoUrl || !!cutoutFor(k.name, k.photoUrl));
+    return [...roster].sort((a, b) => hasFace(b) - hasFace(a)).slice(0, 4);
   }, [regions]);
 
   /* The two series the platform actually publishes carry their own
@@ -691,6 +696,7 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
           key: k.id,
           name: k.name,
           org: institutionLine(k),
+          cutoutUrl: cutoutFor(k.name, k.photoUrl),
           photoUrl: k.photoUrl || undefined,
           mono: initials(k.name),
           to: `/kol-network/profile/${encodeURIComponent(k.id)}`,

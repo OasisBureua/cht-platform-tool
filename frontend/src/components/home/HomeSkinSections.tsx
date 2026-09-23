@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ChmMark } from '../brand/ChmMark';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
-import { KOL_CUTOUTS } from './kolCutouts';
 import './HomeSkin.css';
 
 /*
@@ -140,13 +139,17 @@ export function MomentsSection({ moments }: { moments: SkinMoment[] }) {
 
 /* ── in conversation ─────────────────────────────────────────────── */
 
-export type SkinPerson = { key: string; name: string; org: string; photoUrl?: string; mono: string; to: string };
-
-/** The cut-out for a headshot URL, if one exists. */
-function cutoutFor(photoUrl: string): string | undefined {
-  const stem = photoUrl.split('?')[0].split('/').pop()?.replace(/\.[a-z]+$/i, '');
-  return stem && KOL_CUTOUTS.has(stem) ? `/images/kol-cutouts/${stem}.webp` : undefined;
-}
+export type SkinPerson = {
+  key: string;
+  name: string;
+  org: string;
+  /** Background-free portrait, preferred when present. */
+  cutoutUrl?: string;
+  /** The original headshot, used only when there is no cut-out. */
+  photoUrl?: string;
+  mono: string;
+  to: string;
+};
 
 export function PeopleSection({ people }: { people: SkinPerson[] }) {
   return (
@@ -166,12 +169,10 @@ export function PeopleSection({ people }: { people: SkinPerson[] }) {
                 <span className="person__ghost" aria-hidden>
                   <ChmMark />
                 </span>
-                {p.photoUrl ? (
-                  cutoutFor(p.photoUrl) ? (
-                    <img src={cutoutFor(p.photoUrl)} alt="" loading="lazy" width={540} height={540} />
-                  ) : (
-                    <img className="person__photo--raw" src={p.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
-                  )
+                {p.cutoutUrl ? (
+                  <img src={p.cutoutUrl} alt="" loading="lazy" width={540} height={540} />
+                ) : p.photoUrl ? (
+                  <img className="person__photo--raw" src={p.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer" />
                 ) : (
                   <span className="person__mono" aria-hidden>
                     {p.mono}

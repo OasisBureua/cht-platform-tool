@@ -36,3 +36,29 @@ export const KOL_CUTOUTS: ReadonlySet<string> = new Set([
   'tiffany-traina',
   'vk-gadi',
 ]);
+
+/** A headshot file stem, or a name as a stem: "Dr. Joyce O'Shaughnessy" -> "joyce-o-shaughnessy". */
+function stemFromName(name: string): string {
+  return name
+    .replace(/^dr\.?\s+/i, '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * The cut-out for a faculty member, if one exists.
+ *
+ * Tries the headshot's file name first, then the person's name, and only
+ * ever returns a file whose stem matches exactly, so a face can only
+ * land on the person it belongs to. The name route is what lets the
+ * built-in roster show faces when the directory API is unreachable: that
+ * roster carries names but no photo URLs.
+ */
+export function cutoutFor(name: string, photoUrl?: string | null): string | undefined {
+  const fromPhoto = photoUrl?.split('?')[0].split('/').pop()?.replace(/\.[a-z]+$/i, '');
+  const stem = [fromPhoto, stemFromName(name)].find((s) => s && KOL_CUTOUTS.has(s));
+  return stem ? `/images/kol-cutouts/${stem}.webp` : undefined;
+}
