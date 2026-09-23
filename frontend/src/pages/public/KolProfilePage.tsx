@@ -3,7 +3,6 @@ import { useMemo, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import {
   ArrowRight,
-  Briefcase,
   ChevronLeft,
   ExternalLink,
   Loader2,
@@ -485,14 +484,6 @@ export default function KolProfilePage() {
                   ) : null}
                 </article>
               ) : null}
-
-              <article className="card p-6">
-                <h2 className="display flex items-center gap-2 text-body-m text-text">
-                  <Briefcase className="h-4 w-4" aria-hidden />
-                  Role
-                </h2>
-                <p className="prose-lede mt-3 text-body-s text-muted2">{entry.role}</p>
-              </article>
 
               <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
 
