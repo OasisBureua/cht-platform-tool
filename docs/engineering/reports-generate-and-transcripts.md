@@ -51,7 +51,7 @@ Zoom VTT keys use **programId**, not Hub campaign id:
 | `GET` | `/api/reports/:id` | not built | Poll DDB |
 | `GET` | `/api/reports?campaignId=` | not built | GSI list |
 | `POST` | `/api/reports/:id/regenerate` | not built | 409 if not complete or `edit_attempts >= 3` |
-| `GET` | `/api/export/reports/campaigns/:campaignId/input-packet` | **auth shipped** (501 stub) | **S2S Cognito M2M** `platform/export.read` + `X-Request-Id`. Packet body TBD. |
+| `GET` | `/api/export/reports/campaigns/:campaignId/input-packet` | **built** (CPR-11 auth + CPR-28 packet) | **S2S Cognito M2M** `platform/export.read` + `X-Request-Id`. Sessions/attendance/surveys for linked Programs only. |
 
 Download: CHT signed S3 URL from DDB. Not a cht-reports HTTP route.
 
@@ -66,8 +66,10 @@ Existing CHT admin UI proxy (`/api/admin/content-hub/...`) is the platform-tool 
 
 ## Still to build (CPR-13/14)
 
-- Export packet body + `Program.campaignId` as above.
-- Hub scheduled pull consuming Cognito M2M (see below).
+- Hub scheduled pull consuming Cognito M2M + S3 GetObject / Lambda warehouse upsert.
+- Admin generate BFF (`/api/reports*`) is separate (CPR-F).
+
+`Program.campaignId` + export packet: **shipped** (CPR-28). See `cognito-m2m-export.md`.
 
 ## Cognito M2M (Hub → `/api/export/*`)
 
@@ -97,7 +99,7 @@ AT=$(curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
   -d "grant_type=client_credentials&scope=$SCOPE" \
   "$TOKEN_URL" | jq -r .access_token)
 
-# 401 without token; with token → 501 until input-packet is implemented (auth OK)
+# 401 without token; with token → 200 + packet (sessions may be empty / transcriptStatus missing)
 curl -i -H "Authorization: Bearer $AT" \
   -H "X-Request-Id: $(uuidgen)" \
   "https://$PLATFORM_HOST/api/export/reports/campaigns/{campaignId}/input-packet"

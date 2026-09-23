@@ -181,6 +181,9 @@ model Program {
   importedViaWebhook Boolean @default(false)
   /// Official CHM Content ID (CLIENT-YY-SS_BBBnn) when assigned via Program Registry.
   chmProgramId       String?
+  /// Hub campaign id (e.g. AZ-25-01_LIV001). Nullable until an admin links the Program.
+  /// Export and Hub VTT ingest key off this; unlinked programs are omitted from packets.
+  campaignId         String?
 
   // Timestamps
   createdAt         DateTime @default(now())
@@ -204,6 +207,7 @@ model Program {
   @@index([startDate])
   @@index([status, startDate])
   @@index([chmProgramId])
+  @@index([campaignId])
   @@map("Program")
 }
 
