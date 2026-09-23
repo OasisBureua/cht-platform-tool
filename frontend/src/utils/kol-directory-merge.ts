@@ -140,7 +140,10 @@ export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
     }),
     stateCode: undefined,
   };
-  merged.stateCode = deriveKolUsState(apiKol, merged) ?? undefined;
+  // Only the single-KOL endpoint returns NPI intel, so deriving from it would
+  // make the profile page disagree with the directory for the same doctor.
+  merged.stateCode =
+    deriveKolUsState(apiKol, { role, education: stat?.education, intel: stat?.intel }) ?? undefined;
   return merged;
 }
 
