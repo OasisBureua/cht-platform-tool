@@ -109,28 +109,15 @@ resource "aws_cognito_user_pool" "main" {
   }
 
   # Cognito UpdateUserPool resets omitted fields. MRR-enabled pools also require
-  # KeyConfiguration on every update; AWS provider 5.x cannot send it. Ignore in-place
-  # pool setting changes here and apply them via scripts/cognito-sync-pool-config.sh.
-  # mfa_configuration is ignored: live pool MFA (ON vs OPTIONAL) can drift from tfvars
-  # and terraform apply will not correct it. Change MFA in the console or the sync script.
+  # KeyConfiguration on every update; AWS provider 5.x cannot send it — any
+  # in-place UpdateUserPool then fails with:
+  #   "Using an AWS owned KMS key is not supported for a user pool with
+  #    multi-region replication enabled."
+  # Ignore ALL in-place pool drift. Apply email/SMS/MFA/issuer via
+  # scripts/cognito-sync-pool-config.sh (and cognito-setup-mrr.sh) instead.
   lifecycle {
     prevent_destroy = true
-    ignore_changes = [
-      name,
-      username_attributes,
-      auto_verified_attributes,
-      mfa_configuration,
-      email_configuration,
-      password_policy,
-      schema,
-      username_configuration,
-      account_recovery_setting,
-      admin_create_user_config,
-      verification_message_template,
-      software_token_mfa_configuration,
-      sms_configuration,
-      user_pool_tier,
-    ]
+    ignore_changes  = all
   }
 }
 
