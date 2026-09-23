@@ -7,9 +7,9 @@
 | Environment | User pool | MFA enforcement | Methods |
 |-------------|-----------|-----------------|---------|
 | **dev** (`devapp`) | `cht-dev-users` | **Optional MFA** | Authenticator apps + SMS (when wired) |
-| **platform** (`testapp`) | platform pool | **Optional MFA** for now | Authenticator apps + SMS (when wired) |
+| **platform** (`app` / `testapp`) | `cht-platform-users` | **Optional MFA** (must stay Optional for Join → `/app` without MFA) | Authenticator apps + SMS |
 
-Keep platform on **Optional** until enrollment works for existing users. Flip to **Require MFA** only after admins (then all users) have enrolled — otherwise Cognito blocks sign-in for users without a second factor.
+> **Drift warning:** Cognito MFA is applied by `scripts/cognito-sync-pool-config.sh` (and/or console), not always by Terraform on MRR pools. If the live pool is `ON`, Join post-verify login hits an SMS/TOTP challenge before `/app` — flip back to `OPTIONAL` to match `cognito_mfa_configuration` in tfvars.
 
 Terraform:
 - `cognito_mfa_configuration = "OPTIONAL"`
