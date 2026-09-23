@@ -112,6 +112,7 @@ const AFFILIATION_STATE_HINTS: ReadonlyArray<{ pattern: RegExp; state: string }>
   { pattern: /university\s+of\s+illinois|ui\s+health/i, state: 'IL' },
   { pattern: /indiana\s+university|hematology\s+oncology\s+of\s+indiana/i, state: 'IN' },
   { pattern: /cleveland\s+clinic/i, state: 'OH' },
+  { pattern: /winship|emory\s+university/i, state: 'GA' },
   { pattern: /university\s+of\s+kansas|kansas\s+city,\s*ks/i, state: 'KS' },
   { pattern: /avera\s+cancer/i, state: 'SD' },
   { pattern: /washington\s+university|siteman|st\.\s*louis/i, state: 'MO' },
@@ -133,7 +134,7 @@ function stateFromAffiliationHints(text: string): string | null {
   return null;
 }
 
-function stateFromFreeText(text: string): string | null {
+function stateFromExplicitPattern(text: string): string | null {
   const t = text.trim();
   if (!t) return null;
 
@@ -156,18 +157,29 @@ function stateFromFreeText(text: string): string | null {
     if (code) return code;
   }
 
-  for (const st of STATE_NAMES_BY_LENGTH) {
-    const re = new RegExp(`\\b${st.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-    if (re.test(t)) return st.value;
-  }
-
   return null;
 }
 
+function stateFromStateName(text: string): string | null {
+  for (const st of STATE_NAMES_BY_LENGTH) {
+    const re = new RegExp(`\\b${st.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+    if (re.test(text)) return st.value;
+  }
+  return null;
+}
+
+function stateFromFreeText(text: string): string | null {
+  return stateFromExplicitPattern(text) ?? stateFromStateName(text);
+}
+
+// Institution hints run before bare state names so "Washington University"
+// (St. Louis) doesn't resolve to Washington state.
 function stateFromPracticeText(text: string): string | null {
-  const fromText = stateFromFreeText(text);
-  if (fromText) return fromText;
-  return stateFromAffiliationHints(text);
+  return (
+    stateFromExplicitPattern(text) ??
+    stateFromAffiliationHints(text) ??
+    stateFromStateName(text)
+  );
 }
 
 /**
