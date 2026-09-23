@@ -343,7 +343,7 @@ function KolPanel() {
     [directory.regions],
   );
 
-  const count = directory.total > 0 ? String(directory.total) : '—';
+  const count = directory.total > 0 ? String(directory.total) : '…';
 
   return (
     <HeroPanel>
