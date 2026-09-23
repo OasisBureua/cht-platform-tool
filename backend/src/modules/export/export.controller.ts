@@ -2,10 +2,7 @@ import {
   BadRequestException,
   Controller,
   Get,
-  HttpCode,
-  HttpStatus,
   Logger,
-  NotImplementedException,
   Param,
   Req,
   Res,
@@ -14,6 +11,7 @@ import {
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request, Response } from 'express';
 import { CognitoM2mAuthGuard } from '../../auth/cognito-m2m-auth.guard';
+import { ExportService } from './export.service';
 
 /**
  * S2S export surfaces for Content Hub ingest.
@@ -31,21 +29,22 @@ import { CognitoM2mAuthGuard } from '../../auth/cognito-m2m-auth.guard';
 export class ExportController {
   private readonly logger = new Logger(ExportController.name);
 
+  constructor(private readonly exportService: ExportService) {}
+
   @Get('reports/campaigns/:campaignId/input-packet')
-  @HttpCode(HttpStatus.NOT_IMPLEMENTED)
   @ApiOperation({
-    summary: 'Campaign input packet for Hub ingest (stub)',
+    summary: 'Campaign input packet for Hub ingest',
     description:
-      'Requires Cognito M2M scope platform/export.read. Packet body lands in a follow-on ticket.',
+      'Requires Cognito M2M scope platform/export.read. Returns sessions/attendance/surveys for Programs linked to campaignId only. URL-encode campaign ids (e.g. AZ-25-01_LIV001).',
   })
-  getCampaignInputPacket(
+  async getCampaignInputPacket(
     @Param('campaignId') campaignId: string,
     @Req()
     req: Request & {
       m2m?: { clientId: string; scope: string; sub: string };
     },
     @Res({ passthrough: true }) res: Response,
-  ): never {
+  ) {
     let requestId: string;
     try {
       requestId = requireRequestId(req);
@@ -57,15 +56,20 @@ export class ExportController {
     }
     res.setHeader('X-Request-Id', requestId);
 
-    this.logger.log(
-      `[export] input-packet stub=501 campaignId=${campaignId} clientId=${req.m2m?.clientId || '-'} requestId=${requestId}`,
-    );
+    if (!campaignId?.trim()) {
+      throw new BadRequestException('campaignId is required');
+    }
 
-    throw new NotImplementedException({
-      message: 'Export input-packet is not implemented yet',
+    const packet = await this.exportService.getCampaignInputPacket(
       campaignId,
       requestId,
-    });
+    );
+
+    this.logger.log(
+      `[export] input-packet ok campaignId=${packet.campaignId} sessions=${packet.sessions.length} clientId=${req.m2m?.clientId || '-'} requestId=${requestId}`,
+    );
+
+    return packet;
   }
 }
 

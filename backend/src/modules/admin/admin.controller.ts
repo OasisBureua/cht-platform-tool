@@ -1050,6 +1050,7 @@ export class AdminController {
             ? p.honorariumAmount / 100
             : undefined,
         chmProgramId: p.chmProgramId ?? null,
+        campaignId: p.campaignId ?? null,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks:
           (p.zoomPanelistLinks as Array<{
@@ -2491,6 +2492,11 @@ export class AdminController {
       sessionHeroImageUrl?: string | null;
       /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
       chmProgramId?: string | null;
+      /**
+       * Hub campaign id for Cross-Platform Reporting (e.g. AZ-25-01_LIV001).
+       * Null/empty clears the link; unlinked programs are omitted from export.
+       */
+      campaignId?: string | null;
       /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -2639,6 +2645,11 @@ export class AdminController {
         body.chmProgramId === null || body.chmProgramId === ''
           ? null
           : body.chmProgramId.trim() || null;
+    if (body.campaignId !== undefined)
+      updateData.campaignId =
+        body.campaignId === null || body.campaignId === ''
+          ? null
+          : body.campaignId.trim() || null;
 
     if (
       speakersChanged &&
