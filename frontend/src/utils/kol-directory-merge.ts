@@ -26,9 +26,13 @@ export function resolveKolDisplayBrief(
   const bio = entry.bio?.trim();
   const role = entry.role?.trim();
   if (bio) {
+    // No `focus` here: the standalone Role field above this card already
+    // shows the full role text. Echoing roleLead(role) as "What they focus
+    // on" just repeated it verbatim for anyone whose role has no natural
+    // short first clause (e.g. "Co-Chair, X; Chair, Y" — roleLead splits on
+    // `;` and returns "Co-Chair, X" again, identical to what Role shows).
     return {
       whoTheyAre: bio,
-      focus: role ? roleLead(role) : undefined,
       isAiGenerated: false,
     };
   }

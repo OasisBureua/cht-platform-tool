@@ -25,7 +25,7 @@ const CHAPTERS: [string, string][] = [
 
 const ARTICLE = [
   'Recurrence remains a clinically important challenge in high-risk HER2-positive early breast cancer.',
-  'Trastuzumab-based therapy improved long-term survival, but some patients still recur after standard adjuvant treatment — particularly those with hormone receptor-positive disease.',
+  'Trastuzumab-based therapy improved long-term survival, but some patients still recur after standard adjuvant treatment, particularly those with hormone receptor-positive disease.',
   'Extended adjuvant therapy was designed for exactly that gap: sustained intracellular inhibition after standard therapy completes.',
   'The absolute benefit concentrates in patients who begin within a year of finishing trastuzumab, and in those who carry residual disease after neoadjuvant treatment.',
   'What changed over the past decade was not the drug. It was the understanding of how, and in whom, to use it.',

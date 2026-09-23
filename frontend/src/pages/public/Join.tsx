@@ -631,7 +631,7 @@ export default function Join() {
               {npiVerified === true && !npiMeta?.duplicate && (
                 <p className="mt-2 text-body-s font-medium text-success">
                   NPI verified
-                  {npiMeta?.providerName ? ` — ${npiMeta.providerName}` : ''}
+                  {npiMeta?.providerName ? `: ${npiMeta.providerName}` : ''}
                   {npiMeta?.providerType ? ` (${npiMeta.providerType})` : ''}.
                 </p>
               )}

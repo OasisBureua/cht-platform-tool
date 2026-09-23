@@ -9,9 +9,12 @@ describe('resolveKolDisplayBrief', () => {
       bio: 'Bio text',
       intel: { aiBrief: { whoTheyAre: 'AI summary', focus: 'TNBC' } },
     });
+    // No `focus` when a real bio is present — the standalone Role field
+    // already shows the full role text, so echoing roleLead(role) here
+    // just duplicated it (verbatim, for roles with no natural short
+    // first clause).
     expect(brief).toEqual({
       whoTheyAre: 'Bio text',
-      focus: 'Oncologist',
       isAiGenerated: false,
     });
   });
@@ -31,7 +34,7 @@ describe('resolveKolDisplayBrief', () => {
     });
   });
 
-  it('falls back to bio and role lead for KOLs without aiBrief', () => {
+  it('shows only the bio (no focus echo) for KOLs without aiBrief', () => {
     const brief = resolveKolDisplayBrief({
       name: 'Dr. B',
       role: 'Medical Oncologist; Breast program lead.',
@@ -39,7 +42,7 @@ describe('resolveKolDisplayBrief', () => {
     });
     expect(brief?.isAiGenerated).toBe(false);
     expect(brief?.whoTheyAre).toBe('Expert in hormone-positive disease.');
-    expect(brief?.focus).toBe('Medical Oncologist');
+    expect(brief?.focus).toBeUndefined();
   });
 
   it('uses role when bio is empty', () => {
