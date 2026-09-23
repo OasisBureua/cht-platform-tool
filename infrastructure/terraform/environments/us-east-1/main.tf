@@ -448,6 +448,7 @@ module "ecs_backend" {
   session_assets_public_url_base = module.s3_session_assets.public_url_base
   cognito_user_pool_id           = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
   cognito_client_id              = var.enable_cognito_pools ? module.cognito[0].client_id : ""
+  cognito_m2m_export_client_id   = var.enable_cognito_pools ? module.cognito[0].m2m_export_client_id : ""
   cognito_hosted_ui_base_url     = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
   cognito_jwks_uri               = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
   cognito_region                 = "us-east-1"
