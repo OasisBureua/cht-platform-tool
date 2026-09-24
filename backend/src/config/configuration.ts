@@ -33,6 +33,11 @@ export default () => ({
   cognito: {
     userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
     clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
+    /** Confidential client allowed for GET /api/export/* (Hub M2M). */
+    m2mExportClientId: process.env.COGNITO_M2M_EXPORT_CLIENT_ID?.trim() || '',
+    /** Space-delimited scope required on M2M access tokens for export. */
+    m2mExportScope:
+      process.env.COGNITO_M2M_EXPORT_SCOPE?.trim() || 'platform/export.read',
     region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
     /** MRR replica region — tokens may carry this region's cognito-idp host in `iss`. */
     replicaRegion:

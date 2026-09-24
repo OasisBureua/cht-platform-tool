@@ -216,4 +216,26 @@ describe('ProgramRegistrationsService', () => {
       ).toBe(false);
     });
   });
+
+  describe('listRegistrationsForAdmin', () => {
+    it('selects institution and role alongside the existing user fields', async () => {
+      prisma.programRegistration.findMany.mockResolvedValue([]);
+
+      await service.listRegistrationsForAdmin('program-1');
+
+      expect(prisma.programRegistration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            user: expect.objectContaining({
+              select: expect.objectContaining({
+                specialty: true,
+                institution: true,
+                role: true,
+              }),
+            }),
+          }),
+        }),
+      );
+    });
+  });
 });

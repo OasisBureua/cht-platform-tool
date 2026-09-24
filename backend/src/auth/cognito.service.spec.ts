@@ -126,6 +126,49 @@ describe('CognitoService token verification', () => {
     );
   });
 
+  it('verifies an M2M access token with required scope', async () => {
+    const m2mClientId = 'm2m-export-client';
+    const token = signAccessToken({
+      client_id: m2mClientId,
+      scope: 'platform/export.read',
+      sub: m2mClientId,
+    });
+    const claims = await service.verifyM2mAccessToken(token, {
+      allowedClientIds: [m2mClientId],
+      requiredScope: 'platform/export.read',
+    });
+    expect(claims.client_id).toBe(m2mClientId);
+    expect(claims.scope).toContain('platform/export.read');
+  });
+
+  it('rejects M2M tokens from the web client id', async () => {
+    const token = signAccessToken({
+      scope: 'platform/export.read',
+      sub: clientId,
+    });
+    await expect(
+      service.verifyM2mAccessToken(token, {
+        allowedClientIds: ['m2m-export-client'],
+        requiredScope: 'platform/export.read',
+      }),
+    ).rejects.toThrow(/client_id/i);
+  });
+
+  it('rejects M2M tokens missing the required scope', async () => {
+    const m2mClientId = 'm2m-export-client';
+    const token = signAccessToken({
+      client_id: m2mClientId,
+      scope: 'openid',
+      sub: m2mClientId,
+    });
+    await expect(
+      service.verifyM2mAccessToken(token, {
+        allowedClientIds: [m2mClientId],
+        requiredScope: 'platform/export.read',
+      }),
+    ).rejects.toMatchObject({ code: 'MISSING_SCOPE' });
+  });
+
   it('rejects ID token with token_use=access', async () => {
     const token = signIdToken({ sub: 'user-sub-1', token_use: 'access' });
     await expect(service.parseIdTokenClaims(token)).rejects.toThrow(

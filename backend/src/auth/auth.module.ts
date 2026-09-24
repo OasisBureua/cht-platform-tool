@@ -10,6 +10,7 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
+import { CognitoM2mAuthGuard } from './cognito-m2m-auth.guard';
 import { NpiRegistryService } from './npi-registry.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
@@ -30,6 +31,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     NpiRegistryService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
+    CognitoM2mAuthGuard,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
@@ -49,6 +51,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     AuthService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
+    CognitoM2mAuthGuard,
     CognitoService,
     NpiRegistryService,
   ],
