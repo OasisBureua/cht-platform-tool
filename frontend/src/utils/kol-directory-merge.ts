@@ -11,7 +11,7 @@ export type KolDisplayBrief = {
   whoTheyAre: string;
   focus?: string;
   chmContext?: string;
-  /** Sourced from Content Hub / static `intel.aiBrief`, not bio fallback. */
+  /** Sourced from the Content Hub AI brief, not bio fallback. */
   isAiGenerated: boolean;
 };
 
@@ -76,19 +76,15 @@ export function resolveKolDisplayBrief(
   return null;
 }
 
+// NPI intel is overwritten by whatever anyone enters at platform registration
+// (email, city/state, specialty, institution), so only the NPI number and the
+// Hub AI brief are trusted on public surfaces.
 export function apiIntelToKolIntel(
   intel: PublicKolIntel | null | undefined,
 ): KolIntel | undefined {
   if (!intel) return undefined;
   const out: KolIntel = {};
   if (intel.npi) out.npi = intel.npi;
-  if (intel.specialty) out.specialty = intel.specialty;
-  if (intel.location) out.location = intel.location;
-  if (intel.affiliation) out.affiliation = intel.affiliation;
-  if (intel.publications_approx != null) {
-    out.publicationsApprox = intel.publications_approx;
-  }
-  if (intel.open_payments) out.openPayments = intel.open_payments;
   const normalized = normalizeKolAiBrief(intel.ai_brief);
   if (normalized) {
     out.aiBrief = normalized;
@@ -96,37 +92,17 @@ export function apiIntelToKolIntel(
   return Object.keys(out).length ? out : undefined;
 }
 
-/** Prefer Content Hub intel; static mock may fill education/social only (not bios/AI). */
-export function mergeIntel(
-  apiKol: PublicKol,
-  stat?: DolEntry,
-): KolIntel | undefined {
-  const fromApi = apiIntelToKolIntel(apiKol.intel);
-  const fromStat = stat?.intel;
-  if (!fromApi && !fromStat) return undefined;
-
-  // Never overlay hardcoded AI briefs when Hub did not send one.
-  const { aiBrief: _ignoredStaticAi, ...statWithoutAi } = fromStat ?? {};
-  void _ignoredStaticAi;
-
-  return {
-    ...statWithoutAi,
-    ...fromApi,
-    ...(fromApi?.aiBrief ? { aiBrief: fromApi.aiBrief } : {}),
-  };
-}
-
 export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
   const stat = kolStaticEnrichment.find((e) => e.id === apiKol.slug);
-  const role = apiKol.title ?? stat?.role ?? '';
-  const intel = mergeIntel(apiKol, stat);
+  const role = apiKol.title ?? '';
+  const intel = apiIntelToKolIntel(apiKol.intel);
   const merged: DolEntry = {
     id: apiKol.slug,
     name: apiKol.name,
     role,
-    // Hub bio only — static enrichment bios read as hallucinations.
     bio: apiKol.bio || '',
     education: stat?.education ?? '',
+    specialty: apiKol.specialty?.trim() || undefined,
     isNew: apiKol.is_new,
     photoUrl: apiKol.photo_url ?? undefined,
     shootCount: apiKol.shoot_count,
@@ -142,8 +118,7 @@ export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
   };
   // Only the single-KOL endpoint returns NPI intel, so deriving from it would
   // make the profile page disagree with the directory for the same doctor.
-  merged.stateCode =
-    deriveKolUsState(apiKol, { role, education: stat?.education, intel: stat?.intel }) ?? undefined;
+  merged.stateCode = deriveKolUsState(apiKol, { role, education: stat?.education }) ?? undefined;
   return merged;
 }
 
