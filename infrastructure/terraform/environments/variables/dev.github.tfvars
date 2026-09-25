@@ -66,14 +66,16 @@ cognito_mrr_associate_waf_replica     = false
 
 # Platform → Hub M2M — leave false until Hub creates resource server `hub` + scopes
 # (hub/catalog.read, hub/admin.read|create|update|delete) on cht-dev-users.
-# Enabling early fails Cognito CreateUserPoolClient with ScopeDoesNotExistException.
 enable_cognito_platform_outbound_m2m = false
+
+# Legacy SM name already in AWS / Hub configs (immutable — do not recreate).
+# Platform TF env uses M2M label "prod" → cht-prod-cognito-m2m-contenthub (no override needed).
+cognito_m2m_hub_secret_name = "cht-dev-cognito-m2m-export"
 
 # CHT Companion (Service Connect client on backend → cht-companion:8080)
 service_connect_namespace = "cht-dev.local"
 companion_base_url        = "http://cht-companion:8080"
 
-# Hub VTT ingest Lambda (CPR-29) — S3 notification only.
-# Hub must AddPermission for s3.amazonaws.com on this function (platform GHA cannot).
+# Hub VTT ingest — empty until Hub adds lambda:AddPermission for this bucket
 vtt_object_ingest_lambda_arn = ""
 

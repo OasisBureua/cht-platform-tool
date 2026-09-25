@@ -18,16 +18,20 @@ locals {
 
   hosted_ui_base_url = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
 
-  # Doc naming: cht-hub-m2m-prod / cht-prod-cognito-m2m-hub (TF env "platform" → prod)
+  # M2M client/secret names only: TF env "platform" → "prod" so we never emit
+  # cht-platform-m2m-platform / cht-platform-cognito-m2m-platform.
+  # Pool / other Cognito resources still use name_prefix (cht-platform-*).
   env_label = var.environment == "platform" ? "prod" : var.environment
 
   m2m_export_scope      = "${aws_cognito_resource_server.platform.identifier}/export.read"
   m2m_cache_clear_scope = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
   m2m_hub_client_scopes = "${local.m2m_export_scope} ${local.m2m_cache_clear_scope}"
 
-  m2m_hub_client_name = "cht-hub-m2m-${local.env_label}"
-  # Keep legacy SM name so Hub handoffs / existing secret stay stable (rename would ForceNew).
-  m2m_hub_secret_name = "cht-${local.env_label}-cognito-m2m-export"
+  # Caller-based names (who holds the secret).
+  # Content Hub → Platform: cht-contenthub-m2m-{env_label} / cht-{env_label}-cognito-m2m-contenthub
+  # Platform → Content Hub:  cht-platform-m2m-{env_label} / cht-{env_label}-cognito-m2m-platform
+  m2m_hub_client_name      = "cht-contenthub-m2m-${local.env_label}"
+  m2m_hub_secret_name      = var.m2m_hub_secret_name != "" ? var.m2m_hub_secret_name : "cht-${local.env_label}-cognito-m2m-contenthub"
   m2m_platform_client_name = "cht-platform-m2m-${local.env_label}"
   m2m_platform_secret_name = "cht-${local.env_label}-cognito-m2m-platform"
 }
@@ -248,7 +252,7 @@ resource "aws_cognito_user_pool_client" "hub_m2m" {
 
 resource "aws_secretsmanager_secret" "m2m_hub" {
   name                    = local.m2m_hub_secret_name
-  description             = "Cognito M2M for Hub → platform (scopes platform/export.read platform/cache.clear). Client ${local.m2m_hub_client_name}."
+  description             = "Cognito M2M for Content Hub → platform (scopes platform/export.read platform/cache.clear). Client ${local.m2m_hub_client_name}."
   recovery_window_in_days = 30
 
   tags = {

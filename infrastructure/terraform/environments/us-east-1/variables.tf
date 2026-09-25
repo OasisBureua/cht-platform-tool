@@ -607,6 +607,12 @@ variable "enable_cognito_platform_outbound_m2m" {
   default     = false
 }
 
+variable "cognito_m2m_hub_secret_name" {
+  description = "Override Content Hub→Platform M2M SM name. Empty = cht-{env}-cognito-m2m-contenthub. Dev legacy: cht-dev-cognito-m2m-export."
+  type        = string
+  default     = ""
+}
+
 variable "cognito_platform_outbound_hub_scopes" {
   description = "hub/… scopes for platform outbound M2M client"
   type        = list(string)

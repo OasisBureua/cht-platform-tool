@@ -16,7 +16,7 @@ output "client_id" {
 # --- Hub → platform (inbound to Nest) ---
 
 output "m2m_hub_client_id" {
-  description = "cht-hub-m2m-{env} client ID (Hub → platform export/cache.clear)"
+  description = "cht-contenthub-m2m-{env} client ID (Content Hub → platform export/cache.clear)"
   value       = aws_cognito_user_pool_client.hub_m2m.id
 }
 
@@ -36,7 +36,7 @@ output "m2m_cache_clear_scope" {
 }
 
 output "m2m_hub_scopes" {
-  description = "Space-delimited scopes on Hub's outbound client"
+  description = "Space-delimited scopes on Content Hub's outbound-to-platform client"
   value       = local.m2m_hub_client_scopes
 }
 
@@ -46,12 +46,12 @@ output "m2m_export_token_url" {
 }
 
 output "m2m_hub_secret_arn" {
-  description = "SM ARN cht-{env}-cognito-m2m-export (Hub → platform)"
+  description = "SM ARN for Content Hub→Platform M2M (cht-{env}-cognito-m2m-contenthub or legacy override)"
   value       = aws_secretsmanager_secret.m2m_hub.arn
 }
 
 output "m2m_hub_secret_name" {
-  description = "SM name cht-{env}-cognito-m2m-export (Hub → platform)"
+  description = "SM name for Content Hub→Platform M2M"
   value       = aws_secretsmanager_secret.m2m_hub.name
 }
 

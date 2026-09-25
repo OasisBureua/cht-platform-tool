@@ -656,6 +656,7 @@ module "cognito" {
   # Platform → Hub M2M (hub RS must already exist on this pool; we do not create it)
   enable_platform_outbound_m2m = var.enable_cognito_platform_outbound_m2m
   platform_outbound_hub_scopes = var.cognito_platform_outbound_hub_scopes
+  m2m_hub_secret_name          = var.cognito_m2m_hub_secret_name
 }
 
 # ============================================

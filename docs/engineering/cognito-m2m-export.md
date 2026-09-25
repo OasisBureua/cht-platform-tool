@@ -4,21 +4,16 @@ Hand-off for Hub (CPR-13/14). Hub only fetches a token and calls export; no Cogn
 
 ## Env naming
 
-Production uses **`platform.tfvars`** (`environment = "platform"`). That is our prod stack.
-Resource names follow the existing prefix rule (no `-prod-` suffix):
+TF `environment = "platform"` is the prod stack. **M2M secret/client names use `prod`** so we never get `cht-platform-m2m-platform`. Other infra stays `cht-platform-*`.
 
-| Env (tfvars) | Secrets Manager name (Hub → platform) |
-|--------------|----------------------------------------|
-| **platform** (prod) | `cht-platform-cognito-m2m-export` |
-| **dev** | `cht-dev-cognito-m2m-export` |
+| Env (tfvars) | Hub→Platform SM | Platform→Hub SM |
+|--------------|-----------------|-----------------|
+| **dev** | `cht-dev-cognito-m2m-export` (legacy) | `cht-dev-cognito-m2m-platform` |
+| **platform** | `cht-prod-cognito-m2m-contenthub` | `cht-prod-cognito-m2m-platform` |
 
-Compat aliases still exist as `cognito_m2m_export_*` Terraform outputs.
+Clients: `cht-contenthub-m2m-{dev\|prod}`, `cht-platform-m2m-{dev\|prod}`.
 
-Secret JSON keys: `client_id`, `client_secret`, `token_url`, `scope` (`platform/export.read platform/cache.clear`).
-
-Platform → Hub uses a **separate** secret: `cht-{env}-cognito-m2m-platform` (client `cht-platform-m2m-{env}`). See [cognito-m2m-s2s-inventory.md](./cognito-m2m-s2s-inventory.md).
-
-Terraform outputs (us-east-1): `cognito_m2m_hub_secret_name` / legacy `cognito_m2m_export_*`, `cognito_m2m_platform_*`.
+Secret JSON: `client_id`, `client_secret`, `token_url`, `scope`.
 
 ## Token
 
@@ -30,7 +25,6 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
 CLIENT_ID=$(echo "$SECRET_JSON" | jq -r .client_id)
 CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r .client_secret)
 TOKEN_URL=$(echo "$SECRET_JSON" | jq -r .token_url)
-# Prefer export.read only when calling export (narrower)
 SCOPE=platform/export.read
 
 curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \

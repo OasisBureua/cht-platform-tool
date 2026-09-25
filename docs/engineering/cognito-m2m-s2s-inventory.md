@@ -50,17 +50,27 @@ Token URL (dev): `https://chm-dev.auth.us-east-1.amazoncognito.com/oauth2/token`
 
 ---
 
-## 4. Clients & Secrets Manager
+## 4. Clients & Secrets Manager (naming)
 
-| Direction | Client | SM name | Scopes |
-|-----------|--------|---------|--------|
-| Hub → platform | `cht-hub-m2m-{env}` | `cht-{env}-cognito-m2m-export` | `platform/export.read platform/cache.clear` |
-| Platform → Hub | `cht-platform-m2m-{env}` | `cht-{env}-cognito-m2m-platform` | hub/… (above) |
+Pattern: `cht-{caller}-m2m-{label}` and `cht-{label}-cognito-m2m-{caller}`  
+`{caller}` = who authenticates. `{label}` = `dev` | **`prod`** (when TF `environment = "platform"`).
 
-Secret JSON: `{ client_id, client_secret, token_url, scope }`.
+Only **M2M** names use `prod`. Pools and other resources stay `cht-platform-*`.
 
-Enable platform outbound client only after Hub has created RS `hub` on this pool:  
-`enable_cognito_platform_outbound_m2m = true` (dev.github.tfvars). Until then leave **false** — Cognito rejects unknown `hub/*` scopes.
+| Direction | Caller | Cognito client | Secrets Manager |
+|-----------|--------|----------------|-----------------|
+| Content Hub → Platform | contenthub | `cht-contenthub-m2m-{label}` | `cht-{label}-cognito-m2m-contenthub` |
+| Platform → Content Hub | platform | `cht-platform-m2m-{label}` | `cht-{label}-cognito-m2m-platform` |
+
+| Env | Hub→Platform SM | Platform→Hub SM | Clients |
+|-----|-----------------|-----------------|---------|
+| **dev** | `cht-dev-cognito-m2m-export` (legacy override) | `cht-dev-cognito-m2m-platform` | `cht-contenthub-m2m-dev`, `cht-platform-m2m-dev` |
+| **platform** (prod) | `cht-prod-cognito-m2m-contenthub` | `cht-prod-cognito-m2m-platform` | `cht-contenthub-m2m-prod`, `cht-platform-m2m-prod` |
+
+Secret JSON (both): `{ client_id, client_secret, token_url, scope }`.
+
+Enable platform outbound only after Content Hub creates RS `hub` + scopes:  
+`enable_cognito_platform_outbound_m2m = true`. Until then leave **false**.
 
 ---
 
