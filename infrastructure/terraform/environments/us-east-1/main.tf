@@ -657,6 +657,10 @@ module "cognito" {
   enable_platform_outbound_m2m = var.enable_cognito_platform_outbound_m2m
   platform_outbound_hub_scopes = var.cognito_platform_outbound_hub_scopes
   m2m_hub_secret_name          = var.cognito_m2m_hub_secret_name
+
+  # cht-reports → Hub M2M (report-packet)
+  enable_reports_outbound_m2m = var.enable_cognito_reports_outbound_m2m
+  reports_outbound_hub_scopes = var.cognito_reports_outbound_hub_scopes
 }
 
 # ============================================

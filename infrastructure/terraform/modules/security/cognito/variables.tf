@@ -178,6 +178,18 @@ variable "m2m_hub_secret_name" {
   default     = ""
 }
 
+variable "enable_reports_outbound_m2m" {
+  description = "Create cht-reports-m2m-{env} client + SM secret for cht-reports → Hub (report-packet). Requires Hub resource server `hub` already on this pool."
+  type        = bool
+  default     = false
+}
+
+variable "reports_outbound_hub_scopes" {
+  description = "hub/… scopes allowed on the cht-reports outbound M2M client."
+  type        = list(string)
+  default     = ["hub/reports.read"]
+}
+
 variable "platform_outbound_hub_scopes" {
   description = "hub/… scopes allowed on the platform outbound M2M client (Content Hub API resource server)."
   type        = list(string)
