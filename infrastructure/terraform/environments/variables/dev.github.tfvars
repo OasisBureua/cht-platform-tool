@@ -75,5 +75,5 @@ companion_base_url        = "http://cht-companion:8080"
 
 # Hub VTT ingest Lambda (CPR-29) — S3 notification only.
 # Hub must AddPermission for s3.amazonaws.com on this function (platform GHA cannot).
-vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest"
+vtt_object_ingest_lambda_arn = ""
 
