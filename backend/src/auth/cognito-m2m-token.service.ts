@@ -17,6 +17,9 @@ type CachedToken = {
 /**
  * In-memory Cognito client_credentials cache for Platform → Hub.
  * Warms on boot so the first catalog/admin Hub call is not blocked on token POST.
+ *
+ * Logging policy: success and failure outcomes are OK to log.
+ * Never log access_token, client_secret, or Authorization headers.
  */
 @Injectable()
 export class CognitoM2mTokenService implements OnModuleInit {
@@ -35,9 +38,6 @@ export class CognitoM2mTokenService implements OnModuleInit {
     }
     try {
       await this.getAccessToken();
-      this.logger.log(
-        `[M2M] Platform→Hub token warm ok scopes=${this.hubScopes()}`,
-      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(
@@ -140,8 +140,8 @@ export class CognitoM2mTokenService implements OnModuleInit {
       refreshAtMs,
       scope,
     };
-    this.logger.debug(
-      `[M2M] token cached expiresIn=${expiresInSec}s refreshIn=${Math.round((refreshAtMs - Date.now()) / 1000)}s`,
+    this.logger.log(
+      `[M2M] Platform→Hub token successfully loaded clientId=${clientId} scopes=${scope} expiresIn=${expiresInSec}s`,
     );
     return json.access_token;
   }
