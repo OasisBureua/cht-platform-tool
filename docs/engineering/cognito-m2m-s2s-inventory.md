@@ -2,7 +2,7 @@
 
 **Repo:** cht-platform-tool  
 **Audience:** Platform + Content Hub (Syed / Sebastien)  
-**Status:** Hub→platform export **done**; Platform→Hub Bearer + warm cache **in branch**; cache.clear M2M accepted dual-run with legacy secret.
+**Status:** Hub→platform export **done**; Platform→Hub M2M **gated** (`enable_cognito_platform_outbound_m2m=false` until Hub creates RS `hub`); cache.clear M2M accepted dual-run with legacy secret.
 
 Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.md](../runbooks/cache-sync-contract.md), [integrations.md](./integrations.md).
 
@@ -14,7 +14,7 @@ Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.
 |---------------------|----------------------|
 | Zoom / Stripe / Bill **webhooks** (HMAC / Stripe-Signature) | Hub → platform **export** (`platform/export.read`) — **done** |
 | Zoom S2S OAuth, HubSpot private app, Jotform API key, Stripe/Bill/YouTube API keys | Hub → platform **cache clear** (`platform/cache.clear`) — **accepted** (legacy `INTERNAL_CACHE_SECRET` dual-run) |
-| Browser session / Cognito user JWT (members + admin UI) | Platform → Hub **Bearer** (client `cht-platform-m2m-{env}`) — **done** (no `X-API-Key`) |
+| Browser session / Cognito user JWT (members + admin UI) | Platform → Hub **Bearer** (client `cht-platform-m2m-{env}`) — **ready in code; enable after Hub RS** |
 | reCAPTCHA, admin bootstrap, DB creds | Platform → companion **X-BFF-Auth** — *optional later* |
 
 **Companion note:** Do not reuse `platform/export.read` for chat.
@@ -27,7 +27,7 @@ Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.
 
 | Caller | Method + path | Auth | Secret / store |
 |--------|---------------|------|----------------|
-| **Content Hub** (ingest) | `GET /api/export/reports/campaigns/:campaignId/input-packet` | Bearer + `platform/export.read` + `X-Request-Id` | SM `cht-{env}-cognito-m2m-hub` |
+| **Content Hub** (ingest) | `GET /api/export/reports/campaigns/:campaignId/input-packet` | Bearer + `platform/export.read` + `X-Request-Id` | SM `cht-{env}-cognito-m2m-export` |
 | **Content Hub / ops** | `POST /api/internal/cache/clear*` | Bearer + `platform/cache.clear` **or** legacy `INTERNAL_CACHE_SECRET` | Same Hub M2M client (both scopes) / `internal_cache_secret` |
 | **Zoom / Stripe / Bill** | webhooks | Vendor HMAC | vendor secrets |
 | **Browser / admin** | `/api/*` | Session / user JWT | `cht-web` PKCE |
@@ -54,13 +54,13 @@ Token URL (dev): `https://chm-dev.auth.us-east-1.amazoncognito.com/oauth2/token`
 
 | Direction | Client | SM name | Scopes |
 |-----------|--------|---------|--------|
-| Hub → platform | `cht-hub-m2m-{env}` | `cht-{env}-cognito-m2m-hub` | `platform/export.read platform/cache.clear` |
+| Hub → platform | `cht-hub-m2m-{env}` | `cht-{env}-cognito-m2m-export` | `platform/export.read platform/cache.clear` |
 | Platform → Hub | `cht-platform-m2m-{env}` | `cht-{env}-cognito-m2m-platform` | hub/… (above) |
 
 Secret JSON: `{ client_id, client_secret, token_url, scope }`.
 
 Enable platform outbound client only after Hub has created RS `hub` on this pool:  
-`enable_cognito_platform_outbound_m2m = true` (dev.github.tfvars).
+`enable_cognito_platform_outbound_m2m = true` (dev.github.tfvars). Until then leave **false** — Cognito rejects unknown `hub/*` scopes.
 
 ---
 

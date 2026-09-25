@@ -14,18 +14,34 @@ S3 `ObjectCreated` on `zoom-recordings/*.vtt` invokes Content Hub `vtt_object_in
 | Lambda | `arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest` |
 | TF var | `vtt_object_ingest_lambda_arn` in `dev.github.tfvars` |
 
-Platform TF (`s3-session-assets` module):
+**Split of ownership**
 
-- `aws_lambda_permission` — `s3.amazonaws.com` → that function  
-- `aws_s3_bucket_notification` — ObjectCreated:* with the filters above  
+| Who | What |
+|-----|------|
+| **Platform** TF | `aws_s3_bucket_notification` only (ObjectCreated:* + filters) |
+| **Hub** TF / console | `lambda:AddPermission` for `s3.amazonaws.com` with `SourceArn=arn:aws:s3:::cht-dev-session-assets` |
 
-Hub owns: Lambda code, role `s3:GetObject` on `…/zoom-recordings/*`, async DLQ, `PLATFORM_EXPORT_TRANSCRIPT_BUCKET`.
+Platform CI (`GitHubActions-CHT-Platform`) cannot `lambda:AddPermission` on `contenthub-*` functions.
+
+Hub one-liner (dev):
+
+```bash
+aws lambda add-permission \
+  --function-name contenthub-dev-sync-vtt-object-ingest \
+  --statement-id AllowS3SessionAssetsInvokeVttObjectIngest \
+  --action lambda:InvokeFunction \
+  --principal s3.amazonaws.com \
+  --source-arn arn:aws:s3:::cht-dev-session-assets \
+  --region us-east-1
+```
+
+Hub also owns: Lambda code, role `s3:GetObject` on `…/zoom-recordings/*`, async DLQ, `PLATFORM_EXPORT_TRANSCRIPT_BUCKET`.
 
 ## Platform / prod
 
-Leave `vtt_object_ingest_lambda_arn` empty until Hub publishes `contenthub-*-sync-vtt-object-ingest` for that env, then set the ARN in `platform.github.tfvars` (or equivalent) and apply.
+Leave `vtt_object_ingest_lambda_arn` empty until Hub publishes `contenthub-*-sync-vtt-object-ingest` for that env **and** has added the invoke permission, then set the ARN in `platform.github.tfvars` and apply.
 
-## Smoke (after apply)
+## Smoke (after apply + Hub permission)
 
 1. Linked Program with Hub `export_sessions` row + `campaignId` set.  
 2. Put a tiny `.vtt` at  

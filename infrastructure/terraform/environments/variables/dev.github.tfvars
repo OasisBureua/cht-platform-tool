@@ -64,13 +64,16 @@ enable_cognito_mrr                    = true
 cognito_mrr_replica_region            = "us-east-2"
 cognito_mrr_associate_waf_replica     = false
 
-# Platform → Hub M2M (hub RS must already exist on cht-dev-users; we do not create it)
-enable_cognito_platform_outbound_m2m = true
+# Platform → Hub M2M — leave false until Hub creates resource server `hub` + scopes
+# (hub/catalog.read, hub/admin.read|create|update|delete) on cht-dev-users.
+# Enabling early fails Cognito CreateUserPoolClient with ScopeDoesNotExistException.
+enable_cognito_platform_outbound_m2m = false
 
 # CHT Companion (Service Connect client on backend → cht-companion:8080)
 service_connect_namespace = "cht-dev.local"
 companion_base_url        = "http://cht-companion:8080"
 
-# Hub VTT ingest Lambda (CPR-29) — S3 ObjectCreated on zoom-recordings/*.vtt
+# Hub VTT ingest Lambda (CPR-29) — S3 notification only.
+# Hub must AddPermission for s3.amazonaws.com on this function (platform GHA cannot).
 vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest"
 

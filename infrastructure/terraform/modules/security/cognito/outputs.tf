@@ -46,12 +46,12 @@ output "m2m_export_token_url" {
 }
 
 output "m2m_hub_secret_arn" {
-  description = "SM ARN cht-{env}-cognito-m2m-hub"
+  description = "SM ARN cht-{env}-cognito-m2m-export (Hub → platform)"
   value       = aws_secretsmanager_secret.m2m_hub.arn
 }
 
 output "m2m_hub_secret_name" {
-  description = "SM name cht-{env}-cognito-m2m-hub"
+  description = "SM name cht-{env}-cognito-m2m-export (Hub → platform)"
   value       = aws_secretsmanager_secret.m2m_hub.name
 }
 

@@ -25,8 +25,9 @@ locals {
   m2m_cache_clear_scope = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
   m2m_hub_client_scopes = "${local.m2m_export_scope} ${local.m2m_cache_clear_scope}"
 
-  m2m_hub_client_name   = "cht-hub-m2m-${local.env_label}"
-  m2m_hub_secret_name   = "cht-${local.env_label}-cognito-m2m-hub"
+  m2m_hub_client_name = "cht-hub-m2m-${local.env_label}"
+  # Keep legacy SM name so Hub handoffs / existing secret stay stable (rename would ForceNew).
+  m2m_hub_secret_name = "cht-${local.env_label}-cognito-m2m-export"
   m2m_platform_client_name = "cht-platform-m2m-${local.env_label}"
   m2m_platform_secret_name = "cht-${local.env_label}-cognito-m2m-platform"
 }

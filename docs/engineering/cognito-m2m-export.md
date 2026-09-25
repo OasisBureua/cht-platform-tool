@@ -9,8 +9,8 @@ Resource names follow the existing prefix rule (no `-prod-` suffix):
 
 | Env (tfvars) | Secrets Manager name (Hub → platform) |
 |--------------|----------------------------------------|
-| **platform** (prod) | `cht-platform-cognito-m2m-hub` |
-| **dev** | `cht-dev-cognito-m2m-hub` |
+| **platform** (prod) | `cht-platform-cognito-m2m-export` |
+| **dev** | `cht-dev-cognito-m2m-export` |
 
 Compat aliases still exist as `cognito_m2m_export_*` Terraform outputs.
 
@@ -24,7 +24,7 @@ Terraform outputs (us-east-1): `cognito_m2m_hub_secret_name` / legacy `cognito_m
 
 ```bash
 SECRET_JSON=$(aws secretsmanager get-secret-value \
-  --secret-id cht-dev-cognito-m2m-hub \
+  --secret-id cht-dev-cognito-m2m-export \
   --region us-east-1 \
   --query SecretString --output text)
 CLIENT_ID=$(echo "$SECRET_JSON" | jq -r .client_id)
