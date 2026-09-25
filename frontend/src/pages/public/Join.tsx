@@ -28,7 +28,7 @@ import CityTypeahead from '../../components/forms/CityTypeahead';
 import { verifyNpiNumber } from '../../api/npi';
 import { catalogApi } from '../../api/catalog';
 import {
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   hasRealThumbnail,
   shouldSurfaceCatalogClip,
 } from '../../utils/clipUrl';
@@ -843,7 +843,7 @@ function LatestSession() {
       <div className="mt-3 flex items-center gap-3">
         <span className="relative block h-16 w-28 shrink-0 overflow-hidden rounded-[6px] bg-ground">
           <img
-            src={getMediaHubThumbnail(featured)}
+            src={getContentHubThumbnail(featured)}
             alt=""
             loading="lazy"
             className="size-full object-cover"

@@ -12,7 +12,7 @@
 The Content Hub admin UI (`/admin/content-hub`) today uses **localStorage** via `frontend/src/pages/admin/content-hub/lib/store.ts`. To go live:
 
 1. **CHT NestJS** exposes `/api/admin/content-hub/*` (admin JWT).
-2. CHT proxies to **Content Hub** `/api/admin/*` (server-to-server `X-API-Key`).
+2. CHT proxies to **Content Hub** `/api/admin/*` (server-to-server Cognito M2M Bearer).
 3. **HubSpot** stays on CHT only: never proxied to Hub for token/sync UI.
 
 The browser **never** calls Content Hub directly.
@@ -31,21 +31,24 @@ Deploy Content Hub to dev first (migrations through `0006`, API image, ACM cert)
 ### Environment variables (dev)
 
 ```bash
-# KOL: existing
+# Public + admin Hub bases
 CONTENTHUB_BASE_URL=https://devhub.communityhealth.media/api/public
-CONTENTHUB_API_KEY=<Hub Secrets Manager public_api_key>
-
-# Campaign admin: new (or derive: baseUrl.replace('/api/public', '/api/admin'))
 CONTENTHUB_ADMIN_BASE_URL=https://devhub.communityhealth.media/api/admin
+
+# Platform → Hub Cognito M2M (from SM cht-dev-cognito-m2m-platform)
+COGNITO_M2M_PLATFORM_CLIENT_ID=…
+COGNITO_M2M_PLATFORM_CLIENT_SECRET=…
+COGNITO_M2M_TOKEN_URL=https://chm-dev.auth.us-east-1.amazoncognito.com/oauth2/token
+COGNITO_M2M_HUB_SCOPES=hub/catalog.read hub/admin.read hub/admin.create hub/admin.update hub/admin.delete
 
 # HubSpot: existing (CHT only)
 HUBSPOT_ACCESS_TOKEN=...
 
-# Cache clear: Hub calls after writes (optional on Hub until URL is set)
+# Cache clear: Hub may call with M2M platform/cache.clear or legacy secret
 INTERNAL_CACHE_SECRET=...
 ```
 
-Same `CONTENTHUB_API_KEY` works for admin routes on Hub today (`ADMIN_API_KEY` falls back to public key).
+Auth to Hub is **Cognito M2M Bearer only** (no `CONTENTHUB_API_KEY` / `X-API-Key`).
 
 ---
 
@@ -74,8 +77,8 @@ Add to `backend/src/config/configuration.ts` and `validation.ts`:
 contenthub: {
   baseUrl: process.env.CONTENTHUB_BASE_URL || '',           // /api/public
   adminBaseUrl: process.env.CONTENTHUB_ADMIN_BASE_URL || '', // /api/admin
-  apiKey: process.env.CONTENTHUB_API_KEY,
 }
+// Plus cognito.m2mPlatformClientId / Secret / TokenUrl / HubScopes from COGNITO_M2M_PLATFORM_*
 ```
 
 Update `backend/.env.example`.

@@ -11,8 +11,10 @@
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --dry-run
  *   npx ts-node --transpile-only src/scripts/backfill-outbound-sync.ts --apply
  *
- * Env vars read: DATABASE_URL, CONTENTHUB_BASE_URL, CONTENTHUB_API_KEY,
- *                HUBSPOT_ACCESS_TOKEN.
+ * Env vars read: DATABASE_URL, CONTENTHUB_BASE_URL,
+ *   COGNITO_M2M_PLATFORM_CLIENT_ID, COGNITO_M2M_PLATFORM_CLIENT_SECRET,
+ *   COGNITO_M2M_TOKEN_URL, COGNITO_M2M_HUB_SCOPES (optional),
+ *   HUBSPOT_ACCESS_TOKEN.
  */
 import { PrismaClient } from '@prisma/client';
 
@@ -23,6 +25,33 @@ type Stats = {
   contenthub_ok: number;
   errors: string[];
 };
+
+async function mintContentHubM2mToken(): Promise<string | null> {
+  const clientId = process.env.COGNITO_M2M_PLATFORM_CLIENT_ID?.trim();
+  const clientSecret = process.env.COGNITO_M2M_PLATFORM_CLIENT_SECRET?.trim();
+  const tokenUrl = process.env.COGNITO_M2M_TOKEN_URL?.trim();
+  const scope =
+    process.env.COGNITO_M2M_HUB_SCOPES?.trim() ||
+    'hub/catalog.read hub/admin.read hub/admin.create hub/admin.update hub/admin.delete';
+  if (!clientId || !clientSecret || !tokenUrl) return null;
+
+  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+  const res = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'client_credentials',
+      scope,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as {
+    access_token?: string;
+  };
+  return res.ok && json.access_token ? json.access_token : null;
+}
 
 async function syncHubspot(user: {
   email: string;
@@ -70,23 +99,28 @@ async function syncHubspot(user: {
   return res.ok;
 }
 
-async function syncContentHub(user: {
-  email: string;
-  firstName: string;
-  lastName: string;
-  specialty: string | null;
-  institution: string | null;
-  city: string | null;
-  state: string | null;
-  zipCode: string | null;
-  npiNumber: string | null;
-}): Promise<boolean> {
-  const key = process.env.CONTENTHUB_API_KEY?.trim();
+async function syncContentHub(
+  accessToken: string,
+  user: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    specialty: string | null;
+    institution: string | null;
+    city: string | null;
+    state: string | null;
+    zipCode: string | null;
+    npiNumber: string | null;
+  },
+): Promise<boolean> {
   const base = (process.env.CONTENTHUB_BASE_URL || '').replace(/\/$/, '');
-  if (!key || !base || !user.npiNumber) return false;
+  if (!base || !user.npiNumber) return false;
   const res = await fetch(`${base}/hcp/upsert`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-API-Key': key },
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
     body: JSON.stringify({
       npi: user.npiNumber,
       first_name: user.firstName,
@@ -129,62 +163,55 @@ async function run(dry: boolean): Promise<Stats> {
         npiNumber: true,
       },
     });
-    stats.users_scanned = users.length;
-    console.log(`[backfill] scanned ${users.length} users`);
 
-    for (const u of users) {
-      const npi = (u.npiNumber || '').replace(/\D/g, '');
-      const hasNpi = npi.length === 10;
-      if (hasNpi) stats.users_with_npi++;
+    const m2mToken = dry ? null : await mintContentHubM2mToken();
+    if (!dry && !m2mToken) {
+      console.warn(
+        'Content Hub M2M not configured (COGNITO_M2M_PLATFORM_*); skipping Hub upserts',
+      );
+    }
 
-      if (dry) {
-        console.log(
-          `[DRY] would sync ${u.email} (npi=${hasNpi ? npi : 'none'})`,
+    for (const user of users) {
+      stats.users_scanned += 1;
+      const npi = (user.npiNumber || '').replace(/\D/g, '');
+      if (npi.length !== 10) continue;
+      stats.users_with_npi += 1;
+      const payload = { ...user, npiNumber: npi };
+
+      if (dry) continue;
+
+      try {
+        if (await syncHubspot(payload)) stats.hubspot_ok += 1;
+      } catch (err) {
+        stats.errors.push(
+          `hubspot ${user.id}: ${err instanceof Error ? err.message : String(err)}`,
         );
-        continue;
       }
 
-      // HubSpot always runs (even without NPI, for CRM); Content Hub only when
-      // NPI is present (it's an HCP-only roster).
-      const results = await Promise.allSettled([
-        syncHubspot({ ...u, npiNumber: hasNpi ? npi : null }),
-        hasNpi
-          ? syncContentHub({ ...u, npiNumber: npi })
-          : Promise.resolve(false),
-      ]);
-
-      if (results[0].status === 'fulfilled' && results[0].value)
-        stats.hubspot_ok++;
-      else if (results[0].status === 'rejected')
-        stats.errors.push(`hubspot ${u.email}: ${results[0].reason}`);
-
-      if (results[1].status === 'fulfilled' && results[1].value)
-        stats.contenthub_ok++;
-      else if (results[1].status === 'rejected')
-        stats.errors.push(`contenthub ${u.email}: ${results[1].reason}`);
-
-      // Be polite: throttle ~5 req/s so we don't tip HubSpot rate limits.
-      await new Promise((r) => setTimeout(r, 200));
+      if (m2mToken) {
+        try {
+          if (await syncContentHub(m2mToken, payload)) stats.contenthub_ok += 1;
+        } catch (err) {
+          stats.errors.push(
+            `contenthub ${user.id}: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
     }
   } finally {
     await prisma.$disconnect();
   }
+
   return stats;
 }
 
-async function main() {
-  const argv = process.argv.slice(2);
-  const apply = argv.includes('--apply');
-  const dry = argv.includes('--dry-run') || !apply;
-  if (!apply && !dry) {
-    console.error('Must pass --dry-run or --apply');
-    process.exit(2);
-  }
-  const stats = await run(dry);
-  console.log(`${dry ? 'DRY-RUN' : 'APPLIED'}:`, stats);
-}
-
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+const dry = process.argv.includes('--dry-run') || !process.argv.includes('--apply');
+run(dry)
+  .then((stats) => {
+    console.log(JSON.stringify({ dry, ...stats }, null, 2));
+    if (stats.errors.length) process.exitCode = 1;
+  })
+  .catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });

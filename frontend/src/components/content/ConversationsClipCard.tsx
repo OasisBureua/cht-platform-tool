@@ -1,16 +1,16 @@
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import type { MediaHubClip } from '../../api/catalog';
+import type { ContentHubClip } from '../../api/catalog';
 import {
   extractYoutubeVideoIdFromUrl,
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   getShortClipId,
   nextCatalogThumbnailFallback,
 } from '../../utils/clipUrl';
-import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../../utils/contentHubClipText';
 
 type ConversationsClipCardProps = {
-  item: MediaHubClip;
+  item: ContentHubClip;
   href: string;
 };
 
@@ -27,12 +27,12 @@ export function ConversationsClipCard({ item, href }: ConversationsClipCardProps
   const videoId =
     extractYoutubeVideoIdFromUrl(item.youtube_url || item.youtubeUrl) ||
     (/^[a-zA-Z0-9_-]{11}$/.test(getShortClipId(item.id)) ? getShortClipId(item.id) : null);
-  const [thumbSrc, setThumbSrc] = useState(() => getMediaHubThumbnail(item));
+  const [thumbSrc, setThumbSrc] = useState(() => getContentHubThumbnail(item));
   const [hidden, setHidden] = useState(false);
   const desc = clipStripeSubtitle(item)?.trim() || '';
 
   useEffect(() => {
-    setThumbSrc(getMediaHubThumbnail(item));
+    setThumbSrc(getContentHubThumbnail(item));
     setHidden(false);
   }, [item.id, item.thumbnail_url, item.youtube_url, item.youtubeUrl]);
 

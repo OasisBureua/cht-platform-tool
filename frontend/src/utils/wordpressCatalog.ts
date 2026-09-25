@@ -1,4 +1,4 @@
-import type { MediaHubClip, WordPressCategoryItem } from '../api/catalog';
+import type { ContentHubClip, WordPressCategoryItem } from '../api/catalog';
 
 /** Public catalog client cache (matches backend ~30m Redis clips/WP cache). */
 export const WORDPRESS_CATALOG_STALE_MS = 30 * 60 * 1000;
@@ -17,7 +17,7 @@ export function useWordPressCatalog(): boolean {
 }
 
 export function clipHasWordPressCategory(
-  clip: MediaHubClip,
+  clip: ContentHubClip,
   categorySlug: string,
 ): boolean {
   const slug = categorySlug.trim().toLowerCase();

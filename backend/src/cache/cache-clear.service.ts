@@ -10,6 +10,7 @@ import {
   type CacheClearScope,
 } from './cache-keys';
 import { RedisCacheService } from './redis-cache.service';
+import { CognitoService } from '../auth/cognito.service';
 
 export type CacheClearResult = {
   scope: CacheClearScope;
@@ -25,7 +26,9 @@ export type CacheClearAuthInput = {
   internalSecret?: string;
 };
 
-export type CacheClearAuthMethod = 'query' | 'bearer' | 'header';
+export type CacheClearAuthMethod = 'query' | 'bearer' | 'header' | 'm2m';
+
+const M2M_CACHE_CLEAR_SCOPE_DEFAULT = 'platform/cache.clear';
 
 @Injectable()
 export class CacheClearService {
@@ -34,23 +37,36 @@ export class CacheClearService {
   constructor(
     private readonly config: ConfigService,
     private readonly cache: RedisCacheService,
+    private readonly cognito: CognitoService,
   ) {}
 
   /**
-   * Validates cache clear auth. Requires `cacheKey` query param (preferred) or
-   * Authorization Bearer / x-internal-secret header with the same secret value.
+   * Validates cache clear auth:
+   * 1. Cognito M2M Bearer with `platform/cache.clear` (Hub client), or
+   * 2. Legacy shared secret via `cacheKey` / Bearer / `x-internal-secret`.
    */
-  assertCacheClearAuth(auth: CacheClearAuthInput): CacheClearAuthMethod {
+  async assertCacheClearAuth(
+    auth: CacheClearAuthInput,
+  ): Promise<CacheClearAuthMethod> {
+    const bearer = auth.authorization?.startsWith('Bearer ')
+      ? auth.authorization.slice(7).trim()
+      : '';
+
+    // JWT-shaped Bearer → M2M only (do not treat as shared secret).
+    if (bearer && bearer.split('.').length >= 3) {
+      await this.assertM2mCacheClear(bearer);
+      return 'm2m';
+    }
+
     const expected = this.config.get<string>('internalCache.secret')?.trim();
     if (!expected) {
-      this.logger.error('Cache clear rejected: INTERNAL_CACHE_SECRET is not configured');
+      this.logger.error(
+        'Cache clear rejected: INTERNAL_CACHE_SECRET is not configured',
+      );
       throw new UnauthorizedException('Cache clear is not configured');
     }
 
     const fromQuery = auth.cacheKey?.trim();
-    const bearer = auth.authorization?.startsWith('Bearer ')
-      ? auth.authorization.slice(7).trim()
-      : '';
     const fromHeader = auth.internalSecret?.trim();
     const provided = fromQuery || bearer || fromHeader;
 
@@ -59,7 +75,7 @@ export class CacheClearService {
         'Cache clear rejected: missing cacheKey query parameter (or Authorization / x-internal-secret)',
       );
       throw new BadRequestException(
-        'cacheKey query parameter is required (must match INTERNAL_CACHE_SECRET)',
+        'cacheKey query parameter is required (must match INTERNAL_CACHE_SECRET), or Authorization Bearer M2M token with platform/cache.clear',
       );
     }
 
@@ -75,12 +91,50 @@ export class CacheClearService {
     return 'header';
   }
 
+  private async assertM2mCacheClear(accessToken: string): Promise<void> {
+    const m2mClientId =
+      this.config.get<string>('cognito.m2mExportClientId')?.trim() || '';
+    if (!m2mClientId || !this.cognito.isConfigured()) {
+      this.logger.warn(
+        'Cache clear rejected: M2M token presented but Cognito M2M is not configured',
+      );
+      throw new UnauthorizedException('M2M cache clear is not configured');
+    }
+
+    const requiredScope =
+      this.config.get<string>('cognito.m2mCacheClearScope')?.trim() ||
+      M2M_CACHE_CLEAR_SCOPE_DEFAULT;
+
+    try {
+      await this.cognito.verifyM2mAccessToken(accessToken, {
+        allowedClientIds: [m2mClientId],
+        requiredScope,
+      });
+      this.logger.log(
+        `[M2M] cache clear ok requiredScope=${requiredScope}`,
+      );
+    } catch (err) {
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? String((err as { code?: string }).code || '')
+          : '';
+      if (code === 'MISSING_SCOPE') {
+        throw new UnauthorizedException(
+          `Access token missing required scope ${requiredScope}`,
+        );
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`[M2M] cache clear reject: ${message}`);
+      throw new UnauthorizedException('Invalid M2M access token');
+    }
+  }
+
   /** @deprecated Use assertCacheClearAuth, kept for callers not yet migrated. */
-  assertInternalSecret(
+  async assertInternalSecret(
     authorization?: string,
     internalSecret?: string,
-  ): void {
-    this.assertCacheClearAuth({ authorization, internalSecret });
+  ): Promise<void> {
+    await this.assertCacheClearAuth({ authorization, internalSecret });
   }
 
   async clear(

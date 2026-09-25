@@ -601,6 +601,24 @@ variable "cognito_mrr_associate_waf_replica" {
   default     = false
 }
 
+variable "enable_cognito_platform_outbound_m2m" {
+  description = "Create cht-platform-m2m-{env} for Platform → Hub. Requires Hub resource server hub on this pool. Does not create hub RS."
+  type        = bool
+  default     = false
+}
+
+variable "cognito_platform_outbound_hub_scopes" {
+  description = "hub/… scopes for platform outbound M2M client"
+  type        = list(string)
+  default = [
+    "hub/catalog.read",
+    "hub/admin.read",
+    "hub/admin.create",
+    "hub/admin.update",
+    "hub/admin.delete",
+  ]
+}
+
 variable "companion_base_url" {
   description = "cht-companion Service Connect URL for Nest BFF (empty disables). Dev: http://cht-companion:8080"
   type        = string
@@ -611,6 +629,12 @@ variable "companion_internal_secret" {
   description = "Shared X-BFF-Auth secret for Nest → cht-companion"
   type        = string
   sensitive   = true
+  default     = ""
+}
+
+variable "vtt_object_ingest_lambda_arn" {
+  description = "Content Hub Lambda ARN for S3 Zoom VTT ObjectCreated notify (empty disables). Dev example: contenthub-dev-sync-vtt-object-ingest."
+  type        = string
   default     = ""
 }
 

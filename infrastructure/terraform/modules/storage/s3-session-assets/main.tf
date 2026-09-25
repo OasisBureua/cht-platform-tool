@@ -169,3 +169,31 @@ resource "aws_s3_bucket_replication_configuration" "session_assets" {
 
   depends_on = [aws_s3_bucket_versioning.session_assets]
 }
+
+# ============================================
+# Hub VTT ingest (CPR-29): ObjectCreated on zoom-recordings/*.vtt
+# ============================================
+resource "aws_lambda_permission" "vtt_object_ingest" {
+  count = var.vtt_object_ingest_lambda_arn != "" ? 1 : 0
+
+  statement_id  = "AllowS3SessionAssetsInvokeVttObjectIngest"
+  action        = "lambda:InvokeFunction"
+  function_name = var.vtt_object_ingest_lambda_arn
+  principal     = "s3.amazonaws.com"
+  source_arn    = aws_s3_bucket.session_assets.arn
+}
+
+resource "aws_s3_bucket_notification" "vtt_object_ingest" {
+  count = var.vtt_object_ingest_lambda_arn != "" ? 1 : 0
+
+  bucket = aws_s3_bucket.session_assets.id
+
+  lambda_function {
+    lambda_function_arn = var.vtt_object_ingest_lambda_arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "zoom-recordings/"
+    filter_suffix       = ".vtt"
+  }
+
+  depends_on = [aws_lambda_permission.vtt_object_ingest]
+}

@@ -13,9 +13,12 @@ import type { CacheClearScope } from '../../cache/cache-keys';
 /**
  * Internal cache invalidation for sync jobs and ops (see docs/runbooks/cache-sync-contract.md).
  *
- * POST /internal/cache/clear?scope=catalog|contenthub|all&cacheKey=<INTERNAL_CACHE_SECRET>
- * POST /internal/cache/clear/all?cacheKey=<INTERNAL_CACHE_SECRET> , all namespaces
- * POST /internal/cache/catalog/clear?cacheKey=... : legacy alias (clears all upstream cache)
+ * Auth: Cognito M2M Bearer (`platform/cache.clear`) or legacy INTERNAL_CACHE_SECRET
+ * via `?cacheKey=` / Bearer / `x-internal-secret`.
+ *
+ * POST /internal/cache/clear?scope=catalog|contenthub|all
+ * POST /internal/cache/clear/all
+ * POST /internal/cache/catalog/clear — legacy alias (clears all upstream cache)
  */
 @Controller('internal/cache')
 export class InternalCacheController {
@@ -30,7 +33,7 @@ export class InternalCacheController {
     @Headers('authorization') authorization?: string,
     @Headers('x-internal-secret') internalSecret?: string,
   ) {
-    const authMethod = this.cacheClear.assertCacheClearAuth({
+    const authMethod = await this.cacheClear.assertCacheClearAuth({
       cacheKey,
       authorization,
       internalSecret,
@@ -49,7 +52,7 @@ export class InternalCacheController {
     @Headers('authorization') authorization?: string,
     @Headers('x-internal-secret') internalSecret?: string,
   ) {
-    const authMethod = this.cacheClear.assertCacheClearAuth({
+    const authMethod = await this.cacheClear.assertCacheClearAuth({
       cacheKey,
       authorization,
       internalSecret,
@@ -65,7 +68,7 @@ export class InternalCacheController {
     @Headers('authorization') authorization?: string,
     @Headers('x-internal-secret') internalSecret?: string,
   ) {
-    const authMethod = this.cacheClear.assertCacheClearAuth({
+    const authMethod = await this.cacheClear.assertCacheClearAuth({
       cacheKey,
       authorization,
       internalSecret,

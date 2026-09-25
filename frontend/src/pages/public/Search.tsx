@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Search as SearchIcon, SlidersHorizontal, X, Loader2 } from 'lucide-react';
 import { catalogApi } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
-import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
+import { getShortClipId, getContentHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { clipStripeSubtitle } from '../../utils/contentHubClipText';
 import { Button, Card, Chip, chipKind, SectionHead } from '../../components/ui';
 import { cn } from '../../lib/cn';
 
@@ -108,7 +108,7 @@ export default function Search() {
         type: 'Video' as const,
         tag: Array.isArray(clip.tags) ? clip.tags[0] : undefined,
         href: `/catalog/clip/${getShortClipId(clip.id)}`,
-        image: getMediaHubThumbnail(clip),
+        image: getContentHubThumbnail(clip),
       }));
   }, [searchData]);
 

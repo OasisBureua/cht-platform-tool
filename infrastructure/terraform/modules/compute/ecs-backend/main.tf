@@ -135,7 +135,13 @@ resource "aws_ecs_task_definition" "backend" {
             var.cognito_hosted_ui_base_url != "" ? [{ name = "COGNITO_HOSTED_UI_BASE_URL", value = var.cognito_hosted_ui_base_url }] : [],
             var.cognito_jwks_uri != "" ? [{ name = "COGNITO_JWKS_URI", value = var.cognito_jwks_uri }] : [],
             [{ name = "RECAPTCHA_MIN_SCORE", value = tostring(var.recaptcha_min_score) }],
-            var.redis_url != "" ? [{ name = "REDIS_URL", value = var.redis_url }] : [],
+            var.redis_url != ""
+            ? [
+                { name = "REDIS_URL", value = var.redis_url },
+                { name = "REDIS_CACHE_TTL_SECONDS", value = "3600" },
+                { name = "CATALOG_CLIPS_CACHE_TTL_SECONDS", value = "3600" },
+              ]
+            : [],
             var.appconfig_application != "" && var.appconfig_environment != "" && var.appconfig_profile != ""
             ? [
               { name = "APPCONFIG_APPLICATION", value = var.appconfig_application },
@@ -147,132 +153,150 @@ resource "aws_ecs_task_definition" "backend" {
           )
         )
 
-        secrets = [
-          {
-            name      = "DATABASE_URL"
-            valueFrom = "${var.database_secret_arn}:url::"
-          },
-          {
-            name      = "CONTENTHUB_BASE_URL"
-            valueFrom = "${var.app_secrets_arn}:contenthub_base_url::"
-          },
-          {
-            name      = "CONTENTHUB_API_KEY"
-            valueFrom = "${var.app_secrets_arn}:contenthub_api_key::"
-          },
-          {
-            name      = "YOUTUBE_API_KEY"
-            valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
-          },
-          {
-            name      = "YOUTUBE_PLAYLIST_IDS"
-            valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
-          },
-          {
-            name      = "ZOOM_ACCOUNT_ID"
-            valueFrom = "${var.app_secrets_arn}:zoom_account_id::"
-          },
-          {
-            name      = "ZOOM_CLIENT_ID"
-            valueFrom = "${var.app_secrets_arn}:zoom_client_id::"
-          },
-          {
-            name      = "ZOOM_CLIENT_SECRET"
-            valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
-          },
-          {
-            name      = "ZOOM_WEBHOOK_SECRET"
-            valueFrom = "${var.app_secrets_arn}:zoom_webhook_secret::"
-          },
-          {
-            name      = "ZOOM_SDK_KEY"
-            valueFrom = "${var.app_secrets_arn}:zoom_sdk_key::"
-          },
-          {
-            name      = "ZOOM_SDK_SECRET"
-            valueFrom = "${var.app_secrets_arn}:zoom_sdk_secret::"
-          },
-          {
-            name      = "JOTFORM_API_KEY"
-            valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
-          },
-          {
-            name      = "JOTFORM_WEBINAR_DEFAULT_INTAKE_URL"
-            valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
-          },
-          {
-            name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
-            valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
-          },
-          {
-            name      = "BILL_DEV_KEY"
-            valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
-          },
-          {
-            name      = "BILL_USERNAME"
-            valueFrom = "${var.app_secrets_arn}:bill_username::"
-          },
-          {
-            name      = "BILL_PASSWORD"
-            valueFrom = "${var.app_secrets_arn}:bill_password::"
-          },
-          {
-            name      = "BILL_ORG_ID"
-            valueFrom = "${var.app_secrets_arn}:bill_org_id::"
-          },
-          {
-            name      = "BILL_FUNDING_ACCOUNT_ID"
-            valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
-          },
-          {
-            name      = "BILL_WEBHOOK_SECRET"
-            valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
-          },
-          {
-            name      = "BILL_MFA_REMEMBER_ME_ID"
-            valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
-          },
-          {
-            name      = "BILL_MFA_DEVICE_NAME"
-            valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
-          },
-          {
-            name      = "STRIPE_SECRET_KEY"
-            valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
-          },
-          {
-            name      = "STRIPE_PUBLISHABLE_KEY"
-            valueFrom = "${var.app_secrets_arn}:stripe_publishable_key::"
-          },
-          {
-            name      = "STRIPE_WEBHOOK_SECRET"
-            valueFrom = "${var.app_secrets_arn}:stripe_webhook_secret::"
-          },
-          {
-            name      = "STRIPE_CONNECT_WEBHOOK_SECRET"
-            valueFrom = "${var.app_secrets_arn}:stripe_connect_webhook_secret::"
-          },
-          {
-            name      = "ADMIN_BOOTSTRAP_SECRET"
-            valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
-          },
-          {
-            name      = "HUBSPOT_ACCESS_TOKEN"
-            valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
-          },
-          {
-            name      = "RECAPTCHA_SECRET_KEY"
-            valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
-          },
-          {
-            name      = "INTERNAL_CACHE_SECRET"
-            valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
-          },
-          {
-            name      = "COMPANION_INTERNAL_SECRET"
-            valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
-          }
-        ]
+        secrets = concat(
+          [
+            {
+              name      = "DATABASE_URL"
+              valueFrom = "${var.database_secret_arn}:url::"
+            },
+            {
+              name      = "CONTENTHUB_BASE_URL"
+              valueFrom = "${var.app_secrets_arn}:contenthub_base_url::"
+            },
+            {
+              name      = "YOUTUBE_API_KEY"
+              valueFrom = "${var.app_secrets_arn}:youtube_api_key::"
+            },
+            {
+              name      = "YOUTUBE_PLAYLIST_IDS"
+              valueFrom = "${var.app_secrets_arn}:youtube_playlist_ids::"
+            },
+            {
+              name      = "ZOOM_ACCOUNT_ID"
+              valueFrom = "${var.app_secrets_arn}:zoom_account_id::"
+            },
+            {
+              name      = "ZOOM_CLIENT_ID"
+              valueFrom = "${var.app_secrets_arn}:zoom_client_id::"
+            },
+            {
+              name      = "ZOOM_CLIENT_SECRET"
+              valueFrom = "${var.app_secrets_arn}:zoom_client_secret::"
+            },
+            {
+              name      = "ZOOM_WEBHOOK_SECRET"
+              valueFrom = "${var.app_secrets_arn}:zoom_webhook_secret::"
+            },
+            {
+              name      = "ZOOM_SDK_KEY"
+              valueFrom = "${var.app_secrets_arn}:zoom_sdk_key::"
+            },
+            {
+              name      = "ZOOM_SDK_SECRET"
+              valueFrom = "${var.app_secrets_arn}:zoom_sdk_secret::"
+            },
+            {
+              name      = "JOTFORM_API_KEY"
+              valueFrom = "${var.app_secrets_arn}:jotform_api_key::"
+            },
+            {
+              name      = "JOTFORM_WEBINAR_DEFAULT_INTAKE_URL"
+              valueFrom = "${var.app_secrets_arn}:jotform_webinar_default_intake_url::"
+            },
+            {
+              name      = "JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID"
+              valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
+            },
+            {
+              name      = "BILL_DEV_KEY"
+              valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
+            },
+            {
+              name      = "BILL_USERNAME"
+              valueFrom = "${var.app_secrets_arn}:bill_username::"
+            },
+            {
+              name      = "BILL_PASSWORD"
+              valueFrom = "${var.app_secrets_arn}:bill_password::"
+            },
+            {
+              name      = "BILL_ORG_ID"
+              valueFrom = "${var.app_secrets_arn}:bill_org_id::"
+            },
+            {
+              name      = "BILL_FUNDING_ACCOUNT_ID"
+              valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
+            },
+            {
+              name      = "BILL_WEBHOOK_SECRET"
+              valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
+            },
+            {
+              name      = "BILL_MFA_REMEMBER_ME_ID"
+              valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
+            },
+            {
+              name      = "BILL_MFA_DEVICE_NAME"
+              valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
+            },
+            {
+              name      = "STRIPE_SECRET_KEY"
+              valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
+            },
+            {
+              name      = "STRIPE_PUBLISHABLE_KEY"
+              valueFrom = "${var.app_secrets_arn}:stripe_publishable_key::"
+            },
+            {
+              name      = "STRIPE_WEBHOOK_SECRET"
+              valueFrom = "${var.app_secrets_arn}:stripe_webhook_secret::"
+            },
+            {
+              name      = "STRIPE_CONNECT_WEBHOOK_SECRET"
+              valueFrom = "${var.app_secrets_arn}:stripe_connect_webhook_secret::"
+            },
+            {
+              name      = "ADMIN_BOOTSTRAP_SECRET"
+              valueFrom = "${var.app_secrets_arn}:admin_bootstrap_secret::"
+            },
+            {
+              name      = "HUBSPOT_ACCESS_TOKEN"
+              valueFrom = "${var.app_secrets_arn}:hubspot_access_token::"
+            },
+            {
+              name      = "RECAPTCHA_SECRET_KEY"
+              valueFrom = "${var.app_secrets_arn}:recaptcha_secret_key::"
+            },
+            {
+              name      = "INTERNAL_CACHE_SECRET"
+              valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
+            },
+            {
+              name      = "COMPANION_INTERNAL_SECRET"
+              valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
+            },
+          ],
+          var.cognito_m2m_platform_secret_arn != ""
+          ? [
+              {
+                name      = "COGNITO_M2M_PLATFORM_CLIENT_ID"
+                valueFrom = "${var.cognito_m2m_platform_secret_arn}:client_id::"
+              },
+              {
+                name      = "COGNITO_M2M_PLATFORM_CLIENT_SECRET"
+                valueFrom = "${var.cognito_m2m_platform_secret_arn}:client_secret::"
+              },
+              {
+                name      = "COGNITO_M2M_TOKEN_URL"
+                valueFrom = "${var.cognito_m2m_platform_secret_arn}:token_url::"
+              },
+              {
+                name      = "COGNITO_M2M_HUB_SCOPES"
+                valueFrom = "${var.cognito_m2m_platform_secret_arn}:scope::"
+              },
+            ]
+          : [],
+        )
 
         environmentFiles = var.sqs_queue_urls_env_file_arn != "" ? [
           {

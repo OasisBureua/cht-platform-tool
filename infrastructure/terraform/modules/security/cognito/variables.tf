@@ -165,3 +165,21 @@ variable "associate_waf_with_replica" {
   type        = bool
   default     = false
 }
+
+variable "enable_platform_outbound_m2m" {
+  description = "Create cht-platform-m2m-{env} client + SM secret for Platform → Hub. Requires Hub resource server `hub` already on this pool (Hub terraform). Does not create the hub RS."
+  type        = bool
+  default     = false
+}
+
+variable "platform_outbound_hub_scopes" {
+  description = "hub/… scopes allowed on the platform outbound M2M client (Content Hub API resource server)."
+  type        = list(string)
+  default = [
+    "hub/catalog.read",
+    "hub/admin.read",
+    "hub/admin.create",
+    "hub/admin.update",
+    "hub/admin.delete",
+  ]
+}

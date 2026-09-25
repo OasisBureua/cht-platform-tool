@@ -7,29 +7,31 @@ Hand-off for Hub (CPR-13/14). Hub only fetches a token and calls export; no Cogn
 Production uses **`platform.tfvars`** (`environment = "platform"`). That is our prod stack.
 Resource names follow the existing prefix rule (no `-prod-` suffix):
 
-| Env (tfvars) | Secrets Manager name |
-|--------------|----------------------|
-| **platform** (prod) | `cht-platform-cognito-m2m-export` |
-| test / other | `cht-platform-{env}-cognito-m2m-export` |
-| **dev** | `cht-dev-cognito-m2m-export` |
+| Env (tfvars) | Secrets Manager name (Hub → platform) |
+|--------------|----------------------------------------|
+| **platform** (prod) | `cht-platform-cognito-m2m-hub` |
+| **dev** | `cht-dev-cognito-m2m-hub` |
 
-Do not invent a separate `prod` secret name — it would diverge from every other `cht-platform-*` resource.
+Compat aliases still exist as `cognito_m2m_export_*` Terraform outputs.
 
-Secret JSON keys: `client_id`, `client_secret`, `token_url`, `scope` (`platform/export.read`).
+Secret JSON keys: `client_id`, `client_secret`, `token_url`, `scope` (`platform/export.read platform/cache.clear`).
 
-Terraform outputs (us-east-1): `cognito_m2m_export_secret_name`, `cognito_m2m_export_token_url`, `cognito_m2m_export_client_id`, `cognito_m2m_export_scope`.
+Platform → Hub uses a **separate** secret: `cht-{env}-cognito-m2m-platform` (client `cht-platform-m2m-{env}`). See [cognito-m2m-s2s-inventory.md](./cognito-m2m-s2s-inventory.md).
+
+Terraform outputs (us-east-1): `cognito_m2m_hub_secret_name` / legacy `cognito_m2m_export_*`, `cognito_m2m_platform_*`.
 
 ## Token
 
 ```bash
 SECRET_JSON=$(aws secretsmanager get-secret-value \
-  --secret-id cht-dev-cognito-m2m-export \
+  --secret-id cht-dev-cognito-m2m-hub \
   --region us-east-1 \
   --query SecretString --output text)
 CLIENT_ID=$(echo "$SECRET_JSON" | jq -r .client_id)
 CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r .client_secret)
 TOKEN_URL=$(echo "$SECRET_JSON" | jq -r .token_url)
-SCOPE=$(echo "$SECRET_JSON" | jq -r .scope)
+# Prefer export.read only when calling export (narrower)
+SCOPE=platform/export.read
 
 curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
   -d "grant_type=client_credentials&scope=$SCOPE" \
@@ -109,3 +111,5 @@ Search CloudWatch / pino for `[M2M]` or `[export]`:
 | `[export] input-packet ok … sessions=N requestId=…` | Packet returned |
 
 Do not use this client for companion (`X-BFF-Auth`) or admin `/api/reports*`.
+
+For the full S2S map (who calls us / who we call) and how to mint more M2M clients, see [cognito-m2m-s2s-inventory.md](./cognito-m2m-s2s-inventory.md).

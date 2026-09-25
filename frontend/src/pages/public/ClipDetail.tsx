@@ -7,9 +7,9 @@ import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { Button, Chip, chipKind, Reveal, SectionHead, Thumb } from '../../components/ui';
 import { catalogApi } from '../../api/catalog';
-import type { GetClipsParams, MediaHubClip } from '../../api/catalog';
+import type { GetClipsParams, ContentHubClip } from '../../api/catalog';
 import { pushClipView } from '../../lib/analytics';
-import { clipAiSummaryText } from '../../utils/mediaHubClipText';
+import { clipAiSummaryText } from '../../utils/contentHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 import { DoctorBioRail } from '../../components/content/DoctorBioRail';
 import {
@@ -19,7 +19,7 @@ import {
 } from '../../utils/wordpressCatalog';
 import {
   extractYoutubeVideoIdFromUrl,
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   getShortClipId,
   isLinkedinCatalogClipId,
   nextCatalogThumbnailFallback,
@@ -87,7 +87,7 @@ function tagLabel(value: string): string {
 }
 
 /** `brand:` tags are internal and never shown to users. */
-function publicTags(clip: MediaHubClip | null | undefined): string[] {
+function publicTags(clip: ContentHubClip | null | undefined): string[] {
   return (clip?.tags ?? []).filter((t) => !String(t).startsWith('brand:'));
 }
 
@@ -96,7 +96,7 @@ function publicTags(clip: MediaHubClip | null | undefined): string[] {
  * Category first, then the faculty it features, then a marker — the
  * same widening the library itself does.
  */
-function trackParamsFor(clip: MediaHubClip | null | undefined): GetClipsParams | null {
+function trackParamsFor(clip: ContentHubClip | null | undefined): GetClipsParams | null {
   if (!clip) return null;
   const category = clip.wordpress?.categories?.[0];
   if (category) {
@@ -119,7 +119,7 @@ function ClipThumb({
   duration,
   className = '',
 }: {
-  clip: MediaHubClip;
+  clip: ContentHubClip;
   duration?: string;
   className?: string;
 }) {
@@ -127,10 +127,10 @@ function ClipThumb({
   const videoId =
     extractYoutubeVideoIdFromUrl(clip.youtube_url) ||
     (/^[a-zA-Z0-9_-]{11}$/.test(short) ? short : null);
-  const [src, setSrc] = useState(() => getMediaHubThumbnail(clip));
+  const [src, setSrc] = useState(() => getContentHubThumbnail(clip));
 
   useEffect(() => {
-    setSrc(getMediaHubThumbnail(clip));
+    setSrc(getContentHubThumbnail(clip));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clip.id, clip.thumbnail_url, clip.youtube_url]);
 
@@ -170,8 +170,8 @@ function Player({
   engagement: string[];
   youtubeUrl: string;
   title: string;
-  queue: MediaHubClip[];
-  hrefFor: (clip: MediaHubClip) => string;
+  queue: ContentHubClip[];
+  hrefFor: (clip: ContentHubClip) => string;
 }) {
   return (
     <div className="overflow-hidden rounded-[8px] bg-surface shadow-card">
@@ -238,7 +238,7 @@ export default function ClipDetail() {
   const isInApp = location.pathname.startsWith('/app');
   const shareUrl = typeof window !== 'undefined' ? `${window.location.origin}${location.pathname}` : '';
   const skipLinkedInClip = !!id && isLinkedinCatalogClipId(id);
-  const stateClip = (location.state as { clip?: MediaHubClip } | null)?.clip;
+  const stateClip = (location.state as { clip?: ContentHubClip } | null)?.clip;
   const stateClipMatches =
     !!stateClip &&
     !!id &&
@@ -312,7 +312,7 @@ export default function ClipDetail() {
     if (!clip) return [];
     const self = getShortClipId(clip.id);
     const seen = new Set<string>([self]);
-    const out: MediaHubClip[] = [];
+    const out: ContentHubClip[] = [];
     for (const c of [...nearby, ...(latestPage?.items ?? [])]) {
       const key = getShortClipId(c.id);
       if (seen.has(key) || c.id === clip.id) continue;
@@ -379,7 +379,7 @@ export default function ClipDetail() {
     ? `${catalogBase}/playlist/series/${encodeURIComponent(seriesSlug)}`
     : null;
   const libraryLabel = isInApp ? 'Conversations' : 'Content Library';
-  const clipHref = (c: MediaHubClip) =>
+  const clipHref = (c: ContentHubClip) =>
     isInApp ? `/app/clip/${getShortClipId(c.id)}` : `/catalog/clip/${getShortClipId(c.id)}`;
 
   if (!id) {

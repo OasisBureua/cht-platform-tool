@@ -18,7 +18,17 @@ locals {
 
   hosted_ui_base_url = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
 
-  m2m_export_scope = "${aws_cognito_resource_server.platform.identifier}/export.read"
+  # Doc naming: cht-hub-m2m-prod / cht-prod-cognito-m2m-hub (TF env "platform" → prod)
+  env_label = var.environment == "platform" ? "prod" : var.environment
+
+  m2m_export_scope      = "${aws_cognito_resource_server.platform.identifier}/export.read"
+  m2m_cache_clear_scope = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
+  m2m_hub_client_scopes = "${local.m2m_export_scope} ${local.m2m_cache_clear_scope}"
+
+  m2m_hub_client_name   = "cht-hub-m2m-${local.env_label}"
+  m2m_hub_secret_name   = "cht-${local.env_label}-cognito-m2m-hub"
+  m2m_platform_client_name = "cht-platform-m2m-${local.env_label}"
+  m2m_platform_secret_name = "cht-${local.env_label}-cognito-m2m-platform"
 }
 
 # ============================================
@@ -189,8 +199,8 @@ resource "aws_cognito_user_pool_client" "cht_web" {
 }
 
 # ============================================
-# Resource server + M2M client (Content Hub → /api/export/*)
-# Scope in tokens: platform/export.read
+# Resource server: CHT Platform API (identifier: platform)
+# Hub (and others) request platform/… scopes with their own clients.
 # ============================================
 resource "aws_cognito_resource_server" "platform" {
   identifier   = "platform"
@@ -201,20 +211,27 @@ resource "aws_cognito_resource_server" "platform" {
     scope_name        = "export.read"
     scope_description = "Read platform export endpoints (Hub scheduled ingest)"
   }
+
+  scope {
+    scope_name        = "cache.clear"
+    scope_description = "Clear platform Redis upstream cache (Hub / ops)"
+  }
 }
 
-resource "aws_cognito_user_pool_client" "content_hub_export" {
-  name         = "cht-content-hub-export"
+# Hub → platform (export + cache.clear). One Hub identity per env.
+resource "aws_cognito_user_pool_client" "hub_m2m" {
+  name         = local.m2m_hub_client_name
   user_pool_id = aws_cognito_user_pool.main.id
 
-  # Confidential client: Hub stores secret and uses client_credentials only
   generate_secret = true
 
   allowed_oauth_flows                  = ["client_credentials"]
   allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_scopes                 = ["${aws_cognito_resource_server.platform.identifier}/export.read"]
+  allowed_oauth_scopes = [
+    local.m2m_export_scope,
+    local.m2m_cache_clear_scope,
+  ]
 
-  # No Hosted UI / user auth on this client
   supported_identity_providers = ["COGNITO"]
 
   token_validity_units {
@@ -228,26 +245,92 @@ resource "aws_cognito_user_pool_client" "content_hub_export" {
   depends_on = [aws_cognito_resource_server.platform]
 }
 
-resource "aws_secretsmanager_secret" "m2m_export" {
-  name                    = "${local.name_prefix}-cognito-m2m-export"
-  description             = "Cognito M2M client credentials for Content Hub → platform /api/export (scope platform/export.read). Production = environment platform (platform.tfvars)."
+resource "aws_secretsmanager_secret" "m2m_hub" {
+  name                    = local.m2m_hub_secret_name
+  description             = "Cognito M2M for Hub → platform (scopes platform/export.read platform/cache.clear). Client ${local.m2m_hub_client_name}."
   recovery_window_in_days = 30
 
   tags = {
-    Name        = "${local.name_prefix}-cognito-m2m-export"
-    Environment = var.environment
-    Purpose     = "hub-export-m2m"
+    Name        = local.m2m_hub_secret_name
+    Environment = local.env_label
+    Purpose     = "hub-m2m"
   }
 }
 
-resource "aws_secretsmanager_secret_version" "m2m_export" {
-  secret_id = aws_secretsmanager_secret.m2m_export.id
+resource "aws_secretsmanager_secret_version" "m2m_hub" {
+  secret_id = aws_secretsmanager_secret.m2m_hub.id
   secret_string = jsonencode({
-    client_id     = aws_cognito_user_pool_client.content_hub_export.id
-    client_secret = aws_cognito_user_pool_client.content_hub_export.client_secret
+    client_id     = aws_cognito_user_pool_client.hub_m2m.id
+    client_secret = aws_cognito_user_pool_client.hub_m2m.client_secret
     token_url     = "${local.hosted_ui_base_url}/oauth2/token"
-    scope         = local.m2m_export_scope
+    scope         = local.m2m_hub_client_scopes
   })
+}
+
+# Platform → Hub. Requires Hub resource server `hub` on this pool first
+# (Content Hub terraform). Set enable_platform_outbound_m2m = true after Hub RS exists.
+resource "aws_cognito_user_pool_client" "platform_m2m" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  name         = local.m2m_platform_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = true
+
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes                 = var.platform_outbound_hub_scopes
+
+  supported_identity_providers = ["COGNITO"]
+
+  token_validity_units {
+    access_token = "hours"
+  }
+  access_token_validity = 1
+
+  enable_token_revocation       = true
+  prevent_user_existence_errors = "ENABLED"
+}
+
+resource "aws_secretsmanager_secret" "m2m_platform" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  name                    = local.m2m_platform_secret_name
+  description             = "Cognito M2M for Platform → Hub (hub/… scopes). Client ${local.m2m_platform_client_name}."
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = local.m2m_platform_secret_name
+    Environment = local.env_label
+    Purpose     = "platform-m2m"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "m2m_platform" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.m2m_platform[0].id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.platform_m2m[0].id
+    client_secret = aws_cognito_user_pool_client.platform_m2m[0].client_secret
+    token_url     = "${local.hosted_ui_base_url}/oauth2/token"
+    scope         = join(" ", var.platform_outbound_hub_scopes)
+  })
+}
+
+moved {
+  from = aws_cognito_user_pool_client.content_hub_export
+  to   = aws_cognito_user_pool_client.hub_m2m
+}
+
+moved {
+  from = aws_secretsmanager_secret.m2m_export
+  to   = aws_secretsmanager_secret.m2m_hub
+}
+
+moved {
+  from = aws_secretsmanager_secret_version.m2m_export
+  to   = aws_secretsmanager_secret_version.m2m_hub
 }
 
 # ============================================

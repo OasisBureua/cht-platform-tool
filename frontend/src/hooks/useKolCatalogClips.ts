@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
-import { catalogApi, type MediaHubClip } from '../api/catalog';
+import { catalogApi, type ContentHubClip } from '../api/catalog';
 import type { DolEntry } from '../data/dol-network';
 import { kolCatalogDoctorSlugs } from '../utils/kol-catalog-link';
 import { shouldSurfaceCatalogClip } from '../utils/clipUrl';
 
 export type KolCatalogClipsResult = {
-  clips: MediaHubClip[];
+  clips: ContentHubClip[];
   total: number;
   doctorSlug: string;
   loadState: 'idle' | 'loading' | 'ready' | 'empty';
@@ -21,7 +21,7 @@ async function fetchClipsForKol(
   entry: KolClipEntry,
   limit: number,
   doctors: { slug: string }[],
-): Promise<{ clips: MediaHubClip[]; total: number; doctorSlug: string }> {
+): Promise<{ clips: ContentHubClip[]; total: number; doctorSlug: string }> {
   const slugs = kolCatalogDoctorSlugs(entry, doctors);
   if (slugs.length === 0) {
     return { clips: [], total: 0, doctorSlug: entry.id };
@@ -31,7 +31,7 @@ async function fetchClipsForKol(
   // dedup. Page until a short page so the video count is real (ContentHub
   // `total` is unreliable when it equals the page size).
   for (const doctor of slugs) {
-    const surfaced: MediaHubClip[] = [];
+    const surfaced: ContentHubClip[] = [];
     let offset = 0;
 
     for (let page = 0; page < COUNT_PAGE_CAP; page += 1) {

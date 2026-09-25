@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HubSpotService } from '../hubspot/hubspot.service';
-import { MediaHubSyncService } from './mediahub-sync.service';
+import { ContentHubSyncService } from './contenthub-sync.service';
 
 export interface OutboundSyncInput {
   email: string;
@@ -49,7 +49,7 @@ export class OutboundSyncService {
 
   constructor(
     private readonly hubspot: HubSpotService,
-    private readonly contentHubSync: MediaHubSyncService,
+    private readonly contentHubSync: ContentHubSyncService,
   ) {}
 
   async syncUser(input: OutboundSyncInput): Promise<OutboundSyncResult> {
