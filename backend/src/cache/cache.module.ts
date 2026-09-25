@@ -1,11 +1,14 @@
-import { Global, Module, forwardRef } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { RedisCacheService } from './redis-cache.service';
 import { CacheClearService } from './cache-clear.service';
-import { AuthModule } from '../auth/auth.module';
 
+/**
+ * Global Redis + cache clear. Do not import AuthModule here — that creates
+ * AppModule → CacheModule → AuthModule → OutboundSync → ContentHub → AuthModule.
+ * CacheClearService resolves CognitoService via ModuleRef at auth time.
+ */
 @Global()
 @Module({
-  imports: [forwardRef(() => AuthModule)],
   providers: [RedisCacheService, CacheClearService],
   exports: [RedisCacheService, CacheClearService],
 })

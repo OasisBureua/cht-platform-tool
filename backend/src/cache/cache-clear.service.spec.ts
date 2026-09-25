@@ -1,8 +1,8 @@
 import { BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { CacheClearService } from './cache-clear.service';
 import { RedisCacheService } from './redis-cache.service';
-import { CognitoService } from '../auth/cognito.service';
 
 describe('CacheClearService', () => {
   const cache = {
@@ -24,16 +24,17 @@ describe('CacheClearService', () => {
     verifyM2mAccessToken: jest.fn(),
   };
 
+  const moduleRef = {
+    get: jest.fn().mockReturnValue(cognito),
+  } as unknown as ModuleRef;
+
   let service: CacheClearService;
 
   beforeEach(() => {
     jest.clearAllMocks();
     cognito.isConfigured.mockReturnValue(true);
-    service = new CacheClearService(
-      config,
-      cache,
-      cognito as unknown as CognitoService,
-    );
+    (moduleRef.get as jest.Mock).mockReturnValue(cognito);
+    service = new CacheClearService(config, cache, moduleRef);
   });
 
   it('rejects when cache key is missing', async () => {

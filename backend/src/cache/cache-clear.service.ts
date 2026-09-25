@@ -4,6 +4,7 @@ import {
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import {
   cachePatternsForScope,
@@ -37,8 +38,13 @@ export class CacheClearService {
   constructor(
     private readonly config: ConfigService,
     private readonly cache: RedisCacheService,
-    private readonly cognito: CognitoService,
+    /** Lazy: avoid CacheModule → AuthModule circular import at bootstrap. */
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  private cognito(): CognitoService {
+    return this.moduleRef.get(CognitoService, { strict: false });
+  }
 
   /**
    * Validates cache clear auth:
@@ -94,7 +100,8 @@ export class CacheClearService {
   private async assertM2mCacheClear(accessToken: string): Promise<void> {
     const m2mClientId =
       this.config.get<string>('cognito.m2mExportClientId')?.trim() || '';
-    if (!m2mClientId || !this.cognito.isConfigured()) {
+    const cognito = this.cognito();
+    if (!m2mClientId || !cognito.isConfigured()) {
       this.logger.warn(
         'Cache clear rejected: M2M token presented but Cognito M2M is not configured',
       );
@@ -106,7 +113,7 @@ export class CacheClearService {
       M2M_CACHE_CLEAR_SCOPE_DEFAULT;
 
     try {
-      await this.cognito.verifyM2mAccessToken(accessToken, {
+      await cognito.verifyM2mAccessToken(accessToken, {
         allowedClientIds: [m2mClientId],
         requiredScope,
       });

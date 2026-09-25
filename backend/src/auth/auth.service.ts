@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
@@ -42,6 +42,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    @Inject(forwardRef(() => OutboundSyncService))
     private outboundSync: OutboundSyncService,
     private cognitoService: CognitoService,
     private cache: RedisCacheService,
