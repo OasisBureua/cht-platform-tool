@@ -34,6 +34,9 @@ locals {
   m2m_hub_secret_name      = var.m2m_hub_secret_name != "" ? var.m2m_hub_secret_name : "cht-${local.env_label}-cognito-m2m-contenthub"
   m2m_platform_client_name = "cht-platform-m2m-${local.env_label}"
   m2m_platform_secret_name = "cht-${local.env_label}-cognito-m2m-platform"
+  # cht-reports → Content Hub:  cht-reports-m2m-{env_label} / cht-{env_label}-cognito-m2m-reports
+  m2m_reports_client_name = "cht-reports-m2m-${local.env_label}"
+  m2m_reports_secret_name = "cht-${local.env_label}-cognito-m2m-reports"
 }
 
 # ============================================
@@ -320,6 +323,59 @@ resource "aws_secretsmanager_secret_version" "m2m_platform" {
     client_secret = aws_cognito_user_pool_client.platform_m2m[0].client_secret
     token_url     = "${local.hosted_ui_base_url}/oauth2/token"
     scope         = join(" ", var.platform_outbound_hub_scopes)
+  })
+}
+
+# ============================================
+# cht-reports → Content Hub M2M (report-packet read only)
+# Same shape as platform_m2m. Hub RS `hub` must already exist on this pool.
+# ============================================
+resource "aws_cognito_user_pool_client" "reports_m2m" {
+  count = var.enable_reports_outbound_m2m ? 1 : 0
+
+  name         = local.m2m_reports_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = true
+
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes                 = var.reports_outbound_hub_scopes
+
+  supported_identity_providers = ["COGNITO"]
+
+  token_validity_units {
+    access_token = "hours"
+  }
+  access_token_validity = 1
+
+  enable_token_revocation       = true
+  prevent_user_existence_errors = "ENABLED"
+}
+
+resource "aws_secretsmanager_secret" "m2m_reports" {
+  count = var.enable_reports_outbound_m2m ? 1 : 0
+
+  name                    = local.m2m_reports_secret_name
+  description             = "Cognito M2M for cht-reports → Hub (hub/reports.* scopes). Client ${local.m2m_reports_client_name}."
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = local.m2m_reports_secret_name
+    Environment = local.env_label
+    Purpose     = "reports-m2m"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "m2m_reports" {
+  count = var.enable_reports_outbound_m2m ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.m2m_reports[0].id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.reports_m2m[0].id
+    client_secret = aws_cognito_user_pool_client.reports_m2m[0].client_secret
+    token_url     = "${local.hosted_ui_base_url}/oauth2/token"
+    scope         = join(" ", var.reports_outbound_hub_scopes)
   })
 }
 

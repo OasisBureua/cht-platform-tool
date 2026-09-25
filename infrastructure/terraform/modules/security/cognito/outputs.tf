@@ -82,6 +82,21 @@ output "m2m_platform_secret_name" {
   value       = var.enable_platform_outbound_m2m ? aws_secretsmanager_secret.m2m_platform[0].name : null
 }
 
+output "m2m_reports_client_id" {
+  description = "cht-reports-m2m-{env} client ID (null if enable_reports_outbound_m2m=false)"
+  value       = var.enable_reports_outbound_m2m ? aws_cognito_user_pool_client.reports_m2m[0].id : null
+}
+
+output "m2m_reports_secret_arn" {
+  description = "SM ARN cht-{env}-cognito-m2m-reports"
+  value       = var.enable_reports_outbound_m2m ? aws_secretsmanager_secret.m2m_reports[0].arn : null
+}
+
+output "m2m_reports_secret_name" {
+  description = "SM name cht-{env}-cognito-m2m-reports"
+  value       = var.enable_reports_outbound_m2m ? aws_secretsmanager_secret.m2m_reports[0].name : null
+}
+
 output "m2m_platform_hub_scopes" {
   description = "hub/… scopes on platform outbound client"
   value       = var.enable_platform_outbound_m2m ? join(" ", var.platform_outbound_hub_scopes) : null

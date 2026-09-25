@@ -613,6 +613,18 @@ variable "cognito_m2m_hub_secret_name" {
   default     = ""
 }
 
+variable "enable_cognito_reports_outbound_m2m" {
+  description = "Create cht-reports-m2m-{env} for cht-reports → Hub (report-packet). Requires Hub resource server hub on this pool."
+  type        = bool
+  default     = false
+}
+
+variable "cognito_reports_outbound_hub_scopes" {
+  description = "hub/… scopes for the cht-reports outbound M2M client"
+  type        = list(string)
+  default     = ["hub/reports.read"]
+}
+
 variable "cognito_platform_outbound_hub_scopes" {
   description = "hub/… scopes for platform outbound M2M client"
   type        = list(string)

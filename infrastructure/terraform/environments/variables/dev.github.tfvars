@@ -67,6 +67,9 @@ cognito_mrr_associate_waf_replica     = false
 # Platform → Hub M2M — Hub RS `hub` is live on cht-dev-users; create outbound client.
 enable_cognito_platform_outbound_m2m = true
 
+# cht-reports → Hub M2M (report-packet, hub/reports.read) — cht-reports-m2m-dev / cht-dev-cognito-m2m-reports.
+enable_cognito_reports_outbound_m2m = true
+
 # Legacy SM name already in AWS / Hub configs (immutable — do not recreate).
 # Do not touch cht-dev-cognito-m2m-export / cht-contenthub-m2m-dev (Hub → platform).
 cognito_m2m_hub_secret_name = "cht-dev-cognito-m2m-export"
