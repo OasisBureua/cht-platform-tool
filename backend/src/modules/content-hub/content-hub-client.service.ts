@@ -1,8 +1,9 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, UnauthorizedException, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { isAxiosError } from 'axios';
+import { CognitoM2mTokenService } from '../../auth/cognito-m2m-token.service';
 import { RedisCacheService } from '../../cache/redis-cache.service';
 import { CACHE_NAMESPACE } from '../../cache/cache-keys';
 import { cacheKeyHash } from '../../cache/cache-key.util';
@@ -14,20 +15,21 @@ export type ContentHubGetOptions = {
 };
 
 /**
- * Server-to-server client for Content Hub public producer API (KOL network)
- * and admin campaign API (/api/admin/*).
+ * Server-to-server client for Content Hub public + admin APIs.
+ * Auth: Cognito M2M Bearer only (no X-API-Key).
  */
 @Injectable()
 export class ContentHubClientService {
   private readonly logger = new Logger(ContentHubClientService.name);
   private readonly baseUrl: string;
   private readonly adminBaseUrl: string;
-  private readonly apiKey: string | null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly http: HttpService,
     private readonly cache: RedisCacheService,
+    @Inject(forwardRef(() => CognitoM2mTokenService))
+    private readonly m2mTokens: CognitoM2mTokenService,
   ) {
     this.baseUrl = (this.config.get<string>('contenthub.baseUrl') || '').replace(
       /\/$/,
@@ -36,11 +38,10 @@ export class ContentHubClientService {
     this.adminBaseUrl = (
       this.config.get<string>('contenthub.adminBaseUrl') || ''
     ).replace(/\/$/, '');
-    this.apiKey = this.config.get<string>('contenthub.apiKey')?.trim() || null;
 
-    if (!this.apiKey && (this.baseUrl || this.adminBaseUrl)) {
+    if (!this.m2mTokens.isConfigured() && (this.baseUrl || this.adminBaseUrl)) {
       this.logger.warn(
-        'CONTENTHUB_API_KEY not configured, Content Hub calls disabled',
+        'Content Hub M2M not configured — Hub calls will 401 until COGNITO_M2M_PLATFORM_* is set',
       );
     } else if (this.adminBaseUrl) {
       this.logger.log(`Content Hub admin API: ${this.adminBaseUrl}`);
@@ -48,24 +49,24 @@ export class ContentHubClientService {
   }
 
   isConfigured(): boolean {
-    return !!(this.baseUrl && this.apiKey);
+    return !!(this.baseUrl && this.m2mTokens.isConfigured());
   }
 
   isAdminConfigured(): boolean {
-    return !!(this.adminBaseUrl && this.apiKey);
+    return !!(this.adminBaseUrl && this.m2mTokens.isConfigured());
   }
 
   getAdminBaseUrl(): string {
     return this.adminBaseUrl;
   }
 
-  private buildHeaders(requestId: string): Record<string, string> {
-    if (!this.apiKey) {
-      throw new Error('Content Hub API key not configured');
-    }
+  private async buildHeaders(
+    requestId: string,
+  ): Promise<Record<string, string>> {
+    const accessToken = await this.m2mTokens.getAccessToken();
     return {
       'Content-Type': 'application/json',
-      'X-API-Key': this.apiKey,
+      Authorization: `Bearer ${accessToken}`,
       'X-Request-Id': requestId,
     };
   }
@@ -99,28 +100,27 @@ export class ContentHubClientService {
     params?: Record<string, string | number | boolean | undefined>,
     options?: ContentHubGetOptions,
   ): Promise<T> {
-    return this.getOnBase<T>(this.adminBaseUrl, path, params, {
-      cache: options?.cache ?? true,
-      admin: true,
-    });
+    return this.getOnBase<T>(this.adminBaseUrl, path, params, options);
   }
 
   private async getOnBase<T>(
     base: string,
     path: string,
     params?: Record<string, string | number | boolean | undefined>,
-    options?: ContentHubGetOptions & { admin?: boolean },
+    options?: ContentHubGetOptions,
   ): Promise<T> {
+    if (!base) {
+      throw new UnauthorizedException('Content Hub base URL is not configured');
+    }
+
     const cleanParams = params
-      ? (Object.fromEntries(
-          Object.entries(params).filter(
-            ([, v]) => v !== undefined && v !== '',
-          ),
-        ) as Record<string, string | number | boolean>)
+      ? Object.fromEntries(
+          Object.entries(params).filter(([, v]) => v !== undefined && v !== ''),
+        )
       : undefined;
 
     const cacheEnabled = options?.cache !== false;
-    const cachePrefix = options?.admin ? 'admin' : 'public';
+    const cachePrefix = base === this.adminBaseUrl ? 'admin' : 'public';
     const cacheKey = `${CACHE_NAMESPACE.CONTENTHUB}:${cachePrefix}:${path}:${cacheKeyHash(cleanParams ?? {})}`;
 
     if (cacheEnabled) {
@@ -134,7 +134,7 @@ export class ContentHubClientService {
     try {
       const { data } = await firstValueFrom(
         this.http.get<T>(url, {
-          headers: this.buildHeaders(requestId),
+          headers: await this.buildHeaders(requestId),
           params: cleanParams,
         }),
       );
@@ -170,6 +170,9 @@ export class ContentHubClientService {
     path: string,
     body?: unknown,
   ): Promise<T> {
+    if (!base) {
+      throw new UnauthorizedException('Content Hub base URL is not configured');
+    }
     const url = `${base}${path}`;
     const requestId = newContentHubRequestId();
 
@@ -178,7 +181,7 @@ export class ContentHubClientService {
         this.http.request<T>({
           method,
           url,
-          headers: this.buildHeaders(requestId),
+          headers: await this.buildHeaders(requestId),
           data: body,
         }),
       );

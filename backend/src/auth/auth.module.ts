@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PassportModule } from '@nestjs/passport';
 import { JwtStrategy } from './jwt.strategy';
@@ -11,6 +11,7 @@ import { AuthController } from './auth.controller';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { CognitoM2mAuthGuard } from './cognito-m2m-auth.guard';
+import { CognitoM2mTokenService } from './cognito-m2m-token.service';
 import { NpiRegistryService } from './npi-registry.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
@@ -18,7 +19,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
 @Module({
   controllers: [AuthController],
   imports: [
-    OutboundSyncModule,
+    forwardRef(() => OutboundSyncModule),
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     PrismaModule,
@@ -32,6 +33,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     JwtAuthGuard,
     OptionalJwtAuthGuard,
     CognitoM2mAuthGuard,
+    CognitoM2mTokenService,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
@@ -52,6 +54,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     JwtAuthGuard,
     OptionalJwtAuthGuard,
     CognitoM2mAuthGuard,
+    CognitoM2mTokenService,
     CognitoService,
     NpiRegistryService,
   ],

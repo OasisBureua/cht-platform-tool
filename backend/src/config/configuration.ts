@@ -33,18 +33,26 @@ export default () => ({
   cognito: {
     userPoolId: process.env.COGNITO_USER_POOL_ID?.trim() || '',
     clientId: process.env.COGNITO_CLIENT_ID?.trim() || '',
-    /** Confidential client allowed for GET /api/export/* (Hub M2M). */
+    /** Confidential client allowed for GET /api/export/* (Hub → platform). */
     m2mExportClientId: process.env.COGNITO_M2M_EXPORT_CLIENT_ID?.trim() || '',
-    /** Space-delimited scope required on M2M access tokens for export. */
     m2mExportScope:
       process.env.COGNITO_M2M_EXPORT_SCOPE?.trim() || 'platform/export.read',
+    m2mCacheClearScope:
+      process.env.COGNITO_M2M_CACHE_CLEAR_SCOPE?.trim() ||
+      'platform/cache.clear',
     region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
-    /** MRR replica region — tokens may carry this region's cognito-idp host in `iss`. */
     replicaRegion:
       process.env.COGNITO_REPLICA_REGION?.trim() || 'us-east-2',
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
     domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
     jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
+    /** Platform → Hub outbound M2M (warm-cached). */
+    m2mPlatformClientId:
+      process.env.COGNITO_M2M_PLATFORM_CLIENT_ID?.trim() || '',
+    m2mPlatformClientSecret:
+      process.env.COGNITO_M2M_PLATFORM_CLIENT_SECRET?.trim() || '',
+    m2mTokenUrl: process.env.COGNITO_M2M_TOKEN_URL?.trim() || '',
+    m2mHubScopes: process.env.COGNITO_M2M_HUB_SCOPES?.trim() || '',
   },
 
   // Idle session TTL in seconds (default 30 min). Slid on getSession activity.
@@ -186,7 +194,7 @@ export default () => ({
       'true',
   },
 
-  // Content Hub: catalog clips/tags/KOLs + HCP upsert
+  // Content Hub: catalog clips/tags/KOLs + HCP upsert (auth: Cognito M2M Bearer)
   contenthub: {
     baseUrl: process.env.CONTENTHUB_BASE_URL || '',
     adminBaseUrl: (() => {
@@ -196,7 +204,6 @@ export default () => ({
       if (!pub) return '';
       return pub.replace(/\/api\/public\/?$/, '/api/admin');
     })(),
-    apiKey: process.env.CONTENTHUB_API_KEY,
   },
 
   // YouTube Data API v3 (for catalog playlists - fallback when Content Hub not configured)
@@ -316,9 +323,9 @@ export default () => ({
     wordpressOnly:
       process.env.CATALOG_WORDPRESS_ONLY?.trim().toLowerCase() !== 'false',
     clipsCacheTtlSeconds: parseInt(
-      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '1800',
+      process.env.CATALOG_CLIPS_CACHE_TTL_SECONDS || '3600',
       10,
-    ), // 30 minutes: public clips / catalog
+    ), // 1 hour: public clips / catalog
     wordpressCacheTtlSeconds: parseInt(
       process.env.CATALOG_WORDPRESS_CACHE_TTL_SECONDS || '300',
       10,
@@ -327,7 +334,7 @@ export default () => ({
 
   redis: {
     url: process.env.REDIS_URL?.trim() || '',
-    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '1800', 10), // 30 minutes
+    ttlSeconds: parseInt(process.env.REDIS_CACHE_TTL_SECONDS || '3600', 10), // 1 hour
   },
 
   internalCache: {

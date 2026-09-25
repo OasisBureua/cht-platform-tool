@@ -65,7 +65,7 @@ export class AdminContentHubController {
   private assertHub(): void {
     if (!this.campaigns.isConfigured()) {
       throw new ServiceUnavailableException(
-        'Content Hub admin API is not configured (CONTENTHUB_ADMIN_BASE_URL / CONTENTHUB_API_KEY)',
+        'Content Hub admin API is not configured (CONTENTHUB_ADMIN_BASE_URL / Cognito M2M)',
       );
     }
   }
@@ -414,7 +414,7 @@ export class AdminContentHubController {
         configured: false,
         reachable: false,
         error:
-          'CONTENTHUB_ADMIN_BASE_URL / CONTENTHUB_API_KEY not configured.',
+          'CONTENTHUB_ADMIN_BASE_URL / Cognito M2M not configured.',
       };
     }
     try {

@@ -81,7 +81,7 @@ cognito_mrr_associate_waf_replica   = true
 # Non-secret app configuration (same pattern as dev.github.tfvars)
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 
-# Redis cache for upstream Content Hub reads (4h TTL in app)
+# Redis cache for upstream Content Hub reads (1h TTL in app)
 enable_elasticache    = true
 elasticache_node_type = "cache.t3.medium"
 

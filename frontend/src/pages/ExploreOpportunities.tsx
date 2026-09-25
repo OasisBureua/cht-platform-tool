@@ -14,9 +14,9 @@ import { webinarsApi } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
-import { catalogApi, type MediaHubClip } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
-import { clipStripeSubtitle } from '../utils/mediaHubClipText';
+import { catalogApi, type ContentHubClip } from '../api/catalog';
+import { getShortClipId, getContentHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
+import { clipStripeSubtitle } from '../utils/contentHubClipText';
 import { surveysApi } from '../api/surveys';
 
 const FALLBACK_IMAGES = {
@@ -171,7 +171,7 @@ export default function ExploreOpportunities() {
     });
 
     const validClips = (clipsData?.items ?? []).filter(
-      (c) => c && (c.id || c.title) && shouldSurfaceCatalogClip(c as MediaHubClip),
+      (c) => c && (c.id || c.title) && shouldSurfaceCatalogClip(c as ContentHubClip),
     );
     validClips.forEach((c) => {
       out.push({
@@ -179,7 +179,7 @@ export default function ExploreOpportunities() {
         id: `clip-${c.id ?? ''}`,
         title: c.title ?? '',
         description: clipStripeSubtitle(c),
-        imageUrl: getMediaHubThumbnail(c) || FALLBACK_IMAGES.clip,
+        imageUrl: getContentHubThumbnail(c) || FALLBACK_IMAGES.clip,
         href: `/app/clip/${getShortClipId(c.id ?? '')}`,
         subtitle: c.doctors?.length ? c.doctors.join(', ') : undefined,
       });

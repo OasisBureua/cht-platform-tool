@@ -6,7 +6,7 @@ import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { APP_CATALOG_PLAYLISTS_BROWSE } from '../../components/navigation/appNavItems';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipDisplaySummary } from '../../utils/contentHubClipText';
 import { WORDPRESS_CATALOG_STALE_MS } from '../../utils/wordpressCatalog';
 import { pushClipView } from '../../lib/analytics';
 

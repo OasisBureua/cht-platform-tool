@@ -168,7 +168,7 @@ When Redis is unavailable:
 
 ## What gets cleared
 
-Only **read-through upstream cache** (24h TTL). This does **not** clear user sessions, payments, or database data.
+Only **read-through upstream cache** (1h TTL). This does **not** clear user sessions, payments, or database data.
 
 | Prefix | Cached data |
 |--------|-------------|
@@ -176,7 +176,7 @@ Only **read-through upstream cache** (24h TTL). This does **not** clear user ses
 | `cht:contenthub:*` | Content Hub KOL network reads |
 | `cht:kol-network:*` | Legacy KOL prefix (cleared together with `contenthub`) |
 
-After a clear, the next request is a cache miss → fresh fetch from upstream → key stored again with a 24h TTL.
+After a clear, the next request is a cache miss → fresh fetch from upstream → key stored again with a 1h TTL.
 
 ---
 

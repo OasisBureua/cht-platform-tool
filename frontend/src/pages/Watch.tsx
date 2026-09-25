@@ -3,18 +3,18 @@ import { Link, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { format, isValid } from 'date-fns';
 import { ArrowRight, Loader2, Play } from 'lucide-react';
-import { catalogApi, type MediaHubClip } from '../api/catalog';
+import { catalogApi, type ContentHubClip } from '../api/catalog';
 import { YouTubePlayer } from '../components/YouTubePlayer';
 import { Button, Chip, chipKind, SectionHead, Thumb } from '../components/ui';
 import { APP_CATALOG_CONVERSATIONS_HUB } from '../components/navigation/appNavItems';
 import { pushClipView } from '../lib/analytics';
 import {
   extractYoutubeVideoIdFromUrl,
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   getShortClipId,
   shouldSurfaceCatalogClip,
 } from '../utils/clipUrl';
-import { clipDisplaySummary } from '../utils/mediaHubClipText';
+import { clipDisplaySummary } from '../utils/contentHubClipText';
 import { doctorLabelFromSlug } from '../utils/doctorLabel';
 import {
   formatWordPressCategoryLabel,
@@ -45,15 +45,15 @@ function prettyDate(iso: string | undefined): string {
 }
 
 /** `brand:` tags are internal bookkeeping and are never shown to a reader. */
-function readerTags(clip: MediaHubClip): string[] {
+function readerTags(clip: ContentHubClip): string[] {
   return (clip.tags ?? []).filter((t) => typeof t === 'string' && !t.startsWith('brand:'));
 }
 
-function clipHref(clip: MediaHubClip): string {
+function clipHref(clip: ContentHubClip): string {
   return `/app/clip/${getShortClipId(clip.id)}`;
 }
 
-function youtubeUrlOf(clip: MediaHubClip): string {
+function youtubeUrlOf(clip: ContentHubClip): string {
   const raw = clip.youtube_url ?? (clip as { youtubeUrl?: string }).youtubeUrl ?? '';
   return typeof raw === 'string' ? raw : '';
 }
@@ -74,7 +74,7 @@ function monogram(label: string): string {
  * timestamps, which were the least useful thing that could occupy the
  * most valuable strip on the page.
  */
-function SessionPlayer({ clip, queue }: { clip: MediaHubClip; queue: MediaHubClip[] }) {
+function SessionPlayer({ clip, queue }: { clip: ContentHubClip; queue: ContentHubClip[] }) {
   const [playing, setPlaying] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -111,7 +111,7 @@ function SessionPlayer({ clip, queue }: { clip: MediaHubClip; queue: MediaHubCli
         ) : (
           <>
             <img
-              src={getMediaHubThumbnail(clip)}
+              src={getContentHubThumbnail(clip)}
               alt=""
               referrerPolicy="no-referrer"
               className="absolute inset-0 size-full object-cover"
@@ -183,7 +183,7 @@ function SessionPlayer({ clip, queue }: { clip: MediaHubClip; queue: MediaHubCli
                   </span>
                   <span className="relative block h-12 w-[5.25rem] shrink-0 overflow-hidden rounded-[6px] bg-ground">
                     <img
-                      src={getMediaHubThumbnail(q)}
+                      src={getContentHubThumbnail(q)}
                       alt=""
                       loading="lazy"
                       referrerPolicy="no-referrer"
@@ -210,7 +210,7 @@ function SessionPlayer({ clip, queue }: { clip: MediaHubClip; queue: MediaHubCli
 
 /** Track card. Tags are spans, not links: the card is already one link,
     and nesting a second inside it is invalid. */
-function CompactSessionCard({ clip }: { clip: MediaHubClip }) {
+function CompactSessionCard({ clip }: { clip: ContentHubClip }) {
   const tags = readerTags(clip).slice(0, 2);
   const durationLabel = formatDuration(clip.duration_seconds);
   return (
@@ -218,7 +218,7 @@ function CompactSessionCard({ clip }: { clip: MediaHubClip }) {
       to={clipHref(clip)}
       className="press lift group flex h-full flex-col gap-4 rounded-[6px] p-4 shadow-card"
     >
-      <Thumb src={getMediaHubThumbnail(clip)} className="aspect-video w-full" />
+      <Thumb src={getContentHubThumbnail(clip)} className="aspect-video w-full" />
       <div className="flex flex-1 flex-col px-1 pb-1">
         <h3 className="display line-clamp-2 text-body-m text-text">{clip.title}</h3>
         {tags.length > 0 ? (
@@ -251,7 +251,7 @@ export default function Watch() {
     error,
   } = useQuery({
     queryKey: ['catalog', 'clip', 'watch', routeClipId],
-    queryFn: async (): Promise<MediaHubClip | null> => {
+    queryFn: async (): Promise<ContentHubClip | null> => {
       if (routeClipId) {
         const direct = await catalogApi.getClip(routeClipId);
         if (direct && shouldSurfaceCatalogClip(direct)) return direct;
@@ -271,8 +271,8 @@ export default function Watch() {
 
   const { data: track = [] } = useQuery({
     queryKey: ['catalog', 'clips', 'watch-track', clip?.id, categorySlug, leadDoctor],
-    queryFn: async (): Promise<MediaHubClip[]> => {
-      const empty = { items: [] as MediaHubClip[], total: 0 };
+    queryFn: async (): Promise<ContentHubClip[]> => {
+      const empty = { items: [] as ContentHubClip[], total: 0 };
       const [byCategory, byDoctor, newest] = await Promise.all([
         categorySlug
           ? catalogApi.getClips({
@@ -288,7 +288,7 @@ export default function Watch() {
         catalogApi.getClips({ sort_by: 'recorded_at', limit: TRACK_LIMIT }),
       ]);
       const seen = new Set<string>([clip?.id ?? '']);
-      const out: MediaHubClip[] = [];
+      const out: ContentHubClip[] = [];
       for (const c of [...byCategory.items, ...byDoctor.items, ...newest.items]) {
         if (seen.has(c.id) || !shouldSurfaceCatalogClip(c)) continue;
         seen.add(c.id);

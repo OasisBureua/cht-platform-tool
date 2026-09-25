@@ -13,29 +13,78 @@ output "client_id" {
   value       = aws_cognito_user_pool_client.cht_web.id
 }
 
+# --- Hub → platform (inbound to Nest) ---
+
+output "m2m_hub_client_id" {
+  description = "cht-contenthub-m2m-{env} client ID (Content Hub → platform export/cache.clear)"
+  value       = aws_cognito_user_pool_client.hub_m2m.id
+}
+
 output "m2m_export_client_id" {
-  description = "cht-content-hub-export confidential client ID (client_credentials)"
-  value       = aws_cognito_user_pool_client.content_hub_export.id
+  description = "Alias of m2m_hub_client_id (compat with COGNITO_M2M_EXPORT_CLIENT_ID)"
+  value       = aws_cognito_user_pool_client.hub_m2m.id
 }
 
 output "m2m_export_scope" {
-  description = "OAuth scope required for GET /api/export/* (space-delimited claim value)"
+  description = "platform/export.read"
   value       = local.m2m_export_scope
 }
 
+output "m2m_cache_clear_scope" {
+  description = "platform/cache.clear"
+  value       = local.m2m_cache_clear_scope
+}
+
+output "m2m_hub_scopes" {
+  description = "Space-delimited scopes on Content Hub's outbound-to-platform client"
+  value       = local.m2m_hub_client_scopes
+}
+
 output "m2m_export_token_url" {
-  description = "Cognito OAuth2 token endpoint for M2M client_credentials"
+  description = "Cognito OAuth2 token endpoint"
   value       = "${local.hosted_ui_base_url}/oauth2/token"
 }
 
+output "m2m_hub_secret_arn" {
+  description = "SM ARN for Content Hub→Platform M2M (cht-{env}-cognito-m2m-contenthub or legacy override)"
+  value       = aws_secretsmanager_secret.m2m_hub.arn
+}
+
+output "m2m_hub_secret_name" {
+  description = "SM name for Content Hub→Platform M2M"
+  value       = aws_secretsmanager_secret.m2m_hub.name
+}
+
 output "m2m_export_secret_arn" {
-  description = "Secrets Manager ARN with Hub M2M client_id, client_secret, token_url, scope"
-  value       = aws_secretsmanager_secret.m2m_export.arn
+  description = "Alias of m2m_hub_secret_arn"
+  value       = aws_secretsmanager_secret.m2m_hub.arn
 }
 
 output "m2m_export_secret_name" {
-  description = "Secrets Manager name for Hub M2M credentials"
-  value       = aws_secretsmanager_secret.m2m_export.name
+  description = "Alias of m2m_hub_secret_name"
+  value       = aws_secretsmanager_secret.m2m_hub.name
+}
+
+# --- Platform → Hub (outbound from Nest) ---
+
+output "m2m_platform_client_id" {
+  description = "cht-platform-m2m-{env} client ID (null if enable_platform_outbound_m2m=false)"
+  value       = var.enable_platform_outbound_m2m ? aws_cognito_user_pool_client.platform_m2m[0].id : null
+}
+
+output "m2m_platform_secret_arn" {
+  description = "SM ARN cht-{env}-cognito-m2m-platform"
+  value       = var.enable_platform_outbound_m2m ? aws_secretsmanager_secret.m2m_platform[0].arn : null
+}
+
+output "m2m_platform_secret_name" {
+  description = "SM name cht-{env}-cognito-m2m-platform"
+  value       = var.enable_platform_outbound_m2m ? aws_secretsmanager_secret.m2m_platform[0].name : null
+}
+
+output "m2m_platform_hub_scopes" {
+  description = "hub/… scopes on platform outbound client"
+  value       = var.enable_platform_outbound_m2m ? join(" ", var.platform_outbound_hub_scopes) : null
 }
 
 output "hosted_ui_base_url" {

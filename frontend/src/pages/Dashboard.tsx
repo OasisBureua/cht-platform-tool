@@ -24,9 +24,9 @@ import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { surveysApi } from '../api/surveys';
 import { dashboardApi } from '../api/dashboard';
 import { useAuth } from '../contexts/AuthContext';
-import { catalogApi, type MediaHubClip, type MediaHubTags, type CatalogItem } from '../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
-import { clipStripeSubtitle } from '../utils/mediaHubClipText';
+import { catalogApi, type ContentHubClip, type ContentHubTags, type CatalogItem } from '../api/catalog';
+import { getShortClipId, getContentHubThumbnail, shouldSurfaceCatalogClip } from '../utils/clipUrl';
+import { clipStripeSubtitle } from '../utils/contentHubClipText';
 import { ConversationRow, StripCard, StripRowLoading } from '../components/home/ConversationRow';
 import {
   APP_CATALOG_CLIPS_GRID,
@@ -72,7 +72,7 @@ const QUICK_START_ACTIONS = [
   },
 ];
 
-function flattenTags(tags: MediaHubTags): { value: string; label: string }[] {
+function flattenTags(tags: ContentHubTags): { value: string; label: string }[] {
   const out: { value: string; label: string }[] = [];
   const seen = new Set<string>();
   for (const [, values] of Object.entries(tags)) {
@@ -107,7 +107,7 @@ function getNextUpcomingWebinar(webinars: WebinarItem[]): WebinarItem | null {
   )[0];
 }
 
-function clipMetaString(c: MediaHubClip): string {
+function clipMetaString(c: ContentHubClip): string {
   return clipStripeSubtitle(c) || '';
 }
 
@@ -216,7 +216,7 @@ export default function Dashboard() {
   });
 
   const tagOptions = useMemo(() => flattenTags(tags), [tags]);
-  const useMediaHub = tagOptions.length > 0;
+  const useContentHub = tagOptions.length > 0;
   const topicTag = useMemo(
     () => findTagValue(tagOptions, ['her2', 'tnbc', 'cdk4', 'breast', 'egfr']),
     [tagOptions]
@@ -230,7 +230,7 @@ export default function Dashboard() {
   const { data: recentData, isLoading: recentLoading } = useQuery({
     queryKey: ['catalog', 'clips', 'dashboard', 'recent'],
     queryFn: () => catalogApi.getClips({ limit: CLIP_LIMIT, sort_by: 'recent' }),
-    enabled: useMediaHub,
+    enabled: useContentHub,
     staleTime: 2 * 60 * 1000,
   });
 
@@ -238,14 +238,14 @@ export default function Dashboard() {
     queryKey: ['catalog', 'clips', 'dashboard', 'topic', topicTag],
     queryFn: () =>
       catalogApi.getClips({ tag: topicTag!, limit: CLIP_LIMIT, sort_by: 'recent' }),
-    enabled: useMediaHub && !!topicTag,
+    enabled: useContentHub && !!topicTag,
     staleTime: 2 * 60 * 1000,
   });
 
   const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
-    enabled: useMediaHub,
+    enabled: useContentHub,
     staleTime: 10 * 60 * 1000,
   });
 
@@ -272,7 +272,7 @@ export default function Dashboard() {
   const playlistStrip = (playlists as CatalogItem[]).slice(0, 10);
 
   const isLoading =
-    webinarsLoading || (useMediaHub && (recentLoading || playlistsLoading || (!!topicTag && topicLoading)));
+    webinarsLoading || (useContentHub && (recentLoading || playlistsLoading || (!!topicTag && topicLoading)));
 
   const spotlightSlides = useMemo((): SpotlightSlide[] => {
     const slides: SpotlightSlide[] = [];
@@ -289,7 +289,7 @@ export default function Dashboard() {
         eyebrow: 'Featured conversation',
         title: c.title,
         description: clipMetaString(c) || 'Watch this newly released clinical conversation.',
-        imageUrl: getMediaHubThumbnail(c),
+        imageUrl: getContentHubThumbnail(c),
         thumbTrackKey: `clip:${c.id}`,
         primaryHref: `/app/clip/${getShortClipId(c.id)}`,
         secondaryHref: APP_CATALOG_CLIPS_GRID,
@@ -788,7 +788,7 @@ export default function Dashboard() {
         </div>
       </section>
 
-      {useMediaHub ? (
+      {useContentHub ? (
         <div className="space-y-10">
           {isLoading ? (
             <ConversationRow title="Loading catalog" seeAllHref={APP_CATALOG_CLIPS_GRID}>
@@ -809,7 +809,7 @@ export default function Dashboard() {
                       onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
-                      imageUrl={getMediaHubThumbnail(c)}
+                      imageUrl={getContentHubThumbnail(c)}
                       description={clipMetaString(c)}
                     />
                   ))}
@@ -838,7 +838,7 @@ export default function Dashboard() {
                       onThumbnailError={() => markCarouselThumbBroken(`clip:${c.id}`)}
                       to={`/app/clip/${getShortClipId(c.id)}`}
                       title={c.title}
-                      imageUrl={getMediaHubThumbnail(c)}
+                      imageUrl={getContentHubThumbnail(c)}
                       description={clipMetaString(c)}
                     />
                   ))}

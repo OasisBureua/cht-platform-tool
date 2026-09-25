@@ -252,6 +252,7 @@ module "s3_session_assets" {
     ],
     [for a in var.extra_cloudfront_aliases : "https://${a}"],
   ))
+  vtt_object_ingest_lambda_arn = var.vtt_object_ingest_lambda_arn
 }
 
 # ============================================
@@ -351,10 +352,11 @@ module "iam" {
 
   project     = var.project
   environment = var.environment
-  secrets_arns = [
+  secrets_arns = compact([
     module.secrets.database_secret_arn,
-    module.secrets.app_secrets_arn
-  ]
+    module.secrets.app_secrets_arn,
+    var.enable_cognito_pools && var.enable_cognito_platform_outbound_m2m ? module.cognito[0].m2m_platform_secret_arn : "",
+  ])
   kms_key_arns = compact([
     module.kms.secrets_kms_key_arn,
     module.kms.sqs_kms_key_arn,
@@ -446,12 +448,13 @@ module "ecs_backend" {
   sqs_cme_queue_url              = module.sqs.cme_queue_url
   session_assets_s3_bucket       = module.s3_session_assets.bucket_id
   session_assets_public_url_base = module.s3_session_assets.public_url_base
-  cognito_user_pool_id           = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
-  cognito_client_id              = var.enable_cognito_pools ? module.cognito[0].client_id : ""
-  cognito_m2m_export_client_id   = var.enable_cognito_pools ? module.cognito[0].m2m_export_client_id : ""
-  cognito_hosted_ui_base_url     = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
-  cognito_jwks_uri               = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
-  cognito_region                 = "us-east-1"
+  cognito_user_pool_id             = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
+  cognito_client_id                = var.enable_cognito_pools ? module.cognito[0].client_id : ""
+  cognito_m2m_export_client_id     = var.enable_cognito_pools ? module.cognito[0].m2m_export_client_id : ""
+  cognito_m2m_platform_secret_arn  = var.enable_cognito_pools && var.enable_cognito_platform_outbound_m2m ? module.cognito[0].m2m_platform_secret_arn : ""
+  cognito_hosted_ui_base_url       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
+  cognito_jwks_uri                 = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""
+  cognito_region                   = "us-east-1"
   recaptcha_min_score            = var.recaptcha_min_score
   redis_url                      = local.elasticache_enabled ? module.elasticache[0].redis_url : ""
   appconfig_application          = module.appconfig.application_name
@@ -649,6 +652,11 @@ module "cognito" {
   enable_multi_region_replication = var.enable_cognito_mrr
   replica_region                  = var.cognito_mrr_replica_region
   associate_waf_with_replica      = var.cognito_mrr_associate_waf_replica
+
+  # Platform → Hub M2M (hub RS must already exist on this pool; we do not create it)
+  enable_platform_outbound_m2m = var.enable_cognito_platform_outbound_m2m
+  platform_outbound_hub_scopes = var.cognito_platform_outbound_hub_scopes
+  m2m_hub_secret_name          = var.cognito_m2m_hub_secret_name
 }
 
 # ============================================

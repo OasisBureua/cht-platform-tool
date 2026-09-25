@@ -1,6 +1,6 @@
 import { Controller, Get, Logger, Param, Query } from '@nestjs/common';
 import { CatalogService, CatalogItem } from './catalog.service';
-import { MediaHubService } from './mediahub.service';
+import { ContentHubCatalogService } from './contenthub-catalog.service';
 
 @Controller('catalog')
 export class CatalogController {
@@ -8,12 +8,12 @@ export class CatalogController {
 
   constructor(
     private readonly catalogService: CatalogService,
-    private readonly mediahub: MediaHubService,
+    private readonly contentHub: ContentHubCatalogService,
   ) {}
 
   /**
    * GET /api/catalog
-   * Public endpoint – returns catalog items from MediaHub (when configured),
+   * Public endpoint – returns catalog items from Content Hub (when configured),
    * YouTube playlists, or database programs.
    */
   @Get()
@@ -24,20 +24,20 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/tags
-   * MediaHub: All tags grouped by category (doctor, biomarker, drug, trial, stage, topic, brand).
+   * Content Hub: All tags grouped by category (doctor, biomarker, drug, trial, stage, topic, brand).
    * On 401 (Invalid API key), returns {} so frontend can fall back to YouTube playlists.
    */
   @Get('tags')
   async getTags() {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.contentHub.isConfigured()) {
       return {};
     }
     try {
-      return await this.mediahub.getTags();
+      return await this.contentHub.getTags();
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
+      if (status === 401 || this.contentHub.usesContentHubCatalog()) {
         this.logger.warn(
           '[Catalog] /tags unavailable: returning empty tags.',
         );
@@ -50,17 +50,17 @@ export class CatalogController {
   /**
    * GET /api/catalog/clips
    *
-   * Proxies MediaHub /api/public/clips. Supports the full query
+   * Proxies Content Hub /api/public/clips. Supports the full query
    * surface including Phase 2 additions (sort_by=recorded_at,
    * dedup_by=shoot, per_shoot_cap=N) from the 2026-05-17 video-
    * presentation design doc.
    *
-   * Platform default: 'youtube' (set in MediaHubService). To include
+   * Platform default: 'youtube' (set in ContentHubCatalogService). To include
    * LinkedIn/X/etc, pass platform='' or platform='linkedin,x'.
    * Eliminates the audit's LinkedIn-text-post-leak into video
    * carousels.
    *
-   * On 401 from MediaHub: returns empty so the frontend can render
+   * On 401 from Content Hub: returns empty so the frontend can render
    * an empty state.
    */
   @Get('clips')
@@ -78,7 +78,7 @@ export class CatalogController {
     @Query('has_wordpress') hasWordpress?: string,
     @Query('wp_category') wpCategory?: string,
   ) {
-    if (!this.mediahub.isClipsConfigured()) {
+    if (!this.contentHub.isClipsConfigured()) {
       return { items: [], total: 0 };
     }
     try {
@@ -88,7 +88,7 @@ export class CatalogController {
           : hasWordpress === 'false'
             ? false
             : undefined;
-      return await this.mediahub.getClips({
+      return await this.contentHub.getClips({
         q,
         tag,
         doctor,
@@ -106,7 +106,7 @@ export class CatalogController {
         ?.status;
       if (status === 401) {
         this.logger.warn(
-          '[Catalog] Content Hub 401 Invalid API key - returning empty clips. Update contenthub_api_key in Secrets Manager.',
+          '[Catalog] Content Hub 401 Unauthorized - check Cognito M2M scopes / platform outbound client.',
         );
         return { items: [], total: 0 };
       }
@@ -121,11 +121,11 @@ export class CatalogController {
    */
   @Get('wordpress/categories')
   async getWordPressCategories(@Query('fresh') fresh?: string) {
-    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getWordPressCategories({
+      return await this.contentHub.getWordPressCategories({
         skipCache: fresh === '1' || fresh === 'true',
       });
     } catch (err: unknown) {
@@ -143,11 +143,11 @@ export class CatalogController {
 
   @Get('wordpress/series')
   async getWordPressSeries(@Query('fresh') fresh?: string) {
-    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getWordPressSeries({
+      return await this.contentHub.getWordPressSeries({
         skipCache: fresh === '1' || fresh === 'true',
       });
     } catch (err: unknown) {
@@ -168,11 +168,11 @@ export class CatalogController {
     @Param('slug') slug: string,
     @Query('fresh') fresh?: string,
   ) {
-    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
       return null;
     }
     try {
-      return await this.mediahub.getWordPressSeriesDetail(slug, {
+      return await this.contentHub.getWordPressSeriesDetail(slug, {
         skipCache: fresh === '1' || fresh === 'true',
       });
     } catch (err: unknown) {
@@ -185,11 +185,11 @@ export class CatalogController {
 
   @Get('wordpress/tags')
   async getWordPressTags(@Query('fresh') fresh?: string) {
-    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getWordPressTags({
+      return await this.contentHub.getWordPressTags({
         skipCache: fresh === '1' || fresh === 'true',
       });
     } catch (err: unknown) {
@@ -217,11 +217,11 @@ export class CatalogController {
     @Query('category') category?: string,
     @Query('fresh') fresh?: string,
   ) {
-    if (!this.mediahub.isConfigured() || !this.mediahub.usesContentHubCatalog()) {
+    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getWordPressPosts({
+      return await this.contentHub.getWordPressPosts({
         limit: limit ? parseInt(limit, 10) : undefined,
         offset: offset ? parseInt(offset, 10) : undefined,
         q,
@@ -243,49 +243,49 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/clips/:id
-   * MediaHub: Single clip detail.
+   * Content Hub: Single clip detail.
    * Accepts full ID (e.g. official:youtube:E1tTwDQgMBc) or short YouTube video ID (e.g. E1tTwDQgMBc).
-   * Returns null (200) instead of throwing when the clip is not found in MediaHub, so the
+   * Returns null (200) instead of throwing when the clip is not found in Content Hub, so the
    * frontend can show "not available" placeholders rather than an error page.
    */
   @Get('clips/:id')
   async getClip(@Param('id') id: string) {
-    if (!this.mediahub.isClipsConfigured()) {
+    if (!this.contentHub.isClipsConfigured()) {
       return null;
     }
     // If id looks like a short YouTube video ID (11 alphanumeric chars, no colons), try official:youtube:{id}
     const shortIdMatch = /^[a-zA-Z0-9_-]{11}$/.exec(id);
     if (shortIdMatch && !id.includes(':')) {
       try {
-        return await this.mediahub.getClip(`official:youtube:${id}`);
+        return await this.contentHub.getClip(`official:youtube:${id}`);
       } catch {
         // Fall through to try raw id
       }
     }
     try {
-      return await this.mediahub.getClip(id);
+      return await this.contentHub.getClip(id);
     } catch {
-      // Clip not found in MediaHub: return null so frontend shows "not available"
+      // Clip not found in Content Hub: return null so frontend shows "not available"
       return null;
     }
   }
 
   /**
    * GET /api/catalog/doctors
-   * MediaHub: Doctor profiles with slug, shoot count, post count, views/likes.
+   * Content Hub: Doctor profiles with slug, shoot count, post count, views/likes.
    * On 401 (Invalid API key), returns [] so frontend can fall back to YouTube playlists.
    */
   @Get('doctors')
   async getDoctors() {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.contentHub.isConfigured()) {
       return [];
     }
     try {
-      return await this.mediahub.getDoctors();
+      return await this.contentHub.getDoctors();
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
-      if (status === 401 || this.mediahub.usesContentHubCatalog()) {
+      if (status === 401 || this.contentHub.usesContentHubCatalog()) {
         this.logger.warn(
           '[Catalog] /doctors unavailable: returning empty doctors.',
         );
@@ -297,19 +297,19 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/doctors/:slug
-   * MediaHub: Doctor detail with all their clips.
+   * Content Hub: Doctor detail with all their clips.
    */
   @Get('doctors/:slug')
   async getDoctor(@Param('slug') slug: string) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.contentHub.isConfigured()) {
       return null;
     }
-    return this.mediahub.getDoctor(slug);
+    return this.contentHub.getDoctor(slug);
   }
 
   /**
    * GET /api/catalog/search
-   * MediaHub: Full-text search (alias for clips with q).
+   * Content Hub: Full-text search (alias for clips with q).
    */
   @Get('search')
   async search(
@@ -317,10 +317,10 @@ export class CatalogController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    if (!this.mediahub.isConfigured() || !q) {
+    if (!this.contentHub.isConfigured() || !q) {
       return { items: [], total: 0 };
     }
-    return this.mediahub.search(q, {
+    return this.contentHub.search(q, {
       limit: limit ? parseInt(limit, 10) : undefined,
       offset: offset ? parseInt(offset, 10) : undefined,
     });
@@ -328,7 +328,7 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/transcripts/:shootId
-   * Legacy MediaHub transcript endpoint removed; returns null so clients show unavailable.
+   * Legacy Content Hub transcript endpoint removed; returns null so clients show unavailable.
    */
   @Get('transcripts/:shootId')
   async getTranscript(@Param('shootId') _shootId: string) {
@@ -337,7 +337,7 @@ export class CatalogController {
 
   /**
    * GET /api/catalog/random-videos?count=6
-   * Home carousel: HER2+ catalog clips (ContentHub/MediaHub), with YouTube playlist fallback.
+   * Home carousel: HER2+ catalog clips (ContentHub/Content Hub), with YouTube playlist fallback.
    */
   @Get('random-videos')
   async getRandomVideos(@Query('count') count?: string) {
@@ -368,8 +368,8 @@ export class CatalogController {
   @Get('playlists/:id')
   async getPlaylist(@Param('id') id: string) {
     const looksLikeYouTubePlaylistId = /^PL[A-Za-z0-9_-]{16,}$/.test(id);
-    if (!looksLikeYouTubePlaylistId && this.mediahub.usesContentHubCatalog()) {
-      const series = await this.mediahub.getWordPressSeriesDetail(id);
+    if (!looksLikeYouTubePlaylistId && this.contentHub.usesContentHubCatalog()) {
+      const series = await this.contentHub.getWordPressSeriesDetail(id);
       if (series) {
         const postIdSet = new Set(series.post_ids);
         // Series slugs look like "gadi-yan" / "bardia-callahan" / "dr-joyce-oshaughnessy" —
@@ -381,7 +381,7 @@ export class CatalogController {
           .map((t) => t.trim().toLowerCase())
           .filter((t) => t.length >= 3 && t !== 'dr' && t !== 'the');
 
-        const clipsPage = await this.mediahub.getClips({
+        const clipsPage = await this.contentHub.getClips({
           limit: 200,
           has_wordpress: true,
         });
@@ -451,14 +451,14 @@ export class CatalogController {
   /**
    * GET /api/catalog/playlists-tags
    *
-   * Proxies MediaHub /api/public/playlists. Returns the curator-set
+   * Proxies Content Hub /api/public/playlists. Returns the curator-set
    * tag/lane overlay for YouTube playlists. Frontend joins this client-
    * side with the YouTube-sourced playlist metadata from `/playlists`.
    *
    * Replaces the brittle `_generated-catalog-playlists.json` fuzzy-
    * title-match approach (see 2026-05-16 video-presentation audit).
    *
-   * On 401 from MediaHub: returns empty so frontend can degrade
+   * On 401 from Content Hub: returns empty so frontend can degrade
    * gracefully (renders as if no playlist has a curator tag yet).
    */
   @Get('playlists-tags')
@@ -469,11 +469,11 @@ export class CatalogController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    if (!this.mediahub.isConfigured()) {
+    if (!this.contentHub.isConfigured()) {
       return { items: [], total: 0 };
     }
     try {
-      return await this.mediahub.getPlaylistTags({
+      return await this.contentHub.getPlaylistTags({
         tag,
         lane,
         limit: limit ? parseInt(limit, 10) : undefined,
@@ -484,7 +484,7 @@ export class CatalogController {
         ?.status;
       if (status === 401) {
         this.logger.warn(
-          '[Catalog] MediaHub 401 on /playlists-tags - returning empty.',
+          '[Catalog] Content Hub 401 on /playlists-tags - returning empty.',
         );
         return { items: [], total: 0 };
       }

@@ -3,7 +3,7 @@ import { isAxiosError } from 'axios';
 import { ContentHubClientService } from '../content-hub/content-hub-client.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 
-export interface MediaHubHCPUpsertInput {
+export interface ContentHubHCPUpsertInput {
   npi: string;
   firstName: string;
   lastName: string;
@@ -16,13 +16,13 @@ export interface MediaHubHCPUpsertInput {
 }
 
 @Injectable()
-export class MediaHubSyncService {
-  private readonly logger = new Logger(MediaHubSyncService.name);
+export class ContentHubSyncService {
+  private readonly logger = new Logger(ContentHubSyncService.name);
 
   constructor(private readonly contentHub: ContentHubClientService) {
     if (!this.contentHub.isConfigured()) {
       this.logger.warn(
-        'CONTENTHUB_API_KEY not configured, HCP upsert disabled',
+        'Content Hub M2M not configured, HCP upsert disabled',
       );
     }
   }
@@ -35,7 +35,7 @@ export class MediaHubSyncService {
    * Upsert HCP roster to Content Hub when configured.
    * Returns true on success so registration is not blocked by sync failures.
    */
-  async upsertHCP(input: MediaHubHCPUpsertInput): Promise<boolean> {
+  async upsertHCP(input: ContentHubHCPUpsertInput): Promise<boolean> {
     const npi = (input.npi || '').replace(/\D/g, '');
     if (npi.length !== 10) {
       this.logger.debug(

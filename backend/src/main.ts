@@ -179,19 +179,19 @@ async function bootstrap() {
     process.env.FRONTEND_URL ||
     process.env.API_BASE_URL ||
     `http://localhost:${port}`;
-  logger.log(`🚀 Application is running on: ${baseUrl}`);
-  logger.log(`📡 API base: ${baseUrl}/api`);
+  logger.log(`Application is running on: ${baseUrl}`);
+  logger.log(`API base: ${baseUrl}/api`);
   logger.log(
-    `🔐 Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
+    `Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
   );
-  logger.log(`📊 Health check: ${baseUrl}/health`);
-  logger.log(`🔍 Health ready: ${baseUrl}/health/ready`);
-  logger.log(`💚 Health live: ${baseUrl}/health/live`);
-  logger.log(`📋 Health detail: ${baseUrl}/health/detail`);
-  logger.log(`ℹ️  Actuator info: ${baseUrl}/actuator/info`);
-  logger.log(`📦 Version: ${process.env.IMAGE_TAG || process.env.APP_VERSION || 'local'}`);
-  logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.log(`📖 Swagger docs: ${baseUrl}/api/docs`);
+  logger.log(`Health check: ${baseUrl}/health`);
+  logger.log(`Health ready: ${baseUrl}/health/ready`);
+  logger.log(`Health live: ${baseUrl}/health/live`);
+  logger.log(`Health detail: ${baseUrl}/health/detail`);
+  logger.log(`Actuator info: ${baseUrl}/actuator/info`);
+  logger.log(`Version: ${process.env.IMAGE_TAG || process.env.APP_VERSION || 'local'}`);
+  logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`Swagger docs: ${baseUrl}/api/docs`);
 }
 
 bootstrap();

@@ -1,4 +1,4 @@
-import { MediaHubService } from './mediahub.service';
+import { ContentHubCatalogService } from './contenthub-catalog.service';
 
 /**
  * SCRUM-148: `resolveDoctorTagFromSlug` must convert lowercase KOL slugs
@@ -6,10 +6,10 @@ import { MediaHubService } from './mediahub.service';
  * `doctor:*` tags. Preserves apostrophes + hyphens. Passes through already
  * capitalized input for backwards-compat.
  */
-describe('MediaHubService.resolveDoctorTagFromSlug', () => {
+describe('ContentHubCatalogService.resolveDoctorTagFromSlug', () => {
   function buildService(mockKols: Record<string, { name: string } | Error>) {
     // Minimal instance: only stub the getKol dependency.
-    const svc = Object.create(MediaHubService.prototype) as MediaHubService;
+    const svc = Object.create(ContentHubCatalogService.prototype) as ContentHubCatalogService;
     (
       svc as unknown as { getKol: (slug: string) => Promise<{ name: string }> }
     ).getKol = (slug: string) => {

@@ -173,6 +173,21 @@ output "cognito_m2m_export_secret_name" {
   value       = var.enable_cognito_pools ? module.cognito[0].m2m_export_secret_name : null
 }
 
+output "cognito_m2m_platform_client_id" {
+  description = "cht-platform-m2m-{env} client ID (Platform → Hub)"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_platform_client_id : null
+}
+
+output "cognito_m2m_platform_secret_name" {
+  description = "SM name cht-{env}-cognito-m2m-platform"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_platform_secret_name : null
+}
+
+output "cognito_m2m_platform_secret_arn" {
+  description = "SM ARN for Platform → Hub M2M credentials"
+  value       = var.enable_cognito_pools ? module.cognito[0].m2m_platform_secret_arn : null
+}
+
 output "cognito_hosted_ui_base_url" {
   description = "Cognito Hosted UI base URL (used for Google OAuth)"
   value       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : null

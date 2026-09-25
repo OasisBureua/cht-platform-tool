@@ -169,3 +169,23 @@ resource "aws_s3_bucket_replication_configuration" "session_assets" {
 
   depends_on = [aws_s3_bucket_versioning.session_assets]
 }
+
+# ============================================
+# Hub VTT ingest (CPR-29): ObjectCreated on zoom-recordings/*.vtt
+#
+# Platform owns the bucket notification only. Hub owns the Lambda and must
+# grant s3.amazonaws.com InvokeFunction (platform CI cannot lambda:AddPermission
+# on contenthub-* functions). See docs/engineering/zoom-vtt-s3-notify.md.
+# ============================================
+resource "aws_s3_bucket_notification" "vtt_object_ingest" {
+  count = var.vtt_object_ingest_lambda_arn != "" ? 1 : 0
+
+  bucket = aws_s3_bucket.session_assets.id
+
+  lambda_function {
+    lambda_function_arn = var.vtt_object_ingest_lambda_arn
+    events              = ["s3:ObjectCreated:*"]
+    filter_prefix       = "zoom-recordings/"
+    filter_suffix       = ".vtt"
+  }
+}

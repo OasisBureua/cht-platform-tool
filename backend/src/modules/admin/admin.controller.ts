@@ -211,8 +211,9 @@ export class AdminController {
   getAuthStatus() {
     const cognitoPoolId =
       this.config.get<string>('cognito.userPoolId')?.trim() || '';
-    const contenthubApiKey =
-      this.config.get<string>('contenthub.apiKey')?.trim() || '';
+    const m2mConfigured = !!(
+      this.config.get<string>('cognito.m2mPlatformClientId')?.trim() || ''
+    );
     const contenthubBaseUrl =
       this.config.get<string>('contenthub.baseUrl')?.trim() || '';
 
@@ -224,8 +225,8 @@ export class AdminController {
       },
       contenthubIntegration: {
         contenthubBaseUrl,
-        apiKeyConfigured: !!contenthubApiKey,
-        hcpUpsertEnabled: !!contenthubApiKey,
+        m2mConfigured,
+        hcpUpsertEnabled: !!(contenthubBaseUrl && m2mConfigured),
       },
     };
   }

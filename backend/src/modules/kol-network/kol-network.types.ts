@@ -69,8 +69,3 @@ export type KolListQuery = {
   limit?: number;
   offset?: number;
 };
-
-/** @deprecated Use PublicKol, kept for MediaHub EC2 fallback typing. */
-export type MediaHubKol = PublicKol;
-export type MediaHubKolList = PublicKolList;
-export type MediaHubKolPublicationList = PublicKolPublicationList;

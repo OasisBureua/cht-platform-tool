@@ -27,6 +27,11 @@ export const validationSchema = Joi.object({
   COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_EXPORT_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_EXPORT_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_CACHE_CLEAR_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_PLATFORM_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_PLATFORM_CLIENT_SECRET: Joi.string().allow('').optional(),
+  COGNITO_M2M_TOKEN_URL: Joi.string().allow('').optional(),
+  COGNITO_M2M_HUB_SCOPES: Joi.string().allow('').optional(),
   COGNITO_REGION: Joi.string().allow('').optional(),
   COGNITO_HOSTED_UI_BASE_URL: Joi.string().allow('').optional(),
   COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),
@@ -83,7 +88,6 @@ export const validationSchema = Joi.object({
   // Content Hub (catalog clips/tags/KOLs + HCP upsert)
   CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
   CONTENTHUB_ADMIN_BASE_URL: Joi.string().allow('').optional(),
-  CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
 
   // YouTube (optional – for catalog playlists, fallback when Content Hub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),

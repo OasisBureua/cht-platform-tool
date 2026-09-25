@@ -4,7 +4,7 @@ import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisCacheService } from '../../cache/redis-cache.service';
 import { cacheKeyHash } from '../../cache/cache-key.util';
-import { MediaHubService, type MediaHubClip } from './mediahub.service';
+import { ContentHubCatalogService, type ContentHubClip } from './contenthub-catalog.service';
 import { firstValueFrom } from 'rxjs';
 import {
   isLikelyYouTubeShort,
@@ -85,9 +85,9 @@ export class CatalogService implements OnModuleInit {
   private readonly youtubeBase = 'https://www.googleapis.com/youtube/v3';
 
   onModuleInit() {
-    if (this.mediahub.isConfigured()) {
+    if (this.contentHub.isConfigured()) {
       this.logger.log(
-        'MediaHub catalog: configured (clips, tags, doctors, search)',
+        'Content Hub catalog: configured (clips, tags, doctors, search)',
       );
     } else {
       const apiKey = this.config.get<string>('youtube.apiKey');
@@ -99,7 +99,7 @@ export class CatalogService implements OnModuleInit {
         );
       } else {
         this.logger.log(
-          `Catalog: MediaHub and YouTube not configured. Using DB programs.`,
+          `Catalog: Content Hub and YouTube not configured. Using DB programs.`,
         );
       }
     }
@@ -109,12 +109,12 @@ export class CatalogService implements OnModuleInit {
     private config: ConfigService,
     private http: HttpService,
     private prisma: PrismaService,
-    private mediahub: MediaHubService,
+    private contentHub: ContentHubCatalogService,
     private cache: RedisCacheService,
   ) {}
 
-  /** Catalog YouTube upstream cache: 30m (matches MediaHub / Redis defaults). */
-  private readonly youtubeCacheTtlSeconds = 1_800;
+  /** Catalog YouTube upstream cache: 1h (matches Content Hub / Redis defaults). */
+  private readonly youtubeCacheTtlSeconds = 3_600;
 
   private async cachedYouTube<T>(
     key: string,
@@ -141,22 +141,22 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
-   * Get catalog items from MediaHub (when configured), YouTube playlists, or DB programs.
+   * Get catalog items from Content Hub (when configured), YouTube playlists, or DB programs.
    */
   async getCatalogItems(): Promise<CatalogItem[]> {
-    if (this.mediahub.isConfigured()) {
+    if (this.contentHub.isConfigured()) {
       try {
-        const { items } = await this.mediahub.getClips({ limit: 50 });
+        const { items } = await this.contentHub.getClips({ limit: 50 });
         const catalogItems = (items || []).map((c) =>
-          this.mapMediaHubClipToCatalogItem(c),
+          this.mapContentHubClipToCatalogItem(c),
         );
         this.logger.log(
-          `MediaHub catalog: fetched ${catalogItems.length} clips`,
+          `Content Hub catalog: fetched ${catalogItems.length} clips`,
         );
         return catalogItems;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`MediaHub API failed: ${msg}. Falling back.`);
+        this.logger.warn(`Content Hub API failed: ${msg}. Falling back.`);
       }
     }
 
@@ -181,7 +181,7 @@ export class CatalogService implements OnModuleInit {
     return this.fetchFromPrograms();
   }
 
-  private mapMediaHubClipToCatalogItem(clip: MediaHubClip): CatalogItem {
+  private mapContentHubClipToCatalogItem(clip: ContentHubClip): CatalogItem {
     const vidMatch = clip.youtube_url?.match(
       /(?:v=|\/)([a-zA-Z0-9_-]{11})(?:\?|&|$)/,
     );
@@ -326,14 +326,14 @@ export class CatalogService implements OnModuleInit {
   }
 
   /**
-   * Home carousel videos. Prefer ContentHub/MediaHub clips tagged biomarker:HER2+
+   * Home carousel videos. Prefer Content Hub clips tagged biomarker:HER2+
    * (WordPress-backed when available). Fall back to YouTube playlist sampling only
    * when the catalog is empty/unavailable, avoids 404 spam from stale playlist IDs.
    */
   async getRandomVideos(count = 6): Promise<PlaylistVideo[]> {
     const n = Number.isFinite(count) && count > 0 ? Math.min(count, 24) : 6;
 
-    if (this.mediahub.isConfigured()) {
+    if (this.contentHub.isConfigured()) {
       try {
         const fromCatalog = await this.getRandomVideosFromHer2Catalog(n);
         if (fromCatalog.length > 0) return fromCatalog;
@@ -351,8 +351,8 @@ export class CatalogService implements OnModuleInit {
     return this.getRandomVideosFromYouTubePlaylists(n);
   }
 
-  /** Map a MediaHub/ContentHub clip into the home-carousel video shape. */
-  private mapMediaHubClipToPlaylistVideo(clip: MediaHubClip): PlaylistVideo | null {
+  /** Map a Content Hub clip into the home-carousel video shape. */
+  private mapContentHubClipToPlaylistVideo(clip: ContentHubClip): PlaylistVideo | null {
     const youtubeUrl = (clip.youtube_url || '').trim();
     if (!youtubeUrl) return null;
     const vidMatch = youtubeUrl.match(
@@ -380,26 +380,26 @@ export class CatalogService implements OnModuleInit {
     // Fetch a larger pool, then shuffle per request so the carousel rotates.
     // getClips already Redis-caches the upstream list.
     const poolLimit = Math.max(count * 8, 48);
-    const { items } = await this.mediahub.getClips({
+    const { items } = await this.contentHub.getClips({
       tag: 'biomarker:HER2+',
       sort_by: 'recorded_at',
       limit: poolLimit,
       has_wordpress: true,
     });
     const mapped = (items || [])
-      .map((c) => this.mapMediaHubClipToPlaylistVideo(c))
+      .map((c) => this.mapContentHubClipToPlaylistVideo(c))
       .filter((v): v is PlaylistVideo => v != null);
 
     if (mapped.length === 0) {
       // Retry without WP filter (same pattern as other catalog paths on empty join).
-      const retry = await this.mediahub.getClips({
+      const retry = await this.contentHub.getClips({
         tag: 'biomarker:HER2+',
         sort_by: 'recorded_at',
         limit: poolLimit,
         has_wordpress: false,
       });
       const retryMapped = (retry.items || [])
-        .map((c) => this.mapMediaHubClipToPlaylistVideo(c))
+        .map((c) => this.mapContentHubClipToPlaylistVideo(c))
         .filter((v): v is PlaylistVideo => v != null);
       return [...retryMapped].sort(() => Math.random() - 0.5).slice(0, count);
     }

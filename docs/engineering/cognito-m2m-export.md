@@ -4,20 +4,16 @@ Hand-off for Hub (CPR-13/14). Hub only fetches a token and calls export; no Cogn
 
 ## Env naming
 
-Production uses **`platform.tfvars`** (`environment = "platform"`). That is our prod stack.
-Resource names follow the existing prefix rule (no `-prod-` suffix):
+TF `environment = "platform"` is the prod stack. **M2M secret/client names use `prod`** so we never get `cht-platform-m2m-platform`. Other infra stays `cht-platform-*`.
 
-| Env (tfvars) | Secrets Manager name |
-|--------------|----------------------|
-| **platform** (prod) | `cht-platform-cognito-m2m-export` |
-| test / other | `cht-platform-{env}-cognito-m2m-export` |
-| **dev** | `cht-dev-cognito-m2m-export` |
+| Env (tfvars) | Hub→Platform SM | Platform→Hub SM |
+|--------------|-----------------|-----------------|
+| **dev** | `cht-dev-cognito-m2m-export` (legacy) | `cht-dev-cognito-m2m-platform` |
+| **platform** | `cht-prod-cognito-m2m-contenthub` | `cht-prod-cognito-m2m-platform` |
 
-Do not invent a separate `prod` secret name — it would diverge from every other `cht-platform-*` resource.
+Clients: `cht-contenthub-m2m-{dev\|prod}`, `cht-platform-m2m-{dev\|prod}`.
 
-Secret JSON keys: `client_id`, `client_secret`, `token_url`, `scope` (`platform/export.read`).
-
-Terraform outputs (us-east-1): `cognito_m2m_export_secret_name`, `cognito_m2m_export_token_url`, `cognito_m2m_export_client_id`, `cognito_m2m_export_scope`.
+Secret JSON: `client_id`, `client_secret`, `token_url`, `scope`.
 
 ## Token
 
@@ -29,7 +25,7 @@ SECRET_JSON=$(aws secretsmanager get-secret-value \
 CLIENT_ID=$(echo "$SECRET_JSON" | jq -r .client_id)
 CLIENT_SECRET=$(echo "$SECRET_JSON" | jq -r .client_secret)
 TOKEN_URL=$(echo "$SECRET_JSON" | jq -r .token_url)
-SCOPE=$(echo "$SECRET_JSON" | jq -r .scope)
+SCOPE=platform/export.read
 
 curl -s -u "$CLIENT_ID:$CLIENT_SECRET" \
   -d "grant_type=client_credentials&scope=$SCOPE" \
@@ -109,3 +105,5 @@ Search CloudWatch / pino for `[M2M]` or `[export]`:
 | `[export] input-packet ok … sessions=N requestId=…` | Packet returned |
 
 Do not use this client for companion (`X-BFF-Auth`) or admin `/api/reports*`.
+
+For the full S2S map (who calls us / who we call) and how to mint more M2M clients, see [cognito-m2m-s2s-inventory.md](./cognito-m2m-s2s-inventory.md).
