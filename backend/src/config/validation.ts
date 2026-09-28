@@ -82,6 +82,14 @@ export const validationSchema = Joi.object({
   // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
 
+  // On-demand reports (cht-reports table/queue/bucket); empty disables /api/reports
+  REPORTS_TABLE_NAME: Joi.string().allow('').optional(),
+  REPORTS_REPORT_INDEX: Joi.string().allow('').optional(),
+  REPORTS_QUEUE_URL: Joi.string().allow('').optional(),
+  REPORTS_BUCKET: Joi.string().allow('').optional(),
+  REPORTS_MAX_EDIT_ATTEMPTS: Joi.number().integer().min(0).optional(),
+  REPORTS_LOCK_TTL_SECONDS: Joi.number().integer().min(60).optional(),
+
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 

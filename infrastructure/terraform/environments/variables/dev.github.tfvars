@@ -78,3 +78,11 @@ companion_base_url        = "http://cht-companion:8080"
 # Hub VTT ingest — Lambda already has S3 invoke permission; wire bucket notify only.
 vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest"
 
+# On-demand reports (cht-reports owns these; access via its resource policies on cht-dev-ecs-task).
+reports = {
+  table_name      = "cht-dev-report-state"
+  report_id_index = "report_id-index"
+  queue_url       = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-dev-report-requests"
+  bucket          = "cht-reports-dev-artifacts"
+}
+

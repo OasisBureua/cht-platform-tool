@@ -41,8 +41,7 @@ export default () => ({
       process.env.COGNITO_M2M_CACHE_CLEAR_SCOPE?.trim() ||
       'platform/cache.clear',
     region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
-    replicaRegion:
-      process.env.COGNITO_REPLICA_REGION?.trim() || 'us-east-2',
+    replicaRegion: process.env.COGNITO_REPLICA_REGION?.trim() || 'us-east-2',
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',
     domainPrefix: process.env.COGNITO_DOMAIN_PREFIX?.trim() || '',
     jwksUri: process.env.COGNITO_JWKS_URI?.trim() || '',
@@ -127,14 +126,20 @@ export default () => ({
     s3Bucket: process.env.SESSION_ASSETS_S3_BUCKET?.trim() || '',
     /** How many months back manual account Sync crawls on first run (default 24). */
     syncMonthsBackDefault: (() => {
-      const parsed = parseInt(process.env.ZOOM_RECORDINGS_SYNC_MONTHS_BACK || '', 10);
+      const parsed = parseInt(
+        process.env.ZOOM_RECORDINGS_SYNC_MONTHS_BACK || '',
+        10,
+      );
       if (Number.isNaN(parsed) || parsed < 1) return 24;
       return Math.min(parsed, 120);
     })(),
     /** File types that always stream to S3 (large video/audio). */
     streamFileTypes: ['MP4', 'M4A'],
     multipartPartSizeMb: (() => {
-      const parsed = parseInt(process.env.ZOOM_RECORDINGS_MULTIPART_PART_MB || '', 10);
+      const parsed = parseInt(
+        process.env.ZOOM_RECORDINGS_MULTIPART_PART_MB || '',
+        10,
+      );
       if (Number.isNaN(parsed) || parsed < 5) return 10;
       return Math.min(parsed, 100);
     })(),
@@ -164,9 +169,10 @@ export default () => ({
     // RFC-5322 mailbox format: "Display Name" <address@domain>. SESv2 accepts
     // this form and the display name renders as the sender in the recipient's
     // inbox instead of the bare address's local-part.
-    from:
-      (process.env.EMAIL_FROM ||
-        '"Community Health Media" <info@communityhealth.media>').trim(),
+    from: (
+      process.env.EMAIL_FROM ||
+      '"Community Health Media" <info@communityhealth.media>'
+    ).trim(),
     /** Set EMAIL_ENABLED to false, 0, or no to skip sending (e.g. local dev without IAM). */
     enabled: (() => {
       const v = (process.env.EMAIL_ENABLED || 'true').toLowerCase();
@@ -177,6 +183,26 @@ export default () => ({
   // SQS (payment queue only for now)
   sqs: {
     paymentQueueUrl: process.env.SQS_PAYMENT_QUEUE_URL,
+  },
+
+  /**
+   * On-demand reports (cht-reports worker). Table, queue and bucket are owned by
+   * cht-reports Terraform; this backend's task role is granted via resource policies.
+   */
+  reports: {
+    tableName: process.env.REPORTS_TABLE_NAME?.trim() || '',
+    reportIdIndex:
+      process.env.REPORTS_REPORT_INDEX?.trim() || 'report_id-index',
+    queueUrl: process.env.REPORTS_QUEUE_URL?.trim() || '',
+    bucket: process.env.REPORTS_BUCKET?.trim() || '',
+    maxEditAttempts: (() => {
+      const parsed = parseInt(process.env.REPORTS_MAX_EDIT_ATTEMPTS || '', 10);
+      return Number.isNaN(parsed) || parsed < 0 ? 3 : parsed;
+    })(),
+    lockTtlSeconds: (() => {
+      const parsed = parseInt(process.env.REPORTS_LOCK_TTL_SECONDS || '', 10);
+      return Number.isNaN(parsed) || parsed < 60 ? 1800 : parsed;
+    })(),
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
@@ -223,7 +249,9 @@ export default () => ({
             .readFileSync(txtPath, 'utf8')
             .split(/\r?\n/)
             .map((l: string) => l.trim())
-            .filter((l: string) => l && !l.startsWith('#') && l.startsWith('PL'));
+            .filter(
+              (l: string) => l && !l.startsWith('#') && l.startsWith('PL'),
+            );
         }
         if (ids.length === 0) {
           const csvPath = process.env.YOUTUBE_PLAYLIST_CSV
@@ -235,7 +263,9 @@ export default () => ({
               path.join(dataDir, 'youtube-playlists.csv');
           if (fs.existsSync(csvPath)) {
             const content = fs.readFileSync(csvPath, 'utf8');
-            const lines = content.split(/\r?\n/).filter((l: string) => l.trim());
+            const lines = content
+              .split(/\r?\n/)
+              .filter((l: string) => l.trim());
             const start = lines[0]?.toLowerCase().includes('playlist') ? 1 : 0;
             const idRegex = /PL[\w-]{20,}/g;
             for (let i = start; i < lines.length; i++) {

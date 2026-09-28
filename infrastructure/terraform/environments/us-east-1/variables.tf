@@ -631,6 +631,21 @@ variable "companion_base_url" {
   default     = ""
 }
 
+variable "reports" {
+  description = "cht-reports outputs (report_jobs_table_name, report_jobs_report_index, report_requests_queue_url, reports_bucket). Empty table_name disables /api/reports."
+  type = object({
+    table_name      = string
+    report_id_index = optional(string, "report_id-index")
+    queue_url       = string
+    bucket          = string
+  })
+  default = {
+    table_name = ""
+    queue_url  = ""
+    bucket     = ""
+  }
+}
+
 variable "companion_internal_secret" {
   description = "Shared X-BFF-Auth secret for Nest → cht-companion"
   type        = string
