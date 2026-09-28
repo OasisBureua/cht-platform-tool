@@ -62,7 +62,7 @@ export const ADMIN_NAV_ITEMS: AdminNavEntry[] = [
     iconTone: 'text-foreground',
     children: [
       { to: '/admin/content', label: 'Content', icon: Newspaper, iconTone: 'text-foreground', end: false },
-      { to: '/admin/content-hub', label: 'Reporting', icon: FileBarChart, iconTone: 'text-foreground', end: false },
+      { to: '/admin/reports', label: 'Reporting', icon: FileBarChart, iconTone: 'text-foreground', end: false },
       {
         to: '/admin/campaigns-dashboard',
         label: 'Campaigns Dashboard',

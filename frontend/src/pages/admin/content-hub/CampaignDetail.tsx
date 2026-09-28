@@ -131,7 +131,7 @@ function SourcesTab({
         title="Platform CSV uploads"
         description="Channel exports that feed the report."
         action={
-          <Button size="sm" variant="outline" to={`/admin/content-hub/campaigns/${id}/upload`}>
+          <Button size="sm" variant="outline" to={`/admin/reports/campaigns/${id}/upload`}>
             <Upload className="h-3.5 w-3.5" />
             Upload CSV
           </Button>
@@ -419,7 +419,7 @@ export default function CampaignDetail() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6 p-4 md:p-6">
-      <ZoomBackLink to="/admin/content-hub">
+      <ZoomBackLink to="/admin/reports">
         <ArrowLeft className="h-4 w-4" aria-hidden />
         All campaigns
       </ZoomBackLink>
@@ -457,11 +457,11 @@ export default function CampaignDetail() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button size="sm" variant="outline" to={`/admin/content-hub/campaigns/${id}/upload`}>
+            <Button size="sm" variant="outline" to={`/admin/reports/campaigns/${id}/upload`}>
               <Upload className="h-4 w-4" />
               Upload CSV
             </Button>
-            <Button size="sm" variant="outline" to={`/admin/content-hub/campaigns/${id}/report`}>
+            <Button size="sm" variant="outline" to={`/admin/reports/campaigns/${id}/report`}>
               <BarChart3 className="h-4 w-4" />
               Analytics report
             </Button>

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import ScrollToTop from './components/ScrollToTop';
@@ -376,8 +376,8 @@ function App() {
               </Route>
               <Route path="campaigns-dashboard/:campaignId" element={<AdminCampaignDetail />} />
 
-              {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
-              <Route path="content-hub" element={<ContentHubLayout />}>
+              {/* Reports (Content Hub campaigns, analytics and executive PDFs) */}
+              <Route path="reports" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />
                 <Route path="templates" element={<ContentHubTemplates />} />
@@ -390,6 +390,7 @@ function App() {
                   element={<ExecutiveReportRedirect />}
                 />
               </Route>
+              <Route path="content-hub/*" element={<LegacyReportsRedirect />} />
             </Route>
           </Routes>
         </Suspense>
@@ -405,9 +406,19 @@ function SurveyRedirect() {
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
 }
 
+function LegacyReportsRedirect() {
+  const { pathname, search, hash } = useLocation();
+  return (
+    <Navigate
+      to={`${pathname.replace(/^\/admin\/content-hub/, '/admin/reports')}${search}${hash}`}
+      replace
+    />
+  );
+}
+
 function ExecutiveReportRedirect() {
   const { id } = useParams<{ id: string }>();
-  return <Navigate to={`/admin/content-hub/campaigns/${id ?? ''}?tab=reports`} replace />;
+  return <Navigate to={`/admin/reports/campaigns/${id ?? ''}?tab=reports`} replace />;
 }
 
 function AdminProgramHubRedirect() {

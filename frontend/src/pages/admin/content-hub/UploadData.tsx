@@ -94,7 +94,7 @@ export default function UploadData() {
       <div className="mx-auto w-full max-w-3xl">
         <div className="mb-6 flex items-center gap-3">
           <Link
-            to={`/admin/content-hub/campaigns/${id}`}
+            to={`/admin/reports/campaigns/${id}`}
             className="text-muted-foreground hover:text-foreground"
             aria-label="Back to campaign"
           >

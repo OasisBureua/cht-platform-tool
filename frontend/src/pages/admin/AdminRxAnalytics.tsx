@@ -20,7 +20,7 @@ export default function AdminRxAnalytics() {
       </div>
       <div className="flex flex-wrap gap-3">
         <Link
-          to="/admin/content-hub"
+          to="/admin/reports"
           className="inline-flex rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
         >
           Open Content Hub reporting

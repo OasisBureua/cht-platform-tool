@@ -112,15 +112,15 @@ export default function Dashboard() {
             </div>
           </div>
           <div className="flex shrink-0 flex-wrap gap-2">
-            <Button size="sm" variant="ghost" to="/admin/content-hub/integrations">
+            <Button size="sm" variant="ghost" to="/admin/reports/integrations">
               <Settings className="h-4 w-4" />
               Integrations
             </Button>
-            <Button size="sm" variant="ghost" to="/admin/content-hub/templates">
+            <Button size="sm" variant="ghost" to="/admin/reports/templates">
               <LayoutTemplate className="h-4 w-4" />
               Templates
             </Button>
-            <Button size="sm" to="/admin/content-hub/new">
+            <Button size="sm" to="/admin/reports/new">
               <PlusCircle className="h-4 w-4" />
               New campaign
             </Button>
@@ -131,7 +131,7 @@ export default function Dashboard() {
       {hubspotStatus && !hubspotStatus.connected ? (
         <ZoomAlert tone="warning" title="HubSpot not connected">
           <span className="inline-flex flex-wrap items-center gap-2">
-            <Link to="/admin/content-hub/integrations" className="font-medium underline underline-offset-2">
+            <Link to="/admin/reports/integrations" className="font-medium underline underline-offset-2">
               Configure in Integrations
             </Link>
             <button
@@ -216,7 +216,7 @@ export default function Dashboard() {
           }
           action={
             campaigns && campaigns.length > 0 ? undefined : (
-              <Button size="sm" to="/admin/content-hub/new">
+              <Button size="sm" to="/admin/reports/new">
                 <PlusCircle className="h-4 w-4" />
                 New campaign
               </Button>
@@ -248,7 +248,7 @@ function CampaignCard({
   onClientClick: (client: string) => void;
   onDelete: () => void;
 }) {
-  const base = `/admin/content-hub/campaigns/${campaign.id}`;
+  const base = `/admin/reports/campaigns/${campaign.id}`;
 
   const metaItems: ReactNode[] = [];
   if (campaign.clientSponsor) {

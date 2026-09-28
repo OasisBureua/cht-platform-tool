@@ -279,6 +279,36 @@ describe('ReportsService', () => {
     });
   });
 
+  describe('list', () => {
+    it('hides lock rows without filtering on the sort key', async () => {
+      const { service, send } = build((command) =>
+        command === 'QueryCommand'
+          ? {
+              Items: [
+                completeReport(),
+                {
+                  campaign_id: 'AZ-25-01_LIV001',
+                  report_id: 'LOCK#executive_summary',
+                  locked_report_id: 'r-1',
+                },
+              ],
+            }
+          : {},
+      );
+
+      const views = await service.list('AZ-25-01_LIV001');
+
+      expect(views.map((v) => v.reportId)).toEqual([
+        completeReport().report_id,
+      ]);
+      const [query] = calls<{ FilterExpression?: string }>(
+        send,
+        'QueryCommand',
+      );
+      expect(query.FilterExpression).toBeUndefined();
+    });
+  });
+
   describe('regenerate', () => {
     it('queues a completed report and increments edit_attempts', async () => {
       let item = completeReport();

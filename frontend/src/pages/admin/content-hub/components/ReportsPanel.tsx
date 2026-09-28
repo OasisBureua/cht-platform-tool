@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import {
   CheckCircle2,
@@ -7,7 +7,6 @@ import {
   FileText,
   Link2,
   Loader2,
-  Mail,
   RefreshCw,
   Sparkles,
   XCircle,
@@ -16,13 +15,11 @@ import {
   Button,
   ZoomAlert,
   ZoomEmptyState,
-  ZoomJobBanner,
   ZoomLoadingState,
   ZoomSectionCard,
   ZoomStatusBadge,
 } from '../../../../components/admin/zoom-recordings/ZoomRecordingsUi';
 import { SegmentedControl } from '../../../../components/ui';
-import { cn } from '../../../../lib/cn';
 import {
   REPORT_IN_FLIGHT,
   reportErrorMessage,
@@ -37,6 +34,8 @@ import {
   useRegenerateReport,
   useReportRecipients,
 } from '../lib/reportHooks';
+import { RecipientPicker } from './RecipientPicker';
+import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
 
 const REPORT_SOURCES: Array<{ value: string; label: string }> = [
@@ -55,15 +54,6 @@ const RANGE_SEGMENTS: Array<{ value: `${DateRangeDays}`; label: string }> = [
   { value: '30', label: 'Last 30 days' },
   { value: '60', label: 'Last 60 days' },
   { value: '90', label: 'Last 90 days' },
-];
-
-const PIPELINE: ReportStatus[] = [
-  'queued',
-  'pulling_data',
-  'generating',
-  'rendering',
-  'uploading',
-  'complete',
 ];
 
 const STATUS_LABEL: Record<ReportStatus, string> = {
@@ -113,51 +103,6 @@ function StatusBadge({ status }: { status: ReportStatus }) {
   );
 }
 
-function ToggleChip({
-  on,
-  onClick,
-  children,
-  title,
-}: {
-  on: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  title?: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={on}
-      title={title}
-      onClick={onClick}
-      className={cn(
-        'inline-flex h-9 items-center gap-1.5 rounded-[6px] px-3 text-sm transition-[background-color,color,box-shadow] duration-150',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-        on
-          ? 'bg-brand-600 text-white shadow-card hover:bg-brand-700'
-          : 'bg-card text-muted-foreground shadow-card hover:bg-muted hover:text-foreground',
-      )}
-    >
-      {on ? <CheckCircle2 className="h-3.5 w-3.5" aria-hidden /> : null}
-      {children}
-    </button>
-  );
-}
-
-function InFlightBanner({ report }: { report: Report }) {
-  const step = Math.max(0, PIPELINE.indexOf(report.status));
-  const pct = Math.round(((step + 1) / PIPELINE.length) * 100);
-  return (
-    <ZoomJobBanner
-      tone="running"
-      title={report.editAttempts > 0 ? 'Regenerating report' : 'Generating report'}
-      progress={{ pct, label: `${STATUS_LABEL[report.status]} · step ${step + 1} of ${PIPELINE.length - 1}` }}
-      detail={`${windowLabel(report)}. This page updates automatically.`}
-    />
-  );
-}
-
 function GenerateCard({
   campaignId,
   linkedProgramCount,
@@ -193,7 +138,7 @@ function GenerateCard({
         onSuccess: () =>
           toast({
             title: 'Report queued',
-            description: 'We will keep this page updated while the PDF is generated.',
+            description: 'Generation runs in the background. Its status updates in Report history.',
           }),
         onError: async (err) =>
           setError(await reportErrorMessage(err, 'Could not queue the report. Try again shortly.')),
@@ -259,28 +204,13 @@ function GenerateCard({
           ) : null}
         </div>
 
-        <div>
-          <p className="text-sm text-muted-foreground">Notify when ready (optional)</p>
-          {recipients.isLoading ? (
-            <p className="mt-2 text-sm text-muted-foreground">Loading admins…</p>
-          ) : recipients.data && recipients.data.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2" role="group" aria-label="Notify admins">
-              {recipients.data.map((r) => (
-                <ToggleChip
-                  key={r.userId}
-                  on={notify.includes(r.email)}
-                  title={r.email}
-                  onClick={() => setNotify((prev) => toggle(prev, r.email))}
-                >
-                  <Mail className={cn('h-3.5 w-3.5', notify.includes(r.email) && 'hidden')} aria-hidden />
-                  {r.name || r.email}
-                </ToggleChip>
-              ))}
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">No active admins found.</p>
-          )}
-        </div>
+        {recipients.isLoading ? (
+          <p className="text-sm text-muted-foreground">Loading admins…</p>
+        ) : recipients.data && recipients.data.length > 0 ? (
+          <RecipientPicker recipients={recipients.data} value={notify} onChange={setNotify} />
+        ) : (
+          <p className="text-sm text-muted-foreground">No active admins found to notify.</p>
+        )}
 
         {error ? <ZoomAlert tone="error">{error}</ZoomAlert> : null}
 
@@ -294,7 +224,9 @@ function GenerateCard({
             {create.isPending ? 'Queuing…' : 'Generate report'}
           </Button>
           {busy ? (
-            <p className="text-sm text-muted-foreground">A report is already generating for this campaign.</p>
+            <p className="text-sm text-muted-foreground">
+              A report is in progress. Its status updates in Report history below.
+            </p>
           ) : null}
         </div>
       </div>
@@ -461,10 +393,6 @@ export default function ReportsPanel({
 
   return (
     <div className="space-y-6">
-      {inFlight.map((r) => (
-        <InFlightBanner key={r.reportId} report={r} />
-      ))}
-
       <GenerateCard
         campaignId={campaignId}
         linkedProgramCount={linkedProgramCount}
