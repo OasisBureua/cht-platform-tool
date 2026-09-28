@@ -108,8 +108,6 @@ const ContentHubIntegrations    = lazy(() => import('./pages/admin/content-hub/I
 const ContentHubCampaignDetail  = lazy(() => import('./pages/admin/content-hub/CampaignDetail'));
 const ContentHubUploadData      = lazy(() => import('./pages/admin/content-hub/UploadData'));
 const ContentHubAnalyticsReport = lazy(() => import('./pages/admin/content-hub/AnalyticsReport'));
-const ContentHubExecutiveReport = lazy(() => import('./pages/admin/content-hub/ExecutiveReport'));
-
 // ── Shared page-level loading fallback ───────────────────────────────────────
 function PageLoader() {
   return (
@@ -387,7 +385,10 @@ function App() {
                 <Route path="campaigns/:id" element={<ContentHubCampaignDetail />} />
                 <Route path="campaigns/:id/upload" element={<ContentHubUploadData />} />
                 <Route path="campaigns/:id/report" element={<ContentHubAnalyticsReport />} />
-                <Route path="campaigns/:id/executive-report" element={<ContentHubExecutiveReport />} />
+                <Route
+                  path="campaigns/:id/executive-report"
+                  element={<ExecutiveReportRedirect />}
+                />
               </Route>
             </Route>
           </Routes>
@@ -402,6 +403,11 @@ export default App;
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
+}
+
+function ExecutiveReportRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/admin/content-hub/campaigns/${id ?? ''}?tab=reports`} replace />;
 }
 
 function AdminProgramHubRedirect() {

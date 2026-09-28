@@ -23,7 +23,7 @@ export default function Layout() {
     user?.name ||
     user?.email ||
     'User'
-  ).replace(/[\[\]]/g, '');
+  ).replace(/[[\]]/g, '');
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -36,9 +36,11 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setMobileDrawerOpen(false);
-  }, [location.pathname]);
+  }
 
   useEffect(() => {
     if (!mobileDrawerOpen) return;

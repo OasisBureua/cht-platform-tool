@@ -10,6 +10,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import ChromeContainer from './components/ChromeContainer';
+import { useToast } from './components/Toaster';
 import { useHubspotStatus, useContentHubHealth, useIntegrations, useIntegrationsConnection, useUpdateIntegrations } from './lib/hooks';
 import { cn } from './lib/utils';
 import type { HubspotStatus, IntegrationSettings } from './lib/types';

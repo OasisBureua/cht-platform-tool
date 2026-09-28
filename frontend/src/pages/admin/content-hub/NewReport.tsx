@@ -256,7 +256,7 @@ export default function NewReport() {
     navigate(
       reportType === 'analytics'
         ? `/admin/content-hub/campaigns/${campaignId}/report`
-        : `/admin/content-hub/campaigns/${campaignId}/executive-report`,
+        : `/admin/content-hub/campaigns/${campaignId}?tab=reports`,
     );
   };
 
@@ -318,10 +318,10 @@ export default function NewReport() {
                 <div className={cn('mb-4 flex h-10 w-10 items-center justify-center rounded-lg', reportType === 'executive' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
                   <Presentation className="h-5 w-5" />
                 </div>
-                <h3 className="mb-1 font-semibold text-foreground">Executive Report Deck</h3>
+                <h3 className="mb-1 font-semibold text-foreground">Executive Report (PDF)</h3>
                 <p className="text-sm leading-relaxed text-muted-foreground">
-                  Visual, client-facing slide deck with large KPI tiles, campaign story, geo-targeting, platform
-                  highlights, and concise strategic narrative. Best for executive presentations.
+                  Client-ready executive summary printed as a PDF. Pick sources and a 30, 60 or 90-day window,
+                  follow progress, then download. Best for executive presentations.
                 </p>
               </button>
             </div>

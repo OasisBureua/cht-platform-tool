@@ -100,9 +100,12 @@ export default function AdminContent() {
     return () => window.clearTimeout(t);
   }, [query]);
 
-  useEffect(() => {
+  const filterKey = `${debouncedQuery}\u0000${category}`;
+  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
+  if (filterKey !== prevFilterKey) {
+    setPrevFilterKey(filterKey);
     setOffset(0);
-  }, [debouncedQuery, category]);
+  }
 
   const fresh = freshNonce > 0;
 
@@ -120,7 +123,7 @@ export default function AdminContent() {
     refetchOnMount: 'always',
   });
 
-  const allPosts = data?.posts ?? [];
+  const allPosts = useMemo(() => data?.posts ?? [], [data]);
   const upstreamTotal = data?.upstreamTotal ?? null;
 
   const filteredPosts = useMemo(() => {
@@ -142,11 +145,9 @@ export default function AdminContent() {
   const total = filteredPosts.length;
   const items = filteredPosts.slice(offset, offset + PAGE_SIZE);
 
-  useEffect(() => {
-    if (offset > 0 && offset >= total) {
-      setOffset(Math.max(0, Math.floor(Math.max(0, total - 1) / PAGE_SIZE) * PAGE_SIZE));
-    }
-  }, [offset, total]);
+  if (offset > 0 && offset >= total) {
+    setOffset(Math.max(0, Math.floor(Math.max(0, total - 1) / PAGE_SIZE) * PAGE_SIZE));
+  }
 
   const categories = useMemo(
     () =>

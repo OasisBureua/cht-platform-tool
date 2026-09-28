@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { ContentHubClip } from '../../api/catalog';
 import {
   extractYoutubeVideoIdFromUrl,
@@ -31,10 +31,13 @@ export function ConversationsClipCard({ item, href }: ConversationsClipCardProps
   const [hidden, setHidden] = useState(false);
   const desc = clipStripeSubtitle(item)?.trim() || '';
 
-  useEffect(() => {
+  const thumbKey = [item.id, item.thumbnail_url, item.youtube_url, item.youtubeUrl].join('|');
+  const [prevThumbKey, setPrevThumbKey] = useState(thumbKey);
+  if (thumbKey !== prevThumbKey) {
+    setPrevThumbKey(thumbKey);
     setThumbSrc(getContentHubThumbnail(item));
     setHidden(false);
-  }, [item.id, item.thumbnail_url, item.youtube_url, item.youtubeUrl]);
+  }
 
   const advanceOrHide = (current: string) => {
     const next = nextCatalogThumbnailFallback(current, videoId);

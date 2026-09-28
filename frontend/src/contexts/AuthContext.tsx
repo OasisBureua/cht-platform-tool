@@ -251,10 +251,6 @@ function authFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 function BackendAuthProvider({ children }: { children: ReactNode }) {
-  if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
-    return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
-  }
-
   const apiUrl = resolveApiBaseUrl();
   const [authMode, setAuthMode] = useState<'cookie' | 'dev' | null>(null);
   const [devUserId, setDevUserId] = useState<string>(() => {
@@ -292,6 +288,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   // (that used to flip isLoading and show "Signing you in...").
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- session bootstrap fetch owns the loading flag
     setIsLoading(true);
 
     const loadProfile = async () => {
@@ -854,9 +851,13 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
+    return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
+  }
   return <BackendAuthProvider>{children}</BackendAuthProvider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook is co-located with its provider
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');

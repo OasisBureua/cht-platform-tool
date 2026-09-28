@@ -89,7 +89,7 @@ export function ChoiceDistributionChart({ options }: ChoiceDistributionChartProp
             <LabelList
               dataKey="percentage"
               position="right"
-              formatter={(value: number) => `${value.toFixed(0)}%`}
+              formatter={(value) => `${Number(value).toFixed(0)}%`}
               style={{ fontSize: 11, fill: MUTED, fontWeight: 600 }}
             />
           </Bar>

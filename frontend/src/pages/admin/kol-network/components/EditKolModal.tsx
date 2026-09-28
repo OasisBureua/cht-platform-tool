@@ -206,7 +206,6 @@ export function EditKolModal({ slug, kol, onClose, onSaved }: Props) {
           <Field label="Headshot">
             <div className="flex items-center gap-3">
               {form.photo_url && (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={form.photo_url}
                   alt=""

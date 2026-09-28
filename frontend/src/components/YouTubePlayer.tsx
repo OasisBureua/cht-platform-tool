@@ -75,7 +75,9 @@ export function YouTubePlayer({ youtubeUrl, muted = true, autoplay = true, class
   const videoTitle = title || 'Untitled';
   const elementId = useId().replace(/:/g, '-');
 
-  mutedRef.current = muted;
+  useEffect(() => {
+    mutedRef.current = muted;
+  }, [muted]);
 
   useEffect(() => {
     if (!videoId || !containerRef.current) return;

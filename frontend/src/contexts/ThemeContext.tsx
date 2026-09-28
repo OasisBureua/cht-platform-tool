@@ -44,10 +44,9 @@ function resolve(resolved: ColorScheme, systemIsDark: boolean): 'light' | 'dark'
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [colorScheme, setColorSchemeState] = useState<ColorScheme>(() => readStoredScheme());
-  const [systemIsDark, setSystemIsDark] = useState(false);
+  const [systemIsDark, setSystemIsDark] = useState(() => systemPrefersDark());
 
   useEffect(() => {
-    setSystemIsDark(systemPrefersDark());
     const mq = window.matchMedia('(prefers-color-scheme: dark)');
     const onChange = () => setSystemIsDark(mq.matches);
     mq.addEventListener('change', onChange);
@@ -88,6 +87,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook is co-located with its provider
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider');

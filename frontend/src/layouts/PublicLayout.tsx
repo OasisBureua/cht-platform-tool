@@ -15,7 +15,7 @@ import { ClosingBand } from '../components/home/HomeSkinSections';
 import { useTheme } from '../contexts/ThemeContext';
 import { isTestappHost } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
-import { CHM_PODCAST_PLATFORM_LINKS, PODCAST_SHOWS } from '../data/podcastsCatalog';
+import { PODCAST_SHOWS } from '../data/podcastsCatalog';
 
 /* Mirrors the live platform's information architecture. */
 const nav = [

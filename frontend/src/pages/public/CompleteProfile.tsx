@@ -27,14 +27,6 @@ export default function CompleteProfile() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
-  if (!isAuthenticated && !isLoading) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (isAuthenticated && user?.profileComplete) {
-    return <Navigate to="/app/home" replace />;
-  }
-
   const userId = user?.userId ?? '';
 
   useEffect(() => {
@@ -53,6 +45,14 @@ export default function CompleteProfile() {
       })
       .catch(() => {});
   }, [userId]);
+
+  if (!isAuthenticated && !isLoading) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (isAuthenticated && user?.profileComplete) {
+    return <Navigate to="/app/home" replace />;
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

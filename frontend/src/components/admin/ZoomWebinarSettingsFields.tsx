@@ -1,5 +1,6 @@
 import type { ZoomWebinarSettings } from '../../api/admin';
 
+// eslint-disable-next-line react-refresh/only-export-components -- defaults live next to the fields they seed
 export const DEFAULT_ZOOM_WEBINAR_SETTINGS: ZoomWebinarSettings = {
   questionAndAnswer: true,
   backstage: true,

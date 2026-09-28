@@ -24,17 +24,18 @@ const PROMPTS = [
 
 const CHIPS = ['HER2-low', 'PARP maintenance', 'Step-up dosing', 'Perioperative'];
 
+function prefersReducedMotion(): boolean {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 export function LiveDemo() {
   const navigate = useNavigate();
   const [value, setValue] = useState('');
-  const [ghost, setGhost] = useState('');
+  const [ghost, setGhost] = useState(() => (prefersReducedMotion() ? PROMPTS[0] : ''));
   const stopped = useRef(false);
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setGhost(PROMPTS[0]);
-      return;
-    }
+    if (prefersReducedMotion()) return;
 
     let run = 0;
     let ch = 0;
@@ -63,8 +64,10 @@ export function LiveDemo() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  const [takenOver, setTakenOver] = useState(false);
   const stop = () => {
     stopped.current = true;
+    setTakenOver(true);
   };
 
   const search = (q: string) => {
@@ -96,7 +99,7 @@ export function LiveDemo() {
           }}
           // The ghost carries a caret so the typing reads as typing. Once
           // someone takes over, the placeholder falls back to a label.
-          placeholder={stopped.current || value ? 'Search the library' : `${ghost}▍`}
+          placeholder={takenOver || value ? 'Search the library' : `${ghost}▍`}
           className="min-w-0 flex-1 bg-transparent px-3 py-2 text-body-m text-text outline-none placeholder:text-muted2 [&::-webkit-search-cancel-button]:appearance-none"
         />
         <button
