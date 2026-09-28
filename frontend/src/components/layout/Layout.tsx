@@ -24,6 +24,7 @@ export default function Layout() {
     user?.email ||
     'User'
   ).replace(/[\[\]]/g, '');
+  const greetingName = user?.firstName?.trim().replace(/[[\]]/g, '') || displayName;
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -180,11 +181,11 @@ export default function Layout() {
                 <Menu className="h-5 w-5" strokeWidth={2} aria-hidden />
               </button>
               <div className="min-w-0 flex-1">
-                <h1 className="truncate text-lg font-bold tracking-tight text-foreground md:text-xl">
-                  Welcome, {displayName}!
+                <h1 className="display truncate text-lg tracking-tight text-foreground md:text-xl">
+                  Welcome back, {greetingName}
                 </h1>
                 <p className="mt-0.5 hidden text-pretty text-sm text-muted-foreground sm:block">
-                  You have new opportunities to earn rewards today
+                  Here's what's new in the CHM library.
                 </p>
               </div>
             </div>
