@@ -32,6 +32,7 @@ import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.m
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { CompanionModule } from './modules/companion/companion.module';
 import { ExportModule } from './modules/export/export.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ConfigModule } from '@nestjs/config';
@@ -164,6 +165,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     CampaignsModule,
     CompanionModule,
     ExportModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

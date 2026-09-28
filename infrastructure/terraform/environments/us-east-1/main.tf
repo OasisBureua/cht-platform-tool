@@ -461,6 +461,7 @@ module "ecs_backend" {
   appconfig_environment          = module.appconfig.environment_name
   appconfig_profile              = module.appconfig.auth_features_profile_name
   companion_base_url             = var.companion_base_url
+  reports                        = var.reports
   service_connect_namespace      = var.service_connect_namespace
   # Always apply Prisma migrations on backend boot (primary/writer).
   run_db_migrations = true

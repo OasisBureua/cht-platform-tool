@@ -314,13 +314,20 @@ frontend/src/pages/admin/content-hub/lib/
 
 ### 1. Hub direct (after deploy)
 
-```bash
-export KEY=$CONTENTHUB_API_KEY
+Hub's security group only allows Platform traffic, so run this from the backend
+task (`aws ecs execute-command … --container backend`), not a laptop. The task
+already has the `COGNITO_M2M_*` env vars.
 
-curl -s -H "X-API-Key: $KEY" \
+```bash
+TOKEN=$(curl -s -u "$COGNITO_M2M_PLATFORM_CLIENT_ID:$COGNITO_M2M_PLATFORM_CLIENT_SECRET" \
+  --data-urlencode "grant_type=client_credentials" \
+  --data-urlencode "scope=$COGNITO_M2M_HUB_SCOPES" \
+  "$COGNITO_M2M_TOKEN_URL" | node -pe 'JSON.parse(require("fs").readFileSync(0)).access_token')
+
+curl -s -H "Authorization: Bearer $TOKEN" \
   https://devhub.communityhealth.media/api/admin/campaigns
 
-curl -s -X POST -H "X-API-Key: $KEY" -H "Content-Type: application/json" \
+curl -s -X POST -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
   -d '{"name":"Proxy test","platforms":["linkedin"]}' \
   https://devhub.communityhealth.media/api/admin/campaigns
 ```

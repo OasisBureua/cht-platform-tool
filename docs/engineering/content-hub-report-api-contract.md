@@ -61,7 +61,7 @@ Auth:
 
 | Caller | Header |
 |--------|--------|
-| CHT → Content Hub | `X-API-Key: ${CONTENTHUB_API_KEY}`, `X-Request-Id: <uuid>` |
+| CHT → Content Hub | `Authorization: Bearer <Cognito M2M access token>` (client `cht-platform-m2m-{env}`, `hub/*` scopes), `X-Request-Id: <uuid>` |
 | Browser → CHT | Session cookie / Bearer (existing admin JWT) |
 
 After Hub writes that affect read models, Hub (or CHT after proxy POST) should trigger  
@@ -432,7 +432,8 @@ Reports are **requested through CHT** and **built from data pulled from Content 
 
 cht-reports (PDF/LLM worker) does **not** use the CHT proxy. It calls Hub
 directly: `GET /api/campaigns/{id}/report-packet?windowStart=&windowEnd=&sources=`
-with `X-API-Key`. See `cht-content-hub/docs/engineering/reports-ingest-etl.md`.
+with a Cognito M2M Bearer token scoped `hub/reports.read` (its own client, provisioned
+in Hub Terraform). See `cht-content-hub/docs/engineering/reports-ingest-etl.md`.
 
 ### Flow (analytics + executive)
 

@@ -89,7 +89,7 @@ Source: [`diagrams/cht-platform-auth.mmd`](./diagrams/cht-platform-auth.mmd) · 
 | Queue | SQS + DLQs | Async email, payment, CME jobs |
 | Email | Amazon SES | Transactional mail (`noreply@communityhealth.media`) |
 | Secrets | Secrets Manager | DB URL, API keys, Bill.com, Zoom, etc. |
-| Content | MediaHub public API (`X-API-Key`) | Catalog clips, playlists, KOLs, HCP upsert: future domain **contenthub.communityhealth.media** |
+| Content | Content Hub public + admin API (Cognito M2M Bearer) | Catalog clips, playlists, KOLs, HCP upsert, campaigns (`devhub.communityhealth.media` on dev) |
 
 ---
 

@@ -245,6 +245,21 @@ variable "companion_base_url" {
   default     = ""
 }
 
+variable "reports" {
+  description = "cht-reports table/queue/bucket for /api/reports (owned by cht-reports TF). Empty table_name disables."
+  type = object({
+    table_name      = string
+    report_id_index = optional(string, "report_id-index")
+    queue_url       = string
+    bucket          = string
+  })
+  default = {
+    table_name = ""
+    queue_url  = ""
+    bucket     = ""
+  }
+}
+
 variable "service_connect_namespace" {
   description = "Cloud Map HTTP namespace name or ARN for ECS Service Connect client (e.g. cht-dev.local). Empty disables."
   type        = string

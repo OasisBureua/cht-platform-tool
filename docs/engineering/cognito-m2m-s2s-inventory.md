@@ -2,7 +2,7 @@
 
 **Repo:** cht-platform-tool  
 **Audience:** Platform + Content Hub (Syed / Sebastien)  
-**Status:** Hub→platform export **done**; Platform→Hub M2M **gated** (`enable_cognito_platform_outbound_m2m=false` until Hub creates RS `hub`); cache.clear M2M accepted dual-run with legacy secret.
+**Status:** Hub→platform export **done**; Platform→Hub M2M **live on dev** (Bearer only, verified against Hub public + admin); cache.clear M2M accepted dual-run with legacy secret.
 
 Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.md](../runbooks/cache-sync-contract.md), [integrations.md](./integrations.md).
 
@@ -14,7 +14,7 @@ Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.
 |---------------------|----------------------|
 | Zoom / Stripe / Bill **webhooks** (HMAC / Stripe-Signature) | Hub → platform **export** (`platform/export.read`) — **done** |
 | Zoom S2S OAuth, HubSpot private app, Jotform API key, Stripe/Bill/YouTube API keys | Hub → platform **cache clear** (`platform/cache.clear`) — **accepted** (legacy `INTERNAL_CACHE_SECRET` dual-run) |
-| Browser session / Cognito user JWT (members + admin UI) | Platform → Hub **Bearer** (client `cht-platform-m2m-{env}`) — **ready in code; enable after Hub RS** |
+| Browser session / Cognito user JWT (members + admin UI) | Platform → Hub **Bearer** (client `cht-platform-m2m-{env}`) — **live on dev** |
 | reCAPTCHA, admin bootstrap, DB creds | Platform → companion **X-BFF-Auth** — *optional later* |
 
 **Companion note:** Do not reuse `platform/export.read` for chat.
@@ -69,8 +69,10 @@ Only **M2M** names use `prod`. Pools and other resources stay `cht-platform-*`.
 
 Secret JSON (both): `{ client_id, client_secret, token_url, scope }`.
 
-Enable platform outbound only after Content Hub creates RS `hub` + scopes:  
-`enable_cognito_platform_outbound_m2m = true`. Until then leave **false**.
+Platform outbound needs Hub's RS `hub` + scopes on the pool first:  
+`enable_cognito_platform_outbound_m2m = true` (on in dev).
+
+Clients for other callers of Hub (e.g. `cht-reports-m2m-{env}` with `hub/reports.read`) are provisioned in **Hub** Terraform next to the `hub` RS, not here.
 
 ---
 

@@ -150,6 +150,14 @@ resource "aws_ecs_task_definition" "backend" {
             ]
             : [],
             var.companion_base_url != "" ? [{ name = "COMPANION_BASE_URL", value = var.companion_base_url }] : [],
+            var.reports.table_name != "" && var.reports.queue_url != ""
+            ? [
+              { name = "REPORTS_TABLE_NAME", value = var.reports.table_name },
+              { name = "REPORTS_REPORT_INDEX", value = var.reports.report_id_index },
+              { name = "REPORTS_QUEUE_URL", value = var.reports.queue_url },
+              { name = "REPORTS_BUCKET", value = var.reports.bucket },
+            ]
+            : [],
           )
         )
 
