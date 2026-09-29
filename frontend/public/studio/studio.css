@@ -1,0 +1,60 @@
+  :root {
+    --ink: #0f0e0d; --ground: #ffffff; --surface: #f8f7f4; --surface-2: #efede8;
+    --text: #0f0e0d; --dim: #3a3734; --muted: #615d58; --faint: #6c6762;
+    --cta: #1b54f0; --hair: rgba(0,0,0,.09);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--ground); color: var(--text); font-family: Geist, system-ui, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; border-bottom: 1px solid var(--hair); }
+  header .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -.01em; }
+  header .brand svg { width: 22px; height: 22px; }
+  header .brand span { color: var(--muted); font-weight: 400; }
+  button { font: inherit; cursor: pointer; }
+  .btn { height: 38px; padding: 0 16px; border-radius: 6px; border: 0; background: var(--cta); color: #fff; font-family: "Geist Mono"; font-size: 13px; letter-spacing: -.01em; }
+  .btn.ghost { background: var(--surface); color: var(--text); }
+  .btn:active { transform: scale(.97); }
+  main { display: grid; grid-template-columns: 360px 1fr; height: calc(100% - 67px); }
+  aside { border-right: 1px solid var(--hair); overflow: auto; padding: 22px 24px 40px; }
+  .field { margin-bottom: 22px; }
+  .field label { display: block; font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin-bottom: 8px; }
+  .field input[type=text], .field textarea {
+    width: 100%; font: inherit; font-size: 14px; padding: 10px 12px; border: 1px solid var(--hair);
+    border-radius: 6px; background: var(--ground); color: var(--text); outline: none;
+  }
+  .field textarea { min-height: 76px; resize: vertical; line-height: 1.45; }
+  .field input:focus-visible, .field textarea:focus-visible { outline: 2px solid var(--cta); outline-offset: 2px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.5; }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; padding: 4px; background: var(--surface); border-radius: 8px; }
+  .seg button { flex: 1 1 30%; height: 32px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 13px; white-space: nowrap; }
+  .seg button[aria-pressed=true] { background: var(--ground); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .areas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .areas button { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ground); font-size: 13px; color: var(--dim); text-align: left; }
+  .areas button i { width: 12px; height: 12px; border-radius: 3px; flex: 0 0 auto; }
+  .areas button[aria-pressed=true] { border-color: var(--text); color: var(--text); }
+  .drop { border: 1px dashed rgba(0,0,0,.25); border-radius: 8px; padding: 18px; text-align: center; color: var(--muted); font-size: 13px; background: var(--surface); }
+  .drop.over { border-color: var(--cta); background: #eef2ff; }
+  .drop input { display: none; }
+  .faces { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+  .face { display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: center; padding: 8px; background: var(--surface); border-radius: 8px; }
+  .face img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; }
+  .face .name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .face input[type=range] { width: 100%; accent-color: var(--cta); }
+  .face .x { width: 28px; height: 28px; border: 0; border-radius: 6px; background: transparent; color: var(--faint); font-size: 16px; }
+  .face .x:hover { background: var(--surface-2); color: var(--text); }
+  section.stage { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 28px; background: var(--surface); }
+  canvas { width: min(100%, 1120px); aspect-ratio: 16 / 9; height: auto; border-radius: 10px; box-shadow: 0 24px 60px -24px rgba(0,0,0,.35); cursor: grab; background: #000; }
+  canvas.dragging { cursor: grabbing; }
+  .stage .meta { font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); }
+  .row { display: flex; gap: 8px; }
+  .field[hidden] { display: none; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } aside { border-right: 0; border-bottom: 1px solid var(--hair); } }
+
+  /* studio nav */
+  .tabs { display: flex; gap: 2px; padding: 3px; background: var(--surface); border-radius: 8px; }
+  .tabs a { font-size: 13px; color: var(--muted); text-decoration: none; padding: 6px 12px; border-radius: 6px; }
+  .tabs a[aria-current=page] { background: var(--ground); color: var(--text); box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .tabs a:focus-visible { outline: 2px solid var(--cta); outline-offset: 2px; }
+  header .left { display: flex; align-items: center; gap: 18px; }
+
+/* Embedded in the CHM admin panel: the platform shell carries the brand and the studio tabs. */
+.embedded header .brand, .embedded header nav.tabs { display: none; }

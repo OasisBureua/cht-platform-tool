@@ -101,6 +101,9 @@ const AdminCampaignDetail = lazy(() => import('./pages/admin/AdminCampaignDetail
 
 // ── Content Hub (admin report generator, lazy) ───────────────────────────────
 const ContentHubLayout          = lazy(() => import('./pages/admin/content-hub/components/ContentHubLayout'));
+const PostProductionLayout      = lazy(() => import('./pages/admin/post-production/PostProductionLayout'));
+const Clipper                   = lazy(() => import('./pages/admin/post-production/Clipper'));
+const StudioFrame               = lazy(() => import('./pages/admin/post-production/StudioFrame'));
 const ContentHubDashboard       = lazy(() => import('./pages/admin/content-hub/Dashboard'));
 const ContentHubNewReport       = lazy(() => import('./pages/admin/content-hub/NewReport'));
 const ContentHubTemplates       = lazy(() => import('./pages/admin/content-hub/Templates'));
@@ -379,6 +382,12 @@ function App() {
               <Route path="campaigns-dashboard/:campaignId" element={<AdminCampaignDetail />} />
 
               {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
+              <Route path="post-production" element={<PostProductionLayout />}>
+                <Route index element={<Navigate to="clipper" replace />} />
+                <Route path="clipper" element={<Clipper />} />
+                <Route path="thumbnails" element={<StudioFrame page="index" title="Thumbnail studio" />} />
+                <Route path="social" element={<StudioFrame page="social" title="Social post studio" />} />
+              </Route>
               <Route path="content-hub" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />

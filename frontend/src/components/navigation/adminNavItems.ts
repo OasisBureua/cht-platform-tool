@@ -11,6 +11,7 @@ import {
   Newspaper,
   LayoutDashboard,
   Wrench,
+  Clapperboard,
 } from 'lucide-react';
 import type { NavIconTone } from './navIconTones';
 
@@ -61,6 +62,13 @@ export const ADMIN_NAV_ITEMS: AdminNavEntry[] = [
     icon: Wrench,
     iconTone: 'text-foreground',
     children: [
+      {
+        to: '/admin/post-production',
+        label: 'Post-production',
+        icon: Clapperboard,
+        iconTone: 'text-foreground',
+        end: false,
+      },
       { to: '/admin/content', label: 'Content', icon: Newspaper, iconTone: 'text-foreground', end: false },
       { to: '/admin/content-hub', label: 'Reporting', icon: FileBarChart, iconTone: 'text-foreground', end: false },
       {

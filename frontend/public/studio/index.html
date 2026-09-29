@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHM Thumbnail Studio</title>
+<link rel="icon" href="/favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;900&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="studio.css" />
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded')</script>
+</head>
+<body>
+<header>
+  <div class="left">
+    <div class="brand">
+      <svg viewBox="0 0 22 21.8047" aria-hidden="true"><path id="markA" fill="#0f0e0d"/><path id="markB" fill="#0f0e0d"/></svg>
+      chm <span>Studio</span>
+    </div>
+    <nav class="tabs" aria-label="Studios">
+      <a href="index.html" aria-current="page">Thumbnails</a>
+      <a href="social.html">Social</a>
+      <a href="deck.html">Deck</a>
+    </nav>
+  </div>
+  <div class="row">
+    <button class="btn ghost" id="randomize" type="button">Regenerate field</button>
+    <button class="btn" id="export" type="button">Export PNG · 1280×720</button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="field">
+      <label for="title">Title</label>
+      <textarea id="title">Why first-line HER2+ therapy selection matters</textarea>
+      <div class="hint">Sizes itself to fit the layout's line budget.</div>
+    </div>
+    <div class="field">
+      <label for="credit">Faculty credit</label>
+      <input id="credit" type="text" value="Drs. Sonya Reid & Shruti Singh" />
+    </div>
+    <div class="field">
+      <label>Colourway</label>
+      <div class="seg" id="palette" role="group" aria-label="Colourway">
+        <button type="button" data-v="disease" aria-pressed="true">Disease states</button>
+        <button type="button" data-v="v2" aria-pressed="false">Brand v2</button>
+      </div>
+      <div class="hint">Brand v2 swaps the disease hue for Knowledge Blue on Precision Ink. The chip still names the disease state.</div>
+    </div>
+    <div class="field">
+      <label>Disease state</label>
+      <div class="areas" id="areas"></div>
+    </div>
+    <div class="field">
+      <label>Layout</label>
+      <div class="seg" id="layout" role="group" aria-label="Layout">
+        <button type="button" data-v="auto" aria-pressed="true">Auto</button>
+        <button type="button" data-v="side" aria-pressed="false">Side</button>
+        <button type="button" data-v="row" aria-pressed="false">Row</button>
+        <button type="button" data-v="split" aria-pressed="false">Split</button>
+        <button type="button" data-v="stack" aria-pressed="false">Stack</button>
+        <button type="button" data-v="bigword" aria-pressed="false">Big word</button>
+        <button type="button" data-v="chevron" aria-pressed="false">Chevron</button>
+        <button type="button" data-v="duotone" aria-pressed="false">Duotone</button>
+      </div>
+      <div class="hint">Auto picks Side for one or two clinicians and Row for three to five. Every layout takes one to five.</div>
+    </div>
+    <div class="field" id="heroField" hidden>
+      <label for="hero">Hero term</label>
+      <input id="hero" type="text" value="PFS" />
+      <div class="seg" id="heroMode" style="margin-top:8px">
+        <button type="button" data-v="fit" aria-pressed="true">Overlap</button>
+        <button type="button" data-v="stack" aria-pressed="false">Stacked</button>
+      </div>
+      <div class="hint">The one term the video is about. Overlap keeps the faces on top and sizes the word to stay readable beside them. Stacked runs the word full width with the faces underneath.</div>
+    </div>
+    <div class="field">
+      <label>Headshots · up to five</label>
+      <div class="drop" id="drop">
+        Drop headshots here, or <u>choose files</u>
+        <input id="files" type="file" accept="image/*" multiple />
+      </div>
+      <div class="faces" id="faces"></div>
+      <div class="hint">Drag a face on the canvas to reposition it. The slider zooms the crop.</div>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <canvas id="c" width="1280" height="720" aria-label="Thumbnail preview"></canvas>
+    <div class="meta" id="meta">1280 × 720</div>
+  </section>
+</main>
+
+<script src="shared.js"></script>
+<script>
+/* ── the CHM mark, as drawn on the site ───────────────────────── */
+const MARK_A = "M8.93474 1.49742C9.07776 1.49184 9.17495 1.53253 9.28261 1.62631C9.4705 1.78998 11.2071 3.5232 11.2532 3.64134C11.2922 3.7413 11.2656 4.14647 11.2655 4.28049L11.2639 5.98453C11.2638 6.17469 11.2297 7.01038 11.3334 7.09768C11.4051 7.08948 12.123 6.34163 12.2254 6.23916L13.9444 4.51963C14.2049 4.25872 14.4608 3.99542 14.7304 3.7439C14.9418 3.54665 15.2731 3.60409 15.5503 3.60578L16.5052 3.60998C16.8076 3.61063 17.8283 3.52275 17.9928 3.75654C18.1225 3.94096 18.0805 4.69656 18.0752 4.96005C18.0631 5.55316 18.1082 6.18162 18.0535 6.77129C18.0421 6.88565 17.3737 7.52043 17.2485 7.64552L15.5103 9.38215C15.2283 9.66345 14.9362 9.94896 14.6581 10.235C14.6194 10.2748 14.6013 10.3033 14.5964 10.3552C14.667 10.4414 15.459 10.4114 15.6327 10.4113L17.1794 10.4117C17.4361 10.4103 17.7544 10.3905 18.0031 10.4279C18.0966 10.4448 18.1866 10.5223 18.2514 10.5878C18.8406 11.1837 19.4428 11.7681 20.0264 12.3691C20.0657 12.4096 20.1515 12.5279 20.1757 12.5785C20.211 12.6521 20.1569 12.8222 20.1071 12.8811C19.9375 13.082 19.7411 13.2671 19.5551 13.4532L18.4174 14.5907C18.3189 14.689 18.1783 14.8508 18.0468 14.8994C17.8348 14.9776 16.3802 14.9342 16.0363 14.9337C14.4561 14.9338 12.841 14.9141 11.2647 14.9391L11.264 17.7465C11.2639 18.2139 11.2735 18.6825 11.2615 19.1494C11.2557 19.3767 11.1102 19.4343 10.9102 19.44C10.666 19.4471 10.4207 19.4421 10.1763 19.4411L8.82518 19.4395L7.70603 19.4424C7.45606 19.4432 7.14202 19.4564 6.90106 19.4153C6.64894 19.1673 6.73108 18.8037 6.72099 18.4755C6.71566 18.0339 6.74337 17.4699 6.97302 17.0753C7.25999 16.5821 7.82356 16.087 8.22982 15.6827L9.99945 13.915C10.2107 13.7047 10.9989 12.9728 11.1394 12.6865C11.1922 12.579 10.7978 12.2098 10.6759 12.0883L10.0794 11.492L8.09812 9.51391C7.70754 9.12432 7.23679 8.73421 6.97279 8.24415C6.84932 8.01494 6.77834 7.74567 6.74778 7.48768C6.71248 7.18967 6.68563 3.86575 6.75819 3.65772C6.78771 3.57304 6.87677 3.47899 6.93649 3.41305C7.19342 3.1294 7.48666 2.86756 7.75685 2.59562C8.07341 2.27703 8.38342 1.9308 8.72068 1.63558C8.7893 1.57549 8.85099 1.53376 8.93474 1.49742Z";
+const MARK_B = "M2.47293 10.4176C2.84684 10.3936 6.65609 10.3934 6.72007 10.427C6.77058 10.4536 6.81894 10.4861 6.86411 10.5209C6.98717 10.6156 7.09381 10.7363 7.20334 10.846L7.7586 11.4019C7.95918 11.6026 8.87788 12.4467 8.90605 12.6756C8.82771 12.9445 7.93759 13.761 7.69754 13.9996C7.45958 14.2398 7.22116 14.4813 6.98147 14.7196C6.78298 14.9169 6.68561 14.9337 6.41412 14.934C5.52449 14.9349 4.63533 14.9344 3.74592 14.9342L2.98341 14.9345C2.69673 14.9353 2.47551 14.9873 2.25879 14.7749C2.21733 14.5829 2.22752 14.2714 2.22735 14.0689L2.22701 13.1503L2.22737 11.5597C2.22747 11.301 2.20479 10.8417 2.25747 10.5797C2.27303 10.5023 2.39375 10.4443 2.47293 10.4176Z";
+document.getElementById('markA').setAttribute('d', MARK_A);
+document.getElementById('markB').setAttribute('d', MARK_B);
+const markPath = [new Path2D(MARK_A), new Path2D(MARK_B)];
+
+/* ── the shipped system's disease-state hues ───────────────────── */
+const AREAS = [
+  ['Breast Cancer', '#ff9ef9'], ['Lung Cancer', '#ad94ff'], ['GI', '#007bff'],
+  ['GU', '#00ddff'], ['Hematology', '#70ffac'], ['Weight Loss', '#f99f9f'],
+];
+const LAYOUT_NAME = { auto: 'Auto', side: 'Side', row: 'Row', split: 'Split', stack: 'Stack', bigword: 'Big word', chevron: 'Chevron', duotone: 'Duotone' };
+
+const state = { title: '', credit: '', hero: 'PFS', heroMode: 'fit', palette: 'disease', area: 0, layout: 'auto', faces: [], seed: 20260902 };
+
+/* ── controls ──────────────────────────────────────────────────── */
+const $ = (s) => document.querySelector(s);
+const areasEl = $('#areas');
+AREAS.forEach(([name, hex], i) => {
+  const b = document.createElement('button'); b.type = 'button';
+  b.innerHTML = `<i style="background:${hex}"></i>${name}`;
+  b.setAttribute('aria-pressed', i === 0);
+  b.onclick = () => { state.area = i; [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === i)); render(); };
+  areasEl.appendChild(b);
+});
+$('#layout').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.layout = b.dataset.v;
+  [...$('#layout').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  $('#heroField').hidden = state.layout !== 'bigword';
+  render();
+});
+$('#palette').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.palette = b.dataset.v;
+  [...$('#palette').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  render();
+});
+$('#title').addEventListener('input', (e) => { state.title = e.target.value; render(); });
+$('#credit').addEventListener('input', (e) => { state.credit = e.target.value; render(); });
+$('#hero').addEventListener('input', (e) => { state.hero = e.target.value; render(); });
+$('#heroMode').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.heroMode = b.dataset.v;
+  [...$('#heroMode').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  render();
+});
+state.title = $('#title').value; state.credit = $('#credit').value;
+$('#randomize').onclick = () => { state.seed = (state.seed * 7 + 13) % 4294967296; render(); };
+
+/* files: drop zone + picker */
+const drop = $('#drop');
+drop.onclick = () => $('#files').click();
+$('#files').onchange = (e) => addFiles(e.target.files);
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+function addFiles(list) {
+  for (const file of [...list].slice(0, 5 - state.faces.length)) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => { state.faces.push({ img, url, name: file.name.replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0 }); renderFaces(); render(); };
+    img.src = url;
+  }
+}
+function renderFaces() {
+  const el = $('#faces'); el.innerHTML = '';
+  state.faces.forEach((f, i) => {
+    const d = document.createElement('div'); d.className = 'face';
+    d.innerHTML = `<img src="${f.url}" alt=""><div><div class="name">${f.name}</div>
+      <input type="range" min="1" max="2.2" step="0.02" value="${f.zoom}" aria-label="Zoom ${f.name}"></div>
+      <button class="x" type="button" aria-label="Remove ${f.name}">×</button>`;
+    d.querySelector('input').oninput = (e) => { f.zoom = +e.target.value; render(); };
+    d.querySelector('.x').onclick = () => { state.faces.splice(i, 1); renderFaces(); render(); };
+    el.appendChild(d);
+  });
+}
+
+/* ── layout ────────────────────────────────────────────────────── */
+function resolveLayout() {
+  if (state.layout !== 'auto') return state.layout;
+  return state.faces.length <= 2 ? 'side' : 'row';
+}
+/* One to five faces packed into a zone about 640px wide, centred on (cx, cy).
+   The lead face is always first and always largest; the rest gather round it. */
+function cluster(n, cx, cy) {
+  const at = (x, y, d) => ({ cx: cx + x, cy: cy + y, d });
+  switch (Math.min(n, 5)) {
+    case 1: return [at(0, 0, 520)];
+    case 2: return [at(-150, 20, 420), at(150, -50, 380)];
+    case 3: return [at(-110, 10, 400), at(190, -130, 240), at(190, 150, 240)];
+    case 4: return [at(-135, -135, 250), at(135, -135, 250), at(-135, 135, 250), at(135, 135, 250)];
+    default: return [at(0, 0, 260), at(-225, -120, 190), at(225, -120, 190), at(-225, 140, 190), at(225, 140, 190)];
+  }
+}
+/* Big word · Stacked: one to five faces in the lower-right band, under the word and clear of the title. */
+function band(n) {
+  const at = (cx, cy, d) => ({ cx, cy, d });
+  switch (Math.min(n, 5)) {
+    case 1: return [at(1080, 505, 330)];
+    case 2: return [at(900, 515, 290), at(1120, 500, 260)];
+    case 3: return [at(890, 520, 260), at(1110, 430, 200), at(1110, 600, 200)];
+    case 4: return [at(900, 425, 180), at(1100, 425, 180), at(900, 605, 180), at(1100, 605, 180)];
+    default: return [at(1000, 515, 210), at(830, 420, 150), at(1170, 420, 150), at(830, 610, 150), at(1170, 610, 150)];
+  }
+}
+/* Circle layouts return `slots`; column layouts return a `region` that the
+   faces fill as vertical strips, clipped by the layout's own shape. */
+function plan(layout, n) {
+  const slots = [];
+  if (layout === 'side') {
+    const tw = n <= 1 ? 600 : n === 2 ? 500 : 470;
+    return { slots: cluster(n, 960, 370), title: { x: 48, w: tw, bottom: 574, max: 74, lines: 3 }, credit: { x: 48, y: 604, w: tw } };
+  }
+  if (layout === 'split') {
+    /* hard vertical split: hue panel carries the type, the photo runs edge to edge on the right */
+    return { slots: [], region: { x: 620, w: 660, clip: 'rect' }, panel: true, title: { x: 48, w: 524, bottom: 580, max: 74, lines: 3, ink: true }, credit: { x: 48, y: 610, w: 524, ink: true } };
+  }
+  if (layout === 'stack') {
+    const d = n === 1 ? 300 : n === 2 ? 240 : n === 3 ? 200 : n === 4 ? 140 : 112;
+    const step = n === 2 ? 300 : n === 3 ? 230 : n === 4 ? 160 : 132;
+    const start = n === 1 ? 360 : n === 2 ? 210 : n === 3 ? 130 : n === 4 ? 100 : 96;
+    for (let i = 0; i < n; i++) slots.push({ cx: 200, cy: start + i * step, d });
+    return { slots, title: { x: 420, w: 812, bottom: 560, max: 78, lines: 3 }, credit: { x: 420, y: 592, w: 812 } };
+  }
+  if (layout === 'bigword') {
+    if (state.heroMode === 'stack') {
+      /* word runs the full width on top; faces sit in a band underneath, right of the title */
+      return { slots: band(n), hero: { maxW: 1224, max: 300, top: 84 }, title: { x: 48, w: 640, bottom: 620, max: 46, lines: 3 }, credit: { x: 48, y: 648, w: 640, small: true } };
+    }
+    /* faces overlap the word, so the word is sized to end before the cluster starts */
+    const slots = cluster(n, 1000, 390);
+    const left = Math.min(...slots.map(s => s.cx - s.d / 2));
+    const tw = n <= 1 ? 640 : n === 2 ? 560 : 500;
+    return { slots, hero: { maxW: left - 48, max: 420, top: 80 }, title: { x: 48, w: tw, bottom: 620, max: 46, lines: 3 }, credit: { x: 48, y: 648, w: 900, small: true } };
+  }
+  if (layout === 'chevron') {
+    return { slots: [], region: { x: 560, w: 720, clip: 'chevron' }, title: { x: 48, w: 600, bottom: 560, max: 76, lines: 3 }, credit: { x: 48, y: 596, w: 600 } };
+  }
+  if (layout === 'duotone') {
+    return { slots: [], region: { x: 520, w: 760, clip: 'duotone' }, title: { x: 48, w: 760, bottom: 560, max: 92, lines: 3 }, credit: { x: 48, y: 596, w: 760 } };
+  }
+  /* row */
+  const d = n <= 3 ? 340 : 232, gap = n <= 3 ? 60 : 20;
+  const total = n * d + (n - 1) * gap, x0 = (1280 - total) / 2 + d / 2;
+  for (let i = 0; i < n; i++) slots.push({ cx: x0 + i * (d + gap), cy: n <= 3 ? 300 : 270, d });
+  return { slots, title: { x: 48, w: 1040, bottom: 626, max: 54, lines: 2 }, credit: { x: 48, y: 652, w: 1184, small: true } };
+}
+
+/* ── drawing ───────────────────────────────────────────────────── */
+const canvas = $('#c'), ctx = canvas.getContext('2d');
+function rnd(seedRef) { seedRef.s = (seedRef.s * 1664525 + 1013904223) % 4294967296; return seedRef.s / 4294967296; }
+function gauss(r) { return (rnd(r) + rnd(r) + rnd(r) + rnd(r) - 2) / 2; }
+function burst(cx, cy, radius, hex, seed) {
+  const r = { s: seed };
+  const [R, G, B] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  for (let i = 0; i < 1500; i++) {
+    const spread = Math.pow(rnd(r), 0.42);
+    const x = cx + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
+    const y = cy + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
+    const s = rnd(r) < 0.12 ? 9 : rnd(r) < 0.45 ? 6.5 : 4.5;
+    const a = Math.max(0.08, Math.min(1, 1.10 - spread * 1.18));
+    ctx.fillStyle = `rgba(${R},${G},${B},${a})`;
+    ctx.fillRect(x, y, s, s);
+  }
+}
+let ACTIVE = null;
+function placeholder(x, y, w, h, size) {
+  ctx.fillStyle = ACTIVE && ACTIVE.isV2 ? '#2c3d4b' : '#1a1917'; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `500 ${size}px "Geist Mono"`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('ADD HEADSHOT', x + w / 2, y + h / 2); ctx.textAlign = 'left';
+}
+function face(slot, f) {
+  const { cx, cy, d } = slot;
+  ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.clip();
+  if (f) {
+    const cover = Math.max(d / f.img.width, d / f.img.height) * f.zoom;
+    const w = f.img.width * cover, h = f.img.height * cover;
+    ctx.drawImage(f.img, cx - w / 2 + f.dx, cy - h / 2 + f.dy, w, h);
+  } else placeholder(cx - d / 2, cy - d / 2, d, d, Math.max(14, d * 0.07));
+  ctx.restore();
+}
+/* Region layouts (Split, Chevron, Duotone) fill their region with a mosaic of
+   near-square cells, so a square headshot reads whole even with five faces.
+   Lead face first. Chevron uses rows where a column would put a face on the notch. */
+function cells(n, R) {
+  const { x, w } = R, H = 720, rows = R.clip === 'chevron';
+  const c = (cx, cy, cw, ch) => ({ x: cx, y: cy, w: cw, h: ch });
+  switch (Math.min(n, 5)) {
+    case 1: return [c(x, 0, w, H)];
+    case 2: return rows ? [c(x, 0, w, 360), c(x, 360, w, 360)] : [c(x, 0, w / 2, H), c(x + w / 2, 0, w / 2, H)];
+    case 3: return rows ? [c(x, 0, w, 360), c(x, 360, w / 2, 360), c(x + w / 2, 360, w / 2, 360)]
+                        : [c(x, 0, w / 2, H), c(x + w / 2, 0, w / 2, 360), c(x + w / 2, 360, w / 2, 360)];
+    case 4: return [c(x, 0, w / 2, 360), c(x + w / 2, 0, w / 2, 360), c(x, 360, w / 2, 360), c(x + w / 2, 360, w / 2, 360)];
+    default: return [c(x, 0, w / 2, 360), c(x + w / 2, 0, w / 2, 360), c(x, 360, w / 3, 360), c(x + w / 3, 360, w / 3, 360), c(x + 2 * w / 3, 360, w / 3, 360)];
+  }
+}
+/* chevron edges at a given height: the left notch and the right point */
+const chevL = (y) => 560 + 200 * (1 - Math.abs(y - 360) / 360);
+const chevR = (y) => 1080 + 200 * (1 - Math.abs(y - 360) / 360);
+/* Each face is anchored on its likely face point (mid-width, 42% down) at the centre
+   of the cell's safe zone, then scaled just enough to cover the cell. */
+function mosaic(L, layout, n, hue, P) {
+  const R = L.region, clip = R.clip, cs = cells(n, R), FX = 0.5, FY = 0.42;
+  ctx.save();
+  if (clip === 'chevron') { ctx.beginPath(); ctx.moveTo(560, 0); ctx.lineTo(1080, 0); ctx.lineTo(1280, 360); ctx.lineTo(1080, 720); ctx.lineTo(560, 720); ctx.lineTo(760, 360); ctx.closePath(); ctx.clip(); }
+  else { ctx.beginPath(); ctx.rect(R.x, 0, R.w, 720); ctx.clip(); }
+  cs.forEach((c, i) => {
+    const f = state.faces[i];
+    ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, c.w, c.h); ctx.clip();
+    if (f) {
+      const ay = c.y + c.h * 0.46;
+      const x0 = clip === 'chevron' ? Math.max(c.x, chevL(ay)) : c.x;
+      const x1 = clip === 'chevron' ? Math.min(c.x + c.w, chevR(ay)) : c.x + c.w;
+      const ax = (x0 + x1) / 2, iw = f.img.width, ih = f.img.height;
+      const s = Math.max((ax - c.x) / (FX * iw), (c.x + c.w - ax) / ((1 - FX) * iw), (ay - c.y) / (FY * ih), (c.y + c.h - ay) / ((1 - FY) * ih)) * f.zoom;
+      if (clip === 'duotone') ctx.filter = 'grayscale(1) contrast(1.15)';
+      ctx.drawImage(f.img, ax - FX * iw * s + f.dx, ay - FY * ih * s + f.dy, iw * s, ih * s);
+      ctx.filter = 'none';
+    } else placeholder(c.x, c.y, c.w, c.h, Math.max(14, Math.min(c.w, c.h) * 0.07));
+    ctx.restore();
+    render.hits.push({ i, x: c.x, y: c.y, w: c.w, h: c.h });
+  });
+  if (clip === 'duotone') { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = hue; ctx.fillRect(R.x, 0, R.w, 720); ctx.globalCompositeOperation = 'source-over'; }
+  /* seams so the mosaic reads as a set, not one collage */
+  if (cs.length > 1) { ctx.strokeStyle = P.dark; ctx.lineWidth = 6; cs.forEach(c => ctx.strokeRect(c.x, c.y, c.w, c.h)); }
+  ctx.restore();
+  if (clip === 'duotone') {
+    const g = ctx.createLinearGradient(R.x - 80, 0, R.x + 160, 0);
+    g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g; ctx.fillRect(R.x - 80, 0, 240, 720);
+  }
+}
+function wrap(text, maxW) {
+  const words = text.split(/\s+/).filter(Boolean), lines = []; let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; } else line = test;
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+function mark(x, y, size, hex) {
+  ctx.save(); ctx.translate(x, y); ctx.scale(size / 22, size / 22); ctx.fillStyle = hex;
+  markPath.forEach(p => ctx.fill(p)); ctx.restore();
+}
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+
+function render() {
+  const layout = resolveLayout(), n = Math.max(1, state.faces.length);
+  const P = CHM.palette(state.palette, state.area), hue = P.bright;
+  ACTIVE = P;
+  const L = plan(layout, n);
+  render.slots = L.slots; render.hits = [];
+  ctx.clearRect(0, 0, 1280, 720);
+  ctx.fillStyle = P.dark; ctx.fillRect(0, 0, 1280, 720);
+  if (L.panel) { ctx.fillStyle = hue; ctx.fillRect(0, 0, 620, 720); }
+
+  /* ambient field for the layouts that carry one, then the hero word */
+  if (layout === 'bigword') burst(430, 320, 1100, hue, state.seed + 5);
+  if (layout === 'chevron') burst(880, 300, 1000, hue, state.seed + 7);
+  if (layout === 'duotone') burst(330, 350, 900, hue, state.seed + 9);
+  if (L.hero) {
+    /* hero word: as big as its budget allows, never hidden by the faces */
+    const H = L.hero, word = (state.hero || 'PFS').slice(0, 10);
+    let hs = H.max; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
+    for (;;) { ctx.font = `900 ${hs}px Geist`; ctx.letterSpacing = `${-hs * 0.06}px`; if (ctx.measureText(word).width <= H.maxW || hs <= 120) break; hs -= 8; }
+    ctx.fillStyle = hue; ctx.fillText(word, 28, H.top + (H.max - hs) * 0.35); ctx.letterSpacing = '0px';
+  }
+
+  /* faces: halos behind every circle, core offset up-right so it reads as a rim */
+  if (L.region) mosaic(L, layout, n, hue, P);
+  else {
+    L.slots.forEach((s, i) => {
+      const scale = s.d < 200 ? 1.5 : s.d < 300 ? 1.7 : (layout === 'row' && n > 3 ? 2.3 : 2.0);
+      burst(s.cx + s.d * 0.22, s.cy - s.d * 0.26, s.d * scale, hue, state.seed + i * 97);
+    });
+    L.slots.forEach((s, i) => face(s, state.faces[i]));
+  }
+
+  /* chip */
+  const chipFg = L.panel ? hue : P.onBright, chipBg = L.panel ? P.dark : hue;
+  ctx.font = '700 18px "Geist Mono"'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  const label = AREAS[state.area][0].toUpperCase(); const lw = ctx.measureText(label).width + 6 * label.length * 0.08;
+  const chipX = layout === 'stack' ? 420 : 48;
+  ctx.fillStyle = chipBg; roundRect(chipX, 44, lw + 32, 40, 6); ctx.fill();
+  ctx.fillStyle = chipFg; ctx.letterSpacing = '1.4px'; ctx.fillText(label, chipX + 16, 65); ctx.letterSpacing = '0px';
+
+  /* lockup: a soft shadow keeps it legible when it sits over a photo (Split) */
+  if (L.region && L.region.clip === 'rect') { ctx.shadowColor = 'rgba(0,0,0,.75)'; ctx.shadowBlur = 16; }
+  mark(1280 - 48 - 34 - 70, 46, 34, hue);
+  ctx.fillStyle = '#fff'; ctx.font = '900 32px Geist'; ctx.letterSpacing = '-1px'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText('chm', 1280 - 48 - 62, 74); ctx.letterSpacing = '0px';
+  ctx.shadowColor = 'transparent'; ctx.shadowBlur = 0;
+
+  /* title: shrink until it fits the line budget */
+  const T = L.title; let size = T.max, lines;
+  for (;;) {
+    ctx.font = `900 ${size}px Geist`; ctx.letterSpacing = `${-size * 0.034}px`;
+    lines = wrap(state.title, T.w);
+    if (lines.length <= T.lines || size <= 34) break; size -= 2;
+  }
+  const lead = size * 0.94, top = T.bottom - lines.length * lead;
+  ctx.fillStyle = T.ink ? P.dark : '#fff';
+  lines.forEach((l, i) => ctx.fillText(l, T.x, top + (i + 1) * lead - size * 0.12));
+  ctx.letterSpacing = '0px';
+
+  /* credit */
+  ctx.font = `700 ${L.credit.small ? 15 : 20}px "Geist Mono"`; ctx.fillStyle = L.credit.ink ? (P.isV2 ? 'rgba(34,48,60,.82)' : 'rgba(15,14,13,.8)') : hue; ctx.letterSpacing = '1px';
+  wrap(state.credit.toUpperCase(), L.credit.w).forEach((l, i) => ctx.fillText(l, L.credit.x, L.credit.y + 16 + i * 22));
+  ctx.letterSpacing = '0px';
+
+  $('#meta').textContent = `1280 × 720 · ${LAYOUT_NAME[layout]} layout · ${AREAS[state.area][0]}${P.isV2 ? ' · Brand v2' : ''} · ${n} ${n === 1 ? 'clinician' : 'clinicians'}`;
+}
+
+/* drag a face to reposition it — circles first, then mosaic cells */
+let drag = null;
+const toCanvas = (e) => { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) * 1280 / r.width, y: (e.clientY - r.top) * 720 / r.height }; };
+canvas.addEventListener('pointerdown', (e) => {
+  const p = toCanvas(e);
+  let i = (render.slots || []).findIndex(s => Math.hypot(p.x - s.cx, p.y - s.cy) <= s.d / 2);
+  if (i < 0) { const h = (render.hits || []).find(h => p.x >= h.x && p.x < h.x + h.w && p.y >= h.y && p.y < h.y + h.h); if (h) i = h.i; }
+  if (i < 0 || !state.faces[i]) return;
+  drag = { i, x: p.x, y: p.y, dx: state.faces[i].dx, dy: state.faces[i].dy };
+  canvas.classList.add('dragging'); canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return; const p = toCanvas(e);
+  state.faces[drag.i].dx = drag.dx + (p.x - drag.x); state.faces[drag.i].dy = drag.dy + (p.y - drag.y); render();
+});
+canvas.addEventListener('pointerup', () => { drag = null; canvas.classList.remove('dragging'); });
+
+/* export at full resolution */
+$('#export').onclick = () => {
+  canvas.toBlob((blob) => {
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = `chm-thumbnail-${state.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 48)}.png`; a.click();
+  }, 'image/png');
+};
+
+/* automation hook for the render harness */
+window.__studio = {
+  canvas: () => canvas,
+  async apply(s) {
+    state.faces = (await Promise.all((s.faces || []).map(n => CHM.loadUrl(`samples/${n}.jpg`, n)))).filter(Boolean);
+    renderFaces();
+    state.layout = s.layout || 'auto'; state.area = s.area ?? 0; state.title = s.title ?? state.title; state.credit = s.credit ?? state.credit;
+    state.hero = s.hero ?? state.hero; state.heroMode = s.heroMode || 'fit'; state.palette = s.palette || 'disease'; if (s.seed) state.seed = s.seed;
+    $('#title').value = state.title; $('#credit').value = state.credit; $('#hero').value = state.hero;
+    $('#heroField').hidden = state.layout !== 'bigword';
+    [...$('#layout').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.layout));
+    [...$('#heroMode').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.heroMode));
+    [...$('#palette').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === state.palette));
+    [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === state.area));
+    render();
+  },
+};
+
+/* first paint waits for Geist, so the title never measures a fallback */
+Promise.all([document.fonts.load('900 64px Geist'), document.fonts.load('700 18px "Geist Mono"')]).then(render);
+</script>
+</body>
+</html>
