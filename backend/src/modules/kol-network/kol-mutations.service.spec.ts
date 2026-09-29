@@ -10,13 +10,13 @@ describe('KolMutationsService', () => {
     }> = [];
     const client: Partial<ContentHubClientService> = {
       isAdminConfigured: jest.fn().mockReturnValue(true),
-      patchAdmin: jest.fn(async (path: string, body: unknown) => {
+      patchAdmin: jest.fn((path: string, body: unknown) => {
         calls.push({ method: 'PATCH', path, body });
-        return {} as never;
+        return Promise.resolve({} as never);
       }),
-      postAdmin: jest.fn(async (path: string, body?: unknown) => {
+      postAdmin: jest.fn((path: string, body?: unknown) => {
         calls.push({ method: 'POST', path, body });
-        return {} as never;
+        return Promise.resolve({} as never);
       }),
     };
     return { client: client as ContentHubClientService, calls };

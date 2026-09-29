@@ -47,7 +47,8 @@ export interface CognitoIdTokenClaims {
   given_name?: string;
   family_name?: string;
   name?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   aud?: string | string[];
   iss?: string;
   exp?: number;
@@ -59,7 +60,8 @@ export interface CognitoIdTokenClaims {
 export interface CognitoAccessTokenClaims {
   sub: string;
   client_id?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   iss?: string;
   exp?: number;
   username?: string;

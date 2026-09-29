@@ -90,15 +90,22 @@ export async function programHasPostEventSurvey(
   return feedbackCount > 0;
 }
 
+type SurveyMetaProgram = {
+  id: string;
+  jotformSurveyUrl?: string | null;
+  jotformIntakeFormUrl?: string | null;
+  zoomSessionType: ProgramZoomSessionType;
+};
+
+/** `defaultIntakeUrl` is accepted for caller compatibility and ignored (intake is native-only). */
+export function loadProgramSurveyMeta(
+  prisma: { survey: SurveyLookup },
+  program: SurveyMetaProgram,
+  defaultIntakeUrl?: string,
+): Promise<ProgramSurveyMeta>;
 export async function loadProgramSurveyMeta(
   prisma: { survey: SurveyLookup },
-  program: {
-    id: string;
-    jotformSurveyUrl?: string | null;
-    jotformIntakeFormUrl?: string | null;
-    zoomSessionType: ProgramZoomSessionType;
-  },
-  _defaultIntakeUrl?: string,
+  program: SurveyMetaProgram,
 ): Promise<ProgramSurveyMeta> {
   const [feedback, intake] = await Promise.all([
     prisma.survey.findFirst({

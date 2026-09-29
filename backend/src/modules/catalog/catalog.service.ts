@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisCacheService } from '../../cache/redis-cache.service';
-import { cacheKeyHash } from '../../cache/cache-key.util';
 import {
   ContentHubCatalogService,
   type ContentHubClip,

@@ -17,7 +17,7 @@ export type ContentHubCampaignRecord = {
   reportingPeriodStart: string | null;
   reportingPeriodEnd: string | null;
   hubspotSyncedAt: string | null;
-  hubspotRawData: unknown | null;
+  hubspotRawData: unknown;
   surveySourceId: string | null;
   surveySourceProgramId: string | null;
   surveySourceLabel: string | null;

@@ -6,10 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  ProgramZoomSessionType,
-  ZoomRecordingPullStatus,
-} from '@prisma/client';
+import { ZoomRecordingPullStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ZoomService,

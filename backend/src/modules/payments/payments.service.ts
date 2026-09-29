@@ -11,6 +11,7 @@ import {
   Prisma,
   PostEventAttendanceStatus,
   ProgramZoomSessionType,
+  type Payment,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -156,7 +157,13 @@ export class PaymentsService {
     vendor: Record<string, unknown>,
   ): string | null {
     const tryFrom = (val: unknown): string | null => {
-      if (val == null) return null;
+      if (
+        typeof val !== 'string' &&
+        typeof val !== 'number' &&
+        typeof val !== 'bigint'
+      ) {
+        return null;
+      }
       const s = String(val).replace(/\s/g, '');
       if (!s) return null;
       const digits = s.replace(/\D/g, '');
@@ -1049,7 +1056,7 @@ export class PaymentsService {
       take: 5000,
     });
 
-    const escape = (value: unknown) => {
+    const escape = (value: string | number | null | undefined) => {
       const s = value == null ? '' : String(value);
       if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
       return s;
@@ -1587,7 +1594,7 @@ export class PaymentsService {
       );
     }
 
-    let payment;
+    let payment: Payment;
     try {
       payment = await this.prisma.payment.create({
         data: {

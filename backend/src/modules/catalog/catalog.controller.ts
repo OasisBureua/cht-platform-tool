@@ -344,8 +344,8 @@ export class CatalogController {
    * Legacy Content Hub transcript endpoint removed; returns null so clients show unavailable.
    */
   @Get('transcripts/:shootId')
-  async getTranscript(@Param('shootId') _shootId: string) {
-    return null;
+  getTranscript(): Promise<null> {
+    return Promise.resolve(null);
   }
 
   /**

@@ -287,7 +287,7 @@ export function parseSocialPostsFromAssets(raw: unknown): HubSpotSocialPost[] {
 }
 
 export function countAssetsByType(
-  assetsByType: Record<string, unknown | null>,
+  assetsByType: Record<string, unknown>,
 ): Record<string, number> {
   const counts: Record<string, number> = {};
   for (const [assetType, payload] of Object.entries(assetsByType)) {
@@ -324,13 +324,13 @@ export function metricsFromHubspotSnapshot(raw: unknown): {
     accumulateMetricsFromUnknown(snap.emailStatistics),
   );
 
-  const assetsByType: Record<string, unknown | null> = {};
+  const assetsByType: Record<string, unknown> = {};
   if (snap.assets && typeof snap.assets === 'object') {
     assetsByType.MARKETING_EMAIL = snap.assets;
   }
   const extraAssets =
     snap.assetsByType && typeof snap.assetsByType === 'object'
-      ? (snap.assetsByType as Record<string, unknown | null>)
+      ? (snap.assetsByType as Record<string, unknown>)
       : {};
   const socialRaw = extraAssets.SOCIAL_BROADCAST ?? snap.socialPosts ?? null;
 

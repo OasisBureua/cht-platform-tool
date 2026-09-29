@@ -288,7 +288,8 @@ export class ZoomService implements OnModuleInit {
         this.logger.error(
           `Zoom ${context}: treating as account-locked settings; retrying without any settings object`,
         );
-        const { settings: _omit, ...withoutSettings } = body;
+        const withoutSettings = { ...body };
+        delete withoutSettings.settings;
         if (Object.keys(withoutSettings).length === 0) {
           this.logger.error(
             `Zoom ${context}: settings-only write skipped after Zoom rejected all setting payloads`,

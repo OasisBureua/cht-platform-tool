@@ -73,7 +73,7 @@ describe('ZoomAttendanceReportExportService', () => {
         data: expect.objectContaining({
           attendeeReportS3Bucket: 'session-assets-bucket',
           attendeeReportParticipantCount: 1,
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -124,7 +124,7 @@ describe('ZoomAttendanceReportExportService', () => {
         where: expect.objectContaining({
           programId: 'prog-1',
           source: WebinarParticipantEventSource.REPORT_IMPORT,
-        }),
+        }) as unknown,
       }),
     );
   });

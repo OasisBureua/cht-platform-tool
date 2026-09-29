@@ -6,6 +6,8 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
+import type { Request } from 'express';
+import type { AuthUser } from './auth.service';
 
 export const ROLES_KEY = 'roles';
 
@@ -25,7 +27,9 @@ export class RolesGuard implements CanActivate {
 
     if (!requiredRoles?.length) return true;
 
-    const { user } = context.switchToHttp().getRequest();
+    const { user } = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
     if (!user) throw new ForbiddenException('Not authenticated');
 
     const hasRole = requiredRoles.includes(user.role);

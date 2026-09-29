@@ -5,9 +5,11 @@ import { CacheClearService } from './cache-clear.service';
 import { RedisCacheService } from './redis-cache.service';
 
 describe('CacheClearService', () => {
+  const isEnabled = jest.fn<boolean, []>();
+  const deleteByPattern = jest.fn<Promise<number>, [string]>();
   const cache = {
-    isEnabled: jest.fn(),
-    deleteByPattern: jest.fn(),
+    isEnabled,
+    deleteByPattern,
   } as unknown as RedisCacheService;
 
   const config = {
@@ -89,29 +91,28 @@ describe('CacheClearService', () => {
   });
 
   it('clears only contenthub namespace patterns', async () => {
-    (cache.isEnabled as jest.Mock).mockReturnValue(true);
-    (cache.deleteByPattern as jest.Mock).mockImplementation(
-      async (pattern: string) =>
-        pattern.startsWith('cht:contenthub:') ? 3 : 0,
+    isEnabled.mockReturnValue(true);
+    deleteByPattern.mockImplementation((pattern: string) =>
+      Promise.resolve(pattern.startsWith('cht:contenthub:') ? 3 : 0),
     );
 
     const result = await service.clear('contenthub', { authMethod: 'query' });
     expect(result.total).toBe(3);
     expect(result.deletedByPattern['cht:contenthub:*']).toBe(3);
     expect(result.durationMs).toBeGreaterThanOrEqual(0);
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:contenthub:*');
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:kol-network:*');
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:catalog:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:contenthub:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:kol-network:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:catalog:*');
   });
 
   it('clears all namespace patterns for scope=all', async () => {
-    (cache.isEnabled as jest.Mock).mockReturnValue(true);
-    (cache.deleteByPattern as jest.Mock).mockResolvedValue(1);
+    isEnabled.mockReturnValue(true);
+    deleteByPattern.mockResolvedValue(1);
 
     const result = await service.clear('all');
     expect(result.total).toBe(3);
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:catalog:*');
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:contenthub:*');
-    expect(cache.deleteByPattern).toHaveBeenCalledWith('cht:kol-network:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:catalog:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:contenthub:*');
+    expect(deleteByPattern).toHaveBeenCalledWith('cht:kol-network:*');
   });
 });

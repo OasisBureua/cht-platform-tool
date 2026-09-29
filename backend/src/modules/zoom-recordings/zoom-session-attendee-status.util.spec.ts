@@ -111,7 +111,7 @@ describe('zoom-session-attendee-status.util', () => {
           where: expect.objectContaining({
             source: 'REPORT_IMPORT',
             event: 'JOINED',
-          }),
+          }) as unknown,
         }),
       );
     });

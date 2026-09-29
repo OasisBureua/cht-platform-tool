@@ -20,7 +20,11 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
-import { CognitoService, CognitoTokens } from './cognito.service';
+import {
+  CognitoService,
+  CognitoTokens,
+  type CognitoIdTokenClaims,
+} from './cognito.service';
 import {
   cognitoErrorLogFields,
   mapCognitoLoginException,
@@ -221,7 +225,7 @@ export class AuthController {
       zipCode?: string | null;
     },
   ): Promise<LoginSuccess | { error: string }> {
-    let claims;
+    let claims: CognitoIdTokenClaims;
     try {
       claims = await this.cognitoService.verifyTokenPair(tokens);
     } catch (err) {
@@ -961,11 +965,11 @@ export class AuthController {
   @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
   @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('signup')
-  async signup(): Promise<{ error?: string }> {
-    return {
+  signup(): Promise<{ error?: string }> {
+    return Promise.resolve({
       error:
         'Legacy signup is unavailable. Use Cognito signup (/auth/cognito/signup).',
-    };
+    });
   }
 
   /**
@@ -973,10 +977,10 @@ export class AuthController {
    * Legacy GoTrue OAuth exchange removed. Use Cognito Hosted UI + /auth/cognito/callback.
    */
   @Post('login-oauth')
-  async loginOAuth(): Promise<{ error: string }> {
-    return {
+  loginOAuth(): Promise<{ error: string }> {
+    return Promise.resolve({
       error: 'Legacy OAuth login is unavailable. Use Cognito Google sign-in.',
-    };
+    });
   }
 
   /**

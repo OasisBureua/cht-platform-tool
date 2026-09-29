@@ -97,7 +97,7 @@ export class NpiRegistryService {
         };
       }
 
-      const codes = payload[1];
+      const codes: unknown = payload[1];
       if (!Array.isArray(codes) || codes.length === 0) {
         return {
           valid: false,

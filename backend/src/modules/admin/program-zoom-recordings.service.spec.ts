@@ -1,5 +1,4 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   contentTypeFor,
   extForFile,
@@ -11,7 +10,7 @@ import { ZoomService } from '../webinars/zoom.service';
 import { ZoomRecordingsPullService } from '../zoom-recordings/zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from '../zoom-recordings/zoom-recordings-storage.service';
 
-const mockGetSignedUrl = jest.fn();
+const mockGetSignedUrl = jest.fn<Promise<string>, unknown[]>();
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: (...args: unknown[]) => mockGetSignedUrl(...args),
@@ -101,7 +100,7 @@ describe('ProgramZoomRecordingsService', () => {
     zoom = { isConfigured: jest.fn().mockReturnValue(true) };
     pull = {
       pullForProgram: jest.fn(),
-      toDto: jest.fn((r) => ({
+      toDto: jest.fn((r: typeof recordingRow) => ({
         id: r.id,
         programId: r.programId,
         zoomMeetingId: r.zoomMeetingId,

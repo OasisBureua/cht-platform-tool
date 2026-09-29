@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import {
@@ -211,7 +211,7 @@ export class DashboardService {
       }
     }
 
-    let updated;
+    let updated: User;
     try {
       updated = await this.prisma.user.update({
         where: { id: userId },

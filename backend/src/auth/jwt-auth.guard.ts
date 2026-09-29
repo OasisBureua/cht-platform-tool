@@ -5,7 +5,8 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
-import { AuthService } from './auth.service';
+import type { Request, Response } from 'express';
+import { AuthService, AuthUser } from './auth.service';
 import {
   getSessionTokenFromRequest,
   setSessionCookie,
@@ -37,8 +38,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const response = context.switchToHttp().getResponse();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
+    const response = context.switchToHttp().getResponse<Response>();
     const sessionToken = getSessionTokenFromRequest(request);
 
     if (sessionToken) {
@@ -46,7 +49,8 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       if (resolved) {
         request.user = resolved.user;
         // Refresh cookie Max-Age only for cookie-based sessions (not header-only clients).
-        const cookieToken = request.cookies?.[SESSION_COOKIE_NAME];
+        const cookies = request.cookies as Record<string, unknown> | undefined;
+        const cookieToken = cookies?.[SESSION_COOKIE_NAME];
         if (
           resolved.cookieMaxAgeSeconds > 0 &&
           typeof cookieToken === 'string' &&
@@ -83,8 +87,10 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       );
     }
 
-    const request = context.switchToHttp().getRequest();
-    const devUserId = request.headers[DEV_USER_HEADER];
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
+    const devUserId = request.headers[DEV_USER_HEADER] as string | undefined;
 
     if (!devUserId) {
       throw new UnauthorizedException(

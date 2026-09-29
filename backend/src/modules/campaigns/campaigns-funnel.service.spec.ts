@@ -14,14 +14,24 @@ import {
   emptyCountsByStage,
 } from './campaigns-funnel.util';
 
+type RegistrationQueryArgs = {
+  where: Record<string, unknown>;
+  include?: unknown;
+};
+
+function firstQueryArgs(mock: jest.Mock): RegistrationQueryArgs {
+  const [args] = mock.mock.calls[0] as [RegistrationQueryArgs];
+  return args;
+}
+
 function mockHubspot(
   overrides: Partial<{
     isConfigured: boolean;
     connected: boolean;
     listAllCampaigns: unknown[];
     canReadMetrics: boolean;
-    findContactByEmail: unknown | null;
-    findContactByNpi: unknown | null;
+    findContactByEmail: unknown;
+    findContactByNpi: unknown;
     listCampaignContactIds: {
       ids: string[];
       contactTypeUsed: string | null;
@@ -95,12 +105,12 @@ function mockContentHub(
 ) {
   return {
     isConfigured: jest.fn().mockReturnValue(overrides.configured ?? false),
-    listCampaigns: jest.fn().mockImplementation(async () => {
-      if (overrides.fail) throw new Error('CH down');
-      return {
+    listCampaigns: jest.fn().mockImplementation(() => {
+      if (overrides.fail) return Promise.reject(new Error('CH down'));
+      return Promise.resolve({
         items: overrides.items ?? [],
         total: overrides.items?.length ?? 0,
-      };
+      });
     }),
     getAdminBaseUrl: jest.fn().mockReturnValue(''),
   };
@@ -113,25 +123,27 @@ function mockPrisma(counts?: {
 }) {
   return {
     programRegistration: {
-      count: jest.fn().mockImplementation(async ({ where }) => {
-        if (
-          where?.postEventSurveyAcknowledgedAt &&
-          where?.postEventAttendanceStatus ===
+      count: jest
+        .fn()
+        .mockImplementation(({ where }: RegistrationQueryArgs) => {
+          if (
+            where?.postEventSurveyAcknowledgedAt &&
+            where?.postEventAttendanceStatus ===
+              PostEventAttendanceStatus.VERIFIED
+          ) {
+            return Promise.resolve(counts?.converted ?? 0);
+          }
+          if (
+            where?.postEventAttendanceStatus ===
             PostEventAttendanceStatus.VERIFIED
-        ) {
-          return counts?.converted ?? 0;
-        }
-        if (
-          where?.postEventAttendanceStatus ===
-          PostEventAttendanceStatus.VERIFIED
-        ) {
-          return counts?.attended ?? 0;
-        }
-        if (where?.status === ProgramRegistrationStatus.APPROVED) {
-          return counts?.registered ?? 0;
-        }
-        return 0;
-      }),
+          ) {
+            return Promise.resolve(counts?.attended ?? 0);
+          }
+          if (where?.status === ProgramRegistrationStatus.APPROVED) {
+            return Promise.resolve(counts?.registered ?? 0);
+          }
+          return Promise.resolve(0);
+        }),
       findMany: jest.fn().mockResolvedValue([]),
     },
     program: {
@@ -382,7 +394,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
 
       expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(2);
       expect(prisma.programRegistration.count).toHaveBeenCalled();
-      const countArgs = prisma.programRegistration.count.mock.calls[0][0];
+      const countArgs = firstQueryArgs(prisma.programRegistration.count);
       expect(countArgs.where.programId).toEqual({ in: ['prog-1'] });
     });
 
@@ -577,9 +589,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       });
       expect(prisma.programRegistration.findMany).toHaveBeenCalled();
       expect(
-        prisma.programRegistration.findMany.mock.calls[0][0].include,
+        firstQueryArgs(prisma.programRegistration.findMany).include,
       ).toBeUndefined();
-      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      const { where } = firstQueryArgs(prisma.programRegistration.findMany);
       expect(where.program).toEqual({ is: {} });
       expect(where.user).toEqual({ is: {} });
       expect(prisma.program.findMany).toHaveBeenCalled();
@@ -680,7 +692,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
 
       expect(result.peopleAvailable).toBe(true);
       expect(result.items[0]?.userId).toBe('user-2');
-      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      const { where } = firstQueryArgs(prisma.programRegistration.findMany);
       expect(where.status).toBe(ProgramRegistrationStatus.APPROVED);
       expect(where.postEventAttendanceStatus).toBe(
         PostEventAttendanceStatus.VERIFIED,
@@ -735,7 +747,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
 
       expect(result.peopleAvailable).toBe(true);
       expect(result.items[0]?.userId).toBe('user-3');
-      const where = prisma.programRegistration.findMany.mock.calls[0][0].where;
+      const { where } = firstQueryArgs(prisma.programRegistration.findMany);
       expect(where.postEventAttendanceStatus).toBe(
         PostEventAttendanceStatus.VERIFIED,
       );

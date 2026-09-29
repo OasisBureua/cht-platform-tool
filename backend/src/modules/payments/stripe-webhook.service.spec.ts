@@ -63,7 +63,7 @@ describe('StripeWebhookService', () => {
         data: expect.objectContaining({
           status: 'PAID',
           stripeTransferId: 'tr_1',
-        }),
+        }) as unknown,
       }),
     );
     expect(prisma.user.update).toHaveBeenCalledWith(
@@ -98,7 +98,7 @@ describe('StripeWebhookService', () => {
 
     expect(prisma.payment.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: 'FAILED' }),
+        data: expect.objectContaining({ status: 'FAILED' }) as unknown,
       }),
     );
     expect(prisma.user.update).toHaveBeenCalledWith(
@@ -146,7 +146,7 @@ describe('StripeWebhookService', () => {
           w9Submitted: false,
           w9SubmittedAt: null,
           paymentEnabled: false,
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -211,7 +211,7 @@ describe('StripeWebhookService', () => {
         data: expect.objectContaining({
           stripeAccountId: 'acct_new',
           w9Submitted: true,
-        }),
+        }) as unknown,
       }),
     );
   });

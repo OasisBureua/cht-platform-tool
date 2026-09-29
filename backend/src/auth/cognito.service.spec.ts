@@ -12,15 +12,16 @@ jest.mock('jwks-rsa', () => {
   return {
     __esModule: true,
     default: jest.fn(() => ({
-      getSigningKey: jest.fn(async () => ({
-        getPublicKey: () => publicKey,
-      })),
+      getSigningKey: jest.fn(() =>
+        Promise.resolve({
+          getPublicKey: () => publicKey,
+        }),
+      ),
     })),
   };
 });
 
 import { CognitoService } from './cognito.service';
-import { CognitoUnhandledChallengeError } from './cognito-login-errors';
 
 describe('CognitoService token verification', () => {
   const region = 'us-east-1';

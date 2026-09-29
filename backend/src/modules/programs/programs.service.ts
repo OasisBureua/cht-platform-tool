@@ -18,7 +18,7 @@ import {
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
-import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
+import { ProgramResponseDto } from './dto/program-response.dto';
 import {
   UpdateVideoProgressDto,
   VideoProgressResponseDto,

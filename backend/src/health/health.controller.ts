@@ -31,7 +31,9 @@ export class HealthController {
   @Get('health')
   @HealthCheck()
   async check(): Promise<HealthCheckResult> {
-    return this.health.check([async () => ({ app: { status: 'up' } })]);
+    return this.health.check([
+      () => Promise.resolve({ app: { status: 'up' as const } }),
+    ]);
   }
 
   /**
@@ -110,7 +112,7 @@ export class HealthController {
       return {
         status: 'error',
         timestamp: new Date().toISOString(),
-        error: error.message,
+        error: (error as Error).message,
       };
     }
   }

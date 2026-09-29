@@ -11,6 +11,7 @@ import {
   UserRole,
   SurveyType,
   ProgramRegistrationStatus,
+  type SurveyResponse,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
@@ -1604,7 +1605,7 @@ export class SurveysService {
       };
     }
 
-    let response;
+    let response: SurveyResponse;
     if (existing) {
       response = await this.prisma.surveyResponse.update({
         where: { id: existing.id },

@@ -16,17 +16,17 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
     const jobs: Array<Record<string, unknown>> = [];
     const prisma = {
       zoomSyncJob: {
-        create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        create: jest.fn(({ data }: { data: Record<string, unknown> }) => {
           const job = {
             id: 'job-1',
             status: ZoomSyncJobStatus.QUEUED,
             ...data,
           };
           jobs.push(job);
-          return job;
+          return Promise.resolve(job);
         }),
-        findUnique: jest.fn(
-          async ({ where }: { where: { id: string } }) =>
+        findUnique: jest.fn(({ where }: { where: { id: string } }) =>
+          Promise.resolve(
             jobs.find((j) => j.id === where.id) ?? {
               id: where.id,
               status: ZoomSyncJobStatus.QUEUED,
@@ -34,10 +34,11 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
               toDate: new Date('2026-08-31T00:00:00.000Z'),
               startedAt: null,
             },
+          ),
         ),
-        update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        update: jest.fn(({ data }: { data: Record<string, unknown> }) => {
           Object.assign(jobs[0] ?? {}, data);
-          return jobs[0];
+          return Promise.resolve(jobs[0]);
         }),
       },
     };
@@ -119,15 +120,17 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
         data: expect.objectContaining({
           progressJson: expect.objectContaining({
             usersTotal: 1,
-            windowsDone: expect.any(Number),
-            windowsTotal: expect.any(Number),
-          }),
-        }),
+            windowsDone: expect.any(Number) as unknown,
+            windowsTotal: expect.any(Number) as unknown,
+          }) as unknown,
+        }) as unknown,
       }),
     );
     expect(prisma.zoomSyncJob.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ status: ZoomSyncJobStatus.COMPLETED }),
+        data: expect.objectContaining({
+          status: ZoomSyncJobStatus.COMPLETED,
+        }) as unknown,
       }),
     );
   });
@@ -151,7 +154,7 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
         data: expect.objectContaining({
           status: ZoomSyncJobStatus.COMPLETED,
           errorMessage: 'No active Zoom users returned; nothing to inventory.',
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -182,8 +185,10 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: ZoomSyncJobStatus.FAILED,
-          errorMessage: expect.stringContaining('user:read:list_users:admin'),
-        }),
+          errorMessage: expect.stringContaining(
+            'user:read:list_users:admin',
+          ) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -224,9 +229,9 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
             sessionsUpserted: 1,
             errors: expect.arrayContaining([
               expect.stringContaining('one@example.com'),
-            ]),
-          }),
-        }),
+            ]) as unknown,
+          }) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -327,17 +332,19 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
           progressJson: expect.objectContaining({
             errors: expect.arrayContaining([
               'Additional host/window errors omitted.',
-            ]),
-          }),
-        }),
+            ]) as unknown,
+          }) as unknown,
+        }) as unknown,
       }),
     );
-    const completed = (prisma.zoomSyncJob.update as jest.Mock).mock.calls.find(
-      (call: Array<{ data?: { progressJson?: { errors?: string[] } } }>) =>
-        call[0]?.data?.progressJson?.errors?.includes(
-          'Additional host/window errors omitted.',
-        ),
+    type UpdateCall = [{ data?: { progressJson?: { errors?: string[] } } }];
+    const updateCalls = (prisma.zoomSyncJob.update as jest.Mock).mock
+      .calls as UpdateCall[];
+    const completed = updateCalls.find((call) =>
+      call[0]?.data?.progressJson?.errors?.includes(
+        'Additional host/window errors omitted.',
+      ),
     );
-    expect(completed?.[0].data.progressJson.errors).toHaveLength(41);
+    expect(completed?.[0].data?.progressJson?.errors).toHaveLength(41);
   });
 });

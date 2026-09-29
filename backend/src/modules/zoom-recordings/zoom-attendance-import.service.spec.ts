@@ -166,8 +166,8 @@ describe('ZoomAttendanceImportService', () => {
       expect.objectContaining({
         where: { id: 'sess-1' },
         data: expect.objectContaining({
-          attendanceLastImportedAt: expect.any(Date),
-        }),
+          attendanceLastImportedAt: expect.any(Date) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -206,7 +206,7 @@ describe('ZoomAttendanceImportService', () => {
         data: expect.objectContaining({
           zoomParticipantId: null,
           participantEmail: 'david.gill@digitaledgepartner.com',
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -238,7 +238,7 @@ describe('ZoomAttendanceImportService', () => {
     expect(prisma.webinarParticipantEvent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'existing-row' },
-        data: expect.objectContaining({ durationSeconds: 300 }),
+        data: expect.objectContaining({ durationSeconds: 300 }) as unknown,
       }),
     );
     expect(prisma.webinarParticipantEvent.create).not.toHaveBeenCalled();
@@ -270,8 +270,8 @@ describe('ZoomAttendanceImportService', () => {
           programId_zoomParticipantId_event_source_joinTime:
             expect.objectContaining({
               source: WebinarParticipantEventSource.REPORT_IMPORT,
-            }),
-        }),
+            }) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -360,7 +360,7 @@ describe('ZoomAttendanceImportService', () => {
             ],
           },
         ],
-      }),
+      }) as unknown,
     });
     expect(prisma.zoomAttendanceParticipant.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 10 }),

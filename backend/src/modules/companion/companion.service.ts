@@ -110,7 +110,7 @@ export class CompanionService {
         upstream.body as import('node:stream/web').ReadableStream,
       );
       await pipeline(nodeReadable, res);
-    } catch (err) {
+    } catch (err: unknown) {
       if (abort.signal.aborted) {
         return;
       }

@@ -6,12 +6,10 @@ describe('KolIntelService', () => {
     const calls: Array<{ path: string; params?: Record<string, unknown> }> = [];
     const client: Partial<ContentHubClientService> = {
       isAdminConfigured: jest.fn().mockReturnValue(true),
-      getAdmin: jest.fn(
-        async (path: string, params?: Record<string, unknown>) => {
-          calls.push({ path, params });
-          return {} as never;
-        },
-      ),
+      getAdmin: jest.fn((path: string, params?: Record<string, unknown>) => {
+        calls.push({ path, params });
+        return Promise.resolve({} as never);
+      }),
     };
     return { client: client as ContentHubClientService, calls };
   };

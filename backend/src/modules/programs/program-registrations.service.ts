@@ -17,7 +17,6 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
-import { effectiveWebinarIntakeFormUrl } from '../../utils/webinar-intake-url';
 import {
   isPostEventSurveyWithinWindow,
   getPostEventSurveyUnlockAt,
@@ -1612,9 +1611,6 @@ export class ProgramRegistrationsService {
 
     // Consolidate raw emails that match existing user accounts — send once with
     // the account's firstName rather than as an unregistered invite.
-    const registeredEmailLower = new Set(
-      users.map((u) => u.email?.toLowerCase()).filter(Boolean),
-    );
     const matchedExistingUsers = inviteEmails.length
       ? await this.prisma.user.findMany({
           where: {
