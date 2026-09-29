@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ContentHubClientService } from './content-hub-client.service';
 
-export type CampaignPlatform = 'linkedin' | 'meta' | 'youtube' | 'livestream' | 'survey';
+export type CampaignPlatform =
+  | 'linkedin'
+  | 'meta'
+  | 'youtube'
+  | 'livestream'
+  | 'survey';
 
 export type CampaignListResponse = {
   items: unknown[];
@@ -25,7 +30,9 @@ export class ContentHubCampaignService {
   }
 
   getCampaign<T = unknown>(id: number | string): Promise<T> {
-    return this.client.getAdmin<T>(`/campaigns/${id}`, undefined, { cache: false });
+    return this.client.getAdmin<T>(`/campaigns/${id}`, undefined, {
+      cache: false,
+    });
   }
 
   createCampaign<T = unknown>(body: unknown): Promise<T> {
@@ -41,9 +48,13 @@ export class ContentHubCampaignService {
   }
 
   getPlatformData<T = unknown>(id: number | string): Promise<T> {
-    return this.client.getAdmin<T>(`/campaigns/${id}/platform-data`, undefined, {
-      cache: false,
-    });
+    return this.client.getAdmin<T>(
+      `/campaigns/${id}/platform-data`,
+      undefined,
+      {
+        cache: false,
+      },
+    );
   }
 
   syncPlatform<T = unknown>(
@@ -76,12 +87,6 @@ export class ContentHubCampaignService {
     return this.client.postAdmin<T>(`/campaigns/${id}/report/generate`);
   }
 
-  generateExecutiveReport<T = unknown>(id: number | string): Promise<T> {
-    return this.client.postAdmin<T>(
-      `/campaigns/${id}/executive-report/generate`,
-    );
-  }
-
   generateInsights<T = unknown>(id: number | string): Promise<T> {
     return this.client.postAdmin<T>(`/campaigns/${id}/insights`);
   }
@@ -99,7 +104,9 @@ export class ContentHubCampaignService {
   }
 
   getIntegrations<T = unknown>(): Promise<T> {
-    return this.client.getAdmin<T>('/integrations', undefined, { cache: false });
+    return this.client.getAdmin<T>('/integrations', undefined, {
+      cache: false,
+    });
   }
 
   patchIntegrations<T = unknown>(body: unknown): Promise<T> {

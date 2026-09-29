@@ -36,6 +36,7 @@ export function Reveal({
     const el = ref.current;
     if (!el) return;
     const belowFold = el.getBoundingClientRect().top > window.innerHeight * 0.92;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- layout measurement before paint decides the initial phase
     setPhase(belowFold ? 'hidden' : 'shown');
   }, []);
 

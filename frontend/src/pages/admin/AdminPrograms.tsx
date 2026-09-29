@@ -41,6 +41,7 @@ export default function AdminPrograms() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [sendInvitesOpen, setSendInvitesOpen] = useState(false);
+  const [renderedAt] = useState(() => Date.now());
 
   const { data: webinars, isLoading, error } = useQuery({
     queryKey: ['admin', 'webinars', zoomFilter],
@@ -80,7 +81,7 @@ export default function AdminPrograms() {
 
   const items = webinars ?? [];
   const upcomingZoomOnly = items.filter(
-    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= Date.now() - 60 * 60 * 1000,
+    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= renderedAt - 60 * 60 * 1000,
   );
 
   return (
@@ -626,11 +627,12 @@ function EditWebinarModal({
     retry: false,
   });
 
-  useEffect(() => {
-    if (!zoomSettingsQuery.data) return;
+  const [zoomSettingsFrom, setZoomSettingsFrom] = useState<typeof zoomSettingsQuery.data>(undefined);
+  if (zoomSettingsQuery.data && zoomSettingsQuery.data !== zoomSettingsFrom) {
+    setZoomSettingsFrom(zoomSettingsQuery.data);
     setZoomSettings(zoomSettingsQuery.data.settings);
     setZoomSettingsWarning(zoomSettingsQuery.data.warning ?? null);
-  }, [zoomSettingsQuery.data]);
+  }
 
   const updateMutation = useMutation({
     mutationFn: (payload: UpdateWebinarPayload) => adminApi.updateWebinar(webinar.id, payload),

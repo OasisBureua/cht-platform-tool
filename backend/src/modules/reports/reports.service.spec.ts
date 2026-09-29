@@ -13,11 +13,41 @@ import type { PrismaService } from '../../prisma/prisma.service';
 
 async function readAll(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
-  for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+  for await (const chunk of stream)
+    chunks.push(Buffer.from(chunk as Uint8Array));
   return Buffer.concat(chunks).toString();
 }
 
-type Handler = (command: string, input: any) => unknown;
+interface CommandInput {
+  Key?: { report_id?: string };
+}
+
+interface SentCommand {
+  constructor: { name: string };
+  input: CommandInput;
+}
+
+type AttributeValues = Record<string, unknown>;
+
+interface TransactInput {
+  TransactItems: {
+    Put: { Item: Record<string, unknown> };
+    Update: {
+      UpdateExpression: string;
+      ExpressionAttributeValues: AttributeValues;
+    };
+  }[];
+}
+
+interface ExpressionInput {
+  ExpressionAttributeValues: AttributeValues;
+}
+
+interface SendMessageInput {
+  MessageBody: string;
+}
+
+type Handler = (command: string, input: CommandInput) => unknown;
 
 const lockCancelled = () =>
   Object.assign(new Error('cancelled'), {
@@ -67,7 +97,7 @@ function build(
     ...configOverrides,
   };
   const config = { get: (key: string) => map[key] } as unknown as ConfigService;
-  const send = jest.fn((cmd: { constructor: { name: string }; input: any }) =>
+  const send = jest.fn((cmd: SentCommand) =>
     Promise.resolve().then(() => handler(cmd.constructor.name, cmd.input)),
   );
   const aws = {
@@ -92,11 +122,14 @@ function build(
 
 const ADMIN_EMAILS = ['a@cht.com', 'b@cht.com'];
 
-function calls(send: jest.Mock, command: string) {
+function calls<T = CommandInput>(
+  send: jest.Mock<Promise<unknown>, [SentCommand]>,
+  command: string,
+): T[] {
   return send.mock.calls
     .map(([cmd]) => cmd)
     .filter((cmd) => cmd.constructor.name === command)
-    .map((cmd) => cmd.input);
+    .map((cmd) => cmd.input as T);
 }
 
 describe('ReportsService', () => {
@@ -114,13 +147,14 @@ describe('ReportsService', () => {
         'user-1',
       );
 
-      const [tx] = calls(send, 'TransactWriteCommand');
+      const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');
       const item = tx.TransactItems[1].Put.Item;
       expect(item.date_range_days).toBe(30);
       expect(item.notify_emails).toEqual(['a@cht.com', 'b@cht.com']);
       expect(item.sources).toEqual(['zoom', 'surveys']);
       const days =
-        (Date.parse(item.window_end) - Date.parse(item.window_start)) /
+        (Date.parse(String(item.window_end)) -
+          Date.parse(String(item.window_start))) /
         86_400_000;
       expect(days).toBe(30);
       expect(view.dateRangeDays).toBe(30);
@@ -156,7 +190,7 @@ describe('ReportsService', () => {
       expect(view.downloadAvailable).toBe(false);
       expect(view).not.toHaveProperty('s3KeyPdf');
 
-      const [tx] = calls(send, 'TransactWriteCommand');
+      const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');
       expect(tx.TransactItems[0].Put.Item.report_id).toBe(
         'LOCK#executive_summary',
       );
@@ -168,7 +202,7 @@ describe('ReportsService', () => {
         requested_by: 'user-1',
       });
 
-      const [msg] = calls(send, 'SendMessageCommand');
+      const [msg] = calls<SendMessageInput>(send, 'SendMessageCommand');
       expect(JSON.parse(msg.MessageBody)).toEqual({
         reportId: view.reportId,
         campaignId: 'AZ-25-01_LIV001',
@@ -180,7 +214,7 @@ describe('ReportsService', () => {
         if (command === 'TransactWriteCommand') throw lockCancelled();
         if (
           command === 'GetCommand' &&
-          input.Key.report_id === 'LOCK#executive_summary'
+          input.Key?.report_id === 'LOCK#executive_summary'
         ) {
           return { Item: { locked_report_id: 'r-active' } };
         }
@@ -203,7 +237,7 @@ describe('ReportsService', () => {
         }
         if (
           command === 'GetCommand' &&
-          input.Key.report_id === 'LOCK#executive_summary'
+          input.Key?.report_id === 'LOCK#executive_summary'
         ) {
           return { Item: { locked_report_id: 'r-done' } };
         }
@@ -218,7 +252,7 @@ describe('ReportsService', () => {
 
       expect(view.status).toBe('queued');
       expect(attempts).toBe(2);
-      const [del] = calls(send, 'DeleteCommand');
+      const [del] = calls<ExpressionInput>(send, 'DeleteCommand');
       expect(del.ExpressionAttributeValues[':r']).toBe('r-done');
     });
 
@@ -232,7 +266,7 @@ describe('ReportsService', () => {
         service.create({ campaignId: 'AZ-25-01_LIV001' }, 'user-1'),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
-      const [update] = calls(send, 'UpdateCommand');
+      const [update] = calls<ExpressionInput>(send, 'UpdateCommand');
       expect(update.ExpressionAttributeValues[':failed']).toBe('failed');
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
     });
@@ -242,6 +276,36 @@ describe('ReportsService', () => {
       await expect(
         service.create({ campaignId: 'AZ-25-01_LIV001' }, 'user-1'),
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
+    });
+  });
+
+  describe('list', () => {
+    it('hides lock rows without filtering on the sort key', async () => {
+      const { service, send } = build((command) =>
+        command === 'QueryCommand'
+          ? {
+              Items: [
+                completeReport(),
+                {
+                  campaign_id: 'AZ-25-01_LIV001',
+                  report_id: 'LOCK#executive_summary',
+                  locked_report_id: 'r-1',
+                },
+              ],
+            }
+          : {},
+      );
+
+      const views = await service.list('AZ-25-01_LIV001');
+
+      expect(views.map((v) => v.reportId)).toEqual([
+        completeReport().report_id,
+      ]);
+      const [query] = calls<{ FilterExpression?: string }>(
+        send,
+        'QueryCommand',
+      );
+      expect(query.FilterExpression).toBeUndefined();
     });
   });
 
@@ -269,7 +333,7 @@ describe('ReportsService', () => {
 
       expect(view.status).toBe('queued');
       expect(view.editAttempts).toBe(1);
-      const [tx] = calls(send, 'TransactWriteCommand');
+      const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');
       expect(
         tx.TransactItems[1].Update.ExpressionAttributeValues[':edit'],
       ).toBe('Shorten the summary');

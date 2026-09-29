@@ -40,13 +40,13 @@ describe('kolCatalogBrowseHref', () => {
 
   it('builds public catalog doctor filter URL', () => {
     vi.stubGlobal('window', { location: { pathname: '/kols/bardia' } });
-    expect(kolCatalogBrowseHref({ id: 'bardia' }, '/kols/bardia')).toBe(
+    expect(kolCatalogBrowseHref({ id: 'bardia', name: 'Bardia' }, '/kols/bardia')).toBe(
       '/catalog?doctor=bardia',
     );
   });
 
   it('keeps in-app browse under /app/catalog (never homepage)', () => {
-    expect(kolCatalogBrowseHref({ id: 'bardia' }, '/app/kols/bardia')).toBe(
+    expect(kolCatalogBrowseHref({ id: 'bardia', name: 'Bardia' }, '/app/kols/bardia')).toBe(
       '/app/catalog?doctor=bardia',
     );
   });

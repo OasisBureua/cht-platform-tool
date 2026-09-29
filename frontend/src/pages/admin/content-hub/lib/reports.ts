@@ -7,7 +7,6 @@ import type {
   AnalyticsReport,
   Campaign,
   DataValidation,
-  ExecutiveReport,
   StoredCsvUpload,
 } from './types';
 import type { SurveyResponseAnalytics } from '../../../../api/admin';
@@ -285,102 +284,5 @@ export function buildAnalyticsReport(
       aiInsights: campaign.aiInsights ?? null,
     },
     dataValidation: buildDataValidation(campaign, uploads, connected || hsSynced),
-  };
-}
-
-export function buildExecutiveReport(
-  campaign: Campaign,
-  uploads: StoredCsvUpload[],
-): ExecutiveReport {
-  const byPlatform = (p: string) => uploads.find((u) => u.platform === p);
-
-  const yt = byPlatform('youtube');
-  const li = byPlatform('linkedin');
-  const me = byPlatform('meta');
-  const sv = byPlatform('survey');
-
-  const ytViews = yt ? sumColumn(yt.rows, ['view']) : 0;
-  const liViews = li ? sumColumn(li.rows, ['video view', 'views']) : 0;
-  const meViews = me ? sumColumn(me.rows, ['view']) : 0;
-  const ytImpr = yt ? sumColumn(yt.rows, ['impression']) : 0;
-  const liImpr = li ? sumColumn(li.rows, ['impression']) : 0;
-  const meImpr = me ? sumColumn(me.rows, ['impression']) : 0;
-
-  const totalViews = ytViews + liViews + meViews;
-  const totalImpressions = ytImpr + liImpr + meImpr;
-  const hasData = uploads.length > 0;
-
-  const saved = (campaign.executiveReportData ?? {}) as Record<string, unknown>;
-  const s = <T,>(key: string, fallback: T): T => (saved[key] as T) ?? fallback;
-
-  return {
-    campaign,
-    metrics: {
-      totalViews: hasData ? totalViews : null,
-      totalImpressions: hasData ? totalImpressions : null,
-      totalViewsFormatted: hasData ? fmt(totalViews) : null,
-      totalImpressionsFormatted: hasData ? fmt(totalImpressions) : null,
-      youtube: yt ? { views: ytViews, impressions: ytImpr } : null,
-      linkedin: li ? { views: liViews, impressions: liImpr } : null,
-      meta: me ? { views: meViews, impressions: meImpr } : null,
-      livestream: null,
-      survey: sv
-        ? {
-            responses: sv.rows?.length ?? 0,
-            label: sv.filename,
-            analytics: sv.metadata?.analytics ?? null,
-          }
-        : null,
-    },
-    platformBreakdown: [
-      { platform: 'YouTube', totalViews: ytViews, totalImpressions: ytImpr, hasData: Boolean(yt) },
-      { platform: 'LinkedIn', totalViews: liViews, totalImpressions: liImpr, hasData: Boolean(li) },
-      { platform: 'Meta', totalViews: meViews, totalImpressions: meImpr, hasData: Boolean(me) },
-      { platform: 'Other', totalViews: 0, totalImpressions: 0, hasData: false },
-    ],
-    config: {
-      overviewText: s(
-        'overviewText',
-        'This campaign was purpose-built to extend the clinical and educational value of expert scientific discussions into a sustained, multi-platform engagement program for healthcare professionals. Anchored by expert conversations with ' +
-          (campaign.physicianSpeakers || 'physician speakers') +
-          ', the campaign applied a professional production, distribution, and targeting framework to drive meaningful reach, long-term visibility, and durable educational impact.',
-      ),
-      productionOverview: s(
-        'productionOverview',
-        'The campaign was anchored by primary production assets designed to maximise scientific depth and downstream content scalability. Long-form expert discussions served as the cornerstone, addressing ' +
-          (campaign.diseaseState || 'the disease state') +
-          ', emerging clinical trial evidence, and real-world treatment considerations. Live streaming expanded the conversation further with real-time healthcare professional participation.',
-      ),
-      distributionOverview: s(
-        'distributionOverview',
-        "Long-form content was distributed across Community Health Media's primary video and podcast platforms. Clinical insights were identified and edited into modular short-form content optimized for digital consumption and distributed organically, with targeted paid support, syndicated across clip-focused outlets on LinkedIn, YouTube, and Meta.",
-      ),
-      conclusionText: s(
-        'conclusionText',
-        'This campaign demonstrates the strategic value of treating scientific content as a long-term asset rather than a moment-in-time activation. By anchoring the program in a high-quality expert conversation and deploying a structured, phased distribution strategy, the initiative achieved meaningful reach and durable educational impact among the healthcare professional audience.',
-      ),
-      targetingNarrative: s(
-        'targetingNarrative',
-        "Audience targeting was anchored by Community Health Media's proprietary database of more than 30,000 oncologists and medical professionals, serving as the foundation for first-party and lookalike audience development. Additional targeting layers included clinical job titles and specialties, hospital and academic affiliations, and geo-targeting around cancer centers and research institutions.",
-      ),
-      contentThemes: s<string[]>('contentThemes', []),
-      preRecordDate: s('preRecordDate', ''),
-      liveStreamDate: s('liveStreamDate', ''),
-      distributionDate: s('distributionDate', campaign.reportingPeriodStart ?? ''),
-      longFormEpisodes: s('longFormEpisodes', '1'),
-      shortFormTopics: s('shortFormTopics', '6'),
-      clipVariations: s('clipVariations', '4'),
-      longFormPosts: s<string | null>('longFormPosts', null),
-      shortFormPosts: s<string | null>('shortFormPosts', null),
-      clipPosts: s<string | null>('clipPosts', null),
-      keyLearnings: s('keyLearnings', [
-        { title: 'Long-Form Content Is the Strategic Engine', body: 'High-quality, expert-led long-form discussions proved to be the most valuable asset in the campaign. These conversations not only drove direct engagement but also enabled efficient downstream content creation.' },
-        { title: 'Modular Short-Form Drives Sustained Reach', body: 'Breaking long-form discussions into focused, topic-specific clips significantly extended campaign lifespan. Clips addressing a single clinical insight consistently outperformed broader summaries.' },
-        { title: 'Clinical Precision Resonates Most', body: 'Content centered on ' + (campaign.diseaseState || 'the disease state') + ' and treatment sequencing delivered the strongest engagement, indicating sustained demand for practical, evidence-based education.' },
-        { title: 'Sustained Distribution Outperforms Launch-Centric Models', body: 'A phased distribution approach generated cumulative performance over time, outperforming one-time promotional pushes. Enduring content continued to deliver value well beyond initial release.' },
-        { title: 'Platform Roles Are Distinct and Complementary', body: 'YouTube functioned as the primary long-form discovery channel, LinkedIn drove professional short-form engagement, and podcasts provided incremental long-tail accessibility.' },
-        { title: 'Podcast Strategy Opportunity', body: 'Podcast distribution represents a clear opportunity to deepen engagement and extend educational impact. Audio-first content supports on-demand consumption and increases accessibility for clinicians.' },
-      ]),
-    },
   };
 }

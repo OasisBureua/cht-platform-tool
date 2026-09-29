@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { Mic2, Play, PlayCircle, Bell, Headphones } from 'lucide-react';
 import {
@@ -16,9 +16,11 @@ function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
   const touchStartX = useRef<number | null>(null);
   const idKey = shows.map((s) => s.id).join('|');
 
-  useEffect(() => {
+  const [prevIdKey, setPrevIdKey] = useState(idKey);
+  if (idKey !== prevIdKey) {
+    setPrevIdKey(idKey);
     setIndex(0);
-  }, [idKey]);
+  }
 
   const goPrev = useCallback(() => {
     if (n <= 1) return;

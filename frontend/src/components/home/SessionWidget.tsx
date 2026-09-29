@@ -177,10 +177,9 @@ function PodcastTrack({ meta }: { meta: string }) {
  * as prose without asking anyone to actually read it here.
  */
 function EditorialTrack({ meta }: { meta: string }) {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    setReduced(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
-  }, []);
+  const [reduced] = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
 
   return (
     <div className="flex h-full flex-col p-2">

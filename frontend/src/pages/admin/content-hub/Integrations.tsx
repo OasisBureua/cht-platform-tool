@@ -10,6 +10,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import ChromeContainer from './components/ChromeContainer';
+import { useToast } from './components/Toaster';
 import { useHubspotStatus, useContentHubHealth, useIntegrations, useIntegrationsConnection, useUpdateIntegrations } from './lib/hooks';
 import { cn } from './lib/utils';
 import type { HubspotStatus, IntegrationSettings } from './lib/types';
@@ -182,7 +183,7 @@ export default function Integrations() {
     <ChromeContainer>
       <div className="max-w-3xl">
         <div className="mb-7 flex items-center gap-3">
-          <Link to="/admin/content-hub" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="Back to reports">
+          <Link to="/admin/reports" className="text-muted-foreground transition-colors hover:text-foreground" aria-label="Back to reports">
             <ArrowLeft className="h-5 w-5" aria-hidden="true" />
           </Link>
           <div className="flex-1">

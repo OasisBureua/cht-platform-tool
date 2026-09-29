@@ -49,7 +49,7 @@ export function WordPressCategoryNav({ basePath, activeSlug }: WordPressCategory
 
   const { data } = useQuery({
     queryKey: ['catalog', 'wordpress', 'categories'],
-    queryFn: catalogApi.getWordPressCategories,
+    queryFn: () => catalogApi.getWordPressCategories(),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
     enabled: wpMode,
   });

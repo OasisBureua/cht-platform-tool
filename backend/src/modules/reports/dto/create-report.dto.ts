@@ -79,7 +79,9 @@ export class CreateReportDto {
   @ArrayMaxSize(10)
   @Transform(({ value }: { value: unknown }) =>
     Array.isArray(value)
-      ? value.map((v) => (typeof v === 'string' ? v.trim().toLowerCase() : v))
+      ? (value as unknown[]).map((v) =>
+          typeof v === 'string' ? v.trim().toLowerCase() : v,
+        )
       : value,
   )
   @IsEmail({}, { each: true })

@@ -8,6 +8,7 @@ import type { GlossaryEntry, KpiTile } from './lib/types';
 export const SANS = 'Geist, system-ui, sans-serif';
 export const SERIF = 'Georgia, "Times New Roman", serif';
 
+// eslint-disable-next-line react-refresh/only-export-components -- palette shared by the report parts
 export const INK = {
   slate: '#373737',
   muted: '#5c5c5c',

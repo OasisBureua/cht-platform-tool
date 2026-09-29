@@ -175,7 +175,6 @@ export default function Join() {
       void runNpiVerify(npiDigits);
     }, 400);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when digits/role change
   }, [npiDigits, requiresNpi]);
 
   // SCRUM-175: resolve the invite token from the URL, pre-fill the email field.

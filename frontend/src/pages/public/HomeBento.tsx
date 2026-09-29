@@ -349,7 +349,10 @@ export default function HomeBento({ order = 'c' }: { order?: 'a' | 'c' } = {}) {
     queryFn: () => catalogApi.getRandomVideos(12),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
-  const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
+  const randomVideos = useMemo(
+    () => (Array.isArray(randomVideosData) ? randomVideosData : []),
+    [randomVideosData],
+  );
 
   const [brokenFeaturedIds, setBrokenFeaturedIds] = useState<Set<string>>(() => new Set());
   const markBroken = (id: string) =>

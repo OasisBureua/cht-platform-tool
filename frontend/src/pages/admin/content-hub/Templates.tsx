@@ -70,7 +70,7 @@ export default function Templates() {
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
-              to="/admin/content-hub"
+              to="/admin/reports"
               className="text-muted-foreground hover:text-foreground"
               aria-label="Back to reports"
             >

@@ -8,7 +8,6 @@ import type {
   ContentHubHealth,
   CsvUpload,
   DataValidation,
-  ExecutiveReport,
   HubspotStatus,
   IntegrationsConnectionMap,
   IntegrationSettings,
@@ -256,19 +255,6 @@ export async function getAnalyticsReport(
     return data;
   } catch (err) {
     throwApiError(err, 'Failed to load analytics report.');
-  }
-}
-
-export async function getExecutiveReport(
-  id: number,
-): Promise<ExecutiveReport> {
-  try {
-    const { data } = await apiClient.get<ExecutiveReport>(
-      `/admin/content-hub/campaigns/${id}/executive-report`,
-    );
-    return data;
-  } catch (err) {
-    throwApiError(err, 'Failed to load executive report.');
   }
 }
 

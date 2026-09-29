@@ -151,12 +151,16 @@ export class ReportsService {
         new QueryCommand({
           TableName: this.tableName(),
           KeyConditionExpression: 'campaign_id = :c',
-          FilterExpression: 'NOT begins_with(report_id, :lock)',
-          ExpressionAttributeValues: { ':c': campaignId, ':lock': LOCK_PREFIX },
+          ExpressionAttributeValues: { ':c': campaignId },
           ExclusiveStartKey: startKey,
         }),
       );
-      items.push(...((page.Items ?? []) as ReportItem[]));
+      // report_id is the sort key, which DynamoDB rejects in a FilterExpression.
+      items.push(
+        ...((page.Items ?? []) as ReportItem[]).filter(
+          (item) => !item.report_id.startsWith(LOCK_PREFIX),
+        ),
+      );
       startKey = page.LastEvaluatedKey;
     } while (startKey && items.length < LIST_MAX_ITEMS);
 
