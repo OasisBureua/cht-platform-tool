@@ -12,6 +12,7 @@ import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-do
 import { ChevronDown, Menu, Moon, Search, Sun, X } from 'lucide-react';
 import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { ClosingBand } from '../components/home/HomeSkinSections';
+import TermsDeclinedNotice from '../components/TermsDeclinedNotice';
 import { useTheme } from '../contexts/ThemeContext';
 import { isTestappHost } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
@@ -306,6 +307,7 @@ export default function PublicLayout() {
           never engages, because the page scrolls on the body. `clip`
           clips the same overflow without creating that container. */}
       <main id="main" className="min-w-0 flex-1 overflow-x-clip">
+        <TermsDeclinedNotice />
         <Outlet />
       </main>
 

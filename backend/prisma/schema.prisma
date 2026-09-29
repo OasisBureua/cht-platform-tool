@@ -56,6 +56,10 @@ model User {
   /// Last 4 of bank account when ACH is configured (never store full account).
   bankAccountLast4       String?
 
+  /// Terms of Service & Privacy Policy acceptance; re-prompted when termsVersion != CURRENT_TERMS_VERSION.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
   // Earnings tracking
   totalEarnings       Int @default(0)  // Total lifetime earnings in cents
   activitiesCompleted Int @default(0)  // Count of completed programs

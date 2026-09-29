@@ -8,7 +8,9 @@ import {
   Logger,
   Req,
   Res,
+  BadRequestException,
   ForbiddenException,
+  HttpCode,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
@@ -68,6 +70,10 @@ import {
   NON_HCP_SPECIALTIES,
   type ProfileMissingField,
 } from '../common/profile-payment-eligibility';
+import {
+  CURRENT_TERMS_VERSION,
+  hasAcceptedCurrentTerms,
+} from '../common/terms';
 
 interface LoginSuccess {
   session_token: string;
@@ -87,6 +93,8 @@ interface LoginSuccess {
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
   mfaFeature?: MfaFeatureFlags;
+  termsAccepted?: boolean;
+  termsVersion?: string;
 }
 
 @Controller('auth')
@@ -296,6 +304,8 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
   }
 
@@ -1003,6 +1013,8 @@ export class AuthController {
       name: user.name,
       role: user.role,
       profileComplete,
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
   }
 
@@ -1525,6 +1537,8 @@ export class AuthController {
         mfaEnabled: boolean;
         mfaEnrollmentRequired: boolean;
         mfaFeature: MfaFeatureFlags;
+        termsAccepted: boolean;
+        termsVersion: string;
       }
     | { authenticated: false }
   > {
@@ -1597,6 +1611,73 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
+  }
+
+  /**
+   * POST /api/auth/terms/accept
+   * Saves Terms of Service & Privacy Policy acceptance to the user's profile.
+   * The client must echo the version it displayed so stale tabs cannot accept an older text.
+   */
+  @Post('terms/accept')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async acceptTerms(
+    @CurrentUser() user: AuthUser,
+    @Body('version') version: string,
+    @Req() req: Request,
+  ): Promise<{
+    termsAccepted: true;
+    termsVersion: string;
+    termsAcceptedAt: string;
+  }> {
+    if (version !== CURRENT_TERMS_VERSION) {
+      throw new BadRequestException(
+        'The Terms of Service have been updated. Please reload and review the latest version.',
+      );
+    }
+    const saved = await this.authService.acceptTerms(
+      user.userId,
+      CURRENT_TERMS_VERSION,
+    );
+    this.auditAuthEvent(
+      req,
+      'auth.terms_accepted',
+      { userId: user.userId, email: user.email, role: user.role },
+      { termsVersion: saved.termsVersion },
+    );
+    return {
+      termsAccepted: true,
+      termsVersion: saved.termsVersion,
+      termsAcceptedAt: saved.termsAcceptedAt.toISOString(),
+    };
+  }
+
+  /**
+   * POST /api/auth/terms/decline
+   * Audits a decline and ends the session; the client then signs out of Cognito.
+   */
+  @Post('terms/decline')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async declineTerms(
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<{ ok: true }> {
+    this.auditAuthEvent(
+      req,
+      'auth.terms_declined',
+      { userId: user.userId, email: user.email, role: user.role },
+      { termsVersion: CURRENT_TERMS_VERSION },
+    );
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (sessionToken) {
+      await this.authService.revokeSession(sessionToken);
+    }
+    clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+    return { ok: true };
   }
 }

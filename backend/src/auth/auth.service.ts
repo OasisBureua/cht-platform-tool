@@ -643,6 +643,8 @@ export class AuthService {
     state: string | null;
     zipCode: string | null;
     phoneNumber: string | null;
+    termsAcceptedAt: Date | null;
+    termsVersion: string | null;
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -656,9 +658,27 @@ export class AuthService {
         state: true,
         zipCode: true,
         phoneNumber: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
       },
     });
     return user;
+  }
+
+  /** Record Terms of Service & Privacy Policy acceptance on the user's profile. */
+  async acceptTerms(
+    userId: string,
+    version: string,
+  ): Promise<{ termsAcceptedAt: Date; termsVersion: string }> {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { termsAcceptedAt: new Date(), termsVersion: version },
+      select: { termsAcceptedAt: true, termsVersion: true },
+    });
+    return {
+      termsAcceptedAt: updated.termsAcceptedAt as Date,
+      termsVersion: updated.termsVersion as string,
+    };
   }
 
   /** Persist verified E.164 phone used for SMS MFA. */

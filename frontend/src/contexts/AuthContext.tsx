@@ -38,6 +38,10 @@ export interface AuthUser {
   mfaFeature?: MfaFeatureFlags;
   /** Verified E.164 phone when stored (SMS MFA). */
   phoneNumber?: string | null;
+  /** False until the user accepts the current Terms of Service & Privacy Policy. */
+  termsAccepted?: boolean;
+  /** Terms version the server requires; echoed back on accept. */
+  termsVersion?: string;
 }
 
 function parseMfaFeature(
@@ -76,6 +80,9 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     mfaFeature: parseMfaFeature(data),
     phoneNumber:
       typeof data.phoneNumber === 'string' ? data.phoneNumber : null,
+    // Only an explicit false gates: an older API without the field must not lock users out.
+    termsAccepted: data.termsAccepted !== false,
+    termsVersion: typeof data.termsVersion === 'string' ? data.termsVersion : undefined,
   };
 }
 
