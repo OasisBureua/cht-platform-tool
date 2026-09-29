@@ -32,6 +32,8 @@ export interface ExportSurveyPacket {
   surveyId: string;
   type: string;
   title: string;
+  jotformFormId: string | null;
+  source: 'native' | 'jotform';
   responseCount: number;
   responses: Array<{
     userId: string;
@@ -39,6 +41,7 @@ export interface ExportSurveyPacket {
     score: number | null;
     schemaVersion: number;
     answers: unknown;
+    submissionId: string | null;
   }>;
 }
 
@@ -108,6 +111,7 @@ export class ExportService {
                 score: true,
                 schemaVersion: true,
                 answers: true,
+                submissionId: true,
               },
             },
           },
@@ -167,11 +171,14 @@ export class ExportService {
       }
 
       for (const survey of program.surveys) {
+        const jotformFormId = survey.jotformFormId?.trim() || null;
         surveys.push({
           platformToolProgramId: program.id,
           surveyId: survey.id,
           type: survey.type,
           title: survey.title,
+          jotformFormId,
+          source: jotformFormId ? 'jotform' : 'native',
           responseCount: survey.responses.length,
           responses: survey.responses.map((r) => ({
             userId: r.userId,
@@ -179,6 +186,7 @@ export class ExportService {
             score: r.score ?? null,
             schemaVersion: r.schemaVersion,
             answers: r.answers,
+            submissionId: r.submissionId?.trim() || null,
           })),
         });
       }
