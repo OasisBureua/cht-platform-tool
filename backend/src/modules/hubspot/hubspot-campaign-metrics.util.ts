@@ -117,7 +117,9 @@ export function mergeMetricTotals(
 ): CampaignMetricTotals {
   const merged = { ...EMPTY_CAMPAIGN_METRIC_TOTALS };
   for (const partial of partials) {
-    for (const key of Object.keys(merged) as Array<keyof CampaignMetricTotals>) {
+    for (const key of Object.keys(merged) as Array<
+      keyof CampaignMetricTotals
+    >) {
       merged[key] += partial[key] ?? 0;
     }
   }
@@ -195,8 +197,12 @@ export function parseHubSpotCampaignList(raw: unknown): {
   return { items, after };
 }
 
-export function campaignNameFromDetail(raw: unknown, fallbackId: string): string {
-  if (!raw || typeof raw !== 'object') return `Campaign ${fallbackId.slice(0, 8)}`;
+export function campaignNameFromDetail(
+  raw: unknown,
+  fallbackId: string,
+): string {
+  if (!raw || typeof raw !== 'object')
+    return `Campaign ${fallbackId.slice(0, 8)}`;
   const record = raw as Record<string, unknown>;
   const properties =
     record.properties && typeof record.properties === 'object'
@@ -261,7 +267,8 @@ export function parseSocialPostsFromAssets(raw: unknown): HubSpotSocialPost[] {
           ? (row.metrics as Record<string, unknown>)
           : {};
       const name =
-        (typeof row.name === 'string' && row.name.trim()) || `Social post ${id}`;
+        (typeof row.name === 'string' && row.name.trim()) ||
+        `Social post ${id}`;
       const facebookClicks = toFiniteNumber(metrics.FACEBOOK_CLICKS);
       const linkedinClicks = toFiniteNumber(metrics.LINKEDIN_CLICKS);
       const twitterClicks = toFiniteNumber(metrics.TWITTER_CLICKS);

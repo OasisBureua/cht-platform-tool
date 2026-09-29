@@ -18,7 +18,9 @@ const mockUploadDone = jest.fn();
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockS3Send })),
-  PutObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
+  PutObjectCommand: jest
+    .fn()
+    .mockImplementation((input: unknown) => ({ input })),
   GetObjectCommand: jest.fn(),
 }));
 
@@ -94,7 +96,10 @@ describe('ZoomRecordingsPullService', () => {
     };
     const config = {
       get: jest.fn((key: string) => {
-        if (key === 'sessionAssets.s3Bucket' || key === 'zoomRecordings.s3Bucket') {
+        if (
+          key === 'sessionAssets.s3Bucket' ||
+          key === 'zoomRecordings.s3Bucket'
+        ) {
           return 'cht-platform-session-assets';
         }
         if (key === 'zoomRecordings.streamFileTypes') return ['MP4', 'M4A'];

@@ -1,7 +1,4 @@
-import {
-  normalizePublicKolAiBrief,
-  parseBriefSections,
-} from './kol-ai-brief';
+import { normalizePublicKolAiBrief, parseBriefSections } from './kol-ai-brief';
 
 const PEGRAM_BLOB =
   "## Who they are Mark Pegram is a hematology and oncology specialist affiliated with the Stanford Women's Cancer Center in Palo Alto, California, positioning him within one of the leading academic cancer programs on the West Coast. ## What they focus on Given his affiliation with Stanford Women's Cancer Center, Pegram's clinical work likely centers on gynecologic and breast malignancies, though no recent publications, trials, or prescribing data are available to confirm specific research themes or drug interests at this time. ## CHM context Pegram has minimal CHM engagement to date, having attended one webinar with a corresponding RSVP but no questions asked, suggesting early-stage or passive familiarity with the platform.";
@@ -27,9 +24,13 @@ describe('kol-ai-brief', () => {
 
   describe('normalizePublicKolAiBrief', () => {
     it('parses legacy combined who_they_are blobs', () => {
-      const normalized = normalizePublicKolAiBrief({ who_they_are: PEGRAM_BLOB });
+      const normalized = normalizePublicKolAiBrief({
+        who_they_are: PEGRAM_BLOB,
+      });
       expect(normalized?.who_they_are).toContain('Mark Pegram');
-      expect(normalized?.what_they_focus_on).toContain('gynecologic and breast');
+      expect(normalized?.what_they_focus_on).toContain(
+        'gynecologic and breast',
+      );
       expect(normalized?.chm_context).toContain('minimal CHM engagement');
     });
 

@@ -1,11 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisCacheService } from '../cache/redis-cache.service';
 
-export type AuthLockoutAction =
-  | 'login'
-  | 'mfa'
-  | 'signup'
-  | 'recover';
+export type AuthLockoutAction = 'login' | 'mfa' | 'signup' | 'recover';
 
 export interface AuthLockoutCheck {
   locked: boolean;
@@ -117,7 +113,11 @@ export class AuthLockoutService {
     await this.cache.del(key);
   }
 
-  private key(action: AuthLockoutAction, email: string, ip?: string | null): string {
+  private key(
+    action: AuthLockoutAction,
+    email: string,
+    ip?: string | null,
+  ): string {
     const normalizedEmail = (email || '').trim().toLowerCase() || 'unknown';
     const normalizedIp = (ip || '').trim() || 'unknown';
     return `cht:auth-lockout:${action}:${normalizedEmail}:${normalizedIp}`;

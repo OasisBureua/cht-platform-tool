@@ -48,7 +48,9 @@ function combinedText(err: unknown): string {
  * Map Cognito / SDK failures to user-actionable copy.
  * Never return raw AWS exception names or internal throw strings to the client.
  */
-export function mapCognitoLoginException(err: unknown): MappedCognitoLoginError {
+export function mapCognitoLoginException(
+  err: unknown,
+): MappedCognitoLoginError {
   const text = combinedText(err);
 
   if (err instanceof CognitoUnhandledChallengeError) {

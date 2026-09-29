@@ -10,11 +10,12 @@ describe('BillService vendor payment method sync', () => {
 
   beforeEach(() => {
     service = Object.create(BillService.prototype) as BillService;
-    (service as unknown as { logger: { log: jest.Mock; warn: jest.Mock } }).logger =
-      {
-        log: jest.fn(),
-        warn: jest.fn(),
-      };
+    (
+      service as unknown as { logger: { log: jest.Mock; warn: jest.Mock } }
+    ).logger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+    };
   });
 
   describe('ensureVendorPaymentMethodMatches', () => {

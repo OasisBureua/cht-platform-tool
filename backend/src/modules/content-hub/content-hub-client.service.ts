@@ -1,4 +1,10 @@
-import { Inject, Injectable, Logger, UnauthorizedException, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
@@ -31,10 +37,9 @@ export class ContentHubClientService {
     @Inject(forwardRef(() => CognitoM2mTokenService))
     private readonly m2mTokens: CognitoM2mTokenService,
   ) {
-    this.baseUrl = (this.config.get<string>('contenthub.baseUrl') || '').replace(
-      /\/$/,
-      '',
-    );
+    this.baseUrl = (
+      this.config.get<string>('contenthub.baseUrl') || ''
+    ).replace(/\/$/, '');
     this.adminBaseUrl = (
       this.config.get<string>('contenthub.adminBaseUrl') || ''
     ).replace(/\/$/, '');
@@ -185,7 +190,7 @@ export class ContentHubClientService {
           data: body,
         }),
       );
-      return data as T;
+      return data;
     } catch (err: unknown) {
       this.logError(method, path, requestId, err);
       throw err;

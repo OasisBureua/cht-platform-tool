@@ -22,9 +22,7 @@ import {
   type CampaignMetricTotals,
   type HubSpotCampaignListItem,
 } from '../hubspot/hubspot-campaign-metrics.util';
-import {
-  HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPES,
-} from '../hubspot/hubspot-error.util';
+import { HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPES } from '../hubspot/hubspot-error.util';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import {
   FUNNEL_STAGE_KEYS,
@@ -385,7 +383,10 @@ export class CampaignsFunnelService {
 
     const chByProgramId = new Map<string, FunnelChCampaign>();
     for (const ch of contentHubLoad.campaigns) {
-      if (ch.surveySourceProgramId && !chByProgramId.has(ch.surveySourceProgramId)) {
+      if (
+        ch.surveySourceProgramId &&
+        !chByProgramId.has(ch.surveySourceProgramId)
+      ) {
         chByProgramId.set(ch.surveySourceProgramId, ch);
       }
     }
@@ -399,8 +400,8 @@ export class CampaignsFunnelService {
         stage === 'converted'
           ? row.postEventSurveyAcknowledgedAt
           : stage === 'attended'
-            ? row.postEventAttendanceReviewedAt ?? row.reviewedAt
-            : row.reviewedAt ?? row.updatedAt;
+            ? (row.postEventAttendanceReviewedAt ?? row.reviewedAt)
+            : (row.reviewedAt ?? row.updatedAt);
 
       return [
         {
@@ -414,9 +415,7 @@ export class CampaignsFunnelService {
           campaignId: ch?.hubspotCampaignId ?? (ch ? String(ch.id) : null),
           campaignName: ch?.name ?? null,
           clientSponsor: ch?.clientSponsor ?? null,
-          stageEnteredAt: stageEnteredAt
-            ? stageEnteredAt.toISOString()
-            : null,
+          stageEnteredAt: stageEnteredAt ? stageEnteredAt.toISOString() : null,
         },
       ];
     });
@@ -501,7 +500,8 @@ export class CampaignsFunnelService {
     const contactType = HUBSPOT_STAGE_CONTACT_TYPE[stage];
     const campaignNameById = new Map<string, string>();
     for (const c of hubspotCampaigns) {
-      if (c.id) campaignNameById.set(c.id, c.name || `Campaign ${c.id.slice(0, 8)}`);
+      if (c.id)
+        campaignNameById.set(c.id, c.name || `Campaign ${c.id.slice(0, 8)}`);
     }
     const chByHubspotId = new Map<string, FunnelChCampaign>();
     for (const ch of contentHubCampaigns) {
@@ -511,7 +511,8 @@ export class CampaignsFunnelService {
     const contactToCampaign = new Map<string, string>();
     for (const campaignId of campaignIds) {
       if (contactToCampaign.size >= MAX_HUBSPOT_CONTACTS_FOR_PEOPLE) break;
-      const remaining = MAX_HUBSPOT_CONTACTS_FOR_PEOPLE - contactToCampaign.size;
+      const remaining =
+        MAX_HUBSPOT_CONTACTS_FOR_PEOPLE - contactToCampaign.size;
       const listed = await this.hubspot.listCampaignContactIds(
         campaignId,
         contactType,
@@ -539,9 +540,7 @@ export class CampaignsFunnelService {
     const contacts = await this.hubspot.batchReadContacts(contactIds);
     const contactById = new Map(contacts.map((c) => [c.id, c]));
 
-    const emails = contacts
-      .map((c) => c.email)
-      .filter((e): e is string => !!e);
+    const emails = contacts.map((c) => c.email).filter((e): e is string => !!e);
     const npis = contacts
       .map((c) => (c.npiNumber || '').replace(/\D/g, ''))
       .filter((n) => n.length === 10);
@@ -570,7 +569,7 @@ export class CampaignsFunnelService {
     const userByEmail = new Map(
       chtUsers
         .filter((u) => u.email)
-        .map((u) => [u.email!.trim().toLowerCase(), u]),
+        .map((u) => [u.email.trim().toLowerCase(), u]),
     );
     const userByNpi = new Map(
       chtUsers
@@ -600,7 +599,7 @@ export class CampaignsFunnelService {
         campaignId,
         campaignName:
           ch?.name ??
-          (campaignId ? campaignNameById.get(campaignId) ?? null : null),
+          (campaignId ? (campaignNameById.get(campaignId) ?? null) : null),
         clientSponsor: ch?.clientSponsor ?? null,
         stageEnteredAt: null,
       };
@@ -730,9 +729,7 @@ export class CampaignsFunnelService {
         row.postEventAttendanceStatus === PostEventAttendanceStatus.VERIFIED
       ) {
         const at =
-          row.postEventAttendanceReviewedAt ??
-          row.reviewedAt ??
-          row.updatedAt;
+          row.postEventAttendanceReviewedAt ?? row.reviewedAt ?? row.updatedAt;
         events.push({
           type: 'attend',
           at: at.toISOString(),
@@ -771,9 +768,7 @@ export class CampaignsFunnelService {
     return new Map(programs.map((program) => [program.id, program]));
   }
 
-  private async usersById(
-    userIds: string[],
-  ): Promise<
+  private async usersById(userIds: string[]): Promise<
     Map<
       string,
       {
@@ -839,9 +834,7 @@ export class CampaignsFunnelService {
     warnings: string[],
   ): Promise<CampaignsFunnelHcpResponse['match']> {
     if (!this.hubspot.isConfigured()) {
-      warnings.push(
-        'HubSpot is not configured; contact match unavailable.',
-      );
+      warnings.push('HubSpot is not configured; contact match unavailable.');
       return { matched: false, method: null };
     }
 
@@ -858,9 +851,7 @@ export class CampaignsFunnelService {
       }
     }
 
-    warnings.push(
-      'No matching HubSpot contact found by email or NPI.',
-    );
+    warnings.push('No matching HubSpot contact found by email or NPI.');
     return { matched: false, method: null };
   }
 
@@ -886,8 +877,7 @@ export class CampaignsFunnelService {
       hubspotUniverse.hubspotCampaignIds.includes(campaignId) &&
       !contentHubCampaigns.some(
         (c) =>
-          c.hubspotCampaignId === campaignId ||
-          String(c.id) === campaignId,
+          c.hubspotCampaignId === campaignId || String(c.id) === campaignId,
       )
     ) {
       return {
@@ -1303,9 +1293,7 @@ export class CampaignsFunnelService {
       counts.converted = cht.converted;
 
       rows.push({
-        clientSponsor: bucket.linked
-          ? bucket.clientSponsor
-          : null,
+        clientSponsor: bucket.linked ? bucket.clientSponsor : null,
         linked: bucket.linked,
         campaignCount: bucket.campaignKeys.size,
         countsByStage: counts,
@@ -1524,9 +1512,7 @@ export class CampaignsFunnelService {
     const start = startDate?.trim();
     const end = endDate?.trim();
     if (start && end && start > end) {
-      throw new BadRequestException(
-        'startDate must be on or before endDate',
-      );
+      throw new BadRequestException('startDate must be on or before endDate');
     }
   }
 

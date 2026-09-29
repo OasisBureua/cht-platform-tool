@@ -6,10 +6,7 @@ import {
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import {
-  cachePatternsForScope,
-  type CacheClearScope,
-} from './cache-keys';
+import { cachePatternsForScope, type CacheClearScope } from './cache-keys';
 import { RedisCacheService } from './redis-cache.service';
 import { CognitoService } from '../auth/cognito.service';
 
@@ -117,9 +114,7 @@ export class CacheClearService {
         allowedClientIds: [m2mClientId],
         requiredScope,
       });
-      this.logger.log(
-        `[M2M] cache clear ok requiredScope=${requiredScope}`,
-      );
+      this.logger.log(`[M2M] cache clear ok requiredScope=${requiredScope}`);
     } catch (err) {
       const code =
         err && typeof err === 'object' && 'code' in err

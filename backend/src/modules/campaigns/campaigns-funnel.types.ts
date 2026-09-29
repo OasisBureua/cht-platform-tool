@@ -28,11 +28,8 @@ export const FUNNEL_STAGE_PEOPLE_AVAILABLE: Record<FunnelStageKey, boolean> = {
 };
 
 /** Stages whose people list would come from HubSpot (disabled in UI until product locks a cohort). */
-export const HUBSPOT_FUNNEL_PEOPLE_STAGES: ReadonlySet<FunnelStageKey> = new Set([
-  'aware',
-  'engaged',
-  'captured',
-]);
+export const HUBSPOT_FUNNEL_PEOPLE_STAGES: ReadonlySet<FunnelStageKey> =
+  new Set(['aware', 'engaged', 'captured']);
 
 export const FUNNEL_STAGE_LABELS: Record<FunnelStageKey, string> = {
   aware: 'Aware',

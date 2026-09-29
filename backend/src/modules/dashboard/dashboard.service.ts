@@ -13,10 +13,7 @@ import {
 } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
-import {
-  normalizeUsStateCode,
-  normalizeUsZip5,
-} from '../../common/us-address';
+import { normalizeUsStateCode, normalizeUsZip5 } from '../../common/us-address';
 import { normalizeUsPhoneE164 } from '../../common/phone';
 import { NpiRegistryService } from '../../auth/npi-registry.service';
 
@@ -101,7 +98,9 @@ export class DashboardService {
             select: { id: true, creditAmount: true },
           });
     const programById = new Map(programs.map((p) => [p.id, p]));
-    const enrollments = enrollmentRows.filter((e) => programById.has(e.programId));
+    const enrollments = enrollmentRows.filter((e) =>
+      programById.has(e.programId),
+    );
 
     const activitiesCompleted = enrollments.filter(
       (e) => e.completed === true,

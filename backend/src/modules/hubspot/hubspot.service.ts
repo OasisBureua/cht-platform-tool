@@ -454,7 +454,9 @@ export class HubSpotService {
    * Look up a HubSpot contact by custom property `npi_number` (soft-fail).
    * Secondary match after email for funnel HCP drill-down.
    */
-  async findContactByNpi(npiNumber: string): Promise<HubSpotContactMatch | null> {
+  async findContactByNpi(
+    npiNumber: string,
+  ): Promise<HubSpotContactMatch | null> {
     const digits = (npiNumber || '').replace(/\D/g, '');
     if (digits.length !== 10 || !this.isConfigured() || !this.accessToken) {
       return null;
@@ -928,7 +930,11 @@ export class HubSpotService {
       endDate?: string;
       maxItems?: number;
     } = {},
-  ): Promise<{ ids: string[]; contactTypeUsed: string | null; warnings: string[] }> {
+  ): Promise<{
+    ids: string[];
+    contactTypeUsed: string | null;
+    warnings: string[];
+  }> {
     const warnings: string[] = [];
     const guid = campaignGuid?.trim();
     if (!guid || !this.isConfigured() || !this.accessToken) {
@@ -936,8 +942,9 @@ export class HubSpotService {
     }
 
     const maxItems = Math.min(Math.max(options.maxItems ?? 200, 1), 500);
-    const candidates =
-      HUBSPOT_CONTACT_TYPE_CANDIDATES[contactType] ?? [contactType];
+    const candidates = HUBSPOT_CONTACT_TYPE_CANDIDATES[contactType] ?? [
+      contactType,
+    ];
     const cacheKey = `${guid}:${contactType}`;
     const cached = this.campaignContactRouteCache.get(cacheKey);
 
@@ -1046,12 +1053,7 @@ export class HubSpotService {
    */
   async batchReadContacts(
     contactIds: string[],
-    properties: string[] = [
-      'email',
-      'firstname',
-      'lastname',
-      'npi_number',
-    ],
+    properties: string[] = ['email', 'firstname', 'lastname', 'npi_number'],
   ): Promise<HubSpotContactMatch[]> {
     const ids = [
       ...new Set(

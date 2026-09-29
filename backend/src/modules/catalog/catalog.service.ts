@@ -4,7 +4,10 @@ import { HttpService } from '@nestjs/axios';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisCacheService } from '../../cache/redis-cache.service';
 import { cacheKeyHash } from '../../cache/cache-key.util';
-import { ContentHubCatalogService, type ContentHubClip } from './contenthub-catalog.service';
+import {
+  ContentHubCatalogService,
+  type ContentHubClip,
+} from './contenthub-catalog.service';
 import { firstValueFrom } from 'rxjs';
 import {
   isLikelyYouTubeShort,
@@ -165,8 +168,9 @@ export class CatalogService implements OnModuleInit {
 
     if (apiKey && playlistIds.length > 0) {
       try {
-        const items = await this.cachedYouTube('cht:catalog:youtube:items', () =>
-          this.fetchFromYouTube(apiKey, playlistIds),
+        const items = await this.cachedYouTube(
+          'cht:catalog:youtube:items',
+          () => this.fetchFromYouTube(apiKey, playlistIds),
         );
         this.logger.log(`YouTube catalog: fetched ${items.length} playlists`);
         return items;
@@ -352,15 +356,16 @@ export class CatalogService implements OnModuleInit {
   }
 
   /** Map a Content Hub clip into the home-carousel video shape. */
-  private mapContentHubClipToPlaylistVideo(clip: ContentHubClip): PlaylistVideo | null {
+  private mapContentHubClipToPlaylistVideo(
+    clip: ContentHubClip,
+  ): PlaylistVideo | null {
     const youtubeUrl = (clip.youtube_url || '').trim();
     if (!youtubeUrl) return null;
     const vidMatch = youtubeUrl.match(
       /(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/,
     );
     const id =
-      vidMatch?.[1] ||
-      (clip.id.match(/:([a-zA-Z0-9_-]{11})$/)?.[1] ?? clip.id);
+      vidMatch?.[1] || (clip.id.match(/:([a-zA-Z0-9_-]{11})$/)?.[1] ?? clip.id);
     const thumb =
       clip.thumbnail_url ||
       (vidMatch
@@ -474,8 +479,10 @@ export class CatalogService implements OnModuleInit {
     }
 
     try {
-      return await this.cachedYouTube('cht:catalog:youtube:playlists:list', () =>
-        this.fetchFromYouTube(apiKey, playlistIds, { previewTitles: false }),
+      return await this.cachedYouTube(
+        'cht:catalog:youtube:playlists:list',
+        () =>
+          this.fetchFromYouTube(apiKey, playlistIds, { previewTitles: false }),
       );
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -504,93 +511,94 @@ export class CatalogService implements OnModuleInit {
     return this.cachedYouTubeNullable(cacheKey, async () => {
       try {
         const channel = await this.getChannelByHandle(apiKey, handle);
-      const uploadsPlaylistId =
-        channel.contentDetails?.relatedPlaylists?.uploads;
-      if (!uploadsPlaylistId) {
-        throw new Error(`Channel @${handle} has no uploads playlist`);
-      }
+        const uploadsPlaylistId =
+          channel.contentDetails?.relatedPlaylists?.uploads;
+        if (!uploadsPlaylistId) {
+          throw new Error(`Channel @${handle} has no uploads playlist`);
+        }
 
-      const playlistItems = await this.getPlaylistItemsWithPublishedAt(
-        apiKey,
-        uploadsPlaylistId,
-      );
-      if (playlistItems.length === 0) {
-        const thumb =
+        const playlistItems = await this.getPlaylistItemsWithPublishedAt(
+          apiKey,
+          uploadsPlaylistId,
+        );
+        if (playlistItems.length === 0) {
+          const thumb =
+            channel.snippet?.thumbnails?.high ||
+            channel.snippet?.thumbnails?.medium ||
+            channel.snippet?.thumbnails?.default;
+          return {
+            handle,
+            channelTitle: channel.snippet?.title || handle,
+            channelThumbnailUrl: thumb?.url || '',
+            videos: [],
+          };
+        }
+
+        const videoIds = playlistItems.map((i) => i.videoId);
+        const details = await this.getVideoDetails(apiKey, videoIds);
+        const detailById = new Map(details.map((d) => [d.id, d]));
+
+        const videos: YouTubeChannelVideo[] = [];
+        let skipped = 0;
+        for (const item of playlistItems) {
+          const detail = detailById.get(item.videoId);
+          if (!detail) continue;
+          const snippet = detail.snippet;
+          const duration = detail.contentDetails?.duration || '';
+          const candidate = {
+            title: snippet?.title || item.title || '',
+            description: snippet?.description || '',
+            tags: snippet?.tags,
+            duration,
+          };
+          const minDurationSeconds = options?.minDurationSeconds;
+          const include =
+            minDurationSeconds != null
+              ? isPodcastEpisodeVideo({ ...candidate, minDurationSeconds })
+              : !isLikelyYouTubeShort(candidate);
+          if (!include) {
+            skipped += 1;
+            continue;
+          }
+          const thumb =
+            detail.snippet?.thumbnails?.high ||
+            detail.snippet?.thumbnails?.medium ||
+            detail.snippet?.thumbnails?.default;
+          videos.push({
+            id: detail.id,
+            title: detail.snippet?.title || item.title || 'Video',
+            description: detail.snippet?.description || '',
+            thumbnailUrl:
+              thumb?.url ||
+              `https://img.youtube.com/vi/${detail.id}/hqdefault.jpg`,
+            youtubeUrl: `https://www.youtube.com/watch?v=${detail.id}`,
+            publishedAt: detail.snippet?.publishedAt || item.publishedAt,
+            viewCount: parseInt(detail.statistics?.viewCount || '0', 10) || 0,
+            duration: detail.contentDetails?.duration || '',
+            channelTitle:
+              detail.snippet?.channelTitle || channel.snippet?.title || '',
+          });
+        }
+
+        if (skipped > 0) {
+          this.logger.log(
+            `YouTube @${handle}: excluded ${skipped} Short/promo upload(s); returning ${videos.length} video(s)`,
+          );
+        }
+
+        this.sortYouTubeChannelVideos(videos, sort);
+
+        const channelThumb =
           channel.snippet?.thumbnails?.high ||
           channel.snippet?.thumbnails?.medium ||
           channel.snippet?.thumbnails?.default;
+
         return {
           handle,
           channelTitle: channel.snippet?.title || handle,
-          channelThumbnailUrl: thumb?.url || '',
-          videos: [],
+          channelThumbnailUrl: channelThumb?.url || '',
+          videos,
         };
-      }
-
-      const videoIds = playlistItems.map((i) => i.videoId);
-      const details = await this.getVideoDetails(apiKey, videoIds);
-      const detailById = new Map(details.map((d) => [d.id, d]));
-
-      const videos: YouTubeChannelVideo[] = [];
-      let skipped = 0;
-      for (const item of playlistItems) {
-        const detail = detailById.get(item.videoId);
-        if (!detail) continue;
-        const snippet = detail.snippet;
-        const duration = detail.contentDetails?.duration || '';
-        const candidate = {
-          title: snippet?.title || item.title || '',
-          description: snippet?.description || '',
-          tags: snippet?.tags,
-          duration,
-        };
-        const minDurationSeconds = options?.minDurationSeconds;
-        const include =
-          minDurationSeconds != null
-            ? isPodcastEpisodeVideo({ ...candidate, minDurationSeconds })
-            : !isLikelyYouTubeShort(candidate);
-        if (!include) {
-          skipped += 1;
-          continue;
-        }
-        const thumb =
-          detail.snippet?.thumbnails?.high ||
-          detail.snippet?.thumbnails?.medium ||
-          detail.snippet?.thumbnails?.default;
-        videos.push({
-          id: detail.id,
-          title: detail.snippet?.title || item.title || 'Video',
-          description: detail.snippet?.description || '',
-          thumbnailUrl:
-            thumb?.url ||
-            `https://img.youtube.com/vi/${detail.id}/hqdefault.jpg`,
-          youtubeUrl: `https://www.youtube.com/watch?v=${detail.id}`,
-          publishedAt: detail.snippet?.publishedAt || item.publishedAt,
-          viewCount: parseInt(detail.statistics?.viewCount || '0', 10) || 0,
-          duration: detail.contentDetails?.duration || '',
-          channelTitle: detail.snippet?.channelTitle || channel.snippet?.title || '',
-        });
-      }
-
-      if (skipped > 0) {
-        this.logger.log(
-          `YouTube @${handle}: excluded ${skipped} Short/promo upload(s); returning ${videos.length} video(s)`,
-        );
-      }
-
-      this.sortYouTubeChannelVideos(videos, sort);
-
-      const channelThumb =
-        channel.snippet?.thumbnails?.high ||
-        channel.snippet?.thumbnails?.medium ||
-        channel.snippet?.thumbnails?.default;
-
-      return {
-        handle,
-        channelTitle: channel.snippet?.title || handle,
-        channelThumbnailUrl: channelThumb?.url || '',
-        videos,
-      };
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(`YouTube channel @${handle} failed: ${msg}`);
@@ -657,8 +665,11 @@ export class CatalogService implements OnModuleInit {
     apiKey: string,
     playlistId: string,
   ): Promise<Array<{ videoId: string; title: string; publishedAt: string }>> {
-    const items: Array<{ videoId: string; title: string; publishedAt: string }> =
-      [];
+    const items: Array<{
+      videoId: string;
+      title: string;
+      publishedAt: string;
+    }> = [];
     let pageToken: string | undefined;
     do {
       const { data } = await firstValueFrom(

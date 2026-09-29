@@ -32,7 +32,8 @@ describe('ZoomAttendanceReportExportService', () => {
     };
     config = {
       get: jest.fn((key: string) => {
-        if (key === 'zoomRecordings.attendanceReportFilename') return 'attendees.csv';
+        if (key === 'zoomRecordings.attendanceReportFilename')
+          return 'attendees.csv';
         return undefined;
       }),
     };

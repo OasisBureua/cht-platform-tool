@@ -83,7 +83,9 @@ export class KolMutationsService {
   }
 
   async refreshKol(slug: string): Promise<KolRefreshResult> {
-    return this.client.postAdmin<KolRefreshResult>(`${this.base(slug)}/refresh`);
+    return this.client.postAdmin<KolRefreshResult>(
+      `${this.base(slug)}/refresh`,
+    );
   }
 
   async presignHeadshot(

@@ -18,27 +18,22 @@ export class StripeWebhookService {
 
     switch (event.type) {
       case 'account.updated':
-        await this.handleAccountUpdated(event.data.object as Stripe.Account);
+        await this.handleAccountUpdated(event.data.object);
         break;
       case 'capability.updated':
-        await this.handleCapabilityUpdated(
-          event.data.object as Stripe.Capability,
-        );
+        await this.handleCapabilityUpdated(event.data.object);
         break;
       case 'transfer.created':
       case 'transfer.updated':
-        await this.handleTransfer(event.data.object as Stripe.Transfer);
+        await this.handleTransfer(event.data.object);
         break;
       case 'transfer.reversed':
-        await this.handleTransferReversed(event.data.object as Stripe.Transfer);
+        await this.handleTransferReversed(event.data.object);
         break;
       case 'payout.paid':
       case 'payout.failed':
       case 'payout.canceled':
-        await this.handlePayout(
-          event.data.object as Stripe.Payout,
-          event.type,
-        );
+        await this.handlePayout(event.data.object, event.type);
         break;
       default:
         this.logger.debug(`[Stripe webhook] ignored type=${event.type}`);
@@ -85,9 +80,7 @@ export class StripeWebhookService {
         preferredPaymentMethod: 'ACH',
         // PAY-4: always mirror Stripe taxComplete (clears legacy Bill W-9 flags).
         w9Submitted: taxComplete,
-        w9SubmittedAt: taxComplete
-          ? (user.w9SubmittedAt ?? new Date())
-          : null,
+        w9SubmittedAt: taxComplete ? (user.w9SubmittedAt ?? new Date()) : null,
         ...(summary.bankAccountLast4
           ? { bankAccountLast4: summary.bankAccountLast4 }
           : {}),
@@ -260,8 +253,6 @@ export class StripeWebhookService {
       });
     }
 
-    this.logger.warn(
-      `[Stripe webhook] payment ${paymentId} FAILED: ${reason}`,
-    );
+    this.logger.warn(`[Stripe webhook] payment ${paymentId} FAILED: ${reason}`);
   }
 }

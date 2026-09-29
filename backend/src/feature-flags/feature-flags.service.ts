@@ -40,9 +40,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
     this.profile =
       this.configService.get<string>('appconfig.profile')?.trim() || '';
     this.pollingEnabled =
-      this.application !== '' &&
-      this.environment !== '' &&
-      this.profile !== '';
+      this.application !== '' && this.environment !== '' && this.profile !== '';
 
     const region =
       this.configService.get<string>('aws.region')?.trim() || 'us-east-1';
@@ -111,8 +109,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
       );
 
       this.configurationToken =
-        latest.NextPollConfigurationToken?.trim() ||
-        this.configurationToken;
+        latest.NextPollConfigurationToken?.trim() || this.configurationToken;
 
       const payload = latest.Configuration;
       if (!payload || payload.byteLength === 0) {

@@ -382,9 +382,7 @@ export class PaymentsService {
 
     const paymentMethod = vendorDto.paymentMethod;
     if (paymentMethod !== 'ACH' && paymentMethod !== 'CHECK') {
-      throw new BadRequestException(
-        'Select a payment method: ACH or Check.',
-      );
+      throw new BadRequestException('Select a payment method: ACH or Check.');
     }
 
     if (paymentMethod === 'ACH' && !vendorDto.bankAccount) {
@@ -795,7 +793,9 @@ export class PaymentsService {
 
     const warnings: string[] = [];
     if (!reg) {
-      warnings.push('No registration found for this user on the selected program.');
+      warnings.push(
+        'No registration found for this user on the selected program.',
+      );
     }
 
     const attendanceStatus = reg?.postEventAttendanceStatus ?? null;
@@ -1025,9 +1025,7 @@ export class PaymentsService {
     const rows = await this.prisma.payment.findMany({
       where: {
         ...statusFilter,
-        ...(createdAt && Object.keys(createdAt).length
-          ? { createdAt }
-          : {}),
+        ...(createdAt && Object.keys(createdAt).length ? { createdAt } : {}),
       },
       include: {
         user: {
@@ -1203,7 +1201,7 @@ export class PaymentsService {
       if (
         (await programHasPostEventSurvey(
           this.prisma,
-          payment.programId!,
+          payment.programId,
           reg.program.jotformSurveyUrl,
         )) &&
         !reg.postEventSurveyAcknowledgedAt
@@ -1982,9 +1980,7 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(`Sync failed: ${(error as Error).message}`);
-      throw new BadRequestException(
-        `Sync failed: ${(error as Error).message}`,
-      );
+      throw new BadRequestException(`Sync failed: ${(error as Error).message}`);
     }
   }
 }

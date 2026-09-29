@@ -87,7 +87,9 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
             return incoming.trim();
           }
           if (Array.isArray(incoming)) {
-            const first = incoming.find((v) => typeof v === 'string' && v.trim());
+            const first = incoming.find(
+              (v) => typeof v === 'string' && v.trim(),
+            );
             if (first?.trim()) return first.trim();
           }
           return randomUUID();

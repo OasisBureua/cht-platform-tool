@@ -72,7 +72,10 @@ export class OutboundSyncService {
           })
           .then(() => true)
           .catch((err) => {
-            this.logger.error(`[OutboundSync] hubspot error for ${email}:`, err);
+            this.logger.error(
+              `[OutboundSync] hubspot error for ${email}:`,
+              err,
+            );
             return false;
           })
       : Promise.resolve(false);

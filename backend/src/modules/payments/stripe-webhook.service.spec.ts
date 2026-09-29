@@ -235,7 +235,11 @@ describe('StripeService.constructEvent', () => {
           .fn()
           .mockImplementation((_body, _sig, secret: string) => {
             if (secret === 'whsec_good') {
-              return { id: 'evt', type: 'account.updated', data: { object: {} } };
+              return {
+                id: 'evt',
+                type: 'account.updated',
+                data: { object: {} },
+              };
             }
             throw new Error('bad sig');
           }),

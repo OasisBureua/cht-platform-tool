@@ -107,7 +107,9 @@ export function buildChmAssetFilenameStem(
   return stem;
 }
 
-export function buildChmAssetFilename(input: BuildChmAssetFilenameInput): string {
+export function buildChmAssetFilename(
+  input: BuildChmAssetFilenameInput,
+): string {
   const stem = buildChmAssetFilenameStem(input);
   const ext = input.extension?.trim().replace(/^\./, '').toLowerCase();
   return ext ? `${stem}.${ext}` : stem;
@@ -158,7 +160,9 @@ export function parseChmAssetFilenameStem(
   return null;
 }
 
-export function validateChmAssetFilenameStem(stem: string): ChmValidationResult {
+export function validateChmAssetFilenameStem(
+  stem: string,
+): ChmValidationResult {
   const errors: string[] = [];
   const parsed = parseChmAssetFilenameStem(stem);
   if (!parsed) {

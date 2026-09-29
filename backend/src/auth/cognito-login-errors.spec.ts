@@ -60,11 +60,15 @@ describe('mapCognitoLoginException', () => {
 
   it('maps timeout and MFA code mismatch', () => {
     expect(
-      mapCognitoLoginException(Object.assign(new Error('aborted'), { name: 'TimeoutError' })),
+      mapCognitoLoginException(
+        Object.assign(new Error('aborted'), { name: 'TimeoutError' }),
+      ),
     ).toEqual({ error: LOGIN_TIMEOUT_ERROR, code: 'GENERIC' });
     expect(
       mapCognitoLoginException(
-        Object.assign(new Error('Invalid code'), { name: 'CodeMismatchException' }),
+        Object.assign(new Error('Invalid code'), {
+          name: 'CodeMismatchException',
+        }),
       ),
     ).toEqual({ error: LOGIN_MFA_CODE_INVALID, code: 'GENERIC' });
   });

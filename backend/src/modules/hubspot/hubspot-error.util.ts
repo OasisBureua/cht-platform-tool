@@ -36,8 +36,7 @@ export function parseHubSpotApiError(raw: unknown): HubSpotParsedError {
 
   try {
     const body = JSON.parse(text.slice(jsonStart)) as Record<string, unknown>;
-    const category =
-      typeof body.category === 'string' ? body.category : null;
+    const category = typeof body.category === 'string' ? body.category : null;
     const message =
       typeof body.message === 'string' ? body.message : fallback.message;
     const missingScopes = extractMissingScopes(body);

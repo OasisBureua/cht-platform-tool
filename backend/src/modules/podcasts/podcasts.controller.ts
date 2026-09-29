@@ -5,7 +5,10 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
-import { CatalogService, YouTubeChannelVideoSort } from '../catalog/catalog.service';
+import {
+  CatalogService,
+  YouTubeChannelVideoSort,
+} from '../catalog/catalog.service';
 import {
   getPodcastShowConfig,
   listPodcastShowConfigs,

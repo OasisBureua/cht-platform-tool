@@ -40,7 +40,9 @@ describe('zoom-attendance-match', () => {
   });
 
   it('builds presence flags for admin UI', () => {
-    expect(zoomPresenceForRegistration('u1', 'alice@example.com', events)).toEqual({
+    expect(
+      zoomPresenceForRegistration('u1', 'alice@example.com', events),
+    ).toEqual({
       zoomJoined: true,
       zoomParticipantEmail: 'Alice@Example.com',
     });
@@ -61,7 +63,13 @@ describe('resolveAttendanceFromZoomJoins', () => {
   it('verifies when HCP email equals Zoom email', () => {
     const resolved = resolveAttendanceFromZoomJoins(
       [{ id: 'r1', userId: 'u1', userEmail: 'alice@example.com' }],
-      [{ userId: 'u1', participantEmail: 'Alice@Example.com', event: 'JOINED' }],
+      [
+        {
+          userId: 'u1',
+          participantEmail: 'Alice@Example.com',
+          event: 'JOINED',
+        },
+      ],
     );
     expect(resolved).toEqual([
       {

@@ -13,10 +13,7 @@
  * ids like `npi`, `organization`, `postal_code`).
  */
 
-import {
-  normalizeUsStateCode,
-  normalizeUsZip5,
-} from '../../common/us-address';
+import { normalizeUsStateCode, normalizeUsZip5 } from '../../common/us-address';
 import {
   listNativeSurveyQuestions,
   type NativeSurveyQuestion,

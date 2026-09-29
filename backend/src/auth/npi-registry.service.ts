@@ -56,7 +56,10 @@ export class NpiRegistryService {
     // Exact NPI match — avoid fuzzy name hits when digits collide with other fields.
     url.searchParams.set('sf', 'NPI');
     url.searchParams.set('q', `NPI:${npi}`);
-    url.searchParams.set('df', 'NPI,name.full,provider_type,addr_practice.full');
+    url.searchParams.set(
+      'df',
+      'NPI,name.full,provider_type,addr_practice.full',
+    );
     url.searchParams.set('ef', 'name.full,provider_type,addr_practice.full');
     url.searchParams.set('maxList', '1');
 

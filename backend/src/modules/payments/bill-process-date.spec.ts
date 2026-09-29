@@ -57,8 +57,10 @@ describe('summarizeBillError', () => {
   });
 
   it('passes through non-Bill errors trimmed', () => {
-    expect(summarizeBillError(new Error('User does not have a Bill.com vendor account'))).toBe(
-      'User does not have a Bill.com vendor account',
-    );
+    expect(
+      summarizeBillError(
+        new Error('User does not have a Bill.com vendor account'),
+      ),
+    ).toBe('User does not have a Bill.com vendor account');
   });
 });

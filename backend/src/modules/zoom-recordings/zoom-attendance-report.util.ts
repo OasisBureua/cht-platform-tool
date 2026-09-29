@@ -41,13 +41,17 @@ export function escapeCsvField(value: string): string {
   return value;
 }
 
-function formatCsvCell(value: string | number | boolean | null | undefined): string {
+function formatCsvCell(
+  value: string | number | boolean | null | undefined,
+): string {
   if (value === null || value === undefined) return '';
   if (typeof value === 'boolean') return value ? 'true' : 'false';
   return escapeCsvField(String(value));
 }
 
-export function serializeAttendanceReportCsv(rows: AttendanceReportRow[]): string {
+export function serializeAttendanceReportCsv(
+  rows: AttendanceReportRow[],
+): string {
   const lines = [
     ATTENDANCE_REPORT_CSV_HEADERS.join(','),
     ...rows.map((row) =>

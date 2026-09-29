@@ -137,7 +137,9 @@ export function formatZoomStartTime(startTime: string): string {
       return parsed.toISOString().replace(/\.\d{3}Z$/, 'Z');
     }
   }
-  const local = trimmed.match(/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?$/);
+  const local = trimmed.match(
+    /^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.\d+)?$/,
+  );
   if (local) return local[1];
   const parsed = new Date(trimmed);
   if (!Number.isNaN(parsed.getTime())) {
@@ -214,7 +216,10 @@ export class ZoomService implements OnModuleInit {
   /** GET with retries on HTTP 429 (Zoom rate limits during Sync). */
   private async zoomGetWithRetry<T>(
     url: string,
-    config: { params?: Record<string, string | number>; headers?: Record<string, string> },
+    config: {
+      params?: Record<string, string | number>;
+      headers?: Record<string, string>;
+    },
   ): Promise<T> {
     const maxAttempts = 4;
     let lastErr: unknown;
@@ -535,28 +540,29 @@ export class ZoomService implements OnModuleInit {
     );
 
     const token = await this.getAccessToken();
-    const { data } = await this.requestWithSettingsFallback<ZoomWebinarResponse>(
-      (payload) =>
-        firstValueFrom(
-      this.http.post<ZoomWebinarResponse>(
-        'https://api.zoom.us/v2/users/me/webinars',
-            payload,
-            { headers: { Authorization: `Bearer ${token}` } },
+    const { data } =
+      await this.requestWithSettingsFallback<ZoomWebinarResponse>(
+        (payload) =>
+          firstValueFrom(
+            this.http.post<ZoomWebinarResponse>(
+              'https://api.zoom.us/v2/users/me/webinars',
+              payload,
+              { headers: { Authorization: `Bearer ${token}` } },
+            ),
           ),
-        ),
         {
           topic: params.topic,
           agenda: params.agenda,
-        start_time: startTime,
+          start_time: startTime,
           duration: params.duration,
           timezone: params.timezone || 'America/New_York',
-        type: 5,
-        settings: toZoomWebinarSettingsApi(
-          params.settings ?? DEFAULT_ZOOM_WEBINAR_SETTINGS,
-        ),
-      },
-      `create webinar "${params.topic}"`,
-    );
+          type: 5,
+          settings: toZoomWebinarSettingsApi(
+            params.settings ?? DEFAULT_ZOOM_WEBINAR_SETTINGS,
+          ),
+        },
+        `create webinar "${params.topic}"`,
+      );
 
     this.logger.log(
       `Zoom: webinar created: id=${data.id} topic="${data.topic}" join_url=${data.join_url} (attendee / silent participant link)`,
@@ -593,7 +599,8 @@ export class ZoomService implements OnModuleInit {
     const body: Record<string, unknown> = {};
     if (params.topic) body.topic = params.topic;
     if (params.agenda !== undefined) body.agenda = params.agenda;
-    if (params.startTime) body.start_time = formatZoomStartTime(params.startTime);
+    if (params.startTime)
+      body.start_time = formatZoomStartTime(params.startTime);
     if (params.duration !== undefined) body.duration = params.duration;
     if (params.timezone) body.timezone = params.timezone;
     if (params.settings) {
@@ -604,9 +611,13 @@ export class ZoomService implements OnModuleInit {
     await this.requestWithSettingsFallback(
       (payload) =>
         firstValueFrom(
-          this.http.patch(`https://api.zoom.us/v2/webinars/${webinarId}`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-      }),
+          this.http.patch(
+            `https://api.zoom.us/v2/webinars/${webinarId}`,
+            payload,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            },
+          ),
         ),
       body,
       `update webinar ${webinarId}`,
@@ -968,7 +979,8 @@ export class ZoomService implements OnModuleInit {
     const body: Record<string, unknown> = {};
     if (params.topic) body.topic = params.topic;
     if (params.agenda !== undefined) body.agenda = params.agenda;
-    if (params.startTime) body.start_time = formatZoomStartTime(params.startTime);
+    if (params.startTime)
+      body.start_time = formatZoomStartTime(params.startTime);
     if (params.duration !== undefined) body.duration = params.duration;
     if (params.timezone) body.timezone = params.timezone;
 
@@ -1012,7 +1024,9 @@ export class ZoomService implements OnModuleInit {
    * Cloud recording file list for a meeting or webinar (same Zoom endpoint).
    * Requires cloud_recording:read:list_recording_files:admin (or equivalent).
    */
-  async getMeetingRecordings(meetingId: string): Promise<ZoomMeetingRecordings> {
+  async getMeetingRecordings(
+    meetingId: string,
+  ): Promise<ZoomMeetingRecordings> {
     if (!this.isConfigured()) {
       throw new Error('Zoom API is not configured');
     }
@@ -1141,7 +1155,8 @@ export class ZoomService implements OnModuleInit {
       totalRecords: data.total_records,
       users: (data.users || [])
         .map((u) => ({
-          id: typeof u.id === 'string' ? u.id.trim() : String(u.id ?? '').trim(),
+          id:
+            typeof u.id === 'string' ? u.id.trim() : String(u.id ?? '').trim(),
           email: typeof u.email === 'string' ? u.email.trim() : '',
           status: typeof u.status === 'string' ? u.status : undefined,
         }))
@@ -1217,7 +1232,9 @@ export class ZoomService implements OnModuleInit {
       to: data.to ?? opts.to,
       nextPageToken: data.next_page_token?.trim() || undefined,
       totalRecords: data.total_records,
-      sessions: (data.meetings || []).map((m) => this.mapAccountRecordingSession(m)),
+      sessions: (data.meetings || []).map((m) =>
+        this.mapAccountRecordingSession(m),
+      ),
     };
   }
 
@@ -1292,7 +1309,9 @@ export class ZoomService implements OnModuleInit {
       to: data.to ?? opts.to,
       nextPageToken: data.next_page_token?.trim() || undefined,
       totalRecords: data.total_records,
-      sessions: (data.meetings || []).map((m) => this.mapAccountRecordingSession(m)),
+      sessions: (data.meetings || []).map((m) =>
+        this.mapAccountRecordingSession(m),
+      ),
     };
   }
 
@@ -1421,7 +1440,8 @@ export class ZoomService implements OnModuleInit {
     try {
       return await fetchAll(opts.meetingId);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } }).response?.status;
+      const status = (err as { response?: { status?: number } }).response
+        ?.status;
       const altId = opts.zoomUuid?.trim();
       if (status === 404 && altId && altId !== opts.meetingId) {
         return fetchAll(altId);

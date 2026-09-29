@@ -196,9 +196,7 @@ describe('CognitoService token verification', () => {
       sub: 'user-sub-1',
       client_id: 'wrong-client',
     });
-    await expect(service.verifyAccessToken(token)).rejects.toThrow(
-      /client_id/,
-    );
+    await expect(service.verifyAccessToken(token)).rejects.toThrow(/client_id/);
   });
 
   it('verifyTokenPair accepts matching id+access tokens', async () => {
@@ -238,7 +236,9 @@ describe('CognitoService token verification', () => {
     expect(uri).toContain('otpauth://totp/');
     expect(uri).toContain('secret=SECRET123');
     expect(uri).toContain('issuer=Community%20Health');
-    expect(uri.toLowerCase()).toContain(encodeURIComponent('CHT:admin@example.com').toLowerCase());
+    expect(uri.toLowerCase()).toContain(
+      encodeURIComponent('CHT:admin@example.com').toLowerCase(),
+    );
   });
 });
 

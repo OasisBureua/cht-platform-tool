@@ -76,7 +76,9 @@ export class AuthService {
   private remainingAbsoluteSeconds(createdAt: Date, now = new Date()): number {
     return Math.max(
       0,
-      Math.floor((this.absoluteDeadline(createdAt).getTime() - now.getTime()) / 1000),
+      Math.floor(
+        (this.absoluteDeadline(createdAt).getTime() - now.getTime()) / 1000,
+      ),
     );
   }
 
@@ -139,7 +141,9 @@ export class AuthService {
   ): Promise<void> {
     await Promise.all([
       sessionId
-        ? this.prisma.session.delete({ where: { id: sessionId } }).catch(() => {})
+        ? this.prisma.session
+            .delete({ where: { id: sessionId } })
+            .catch(() => {})
         : this.prisma.session.deleteMany({ where: { token } }),
       this.deleteSessionCache(token),
     ]);
@@ -348,9 +352,7 @@ export class AuthService {
       where: { userId },
       select: { token: true },
     });
-    await Promise.all(
-      sessions.map((s) => this.deleteSessionCache(s.token)),
-    );
+    await Promise.all(sessions.map((s) => this.deleteSessionCache(s.token)));
   }
 
   /**
@@ -504,13 +506,7 @@ export class AuthService {
         return null;
       } else {
         const user = this.toAuthUser(cached);
-        await this.maybeSlideSession(
-          trimmed,
-          user,
-          expiresAt,
-          createdAt,
-          now,
-        );
+        await this.maybeSlideSession(trimmed, user, expiresAt, createdAt, now);
         return {
           user,
           cookieMaxAgeSeconds: this.remainingAbsoluteSeconds(createdAt, now),
@@ -531,7 +527,8 @@ export class AuthService {
 
     // createdAt is required after migration; coerce for safety mid-rollout.
     const createdAt =
-      session.createdAt instanceof Date && !Number.isNaN(session.createdAt.getTime())
+      session.createdAt instanceof Date &&
+      !Number.isNaN(session.createdAt.getTime())
         ? session.createdAt
         : new Date(
             session.expiresAt.getTime() - this.sessionIdleTtlSeconds() * 1000,

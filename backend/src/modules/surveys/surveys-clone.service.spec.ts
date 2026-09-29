@@ -44,7 +44,9 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
   beforeEach(() => {
     prisma = {
       program: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'prog-new', title: 'DB09 New' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'prog-new', title: 'DB09 New' }),
         update: jest.fn().mockResolvedValue({}),
       },
       survey: {

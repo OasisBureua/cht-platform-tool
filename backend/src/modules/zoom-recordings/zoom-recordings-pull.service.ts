@@ -6,7 +6,10 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { ProgramZoomSessionType, ZoomRecordingPullStatus } from '@prisma/client';
+import {
+  ProgramZoomSessionType,
+  ZoomRecordingPullStatus,
+} from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   ZoomService,
@@ -198,17 +201,24 @@ export class ZoomRecordingsPullService {
     const session = await this.prisma.zoomRecordingSession.findUnique({
       where: { id: sessionId },
     });
-    if (!session) throw new NotFoundException('Zoom recording session not found');
+    if (!session)
+      throw new NotFoundException('Zoom recording session not found');
 
-    const zoomPayload = await this.fetchMeetingRecordings(session.zoomMeetingId);
+    const zoomPayload = await this.fetchMeetingRecordings(
+      session.zoomMeetingId,
+    );
     let completed = this.completedFiles(zoomPayload);
     if (opts.fileTypes?.length) {
       const allowed = new Set(opts.fileTypes.map((t) => t.toUpperCase()));
-      completed = completed.filter((f) => allowed.has(f.fileType.toUpperCase()));
+      completed = completed.filter((f) =>
+        allowed.has(f.fileType.toUpperCase()),
+      );
     }
     if (opts.zoomRecordingFileIds?.length) {
       const allowedIds = new Set(
-        opts.zoomRecordingFileIds.map((id) => String(id).trim()).filter(Boolean),
+        opts.zoomRecordingFileIds
+          .map((id) => String(id).trim())
+          .filter(Boolean),
       );
       completed = completed.filter((f) => allowedIds.has(String(f.id)));
     }
@@ -282,11 +292,12 @@ export class ZoomRecordingsPullService {
     }
   }
 
-  private completedFiles(zoomPayload: ZoomMeetingRecordings): ZoomRecordingFile[] {
+  private completedFiles(
+    zoomPayload: ZoomMeetingRecordings,
+  ): ZoomRecordingFile[] {
     return zoomPayload.recordingFiles.filter(
       (f) =>
-        f.downloadUrl &&
-        (!f.status || f.status.toLowerCase() === 'completed'),
+        f.downloadUrl && (!f.status || f.status.toLowerCase() === 'completed'),
     );
   }
 
@@ -301,9 +312,9 @@ export class ZoomRecordingsPullService {
     adminUserId?: string;
   }): Promise<{ upserted: string[]; errors: string[] }> {
     const bucket = this.storage.recordingsBucket();
-    const streamTypes =
-      this.config.get<string[]>('zoomRecordings.streamFileTypes') ??
-      ['MP4', 'M4A'];
+    const streamTypes = this.config.get<string[]>(
+      'zoomRecordings.streamFileTypes',
+    ) ?? ['MP4', 'M4A'];
     const upserted: string[] = [];
     const errors: string[] = [];
     const assetSeqByFormat = new Map<string, number>();

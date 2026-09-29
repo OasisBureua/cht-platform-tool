@@ -25,14 +25,15 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
           jobs.push(job);
           return job;
         }),
-        findUnique: jest.fn(async ({ where }: { where: { id: string } }) =>
-          jobs.find((j) => j.id === where.id) ?? {
-            id: where.id,
-            status: ZoomSyncJobStatus.QUEUED,
-            fromDate: new Date('2026-08-01T00:00:00.000Z'),
-            toDate: new Date('2026-08-31T00:00:00.000Z'),
-            startedAt: null,
-          },
+        findUnique: jest.fn(
+          async ({ where }: { where: { id: string } }) =>
+            jobs.find((j) => j.id === where.id) ?? {
+              id: where.id,
+              status: ZoomSyncJobStatus.QUEUED,
+              fromDate: new Date('2026-08-01T00:00:00.000Z'),
+              toDate: new Date('2026-08-31T00:00:00.000Z'),
+              startedAt: null,
+            },
         ),
         update: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
           Object.assign(jobs[0] ?? {}, data);
@@ -68,9 +69,9 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
   }
 
   it('inventories recordings via GET /users then per-user recordings', async () => {
-    const listAllAccountUsers = jest.fn().mockResolvedValue([
-      { id: 'host-1', email: 'host@example.com' },
-    ]);
+    const listAllAccountUsers = jest
+      .fn()
+      .mockResolvedValue([{ id: 'host-1', email: 'host@example.com' }]);
     const listUserRecordingsInRange = jest.fn().mockResolvedValue([
       {
         id: '111',
@@ -181,9 +182,7 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           status: ZoomSyncJobStatus.FAILED,
-          errorMessage: expect.stringContaining(
-            'user:read:list_users:admin',
-          ),
+          errorMessage: expect.stringContaining('user:read:list_users:admin'),
         }),
       }),
     );
@@ -233,9 +232,9 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
   });
 
   it('keeps later sessions in a window when one upsert fails', async () => {
-    const listAllAccountUsers = jest.fn().mockResolvedValue([
-      { id: 'host-1', email: 'host@example.com' },
-    ]);
+    const listAllAccountUsers = jest
+      .fn()
+      .mockResolvedValue([{ id: 'host-1', email: 'host@example.com' }]);
     const listUserRecordingsInRange = jest.fn().mockResolvedValue([
       { id: 'bad', topic: 'Broken', recordingFiles: [] },
       {
@@ -266,9 +265,9 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
   });
 
   it('skips sessions and files with no id', async () => {
-    const listAllAccountUsers = jest.fn().mockResolvedValue([
-      { id: 'host-1', email: 'host@example.com' },
-    ]);
+    const listAllAccountUsers = jest
+      .fn()
+      .mockResolvedValue([{ id: 'host-1', email: 'host@example.com' }]);
     const listUserRecordingsInRange = jest.fn().mockResolvedValue([
       { id: '', topic: 'Missing meeting id', recordingFiles: [{ id: 'f1' }] },
       {

@@ -1,18 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
-import {
-  ZoomService,
-  type ZoomAccountRecordingsPage,
-} from './zoom.service';
+import { ZoomService, type ZoomAccountRecordingsPage } from './zoom.service';
 
 describe('ZoomService account recordings', () => {
   const accountId = 'acct_test_123';
 
-  function makeService(
-    getImpl: jest.Mock,
-    postImpl?: jest.Mock,
-  ): ZoomService {
+  function makeService(getImpl: jest.Mock, postImpl?: jest.Mock): ZoomService {
     const http = {
       get: getImpl,
       post:
@@ -300,9 +294,9 @@ describe('ZoomService account recordings', () => {
   });
 
   it('listUserRecordingsPage encodes user id in the path', async () => {
-    const get = jest.fn().mockReturnValue(
-      of({ data: { meetings: [], next_page_token: '' } }),
-    );
+    const get = jest
+      .fn()
+      .mockReturnValue(of({ data: { meetings: [], next_page_token: '' } }));
     const svc = makeService(get);
     await svc.listUserRecordingsPage({
       userId: 'host@example.com',

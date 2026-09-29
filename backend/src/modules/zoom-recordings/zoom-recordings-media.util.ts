@@ -1,6 +1,9 @@
 export type RecordingUrlDisposition = 'inline' | 'attachment';
 
-export function extForFile(fileType: string, fileExtension?: string | null): string {
+export function extForFile(
+  fileType: string,
+  fileExtension?: string | null,
+): string {
   if (fileExtension?.trim()) {
     const e = fileExtension.trim().replace(/^\./, '').toLowerCase();
     return e || 'bin';

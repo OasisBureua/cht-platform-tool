@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import {
   contentTypeFor,
@@ -23,7 +20,9 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: jest.fn() })),
   PutObjectCommand: jest.fn(),
-  GetObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
+  GetObjectCommand: jest
+    .fn()
+    .mockImplementation((input: unknown) => ({ input })),
 }));
 
 describe('extForFile / contentTypeFor', () => {

@@ -15,7 +15,10 @@ const IDENTITY_ANSWER_KEYS = new Set([
 ]);
 
 function normalizeAnswerKey(key: string): string {
-  return key.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return key
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 }
 
 export function assertNoIdentityFieldsInSurveyAnswers(

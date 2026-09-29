@@ -69,7 +69,9 @@ export class ProgramRegistrationsService {
     bStart: Date,
     bEnd: Date,
   ): boolean {
-    return aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime();
+    return (
+      aStart.getTime() < bEnd.getTime() && bStart.getTime() < aEnd.getTime()
+    );
   }
 
   /** True while the registration should appear in the admin "Recently approved" section. */
@@ -248,12 +250,7 @@ export class ProgramRegistrationsService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (user) {
-      this.syncRegistrationEvent(
-        user,
-        program,
-        status,
-        'survey_submitted',
-      );
+      this.syncRegistrationEvent(user, program, status, 'survey_submitted');
     }
   }
 
@@ -322,7 +319,10 @@ export class ProgramRegistrationsService {
       select: { status: true, postEventAttendanceStatus: true },
     });
 
-    if (!enrolled && (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)) {
+    if (
+      !enrolled &&
+      (!reg || reg.status !== ProgramRegistrationStatus.APPROVED)
+    ) {
       return false;
     }
 
@@ -519,19 +519,21 @@ export class ProgramRegistrationsService {
       defaultIntake,
     );
 
-    const [postEventSurveySubmitted, intakeSurveySubmitted] = await Promise.all([
-      userHasPostEventSurveyResponse(
-        this.prisma,
-        userId,
-        surveyMeta.feedbackSurveyId,
-      ),
-      userHasIntakeSurveyResponse(
-        this.prisma,
-        userId,
-        surveyMeta.intakeSurveyId,
-        reg,
-      ),
-    ]);
+    const [postEventSurveySubmitted, intakeSurveySubmitted] = await Promise.all(
+      [
+        userHasPostEventSurveyResponse(
+          this.prisma,
+          userId,
+          surveyMeta.feedbackSurveyId,
+        ),
+        userHasIntakeSurveyResponse(
+          this.prisma,
+          userId,
+          surveyMeta.intakeSurveyId,
+          reg,
+        ),
+      ],
+    );
 
     const honorariumPayment = await this.prisma.payment.findFirst({
       where: { userId, programId, type: 'HONORARIUM' },
@@ -625,10 +627,7 @@ export class ProgramRegistrationsService {
       throw new BadRequestException('Program is not open for registration');
     }
 
-    if (
-      program.startDate &&
-      Date.now() >= program.startDate.getTime()
-    ) {
+    if (program.startDate && Date.now() >= program.startDate.getTime()) {
       throw new BadRequestException(
         'Registration closed when this session started. Join is only available if you were already approved.',
       );
@@ -785,10 +784,7 @@ export class ProgramRegistrationsService {
           });
           return;
         }
-        if (
-          status === ProgramRegistrationStatus.APPROVED &&
-          becomesApproved
-        ) {
+        if (status === ProgramRegistrationStatus.APPROVED && becomesApproved) {
           const joinUrlForLearner = learnerWebinarJoinUrl(program.zoomJoinUrl);
           await this.sesEmail.sendLiveSessionRegistrationApprovedEmail({
             to: user.email,
@@ -1292,9 +1288,7 @@ export class ProgramRegistrationsService {
    * HCP email == Zoom email → VERIFIED; same user joined with a different Zoom
    * email → DENIED. Does not override already VERIFIED / DENIED / NOT_REQUIRED.
    */
-  async autoVerifyAttendanceFromZoomJoins(
-    programId: string,
-  ): Promise<{
+  async autoVerifyAttendanceFromZoomJoins(programId: string): Promise<{
     verifiedCount: number;
     deniedCount: number;
     matchedRegistrationIds: string[];
@@ -1422,11 +1416,10 @@ export class ProgramRegistrationsService {
   }
 
   /** Admin hub: map userId → Zoom join presence for a program. */
-  async zoomJoinPresenceByUserId(programId: string): Promise<
-    Map<
-      string,
-      { zoomJoined: boolean; zoomParticipantEmail: string | null }
-    >
+  async zoomJoinPresenceByUserId(
+    programId: string,
+  ): Promise<
+    Map<string, { zoomJoined: boolean; zoomParticipantEmail: string | null }>
   > {
     const events = await this.listZoomJoinEvidenceForProgram(programId);
     const regs = await this.prisma.programRegistration.findMany({
@@ -1589,7 +1582,9 @@ export class ProgramRegistrationsService {
     if (!userIds?.length && opts.role) {
       const cities = opts.cities?.map((v) => v.trim()).filter(Boolean);
       const states = opts.states?.map((v) => v.trim()).filter(Boolean);
-      const institutions = opts.institutions?.map((v) => v.trim()).filter(Boolean);
+      const institutions = opts.institutions
+        ?.map((v) => v.trim())
+        .filter(Boolean);
       const users = await this.prisma.user.findMany({
         where: buildUserRecipientWhere({
           role: opts.role,
@@ -1618,7 +1613,7 @@ export class ProgramRegistrationsService {
     // Consolidate raw emails that match existing user accounts — send once with
     // the account's firstName rather than as an unregistered invite.
     const registeredEmailLower = new Set(
-      users.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+      users.map((u) => u.email?.toLowerCase()).filter(Boolean),
     );
     const matchedExistingUsers = inviteEmails.length
       ? await this.prisma.user.findMany({
@@ -1636,7 +1631,7 @@ export class ProgramRegistrationsService {
     const mergedUsers = [...usersById.values()];
 
     const usersByEmailLower = new Set(
-      mergedUsers.map((u) => u.email?.toLowerCase()).filter(Boolean) as string[],
+      mergedUsers.map((u) => u.email?.toLowerCase()).filter(Boolean),
     );
     const unregisteredEmails = inviteEmails.filter(
       (e) => !usersByEmailLower.has(e),
@@ -2002,9 +1997,7 @@ export class ProgramRegistrationsService {
         adminNote: REVOKED_NOTE,
       });
     })().catch((e: Error) =>
-      this.logger.warn(
-        `Registration-revoked email side effect: ${e.message}`,
-      ),
+      this.logger.warn(`Registration-revoked email side effect: ${e.message}`),
     );
 
     return { removed: true };

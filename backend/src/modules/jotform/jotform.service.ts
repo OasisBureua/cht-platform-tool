@@ -147,7 +147,9 @@ export class JotformService {
         content?: Record<string, unknown>;
       };
     } catch {
-      throw new Error(`Jotform form lookup returned invalid JSON (HTTP ${res.status})`);
+      throw new Error(
+        `Jotform form lookup returned invalid JSON (HTTP ${res.status})`,
+      );
     }
     if (!this.isJotformSuccess(data?.responseCode) || !data.content) {
       throw new Error(

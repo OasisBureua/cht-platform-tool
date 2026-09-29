@@ -14,20 +14,22 @@ import {
   emptyCountsByStage,
 } from './campaigns-funnel.util';
 
-function mockHubspot(overrides: Partial<{
-  isConfigured: boolean;
-  connected: boolean;
-  listAllCampaigns: unknown[];
-  canReadMetrics: boolean;
-  findContactByEmail: unknown | null;
-  findContactByNpi: unknown | null;
-  listCampaignContactIds: {
-    ids: string[];
-    contactTypeUsed: string | null;
-    warnings: string[];
-  };
-  batchReadContacts: unknown[];
-}> = {}) {
+function mockHubspot(
+  overrides: Partial<{
+    isConfigured: boolean;
+    connected: boolean;
+    listAllCampaigns: unknown[];
+    canReadMetrics: boolean;
+    findContactByEmail: unknown | null;
+    findContactByNpi: unknown | null;
+    listCampaignContactIds: {
+      ids: string[];
+      contactTypeUsed: string | null;
+      warnings: string[];
+    };
+    batchReadContacts: unknown[];
+  }> = {},
+) {
   return {
     isConfigured: jest.fn().mockReturnValue(overrides.isConfigured ?? true),
     getAccountMetadata: jest.fn().mockResolvedValue({
@@ -84,18 +86,21 @@ function mockHubspot(overrides: Partial<{
   };
 }
 
-function mockContentHub(overrides: {
-  configured?: boolean;
-  items?: unknown[];
-  fail?: boolean;
-} = {}) {
+function mockContentHub(
+  overrides: {
+    configured?: boolean;
+    items?: unknown[];
+    fail?: boolean;
+  } = {},
+) {
   return {
-    isConfigured: jest
-      .fn()
-      .mockReturnValue(overrides.configured ?? false),
+    isConfigured: jest.fn().mockReturnValue(overrides.configured ?? false),
     listCampaigns: jest.fn().mockImplementation(async () => {
       if (overrides.fail) throw new Error('CH down');
-      return { items: overrides.items ?? [], total: overrides.items?.length ?? 0 };
+      return {
+        items: overrides.items ?? [],
+        total: overrides.items?.length ?? 0,
+      };
     }),
     getAdminBaseUrl: jest.fn().mockReturnValue(''),
   };
@@ -130,9 +135,9 @@ function mockPrisma(counts?: {
       findMany: jest.fn().mockResolvedValue([]),
     },
     program: {
-      findMany: jest.fn().mockResolvedValue([
-        { id: 'prog-1', title: 'Program One' },
-      ]),
+      findMany: jest
+        .fn()
+        .mockResolvedValue([{ id: 'prog-1', title: 'Program One' }]),
     },
     user: {
       findMany: jest.fn().mockResolvedValue([]),
@@ -222,9 +227,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       expect(result.reportingPeriodEnd).toBe('2026-08-01');
       expect(result.stages).toHaveLength(6);
 
-      const byKey = Object.fromEntries(
-        result.stages.map((s) => [s.key, s]),
-      );
+      const byKey = Object.fromEntries(result.stages.map((s) => [s.key, s]));
       expect(byKey.aware.count).toBe(100);
       expect(byKey.engaged.count).toBe(40);
       expect(byKey.captured.count).toBe(10);
@@ -257,9 +260,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       );
 
       const result = await service.getFunnel({});
-      const byKey = Object.fromEntries(
-        result.stages.map((s) => [s.key, s]),
-      );
+      const byKey = Object.fromEntries(result.stages.map((s) => [s.key, s]));
       expect(byKey.aware.count).toBe(0);
       expect(byKey.registered.count).toBe(3);
       expect(result.warnings.some((w) => /HUBSPOT_ACCESS_TOKEN/i.test(w))).toBe(
@@ -284,9 +285,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
         endDate: '2026-12-31',
       });
       expect(result.contentHub.reachable).toBe(false);
-      expect(result.warnings.some((w) => /Content Hub unreachable/i.test(w))).toBe(
-        true,
-      );
+      expect(
+        result.warnings.some((w) => /Content Hub unreachable/i.test(w)),
+      ).toBe(true);
       expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(4);
       expect(result.stages.find((s) => s.key === 'aware')?.count).toBe(100);
     });
@@ -337,9 +338,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
 
     it('zeros CHT stages when filtering a HubSpot-only campaign without program link', async () => {
       const hubspot = mockHubspot({
-        listAllCampaigns: [
-          { id: 'hs-only', name: 'Orphan', status: 'active' },
-        ],
+        listAllCampaigns: [{ id: 'hs-only', name: 'Orphan', status: 'active' }],
       });
       const service = new CampaignsFunnelService(
         hubspot as never,
@@ -360,9 +359,7 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       expect(result.stages.find((s) => s.key === 'registered')?.count).toBe(0);
       expect(result.stages.find((s) => s.key === 'attended')?.count).toBe(0);
       expect(result.stages.find((s) => s.key === 'converted')?.count).toBe(0);
-      expect(
-        result.warnings.some((w) => /HubSpot-only/i.test(w)),
-      ).toBe(true);
+      expect(result.warnings.some((w) => /HubSpot-only/i.test(w))).toBe(true);
     });
 
     it('scopes CHT counts to program filter even without Content Hub link', async () => {
@@ -438,7 +435,8 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
         expect.anything(),
       );
       const calledIds = hubspot.getCampaignAnalytics.mock.calls.map(
-        (c: unknown[]) => (c[0] as { hubspotCampaignId: string }).hubspotCampaignId,
+        (c: unknown[]) =>
+          (c[0] as { hubspotCampaignId: string }).hubspotCampaignId,
       );
       expect(calledIds).toContain('hs-pfizer');
       expect(calledIds).not.toContain('hs-other');
@@ -536,9 +534,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([
-            { id: 'prog-1', title: 'Program One' },
-          ]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'prog-1', title: 'Program One' }]),
         },
         user: {
           findMany: jest.fn().mockResolvedValue([
@@ -652,9 +650,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([
-            { id: 'prog-1', title: 'Program One' },
-          ]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'prog-1', title: 'Program One' }]),
         },
         user: {
           findMany: jest.fn().mockResolvedValue([
@@ -707,9 +705,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([
-            { id: 'prog-1', title: 'Program One' },
-          ]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'prog-1', title: 'Program One' }]),
         },
         user: {
           findMany: jest.fn().mockResolvedValue([
@@ -814,9 +812,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
           ]),
         },
         program: {
-          findMany: jest.fn().mockResolvedValue([
-            { id: 'prog-1', title: 'Program One' },
-          ]),
+          findMany: jest
+            .fn()
+            .mockResolvedValue([{ id: 'prog-1', title: 'Program One' }]),
         },
       };
       const service = new CampaignsFunnelService(
@@ -839,7 +837,9 @@ describe('CampaignsFunnelService (Chunk 2 aggregation)', () => {
       const result = await service.getHcp('user-1');
       expect(result.userId).toBe('user-1');
       expect(result.match).toEqual({ matched: true, method: 'email' });
-      expect(hubspot.findContactByEmail).toHaveBeenCalledWith('ada@example.com');
+      expect(hubspot.findContactByEmail).toHaveBeenCalledWith(
+        'ada@example.com',
+      );
       expect(hubspot.findContactByNpi).not.toHaveBeenCalled();
       expect(result.lastCampaign).toMatchObject({
         id: 'hs-camp-1',

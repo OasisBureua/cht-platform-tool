@@ -7,7 +7,9 @@ import {
 
 describe('formatZoomApiDate / parseZoomApiDate', () => {
   it('formats UTC dates as YYYY-MM-DD', () => {
-    expect(formatZoomApiDate(new Date('2025-03-05T15:00:00Z'))).toBe('2025-03-05');
+    expect(formatZoomApiDate(new Date('2025-03-05T15:00:00Z'))).toBe(
+      '2025-03-05',
+    );
   });
 
   it('round-trips parse', () => {

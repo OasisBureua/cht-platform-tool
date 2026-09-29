@@ -43,16 +43,14 @@ export function parseContentHubCampaign(
 
   return {
     id,
-    name:
-      (typeof row.name === 'string' && row.name.trim()) || `Campaign ${id}`,
+    name: (typeof row.name === 'string' && row.name.trim()) || `Campaign ${id}`,
     clientSponsor:
       typeof row.clientSponsor === 'string' ? row.clientSponsor.trim() : null,
     programName:
       typeof row.programName === 'string' ? row.programName.trim() : null,
     diseaseState:
       typeof row.diseaseState === 'string' ? row.diseaseState.trim() : null,
-    campaignStatus:
-      typeof row.status === 'string' ? row.status.trim() : null,
+    campaignStatus: typeof row.status === 'string' ? row.status.trim() : null,
     platforms,
     hubspotCampaignId,
     reportingPeriodStart: toIsoDate(
@@ -61,7 +59,9 @@ export function parseContentHubCampaign(
         : null,
     ),
     reportingPeriodEnd: toIsoDate(
-      typeof row.reportingPeriodEnd === 'string' ? row.reportingPeriodEnd : null,
+      typeof row.reportingPeriodEnd === 'string'
+        ? row.reportingPeriodEnd
+        : null,
     ),
     hubspotSyncedAt:
       typeof row.hubspotSyncedAt === 'string' ? row.hubspotSyncedAt : null,
@@ -82,7 +82,9 @@ export function parseContentHubCampaign(
   };
 }
 
-export function parseContentHubPlatformData(raw: unknown): ContentHubPlatformSnapshot[] {
+export function parseContentHubPlatformData(
+  raw: unknown,
+): ContentHubPlatformSnapshot[] {
   if (!raw || typeof raw !== 'object') return [];
   const record = raw as Record<string, unknown>;
   const items = Array.isArray(record.items) ? record.items : [];

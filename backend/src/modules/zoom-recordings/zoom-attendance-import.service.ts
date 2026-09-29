@@ -14,7 +14,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
-import { ZoomService, type ZoomReportParticipant } from '../webinars/zoom.service';
+import {
+  ZoomService,
+  type ZoomReportParticipant,
+} from '../webinars/zoom.service';
 import { formatZoomHttpError } from './zoom-http-error.util';
 import {
   buildWebinarParticipantEventListWhere,
@@ -176,9 +179,10 @@ export class ZoomAttendanceImportService {
       ) ??
       false;
     if (shouldAutoVerify && session.programId) {
-      const verified = await this.registrations.autoVerifyAttendanceFromZoomJoins(
-        session.programId,
-      );
+      const verified =
+        await this.registrations.autoVerifyAttendanceFromZoomJoins(
+          session.programId,
+        );
       registrationsAutoVerified = verified.verifiedCount;
     }
 
@@ -340,8 +344,7 @@ export class ZoomAttendanceImportService {
       });
 
       const sessionFilter = {
-        sessionType:
-          job.sessionTypeFilter ?? ProgramZoomSessionType.WEBINAR,
+        sessionType: job.sessionTypeFilter ?? ProgramZoomSessionType.WEBINAR,
         startTime: {
           gte: job.fromDate,
           lte: job.toDate,
@@ -486,7 +489,9 @@ export class ZoomAttendanceImportService {
           if (ok) upserted += 1;
         }
       } catch (err) {
-        errors.push(`${reportParticipantLabel(p)}: ${formatZoomHttpError(err)}`);
+        errors.push(
+          `${reportParticipantLabel(p)}: ${formatZoomHttpError(err)}`,
+        );
       }
     }
 
@@ -517,9 +522,12 @@ export class ZoomAttendanceImportService {
     importJobId?: string | null;
   }): Promise<boolean> {
     const joinTime = this.parseReportTime(opts.participant.joinTime);
-    if (!joinTime || !canImportReportParticipant(opts.participant)) return false;
+    if (!joinTime || !canImportReportParticipant(opts.participant))
+      return false;
 
-    const zoomParticipantId = normalizeReportZoomParticipantId(opts.participant.id);
+    const zoomParticipantId = normalizeReportZoomParticipantId(
+      opts.participant.id,
+    );
     const email = normalizeReportParticipantEmail(opts.participant.userEmail);
     let userId: string | null = null;
     if (email) {
@@ -574,7 +582,9 @@ export class ZoomAttendanceImportService {
         source: WebinarParticipantEventSource.REPORT_IMPORT,
         joinTime,
         zoomParticipantId: null,
-        ...(email ? { participantEmail: email } : { participantName: opts.participant.name?.trim() || null }),
+        ...(email
+          ? { participantEmail: email }
+          : { participantName: opts.participant.name?.trim() || null }),
       },
     });
 
@@ -611,9 +621,12 @@ export class ZoomAttendanceImportService {
     importJobId?: string | null;
   }): Promise<boolean> {
     const joinTime = this.parseReportTime(opts.participant.joinTime);
-    if (!joinTime || !canImportReportParticipant(opts.participant)) return false;
+    if (!joinTime || !canImportReportParticipant(opts.participant))
+      return false;
 
-    const zoomParticipantId = normalizeReportZoomParticipantId(opts.participant.id);
+    const zoomParticipantId = normalizeReportZoomParticipantId(
+      opts.participant.id,
+    );
     const email = normalizeReportParticipantEmail(opts.participant.userEmail);
     const data = {
       participantName: opts.participant.name?.trim() || null,
@@ -656,7 +669,9 @@ export class ZoomAttendanceImportService {
         sessionId: opts.sessionId,
         joinTime,
         zoomParticipantId: null,
-        ...(email ? { participantEmail: email } : { participantName: opts.participant.name?.trim() || null }),
+        ...(email
+          ? { participantEmail: email }
+          : { participantName: opts.participant.name?.trim() || null }),
       },
     });
 
@@ -685,7 +700,9 @@ export class ZoomAttendanceImportService {
     return Number.isNaN(d.getTime()) ? null : d;
   }
 
-  private async matchedRegistrationEmails(programId: string): Promise<Set<string>> {
+  private async matchedRegistrationEmails(
+    programId: string,
+  ): Promise<Set<string>> {
     const regs = await this.prisma.programRegistration.findMany({
       where: { programId, status: 'APPROVED' },
       select: { user: { select: { email: true } } },

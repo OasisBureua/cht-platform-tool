@@ -29,10 +29,7 @@ export function getPostEventSurveyUnlockAt(
     return null;
   }
   return new Date(
-    scheduledPostEventUnlockMs(
-      program.startDate.getTime(),
-      program.duration,
-    ),
+    scheduledPostEventUnlockMs(program.startDate.getTime(), program.duration),
   );
 }
 
@@ -129,9 +126,7 @@ export async function loadProgramSurveyMeta(
     feedbackSurveyId: feedback?.id,
     intakeSurveyId: intake?.id,
     feedbackUsesJotform:
-      hasFeedbackSurvey &&
-      !!feedback?.jotformFormId?.trim() &&
-      !feedbackNative,
+      hasFeedbackSurvey && !!feedback?.jotformFormId?.trim() && !feedbackNative,
     intakeUsesJotform: false,
   };
 }
