@@ -1,357 +1,152 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, Play, PlayCircle, Bell, Headphones } from 'lucide-react';
-import {
-  PODCAST_SHOWS,
-  UPCOMING_PLACEHOLDER,
-  type PodcastEpisode,
-  type PodcastShow,
-} from '../data/podcastsCatalog';
+import { ArrowRight, Play } from 'lucide-react';
+import { PODCAST_SHOWS, UPCOMING_PLACEHOLDER, type PodcastShow } from '../data/podcastsCatalog';
 import { useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { waveBars } from '../components/home/waveBars';
 import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
-function NewNoteworthyCarousel({ shows }: { shows: PodcastShow[] }) {
-  const n = shows.length;
-  const [index, setIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-  const idKey = shows.map((s) => s.id).join('|');
+/**
+ * The podcast network hub: four channels, then the newest episode from
+ * each. Channel cards are the homepage's podcast card, permanently deep
+ * teal with the show's seeded waveform, so their text stays fixed white
+ * in both appearances.
+ */
+const DEEP = 'hsl(196 66% 23%)';
 
-  useEffect(() => {
-    setIndex(0);
-  }, [idKey]);
-
-  const goPrev = useCallback(() => {
-    if (n <= 1) return;
-    setIndex((i) => (i - 1 + n) % n);
-  }, [n]);
-
-  const goNext = useCallback(() => {
-    if (n <= 1) return;
-    setIndex((i) => (i + 1) % n);
-  }, [n]);
-
-  if (n === 0) return null;
-
-  return (
-    <div className="relative isolate">
-      <div
-        className="overflow-hidden rounded-card bg-background shadow-[0_20px_50px_-28px_rgba(0,0,0,0.12)] ring-1 ring-zinc-200/90 dark:ring-zinc-800"
-        onTouchStart={(e) => {
-          touchStartX.current = e.touches[0].clientX;
-        }}
-        onTouchEnd={(e) => {
-          if (touchStartX.current == null || n <= 1) {
-            touchStartX.current = null;
-            return;
-          }
-          const dx = e.changedTouches[0].clientX - touchStartX.current;
-          touchStartX.current = null;
-          if (dx > 60) goPrev();
-          else if (dx < -60) goNext();
-        }}
-      >
-        <div
-          className="flex transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none"
-          style={{
-            width: `${n * 100}%`,
-            transform: n <= 1 ? 'translateX(0)' : `translateX(-${(index / n) * 100}%)`,
-          }}
-        >
-          {shows.map((show) => (
-            <div key={show.id} className="relative shrink-0" style={{ width: `${100 / n}%` }}>
-              <div className="relative h-[min(59.8vh,460px)] min-h-[322px] w-full sm:min-h-[368px]">
-                <img
-                  src={show.image}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover object-center"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  draggable={false}
-                />
-                <div className="pointer-events-none absolute inset-y-0 left-0 w-[55%] bg-gradient-to-r from-black/55 via-black/18 to-transparent" />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[82%] bg-gradient-to-t from-black/78 via-black/30 to-transparent" />
-                <div className="relative z-10 flex h-full -translate-y-2.5 flex-col justify-end p-5 text-white sm:p-7 md:p-8">
-                  <p className="mb-2 text-[11px] font-extrabold uppercase tracking-[0.14em] text-orange-200">{show.category}</p>
-                  <h3 className="mb-2 max-w-[20ch] text-balance font-sans text-[22px] font-extrabold leading-[1.08] tracking-[-0.02em] text-white sm:text-[28px]">
-                    {show.title}
-                  </h3>
-                  <p className="mb-4 line-clamp-2 max-w-lg text-pretty text-sm leading-relaxed text-white/90 md:text-[15px]">
-                    {show.updateNote}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <Link
-                      to={`/app/podcast-network/${show.id}`}
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white px-5 text-sm font-semibold text-zinc-900 shadow-[0_1px_0_rgba(255,255,255,0.9)_inset] transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.96]"
-                    >
-                      <PlayCircle className="h-4 w-4" aria-hidden />
-                      Open series
-                    </Link>
-                    <a
-                      href="#podcast-catalog"
-                      className="inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-brand-600 px-5 text-sm font-semibold text-white shadow-[0_1px_0_0_rgba(255,255,255,0.12)_inset,0_8px_24px_-10px_rgba(0,124,255,0.45)] transition-[background-color,transform] duration-200 hover:bg-brand-700 active:scale-[0.96]"
-                    >
-                      Full catalog
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {n > 1 ? (
-        <div
-          className="mt-4 flex flex-wrap items-center justify-center gap-2"
-          role="tablist"
-          aria-label="New and noteworthy slides"
-        >
-          {shows.map((show, i) => (
-            <button
-              key={show.id}
-              type="button"
-              role="tab"
-              aria-selected={i === index}
-              aria-label={`Show ${show.title}`}
-              onClick={() => setIndex(i)}
-              className={[
-                'h-2 rounded-full transition-[width,background-color] duration-300',
-                i === index ? 'w-8 bg-steel-500' : 'w-2 bg-zinc-300 dark:bg-zinc-600',
-              ].join(' ')}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function TopShowsRow({ shows }: { shows: PodcastShow[] }) {
-  return (
-    <div className="flex items-start gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-      {shows.map((show) => (
-        <Link
-          key={`top-${show.id}`}
-          to={`/app/podcast-network/${show.id}`}
-          className="group shrink-0 w-[5.5rem] text-center"
-        >
-          <div className="mx-auto aspect-square w-full overflow-hidden rounded-xl bg-white shadow-[0_8px_28px_-18px_rgba(0,0,0,0.12),0_2px_10px_-4px_rgba(0,0,0,0.06)] ring-1 ring-zinc-200/80 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:shadow-[0_12px_32px_-18px_rgba(0,0,0,0.14),0_4px_14px_-4px_rgba(0,0,0,0.08)] dark:bg-white dark:ring-zinc-700 dark:shadow-[0_8px_28px_-18px_rgba(0,0,0,0.45),0_2px_10px_-4px_rgba(0,0,0,0.25)]">
-            <img
-              src={show.image}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-          </div>
-          <p className="mt-1.5 line-clamp-2 text-[11px] font-medium leading-tight text-foreground">
-            {show.title}
-          </p>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-function CatalogShowCard({ show }: { show: PodcastShow }) {
+function ChannelCard({ show }: { show: PodcastShow }) {
+  const lang = show.id === 'tetalks' ? 'es' : undefined;
   return (
     <Link
-      to={`/app/podcast-network/${show.id}`}
-      className="group flex gap-4 overflow-hidden rounded-card bg-background p-4 shadow-[0_10px_36px_-24px_rgba(15,23,42,0.14)] ring-1 ring-zinc-200/90 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_40px_-22px_rgba(15,23,42,0.16)] active:scale-[0.995] dark:ring-zinc-800 sm:gap-5 sm:p-5"
+      to={`/app/podcast-network/${encodeURIComponent(show.id)}`}
+      className="group relative flex min-h-[15rem] flex-col overflow-hidden rounded-card p-5 text-white shadow-card transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.99] sm:p-6"
+      style={{ background: DEEP }}
     >
-      <img
-        src={show.logo ?? show.image}
-        alt=""
-        className={[
-          'h-20 w-20 shrink-0 rounded-xl shadow-md ring-1 ring-zinc-200/90 sm:h-24 sm:w-24 dark:ring-zinc-700',
-          show.logo
-            ? 'object-contain bg-white p-2 dark:bg-white'
-            : 'bg-white object-cover dark:bg-white',
-        ].join(' ')}
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-steel-700 dark:text-steel-300">
-          {show.category}
-        </p>
-        <h3 className="mt-1 text-balance text-lg font-extrabold tracking-tight text-foreground group-hover:underline sm:text-xl">
-          {show.title}
-        </h3>
-        <p className="mt-1 line-clamp-2 text-pretty text-sm leading-relaxed text-muted-foreground">
-          {show.tagline}
-        </p>
-        <p className="mt-2 text-xs font-semibold text-steel-700 dark:text-steel-400">
-          Open series →
-        </p>
+      <div className="flex items-start gap-4">
+        <img
+          src={show.image}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          className="size-20 shrink-0 rounded-[10px] object-cover ring-1 ring-white/15 sm:size-24"
+        />
+        <div className="min-w-0">
+          <p className="eyebrow text-white/65" lang={lang}>
+            {show.category}
+          </p>
+          <h2 className="display mt-2 text-display-s leading-tight text-white">{show.title}</h2>
+          <p className="prose-lede mt-2 line-clamp-2 text-body-s text-white/80" lang={lang}>
+            {show.tagline}
+          </p>
+        </div>
       </div>
+      <span aria-hidden className="mt-auto flex h-12 items-end gap-[3px] pt-5">
+        {waveBars(show.id).map((b, i) => (
+          <span key={i} className="flex-1 rounded-[2px] bg-white/35" style={{ height: `${b.height}%` }} />
+        ))}
+      </span>
+      <span className="mt-4 flex items-center gap-2 text-body-s">
+        <span className="grid size-8 place-items-center rounded-full bg-white text-[hsl(196_66%_23%)]">
+          <Play className="ms-px size-3.5 fill-current" aria-hidden />
+        </span>
+        Open channel
+        <span className="meta ms-auto text-white/65" lang={lang}>
+          {show.updateNote}
+        </span>
+      </span>
     </Link>
   );
 }
 
-function WorthListenCard({ show, episode }: { show: PodcastShow; episode: PodcastEpisode | null }) {
-  if (!episode) return null;
-  const playHref = episode.videoId
-    ? podcastEpisodeWatchPath(show.id, episode.videoId)
-    : `/app/podcast-network/${show.id}`;
-
+function LatestEpisodeCard({ show }: { show: PodcastShow }) {
+  const ep = useShowLatestEpisode(show);
+  if (!ep) return null;
+  const to = ep.videoId
+    ? podcastEpisodeWatchPath(show.id, ep.videoId)
+    : `/app/podcast-network/${encodeURIComponent(show.id)}`;
+  const title = ep.title.includes('|') ? ep.title.split('|').slice(1).join('|').trim() : ep.title;
   return (
-    <article className="relative flex min-w-0 aspect-[3/4] max-h-[280px] min-h-0 w-full flex-col overflow-hidden rounded-card bg-background shadow-[0_12px_36px_-20px_rgba(0,0,0,0.15)] ring-1 ring-zinc-200/90 sm:max-h-[300px] dark:ring-zinc-800 dark:shadow-[0_14px_40px_-22px_rgba(0,0,0,0.55)]">
-      <img
-        src={show.image}
-        alt=""
-        className="absolute inset-0 h-full w-full object-cover"
-        loading="lazy"
-        referrerPolicy="no-referrer"
-      />
-      <div className="pointer-events-none absolute inset-0 bg-black/30" aria-hidden />
-      <div className="relative z-10 mt-auto flex min-w-0 flex-col p-4 sm:p-4">
-        <div className="mb-1.5 flex min-w-0 flex-nowrap items-center gap-2 text-[9px] font-semibold uppercase tracking-[0.12em] text-white/85">
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-1.5 py-0.5 backdrop-blur-sm">
-            <Headphones className="h-2.5 w-2.5" aria-hidden />
-            Audio
+    <li>
+      <Link
+        to={to}
+        className="card group flex h-full flex-col p-3 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <span className="relative block aspect-video overflow-hidden rounded-[8px] bg-surface-2">
+          {ep.thumbnailUrl ? (
+            <img
+              src={ep.thumbnailUrl}
+              alt=""
+              loading="lazy"
+              referrerPolicy="no-referrer"
+              className="size-full object-cover transition-[scale] duration-300 group-hover:scale-[1.03]"
+            />
+          ) : null}
+          <span className="absolute inset-0 m-auto grid size-10 place-items-center rounded-full bg-anchor text-ground shadow-card">
+            <Play className="ms-0.5 size-4 fill-current" aria-hidden />
           </span>
-          <span className="min-w-0 flex-1 truncate">{show.title}</span>
-        </div>
-        <h3
-          className="line-clamp-1 min-w-0 text-base font-bold leading-snug text-white sm:text-lg"
-          title={episode.title}
-        >
-          {episode.title}
-        </h3>
-        {episode.description ? (
-          <p className="mt-1.5 line-clamp-2 text-pretty text-xs leading-relaxed text-white/90">{episode.description}</p>
-        ) : null}
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Link
-            to={playHref}
-            className="inline-flex min-h-[40px] items-center gap-1.5 rounded-[6px] bg-white px-4 text-xs font-semibold text-zinc-900 shadow-md transition-[background-color,transform] duration-200 hover:bg-white/95 active:scale-[0.98] sm:text-sm"
-          >
-            <Play className="h-3.5 w-3.5 fill-current sm:h-4 sm:w-4" aria-hidden />
-            {episode.duration || 'Play'}
-          </Link>
-          <span className="text-[10px] text-white/70 tabular-nums sm:text-xs">{episode.date}</span>
-        </div>
-      </div>
-    </article>
+        </span>
+        <span className="meta mt-3 block text-anchor">{show.title}</span>
+        <span className="mt-1 line-clamp-2 text-body-s font-medium text-text">{title}</span>
+        <span className="meta mt-auto block pt-2 tabular-nums text-faint">
+          {[ep.date, ep.duration].filter(Boolean).join(' · ')}
+        </span>
+      </Link>
+    </li>
   );
 }
 
-function ShowLatestCard({ show }: { show: PodcastShow }) {
-  const episode = useShowLatestEpisode(show);
-  if (!episode) return null;
-  return <WorthListenCard show={show} episode={episode} />;
-}
-
 export default function Podcasts() {
-  const shows = PODCAST_SHOWS;
-
   return (
-    <div className="flex flex-col gap-6 pb-24 md:gap-8 md:pb-16">
-      <header>
-        <div>
-          <div className="mb-2 flex items-center gap-2.5 text-foreground">
-            <Mic2 className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-            <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-              Podcasts
-            </h1>
-          </div>
-          <p className="max-w-2xl text-pretty text-sm font-normal leading-relaxed text-muted-foreground">
-            Browse CHM audio like a catalog: new drops, featured episodes, and every series in one place.
-          </p>
-        </div>
+    <div className="space-y-10 pb-24 md:pb-16">
+      <header className="space-y-2">
+        <p className="eyebrow text-anchor">CHM podcast network</p>
+        <h1 className="display text-display-s text-text md:text-display-m">Podcasts</h1>
+        <p className="prose-lede max-w-2xl text-body-s text-muted2">
+          Four shows, each with its own voice. Open a channel for every episode, or copy its link to
+          share it with anyone.
+        </p>
       </header>
 
-      {/* New & noteworthy - same carousel mechanics as Dashboard Featured */}
-      <section aria-labelledby="podcasts-new" className="-mt-2 md:-mt-4">
-        <h2 id="podcasts-new" className="sr-only">
-          New & noteworthy
+      <section aria-label="Channels" className="grid gap-4 md:grid-cols-2">
+        {PODCAST_SHOWS.map((show) => (
+          <ChannelCard key={show.id} show={show} />
+        ))}
+      </section>
+
+      <section aria-labelledby="podcasts-latest" className="space-y-4">
+        <h2 id="podcasts-latest" className="display text-display-s text-text">
+          Latest episodes
         </h2>
-        <NewNoteworthyCarousel shows={shows} />
-      </section>
-
-      {/* Worth the Watch analogue: tall hero cards */}
-      <section aria-labelledby="podcasts-worth" className="space-y-3">
-        <h2 id="podcasts-worth" className="text-lg font-bold tracking-tight text-foreground">
-          Worth the listen
-        </h2>
-        <p className="-mt-1 max-w-2xl text-sm text-muted-foreground">
-          Latest standout episodes: full art, quick play, then open the show page for the full run.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {shows.slice(0, 3).map((show) => (
-            <ShowLatestCard key={show.id} show={show} />
+        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {PODCAST_SHOWS.map((show) => (
+            <LatestEpisodeCard key={show.id} show={show} />
           ))}
-        </div>
+        </ul>
       </section>
-
-      {/* Compact thumb row */}
-      <section aria-labelledby="podcasts-top" className="space-y-3">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <h2 id="podcasts-top" className="text-lg font-bold tracking-tight text-foreground">
-            Top shows
-          </h2>
-          <a
-            href="#podcast-catalog"
-            className="text-sm font-semibold text-steel-700 underline-offset-4 transition-colors hover:text-steel-600 hover:underline dark:text-steel-400 dark:hover:text-steel-300"
-          >
-            View all shows
-          </a>
-        </div>
-        <TopShowsRow shows={shows} />
-      </section>
-
-      {/* Full catalog: cards open dedicated show pages */}
-      <div id="podcast-catalog" className="scroll-mt-24 space-y-4 md:space-y-5">
-        <div className="pt-6">
-          <h2 className="text-xl font-bold tracking-tight text-foreground">All series</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Open a show for its full episode list and listen links.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
-          {shows.map((show) => (
-            <CatalogShowCard key={show.id} show={show} />
-          ))}
-        </div>
-      </div>
 
       <section
-        className="overflow-hidden rounded-card bg-gradient-to-b from-zinc-50/95 to-zinc-100/80 shadow-[0_12px_40px_-24px_rgba(15,23,42,0.1),0_4px_20px_-16px_rgba(15,23,42,0.06)] dark:from-zinc-900/90 dark:to-zinc-950/95 dark:shadow-[0_16px_48px_-28px_rgba(0,0,0,0.55),0_8px_28px_-20px_rgba(0,0,0,0.35)]"
-        aria-label="Upcoming series"
+        aria-labelledby="podcasts-upcoming"
+        className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6"
       >
-        <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6 md:p-8">
-          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-xl sm:max-w-xs sm:shrink-0">
-            <img
-              src={UPCOMING_PLACEHOLDER.image}
-              alt=""
-              className="h-full w-full object-cover"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-white/50 dark:bg-zinc-950/40">
-              <span className="text-sm font-bold tracking-[0.2em] text-zinc-700 dark:text-zinc-200">Soon</span>
-            </div>
-          </div>
-          <div className="flex min-w-0 flex-1 flex-col justify-center">
-            <h2 className="text-balance text-xl font-bold text-foreground">{UPCOMING_PLACEHOLDER.title}</h2>
-            <p className="mt-2 text-pretty text-sm font-normal leading-relaxed text-muted-foreground">
-              {UPCOMING_PLACEHOLDER.tagline}
-            </p>
-            <button
-              type="button"
-              className="mt-5 inline-flex min-h-[44px] w-fit items-center justify-center gap-2 rounded-[6px] bg-card px-4 py-2.5 text-sm font-semibold text-foreground shadow-[0_2px_8px_rgba(15,23,42,0.06),0_8px_24px_-12px_rgba(15,23,42,0.12)] transition-[background-color,transform,box-shadow] duration-200 hover:bg-zinc-50 hover:shadow-[0_4px_12px_rgba(15,23,42,0.08),0_12px_28px_-12px_rgba(15,23,42,0.14)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-steel-600 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-50 dark:shadow-[0_4px_16px_rgba(0,0,0,0.35)] dark:hover:bg-zinc-800"
-              disabled
-              aria-disabled
-            >
-              <Bell className="h-4 w-4 shrink-0" aria-hidden />
-              Notify me when live
-            </button>
-            <p className="mt-2 text-xs text-muted-foreground">
-              We will use the email on your account when this goes live.
-            </p>
-          </div>
+        <img
+          src={UPCOMING_PLACEHOLDER.image}
+          alt=""
+          loading="lazy"
+          className="aspect-video w-full rounded-[10px] object-cover sm:w-48"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="eyebrow text-faint">Coming soon</p>
+          <h2 id="podcasts-upcoming" className="display mt-1 text-body-l text-text">
+            {UPCOMING_PLACEHOLDER.title}
+          </h2>
+          <p className="prose-lede mt-1 max-w-xl text-body-s text-muted2">{UPCOMING_PLACEHOLDER.tagline}</p>
         </div>
+        <Link
+          to="/app/catalog"
+          className="press inline-flex h-10 shrink-0 items-center gap-1.5 self-start rounded-[8px] bg-surface px-4 text-body-s font-medium text-text ring-1 ring-hairline-strong hover:bg-surface-2 sm:self-center"
+        >
+          Browse conversations
+          <ArrowRight className="size-4" aria-hidden />
+        </Link>
       </section>
     </div>
   );
