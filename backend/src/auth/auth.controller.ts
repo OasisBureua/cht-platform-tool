@@ -18,6 +18,7 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
+import { SkipTermsCheck } from './skip-terms-check.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
 import {
@@ -102,6 +103,7 @@ interface LoginSuccess {
 }
 
 @Controller('auth')
+@SkipTermsCheck()
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 

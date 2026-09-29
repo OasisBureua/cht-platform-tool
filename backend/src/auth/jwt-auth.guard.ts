@@ -1,10 +1,14 @@
 import {
   Injectable,
   ExecutionContext,
+  ForbiddenException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
+import { SKIP_TERMS_CHECK } from './skip-terms-check.decorator';
+import { TERMS_NOT_ACCEPTED_CODE } from '../common/terms';
 import type { Request, Response } from 'express';
 import { AuthService, AuthUser } from './auth.service';
 import {
@@ -27,6 +31,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   constructor(
     private configService: ConfigService,
     private authService: AuthService,
+    private reflector: Reflector,
   ) {
     super();
   }
@@ -38,6 +43,36 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    const ok = await this.authenticate(context);
+    if (ok) await this.assertTermsAccepted(context);
+    return ok;
+  }
+
+  /**
+   * Blocks guarded routes until the user accepts the current Terms of Service,
+   * unless the handler or controller is marked @SkipTermsCheck().
+   */
+  private async assertTermsAccepted(context: ExecutionContext): Promise<void> {
+    const skip = this.reflector.getAllAndOverride<boolean>(SKIP_TERMS_CHECK, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (skip) return;
+    const user = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>().user;
+    if (!user?.userId) return;
+    if (await this.authService.hasAcceptedTerms(user.userId)) return;
+    throw new ForbiddenException({
+      statusCode: 403,
+      code: TERMS_NOT_ACCEPTED_CODE,
+      message:
+        'Please accept the Terms of Service and Privacy Policy to continue.',
+    });
+  }
+
+  /** Session / JWT / dev authentication only; used directly by OptionalJwtAuthGuard. */
+  async authenticate(context: ExecutionContext): Promise<boolean> {
     const request = context
       .switchToHttp()
       .getRequest<Request & { user?: AuthUser }>();

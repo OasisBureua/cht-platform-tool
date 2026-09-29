@@ -7,7 +7,11 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
+import {
+  setAuthHeaderGetter,
+  setTermsRequiredHandler,
+  setUnauthorizedHandler,
+} from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
 import { cognitoAuthEnabled } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
@@ -853,6 +857,14 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     setUnauthorizedHandler(handleUnauthorized);
     return () => setUnauthorizedHandler(null);
   }, [handleUnauthorized]);
+
+  // A 403 TERMS_NOT_ACCEPTED means the cached profile is stale; reloading it shows the gate.
+  useEffect(() => {
+    setTermsRequiredHandler(() => {
+      void refreshProfile();
+    });
+    return () => setTermsRequiredHandler(null);
+  }, [refreshProfile]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

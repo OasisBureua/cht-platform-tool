@@ -5,7 +5,10 @@ import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.serv
 import { CognitoService } from './cognito.service';
 import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { RedisCacheService } from '../cache/redis-cache.service';
-import { sessionCacheKey } from '../cache/cache-keys';
+import { sessionCacheKey, termsCacheKey } from '../cache/cache-keys';
+import { hasAcceptedCurrentTerms } from '../common/terms';
+
+const TERMS_CACHE_TTL_SECONDS = 300;
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -672,10 +675,48 @@ export class AuthService {
       data: { termsAcceptedAt: new Date(), termsVersion: version },
       select: { termsAcceptedAt: true, termsVersion: true },
     });
-    return {
+    const saved = {
       termsAcceptedAt: updated.termsAcceptedAt as Date,
       termsVersion: updated.termsVersion as string,
     };
+    await this.cache.setJson(
+      termsCacheKey(userId),
+      { termsVersion: saved.termsVersion, accepted: true },
+      TERMS_CACHE_TTL_SECONDS,
+    );
+    return saved;
+  }
+
+  /**
+   * Whether the user has accepted the current terms. Checked on every guarded request,
+   * so the answer is cached briefly per user (keyed by version so a bump re-prompts).
+   */
+  async hasAcceptedTerms(userId: string): Promise<boolean> {
+    const key = termsCacheKey(userId);
+    const cached = await this.cache.getJson<{
+      termsVersion: string | null;
+      accepted: boolean;
+    }>(key);
+    if (cached && typeof cached.accepted === 'boolean') {
+      return (
+        cached.accepted &&
+        hasAcceptedCurrentTerms({
+          termsAcceptedAt: new Date(0),
+          termsVersion: cached.termsVersion,
+        })
+      );
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { termsAcceptedAt: true, termsVersion: true },
+    });
+    const accepted = hasAcceptedCurrentTerms(user);
+    await this.cache.setJson(
+      key,
+      { termsVersion: user?.termsVersion ?? null, accepted },
+      TERMS_CACHE_TTL_SECONDS,
+    );
+    return accepted;
   }
 
   /** Persist verified E.164 phone used for SMS MFA. */

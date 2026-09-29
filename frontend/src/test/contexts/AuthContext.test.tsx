@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from '../../contexts/AuthContext';
 vi.mock('../../api/client', () => ({
   setAuthHeaderGetter: vi.fn(),
   setUnauthorizedHandler: vi.fn(),
+  setTermsRequiredHandler: vi.fn(),
 }));
 
 describe('AuthContext', () => {
