@@ -51,27 +51,31 @@ vi.mock('../../components/kol/KolCatalogContentSection', () => ({
   KolCatalogContentSection: () => <div data-testid="kol-catalog" />,
 }));
 
-vi.mock('../../hooks/usePodcastYouTubeEpisodes', () => ({
-  usePodcastEpisodes: () => ({
-    isLoading: false,
-    isError: false,
-    data: {
-      showTitle: 'Breast Friends',
-      episodes: [
-        {
-          num: 'Ep. 9',
-          title: 'The Breast Friends Podcast Ep. 9 | Humanizing Cancer Care',
-          guests: 'Prof. Gabriella Pravettoni',
-          date: 'Sep 1, 2026',
-          dateIso: '2026-09-01',
-          duration: '48:10',
-          videoId: 'J88wBHM-AEY',
-          youtubeUrl: 'https://www.youtube.com/watch?v=J88wBHM-AEY',
-        },
-      ],
-    },
-  }),
-}));
+vi.mock('../../hooks/usePodcastYouTubeEpisodes', () => {
+  const data = {
+    showTitle: 'Breast Friends',
+    episodes: [
+      {
+        num: 'Ep. 9',
+        title: 'The Breast Friends Podcast Ep. 9 | Humanizing Cancer Care',
+        guests: 'Prof. Gabriella Pravettoni',
+        date: 'Sep 1, 2026',
+        dateIso: '2026-09-01',
+        duration: '48:10',
+        videoId: 'J88wBHM-AEY',
+        youtubeUrl: 'https://www.youtube.com/watch?v=J88wBHM-AEY',
+      },
+    ],
+  };
+  return {
+    usePodcastEpisodes: () => ({ isLoading: false, isError: false, data }),
+    podcastEpisodesQuery: (showId: string | undefined, sort: string) => ({
+      queryKey: ['podcast', 'episodes', showId, sort],
+      queryFn: async () => data,
+      enabled: !!showId,
+    }),
+  };
+});
 
 vi.mock('../../components/podcasts/PodcastSeriesSection', async (orig) => ({
   ...(await orig<typeof import('../../components/podcasts/PodcastSeriesSection')>()),
@@ -160,10 +164,14 @@ describe('Podcasts', () => {
     expect(screen.getByRole('button', { name: /Humanizing Cancer Care/ })).toBeInTheDocument();
   });
 
-  it('shows every channel on the hub', () => {
+  it('leads the hub with featured episodes, then every channel', async () => {
     wrap(<Podcasts />, '/app/podcast-network');
+    const featured = screen.getByRole('heading', { name: 'Featured episodes' }).closest('section')!;
+    const play = await within(featured).findAllByRole('link', { name: /Play episode/ });
+    expect(play[0]).toHaveAttribute('href', '/app/podcast-network/breast-friends/watch/J88wBHM-AEY');
+    const channels = screen.getByRole('heading', { name: 'Channels' }).closest('section')!;
     for (const s of PODCAST_SHOWS) {
-      expect(screen.getByRole('link', { name: new RegExp(s.title) })).toHaveAttribute(
+      expect(within(channels).getByRole('link', { name: new RegExp(s.title) })).toHaveAttribute(
         'href',
         `/app/podcast-network/${s.id}`,
       );

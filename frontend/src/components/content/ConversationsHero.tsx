@@ -90,7 +90,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
             <Link
               to={playHref}
               state={{ clip }}
-              className="press inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-white/12 px-6 font-mono text-[0.875rem] font-normal tracking-[-0.011em] text-white backdrop-blur-sm hover:bg-white/25"
+              className="press inline-flex h-11 min-w-[44px] items-center justify-center gap-2 rounded-[6px] bg-anchor px-6 font-mono text-[0.875rem] font-normal tracking-[-0.011em] text-ground shadow-card transition-[filter] hover:brightness-110"
             >
               <Info className="size-4 shrink-0" aria-hidden strokeWidth={1.75} />
               More detail

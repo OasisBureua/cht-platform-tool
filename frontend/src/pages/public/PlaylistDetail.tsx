@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { ChevronLeft, Loader2 } from 'lucide-react';
+import { Button } from '../../components/ui';
 import { catalogApi } from '../../api/catalog';
 import { ShareButtons } from '../../components/ShareButtons';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
@@ -116,134 +117,138 @@ export default function PlaylistDetail() {
   const { playlist } = data;
 
   return (
-    <div className="bg-card min-h-screen min-w-0">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
-        {/* Breadcrumb */}
-        <Link
-          to={catalogUrl}
-          className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-        >
-          ← Back to Catalog
-        </Link>
+    <div className={isInApp ? 'min-w-0 space-y-5' : 'min-h-screen min-w-0 bg-ground'}>
+      {/* In the app the page runs the full width of the shell; the public
+          route keeps the site's rail. */}
+      <div className={isInApp ? 'space-y-5' : 'rail space-y-5 py-8 md:py-12'}>
+        <Button to={catalogUrl} variant="outline" size="sm">
+          <ChevronLeft className="size-4" aria-hidden />
+          Playlists
+        </Button>
 
-        <h1 className="text-4xl md:text-5xl font-bold text-foreground">{playlist.title}</h1>
+        <div>
+          <p className="eyebrow text-anchor">
+            Playlist · {videos.length} video{videos.length !== 1 ? 's' : ''}
+          </p>
+          <h1 className="display mt-2 max-w-[36ch] text-balance text-display-s leading-[1.08] text-text md:text-display-m">
+            {playlist.title}
+          </h1>
+        </div>
 
-        {/* Main content: Video player + Recommended sidebar */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* Main video area */}
-          <div className="lg:col-span-8 space-y-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] 2xl:grid-cols-[minmax(0,1fr)_26rem]">
+          <div className="min-w-0 space-y-5">
             {videos.length === 0 ? (
-              <div className="aspect-video rounded-card bg-muted flex items-center justify-center">
-                <p className="text-muted-foreground">No videos in this playlist.</p>
+              <div className="flex aspect-video items-center justify-center rounded-card bg-surface-2">
+                <p className="text-body-s text-muted2">No videos in this playlist yet.</p>
               </div>
             ) : (
               <>
-                {/* Embedded video player - IFrame API with GA4 events */}
-                <div className="aspect-video w-full rounded-card overflow-hidden bg-black" key={selectedVideo.id}>
+                <div className="aspect-video w-full overflow-hidden rounded-card bg-black shadow-card" key={selectedVideo.id}>
                   <YouTubePlayer
                     youtubeUrl={selectedVideo.youtubeUrl}
                     title={selectedVideo.title}
                     autoplay={false}
                     muted={false}
-                    className="w-full h-full"
+                    className="h-full w-full"
                   />
                 </div>
 
-                {/* Video title banner */}
-                <div className="rounded-card bg-brand-600 px-6 py-4">
-                  <h2 className="text-xl font-bold text-white">{selectedVideo.title}</h2>
-                </div>
-
-                {/* Summary */}
                 <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">Summary</h3>
-                  {summary ? (
-                    <p className="text-muted-foreground whitespace-pre-wrap">{summary}</p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">Summary not yet available for this clip.</p>
-                  )}
+                  <p className="meta tabular-nums text-faint">
+                    Now playing · {safeIndex + 1} of {videos.length}
+                  </p>
+                  <h2 className="display mt-1 text-body-l text-text md:text-display-s">{selectedVideo.title}</h2>
                 </div>
 
-                {/* Share buttons */}
+                <section className="card p-5">
+                  <h3 className="display text-body-m text-text">Summary</h3>
+                  {summary ? (
+                    <p className="prose-lede mt-2 whitespace-pre-wrap text-body-s text-dim">{summary}</p>
+                  ) : (
+                    <p className="mt-2 text-body-s text-muted2">The summary for this clip is on its way.</p>
+                  )}
+                </section>
+
                 <ShareButtons
                   title={selectedVideo.title}
                   url={shareUrl}
                   analytics={{ clip_id: selectedVideo.id, surface: 'playlist_detail' }}
                 />
 
-                {/* Transcript */}
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-3">Transcript</h3>
+                <section>
+                  <h3 className="display mb-3 text-body-m text-text">Transcript</h3>
                   {!shootId ? (
-                    <p className="text-sm text-muted-foreground italic">Transcript not available for this clip.</p>
+                    <p className="text-body-s text-muted2">No transcript for this clip.</p>
                   ) : transcriptLoading ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 className="h-6 w-6 animate-spin text-muted2" />
                   ) : transcript ? (
                     <PlaylistTranscriptDisplay data={transcript} />
                   ) : (
-                    <p className="text-sm text-muted-foreground italic">Transcript not available.</p>
+                    <p className="text-body-s text-muted2">No transcript for this clip.</p>
                   )}
-                </div>
+                </section>
               </>
             )}
           </div>
 
-          {/* Right sidebar - Playlist */}
-          <div className="lg:col-span-4">
-            <div className="rounded-card border border-border bg-muted p-6 sticky top-24">
-              <h3 className="text-lg font-bold text-foreground mb-1">Playlist</h3>
-              <p className="text-sm text-muted-foreground mb-4">{videos.length} video{videos.length !== 1 ? 's' : ''}</p>
+          <aside className="min-w-0">
+            <div className="card flex flex-col p-0 lg:sticky lg:top-20 lg:max-h-[calc(100vh-6.5rem)]">
+              <div className="border-b border-hairline px-4 py-3">
+                <h3 className="display text-body-m text-text">Up next</h3>
+                <p className="meta tabular-nums text-faint">
+                  {videos.length} video{videos.length !== 1 ? 's' : ''}
+                </p>
+              </div>
               {videos.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No videos in this playlist.</p>
+                <p className="p-4 text-body-s text-muted2">No videos in this playlist yet.</p>
               ) : (
-                <ul className="space-y-4">
+                <ol className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
                   {videos.map((video, idx) => (
                     <li key={video.id}>
                       <button
                         type="button"
+                        aria-current={idx === safeIndex ? 'true' : undefined}
                         onClick={() => {
                           setSelectedVideoIndex(idx);
                           const url = new URL(location.pathname, window.location.origin);
                           url.searchParams.set('v', video.id);
                           window.history.replaceState({}, '', url.pathname + url.search);
                         }}
-                        className={`w-full overflow-hidden rounded-[6px] border-2 text-left transition-[border-color,box-shadow] ${
-                          idx === safeIndex
-                            ? 'border-foreground ring-2 ring-gray-900 ring-offset-2'
-                            : 'border-transparent hover:border-border'
-                        }`}
+                        className={[
+                          'flex w-full gap-3 rounded-[8px] p-2 text-left transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                          idx === safeIndex ? 'bg-anchor/10 ring-1 ring-anchor/40' : 'hover:bg-surface-2',
+                        ].join(' ')}
                       >
-                        <div className="flex gap-3">
-                          <div className="w-32 shrink-0 aspect-video bg-muted">
-                            <img
-                              src={video.thumbnailUrl}
-                              alt={video.title}
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                              onError={() => {
-                                setHiddenVideoIds((prev) => {
-                                  if (prev.has(video.id)) return prev;
-                                  const next = new Set(prev);
-                                  next.add(video.id);
-                                  return next;
-                                });
-                              }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0 py-1">
-                            <p className="text-sm font-medium text-foreground line-clamp-2">
-                              {video.title}
-                            </p>
-                          </div>
-                        </div>
+                        <span className="relative aspect-video w-28 shrink-0 overflow-hidden rounded-[6px] bg-surface-2">
+                          <img
+                            src={video.thumbnailUrl}
+                            alt=""
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            onError={() => {
+                              setHiddenVideoIds((prev) => {
+                                if (prev.has(video.id)) return prev;
+                                const next = new Set(prev);
+                                next.add(video.id);
+                                return next;
+                              });
+                            }}
+                          />
+                          <span className="meta absolute bottom-1 start-1 rounded-[4px] bg-black/70 px-1 tabular-nums text-white">
+                            {idx + 1}
+                          </span>
+                        </span>
+                        <span className="min-w-0 flex-1 py-0.5 text-body-s font-medium leading-snug text-text line-clamp-3">
+                          {video.title}
+                        </span>
                       </button>
                     </li>
                   ))}
-                </ul>
+                </ol>
               )}
             </div>
-          </div>
+          </aside>
         </div>
       </div>
     </div>

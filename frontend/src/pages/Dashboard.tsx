@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useRef, useState, type ImgHTMLAttributes } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Presentation,
@@ -7,7 +7,6 @@ import {
   CalendarClock,
   CalendarDays,
   PlayCircle,
-  Headphones,
   X,
   Banknote,
   Radio,
@@ -38,6 +37,7 @@ import {
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 import { CalendarClockArt, SurveyClipboardArt } from '../components/dashboard/EmptyStateArt';
 import { PodcastNetworkRow } from '../components/dashboard/PodcastNetworkRow';
+import { FeatureCarousel, type FeatureSlide } from '../components/home/FeatureCarousel';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
   '/images/iStock-1473559425-01131144-01b5-4e7d-9b15-f3db8846cad3.png',
@@ -132,20 +132,6 @@ const bentoMetric =
  */
 const bentoPending =
   'card group relative flex min-h-[148px] flex-col overflow-hidden p-5 text-left active:scale-[0.995]';
-
-type SpotlightSlide = {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  imageUrl: string;
-  primaryHref: string;
-  secondaryHref: string;
-  primaryCta: string;
-  secondaryCta: string;
-  /** When set, thumbnail load failure hides this promotional frame (see `thumbTrackKey`). */
-  thumbTrackKey?: string;
-};
 
 export default function Dashboard() {
   const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
@@ -277,8 +263,8 @@ export default function Dashboard() {
   const isLoading =
     webinarsLoading || (useContentHub && (recentLoading || playlistsLoading || (!!topicTag && topicLoading)));
 
-  const spotlightSlides = useMemo((): SpotlightSlide[] => {
-    const slides: SpotlightSlide[] = [];
+  const spotlightSlides = useMemo((): FeatureSlide[] => {
+    const slides: FeatureSlide[] = [];
     const podcastThumb = '/images/podcasts/breast-friends/cover.png';
 
     /** Prefer a catalog clip whose thumbnail resolves; omit broken / placeholder clips. */
@@ -324,6 +310,8 @@ export default function Dashboard() {
       primaryHref: '/app/podcast-network',
       secondaryHref: '/app/podcast-network',
       primaryCta: 'Listen',
+      primaryIcon: 'listen',
+      imageFit: 'contain',
       secondaryCta: 'All podcasts',
     });
 
@@ -355,61 +343,9 @@ export default function Dashboard() {
     );
   }, [spotlightSlides, brokenCarouselThumbIds]);
 
-  const [spotlightIndex, setSpotlightIndex] = useState(0);
-  const touchStartX = useRef<number | null>(null);
-
-  const goSpotlightPrev = useCallback(() => {
-    setSpotlightIndex((i) => {
-      const n = spotlightSlidesRendered.length;
-      if (n <= 0) return 0;
-      return (i - 1 + n) % n;
-    });
-  }, [spotlightSlidesRendered.length]);
-
-  const goSpotlightNext = useCallback(() => {
-    setSpotlightIndex((i) => {
-      const n = spotlightSlidesRendered.length;
-      if (n <= 0) return 0;
-      return (i + 1) % n;
-    });
-  }, [spotlightSlidesRendered.length]);
-
-  const spotlightIdKey = useMemo(
-    () => spotlightSlidesRendered.map((s) => s.id).join('|'),
-    [spotlightSlidesRendered],
-  );
-
-  const featuredSlideCount = spotlightSlidesRendered.length;
-
-  useEffect(() => {
-    setSpotlightIndex(0);
-  }, [spotlightIdKey]);
-
-  useEffect(() => {
-    setSpotlightIndex((i) =>
-      featuredSlideCount === 0 ? 0 : Math.min(i, Math.max(0, featuredSlideCount - 1)),
-    );
-  }, [featuredSlideCount]);
-
-  useEffect(() => {
-    if (spotlightSlidesRendered.length <= 1) return undefined;
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      return undefined;
-    }
-    const t = window.setInterval(goSpotlightNext, 8000);
-    return () => window.clearInterval(t);
-  }, [spotlightSlidesRendered.length, goSpotlightNext]);
-
-  const onSpotlightThumbError = useCallback<NonNullable<ImgHTMLAttributes<HTMLImageElement>['onError']>>(
-    (e) => {
-      const key = e.currentTarget.getAttribute('data-thumb-track');
-      if (key) markCarouselThumbBroken(key);
-    },
-    [markCarouselThumbBroken],
-  );
 
   return (
-    <div className="-mt-4 space-y-8 sm:-mt-5 md:-mt-6 md:space-y-10 lg:-mt-8">
+    <div className="space-y-8 md:space-y-10">
       {isOnboardingOpen ? (
         <div className="card p-5 sm:p-6">
           <div className="mb-4 flex items-start justify-between gap-3">
@@ -645,120 +581,7 @@ export default function Dashboard() {
             Highlights from the library and the schedule.
           </p>
         </div>
-
-        <div className="relative isolate">
-          {featuredSlideCount > 0 ? (
-            <>
-              <div
-                className="overflow-hidden rounded-card bg-surface shadow-card"
-                onTouchStart={(e) => {
-                  touchStartX.current = e.touches[0].clientX;
-                }}
-                onTouchEnd={(e) => {
-                  if (touchStartX.current == null || featuredSlideCount <= 1) {
-                    touchStartX.current = null;
-                    return;
-                  }
-                  const dx = e.changedTouches[0].clientX - touchStartX.current;
-                  touchStartX.current = null;
-                  if (dx > 60) goSpotlightPrev();
-                  else if (dx < -60) goSpotlightNext();
-                }}
-              >
-                <div
-                  className="flex transition-transform duration-500 ease-[cubic-bezier(0.33,1,0.68,1)] motion-reduce:transition-none"
-                  style={{
-                    width: `${featuredSlideCount * 100}%`,
-                    transform:
-                      featuredSlideCount <= 1
-                        ? 'translateX(0)'
-                        : `translateX(-${(spotlightIndex / featuredSlideCount) * 100}%)`,
-                  }}
-                >
-                  {spotlightSlidesRendered.map((slide, i) => {
-                    const isPodcastSpotlight = slide.id === 'podcast-episodes';
-                    const PrimaryIcon = isPodcastSpotlight ? Headphones : PlayCircle;
-                    return (
-                      /* Split card, poster left and copy right, as in the
-                         dashboard design. Off-screen slides are inert so
-                         their links stay out of the tab order. */
-                      <div
-                        key={slide.id}
-                        className="relative shrink-0 p-3 sm:p-4"
-                        style={{ width: `${100 / featuredSlideCount}%` }}
-                        inert={i !== spotlightIndex ? true : undefined}
-                      >
-                        <div className="grid items-center gap-5 md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] md:gap-8">
-                          <div className="relative aspect-video overflow-hidden rounded-[10px] bg-surface-2">
-                            <img
-                              src={slide.imageUrl}
-                              alt=""
-                              data-thumb-track={slide.thumbTrackKey ?? undefined}
-                              className={[
-                                'absolute inset-0 h-full w-full',
-                                isPodcastSpotlight ? 'object-contain object-center p-4' : 'object-cover object-center',
-                              ].join(' ')}
-                              loading="lazy"
-                              referrerPolicy="no-referrer"
-                              draggable={false}
-                              onError={slide.thumbTrackKey ? onSpotlightThumbError : undefined}
-                            />
-                            <div className="img-ring absolute inset-0 rounded-[inherit]" />
-                          </div>
-                          <div className="min-w-0 px-1 pb-2 md:px-0 md:pb-0 md:pr-6">
-                            <p className="eyebrow text-anchor">{slide.eyebrow}</p>
-                            <h3 className="display mt-2 line-clamp-3 text-display-s text-text">{slide.title}</h3>
-                            <p className="prose-lede mt-2 line-clamp-3 max-w-lg text-body-s text-muted2">
-                              {slide.description}
-                            </p>
-                            <div className="mt-5 flex flex-wrap items-center gap-2.5">
-                              <Link
-                                to={slide.primaryHref}
-                                className="press inline-flex h-10 min-w-[44px] items-center justify-center gap-2 rounded-[8px] bg-anchor px-4 text-body-s font-medium text-ground shadow-card transition-[filter] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                              >
-                                <PrimaryIcon className="h-4 w-4" aria-hidden />
-                                {slide.primaryCta}
-                              </Link>
-                              <Link
-                                to={slide.secondaryHref}
-                                className="press inline-flex h-10 min-w-[44px] items-center justify-center rounded-[8px] bg-surface px-4 text-body-s font-medium text-text ring-1 ring-hairline-strong transition-colors hover:bg-surface-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                              >
-                                {slide.secondaryCta}
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {featuredSlideCount > 1 ? (
-                  <div
-                    className="mt-4 flex flex-wrap items-center justify-center gap-2"
-                    role="tablist"
-                    aria-label="Featured slides"
-                  >
-                    {spotlightSlidesRendered.map((s, i) => (
-                      <button
-                        key={s.id}
-                        type="button"
-                        role="tab"
-                        aria-selected={i === spotlightIndex}
-                        aria-label={`Show ${s.eyebrow}: ${s.title}`}
-                        onClick={() => setSpotlightIndex(i)}
-                        className={[
-                          'h-2 rounded-full transition-[width,background-color] duration-300',
-                          i === spotlightIndex ? 'w-8 bg-anchor' : 'w-2 bg-faint/40',
-                        ].join(' ')}
-                      />
-                    ))}
-                  </div>
-              ) : null}
-            </>
-          ) : null}
-        </div>
+        <FeatureCarousel slides={spotlightSlidesRendered} label="Featured slides" onImageError={markCarouselThumbBroken} />
       </section>
 
       {/* Order after Featured: what's new, then playlists, then the podcast

@@ -9,7 +9,7 @@ import {
 } from '../../data/podcastsCatalog';
 import { usePodcastEpisodes } from '../../hooks/usePodcastYouTubeEpisodes';
 import type { PodcastEpisodeSort } from '../../utils/podcastYouTube';
-import { podcastEpisodeWatchPath } from '../../utils/podcastRoutes';
+import { episodeDisplayTitle, podcastEpisodeWatchPath } from '../../utils/podcastRoutes';
 import { waveBars } from '../home/waveBars';
 import { SegmentedControl } from '../ui';
 import { YouTubePlayer } from '../YouTubePlayer';
@@ -40,13 +40,6 @@ export type PodcastChannelMode = 'app' | 'public';
 function podcastChannelPublicUrl(showId: string): string {
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   return `${origin}/podcast-network/${encodeURIComponent(showId)}`;
-}
-
-/** Episode titles from YouTube repeat the show name; the channel already says it. */
-function episodeTitle(ep: PodcastEpisode): string {
-  const parts = ep.title.split('|');
-  if (parts.length > 1 && /ep\.?\s*\d+/i.test(parts[0])) return parts.slice(1).join('|').trim();
-  return ep.title;
 }
 
 function episodeNumber(ep: PodcastEpisode): string {
@@ -213,13 +206,13 @@ export function PodcastChannel({ show, mode }: { show: PodcastShow; mode: Podcas
               youtubeUrl={current.youtubeUrl}
               muted={false}
               autoplay={Boolean(playing)}
-              title={episodeTitle(current)}
+              title={episodeDisplayTitle(current.title)}
               className="aspect-video w-full"
             />
           </div>
           <p className="text-body-s text-muted2">
             <span className="meta text-faint">Now playing · Ep {episodeNumber(current)}</span>{' '}
-            <span className="text-text">{episodeTitle(current)}</span>
+            <span className="text-text">{episodeDisplayTitle(current.title)}</span>
           </p>
         </div>
       ) : null}
@@ -265,7 +258,7 @@ export function PodcastChannel({ show, mode }: { show: PodcastShow; mode: Podcas
                   <span className="min-w-0 flex-1">
                     <span className="meta block tabular-nums text-anchor">Ep {episodeNumber(ep)}</span>
                     <span className="mt-1 block text-body-m font-medium leading-snug text-text">
-                      {episodeTitle(ep)}
+                      {episodeDisplayTitle(ep.title)}
                     </span>
                     {ep.guests ? <span className="mt-1 block line-clamp-1 text-body-s text-muted2">{ep.guests}</span> : null}
                   </span>

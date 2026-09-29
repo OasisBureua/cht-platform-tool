@@ -1,23 +1,30 @@
 import { Link } from 'react-router-dom';
+import { useQueries } from '@tanstack/react-query';
 import { ArrowRight, Play } from 'lucide-react';
-import { PODCAST_SHOWS, UPCOMING_PLACEHOLDER, type PodcastShow } from '../data/podcastsCatalog';
-import { useShowLatestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { PODCAST_SHOWS, UPCOMING_PLACEHOLDER, type PodcastEpisode, type PodcastShow } from '../data/podcastsCatalog';
+import { podcastEpisodesQuery } from '../hooks/usePodcastYouTubeEpisodes';
+import { latestEpisode } from '../components/podcasts/PodcastSeriesSection';
+import { FeatureCarousel, type FeatureSlide } from '../components/home/FeatureCarousel';
 import { waveBars } from '../components/home/waveBars';
-import { podcastEpisodeWatchPath } from '../utils/podcastRoutes';
+import { episodeDisplayTitle, podcastEpisodeWatchPath } from '../utils/podcastRoutes';
 
 /**
- * The podcast network hub: four channels, then the newest episode from
- * each. Channel cards are the homepage's podcast card, permanently deep
- * teal with the show's seeded waveform, so their text stays fixed white
- * in both appearances.
+ * The podcast network hub: a Featured hero carrying the newest episode
+ * from each show (the dashboard's feature card), the four channels, then
+ * the episodes that came before. Channel cards are the homepage's podcast
+ * card, permanently deep teal, so their text stays fixed white in both
+ * appearances.
  */
 const DEEP = 'hsl(196 66% 23%)';
+const channelHref = (id: string) => `/app/podcast-network/${encodeURIComponent(id)}`;
+
+type ShowEpisode = { show: PodcastShow; ep: PodcastEpisode };
 
 function ChannelCard({ show }: { show: PodcastShow }) {
   const lang = show.id === 'tetalks' ? 'es' : undefined;
   return (
     <Link
-      to={`/app/podcast-network/${encodeURIComponent(show.id)}`}
+      to={channelHref(show.id)}
       className="group relative flex min-h-[15rem] flex-col overflow-hidden rounded-card p-5 text-white shadow-card transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-card-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring motion-safe:active:scale-[0.99] sm:p-6"
       style={{ background: DEEP }}
     >
@@ -57,13 +64,8 @@ function ChannelCard({ show }: { show: PodcastShow }) {
   );
 }
 
-function LatestEpisodeCard({ show }: { show: PodcastShow }) {
-  const ep = useShowLatestEpisode(show);
-  if (!ep) return null;
-  const to = ep.videoId
-    ? podcastEpisodeWatchPath(show.id, ep.videoId)
-    : `/app/podcast-network/${encodeURIComponent(show.id)}`;
-  const title = ep.title.includes('|') ? ep.title.split('|').slice(1).join('|').trim() : ep.title;
+function EpisodeCard({ show, ep }: ShowEpisode) {
+  const to = ep.videoId ? podcastEpisodeWatchPath(show.id, ep.videoId) : channelHref(show.id);
   return (
     <li>
       <Link
@@ -85,7 +87,7 @@ function LatestEpisodeCard({ show }: { show: PodcastShow }) {
           </span>
         </span>
         <span className="meta mt-3 block text-anchor">{show.title}</span>
-        <span className="mt-1 line-clamp-2 text-body-s font-medium text-text">{title}</span>
+        <span className="mt-1 line-clamp-2 text-body-s font-medium text-text">{episodeDisplayTitle(ep.title)}</span>
         <span className="meta mt-auto block pt-2 tabular-nums text-faint">
           {[ep.date, ep.duration].filter(Boolean).join(' · ')}
         </span>
@@ -95,6 +97,38 @@ function LatestEpisodeCard({ show }: { show: PodcastShow }) {
 }
 
 export default function Podcasts() {
+  const results = useQueries({
+    queries: PODCAST_SHOWS.map((s) => podcastEpisodesQuery(s.remoteEpisodes ? s.id : undefined, 'latest')),
+  });
+  const lists = PODCAST_SHOWS.map((show, i) => ({
+    show,
+    episodes: show.remoteEpisodes ? results[i].data?.episodes ?? [] : show.episodes,
+  }));
+  // A few dozen episodes at most, so this is worked out on each render.
+  const newest: ShowEpisode[] = [];
+  const rest: ShowEpisode[] = [];
+  for (const { show, episodes } of lists) {
+    const top = latestEpisode(show, episodes);
+    if (top) newest.push({ show, ep: top });
+    for (const ep of episodes) if (ep !== top) rest.push({ show, ep });
+  }
+  const byDate = (a: ShowEpisode, b: ShowEpisode) => new Date(b.ep.dateIso).getTime() - new Date(a.ep.dateIso).getTime();
+  const featured = newest.sort(byDate);
+  const recent = rest.sort(byDate).slice(0, 8);
+
+  const slides: FeatureSlide[] = featured.map(({ show, ep }) => ({
+    id: `${show.id}-${ep.videoId ?? ep.num}`,
+    eyebrow: `New episode · ${show.title}`,
+    title: episodeDisplayTitle(ep.title),
+    description: ep.guests ? `With ${ep.guests}` : show.tagline,
+    imageUrl: ep.thumbnailUrl || show.image,
+    imageFit: ep.thumbnailUrl ? 'cover' : 'contain',
+    primaryHref: ep.videoId ? podcastEpisodeWatchPath(show.id, ep.videoId) : channelHref(show.id),
+    primaryCta: 'Play episode',
+    secondaryHref: channelHref(show.id),
+    secondaryCta: 'Open channel',
+  }));
+
   return (
     <div className="space-y-10 pb-24 md:pb-16">
       <header className="space-y-2">
@@ -106,22 +140,47 @@ export default function Podcasts() {
         </p>
       </header>
 
-      <section aria-label="Channels" className="grid gap-4 md:grid-cols-2">
-        {PODCAST_SHOWS.map((show) => (
-          <ChannelCard key={show.id} show={show} />
-        ))}
+      <section aria-labelledby="podcasts-featured" className="space-y-4">
+        <h2 id="podcasts-featured" className="display text-display-s text-text">
+          Featured episodes
+        </h2>
+        {slides.length ? (
+          <FeatureCarousel slides={slides} label="Featured episodes" />
+        ) : (
+          <div aria-hidden className="card grid gap-5 p-4 md:grid-cols-2">
+            <div className="aspect-video animate-pulse rounded-[10px] bg-surface-2" />
+            <div className="space-y-3 self-center">
+              <div className="h-3 w-40 animate-pulse rounded bg-surface-2" />
+              <div className="h-7 w-4/5 animate-pulse rounded bg-surface-2" />
+              <div className="h-4 w-3/5 animate-pulse rounded bg-surface-2" />
+            </div>
+          </div>
+        )}
       </section>
 
-      <section aria-labelledby="podcasts-latest" className="space-y-4">
-        <h2 id="podcasts-latest" className="display text-display-s text-text">
-          Latest episodes
+      <section aria-labelledby="podcasts-channels" className="space-y-4">
+        <h2 id="podcasts-channels" className="display text-display-s text-text">
+          Channels
         </h2>
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {PODCAST_SHOWS.map((show) => (
-            <LatestEpisodeCard key={show.id} show={show} />
+            <ChannelCard key={show.id} show={show} />
           ))}
-        </ul>
+        </div>
       </section>
+
+      {recent.length ? (
+        <section aria-labelledby="podcasts-recent" className="space-y-4">
+          <h2 id="podcasts-recent" className="display text-display-s text-text">
+            More recent episodes
+          </h2>
+          <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {recent.map((item) => (
+              <EpisodeCard key={`${item.show.id}-${item.ep.videoId ?? item.ep.num}`} {...item} />
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section
         aria-labelledby="podcasts-upcoming"

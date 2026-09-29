@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
 import { KolPortrait } from '../../components/kol/KolPortrait';
+import { Button } from '../../components/ui';
 import { useKolProfile } from '../../hooks/useKolProfile';
 import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
@@ -132,17 +133,14 @@ export default function KolProfilePage() {
       ].filter(Boolean) as [string, string][]
     );
     return (
-      <div className="space-y-6 text-text">
-        <Link
-          to={networkBase}
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted2 hover:text-text"
-        >
-          <ChevronLeft className="h-4 w-4" />
+      <div className="space-y-5 text-text">
+        <Button to={networkBase} variant="outline" size="sm">
+          <ChevronLeft className="size-4" aria-hidden />
           KOL Network
-        </Link>
+        </Button>
 
         <div className="grid gap-6 lg:grid-cols-[minmax(16rem,20rem)_1fr] lg:gap-10">
-          <aside className="min-w-0 space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <aside className="min-w-0 space-y-5 lg:sticky lg:top-20 lg:self-start">
             <KolPortrait name={entry.name} photoUrl={entry.photoUrl} className="aspect-[4/5] w-full max-w-[20rem]" />
 
             <div>
@@ -191,7 +189,7 @@ export default function KolProfilePage() {
             )}
           </aside>
 
-          <div className="min-w-0 space-y-8 lg:pt-2">
+          <div className="min-w-0 space-y-8">
             <section aria-labelledby="kol-about">
               <h2 id="kol-about" className="display text-body-l text-text">About</h2>
               {about ? (

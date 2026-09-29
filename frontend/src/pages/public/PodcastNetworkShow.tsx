@@ -2,6 +2,7 @@ import { Link, Navigate, useParams } from 'react-router-dom';
 import { ArrowRight, ChevronLeft } from 'lucide-react';
 import { PODCAST_SHOWS } from '../../data/podcastsCatalog';
 import { PodcastChannel } from '../../components/podcasts/PodcastChannel';
+import { Button } from '../../components/ui';
 
 /**
  * The standalone channel page, `/podcast-network/:showId`: the link people
@@ -19,13 +20,10 @@ export default function PodcastNetworkShow() {
     <div className="min-h-screen bg-ground">
       <div className="rail space-y-5 pb-16 pt-8 md:pt-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link
-            to="/podcast-network"
-            className="press inline-flex items-center gap-1 text-body-s text-muted2 hover:text-text"
-          >
-            <ChevronLeft className="size-4" strokeWidth={1.75} />
+          <Button to="/podcast-network" variant="outline" size="sm">
+            <ChevronLeft className="size-4" strokeWidth={1.75} aria-hidden />
             Podcast network
-          </Link>
+          </Button>
           <Link
             to="/join"
             className="press inline-flex items-center gap-1.5 text-body-s font-medium text-anchor hover:text-cta"

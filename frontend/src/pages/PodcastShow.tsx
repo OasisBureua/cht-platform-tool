@@ -1,4 +1,5 @@
-import { Link, Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Navigate, useParams, useSearchParams } from 'react-router-dom';
+import { Button } from '../components/ui';
 import { ChevronLeft } from 'lucide-react';
 import { PODCAST_SHOWS } from '../data/podcastsCatalog';
 import { PodcastChannel } from '../components/podcasts/PodcastChannel';
@@ -20,13 +21,10 @@ export default function PodcastShow() {
 
   return (
     <div className="flex flex-col gap-4 pb-24 md:pb-16">
-      <Link
-        to="/app/podcast-network"
-        className="inline-flex min-h-[44px] w-fit items-center gap-1 text-sm font-medium text-muted2 transition-colors hover:text-text"
-      >
+      <Button to="/app/podcast-network" variant="outline" size="sm" className="w-fit">
         <ChevronLeft className="size-4 shrink-0" aria-hidden />
-        Podcast network
-      </Link>
+        Podcasts
+      </Button>
       <PodcastChannel show={show} mode="app" />
     </div>
   );
