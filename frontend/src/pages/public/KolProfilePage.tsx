@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
+import { KolPortrait } from '../../components/kol/KolPortrait';
 import { useKolProfile } from '../../hooks/useKolProfile';
 import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
 import { resolveKolDisplayBrief } from '../../utils/kol-directory-merge';
@@ -120,197 +121,106 @@ export default function KolProfilePage() {
     (!displayBrief || entry.bio!.trim() !== displayBrief.whoTheyAre);
 
   if (embedded) {
+    /* Member view: bio first, a large portrait, no generated intel. The
+       public page keeps its own layout. */
+    const about = entry.bio?.trim() || '';
+    const facts = (
+      [
+        vm.specialty ? ['Specialty', vm.specialty] : null,
+        ['Location', vm.stateName],
+        entry.shootCount ? ['CHM sessions', String(entry.shootCount)] : null,
+      ].filter(Boolean) as [string, string][]
+    );
     return (
-      <div className="space-y-6 text-foreground">
+      <div className="space-y-6 text-text">
         <Link
           to={networkBase}
-          className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center gap-1 text-sm font-medium text-muted2 hover:text-text"
         >
           <ChevronLeft className="h-4 w-4" />
           KOL Network
         </Link>
 
-        {/* No decorative banner in the app shell — the public ProfileBanner
-            motif sat behind the identity rail and clipped long fields. */}
-        <div className="rounded-card border border-border/90 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_28px_-12px_rgba(0,0,0,0.06)] sm:p-6">
-          <div className="grid gap-6 lg:grid-cols-[minmax(14rem,18rem)_1fr] lg:gap-8">
-            <aside className="min-w-0">
-              <div className="flex items-start gap-3">
-                {entry.photoUrl ? (
-                  <img
-                    src={entry.photoUrl}
-                    alt=""
-                    className="size-16 shrink-0 rounded-full object-cover ring-1 ring-border sm:size-20"
-                  />
-                ) : (
-                  <span
-                    aria-hidden
-                    className="grid size-16 shrink-0 place-items-center rounded-full bg-muted text-sm font-semibold text-muted-foreground ring-1 ring-border sm:size-20"
-                  >
-                    {profileInitials(entry.name)}
-                  </span>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="text-balance text-xl font-bold tracking-tight text-foreground md:text-2xl">
-                      {vm.displayName}
-                    </h1>
-                    {entry.featured ? (
-                      <span className="rounded-[6px] bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-                        Featured
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="mt-1 text-pretty text-sm leading-snug text-muted-foreground [overflow-wrap:anywhere]">
-                    {vm.institution}
-                  </p>
-                </div>
-              </div>
+        <div className="grid gap-6 lg:grid-cols-[minmax(16rem,20rem)_1fr] lg:gap-10">
+          <aside className="min-w-0 space-y-5 lg:sticky lg:top-24 lg:self-start">
+            <KolPortrait name={entry.name} photoUrl={entry.photoUrl} className="aspect-[4/5] w-full max-w-[20rem]" />
 
-              <dl className="mt-5 divide-y divide-border border-t border-border">
-                {(
-                  [
-                    vm.specialty ? ['Specialty', vm.specialty] : null,
-                    ['Location', vm.stateName],
-                    entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
-                    // NPI is admin/public intel only — never on the member /app/kols surface.
-                    !embedded && entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
-                  ].filter(Boolean) as [string, string][]
-                ).map(([k, v]) => (
-                  <div key={k} className="flex items-baseline justify-between gap-3 py-2.5 text-sm">
-                    <dt className="shrink-0 text-muted-foreground">{k}</dt>
-                    <dd className="min-w-0 text-end font-medium tabular-nums text-foreground [overflow-wrap:anywhere]">
-                      {v}
-                    </dd>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="display text-balance text-display-s leading-[1.08] text-text md:text-display-m">
+                  {vm.displayName}
+                </h1>
+                {entry.featured ? (
+                  <span className="eyebrow rounded-[5px] bg-anchor px-2 py-1 text-ground">Featured</span>
+                ) : null}
+              </div>
+              <p className="prose-lede mt-2 text-body-s text-muted2 [overflow-wrap:anywhere]">{vm.institution}</p>
+            </div>
+
+            {facts.length > 0 ? (
+              <dl className="border-t border-hairline">
+                {facts.map(([k, v]) => (
+                  <div key={k} className="flex items-baseline justify-between gap-3 border-b border-hairline py-2.5 text-sm">
+                    <dt className="shrink-0 text-faint">{k}</dt>
+                    <dd className="min-w-0 text-end font-medium tabular-nums text-text [overflow-wrap:anywhere]">{v}</dd>
                   </div>
                 ))}
               </dl>
+            ) : null}
 
-              <Link
-                to={catalogHref}
-                className="mt-5 inline-flex h-11 w-full items-center justify-center gap-2 rounded-[6px] bg-brand-600 text-sm font-semibold text-white hover:bg-brand-700"
-              >
-                Catalog videos
-                <ArrowRight className="size-4" aria-hidden />
-              </Link>
+            <Link
+              to={catalogHref}
+              className="press inline-flex h-11 w-full items-center justify-center gap-2 rounded-[8px] bg-anchor text-sm font-semibold text-ground hover:brightness-110 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            >
+              Watch their sessions
+              <ArrowRight className="size-4" aria-hidden />
+            </Link>
 
-              {(vm.phone || vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {vm.phone ? (
-                    <a
-                      href={`tel:${vm.phone.replace(/\D/g, '')}`}
-                      className="inline-flex h-10 items-center rounded-[6px] border border-border px-3 text-sm text-foreground hover:bg-muted/60"
-                    >
-                      {vm.phone}
-                    </a>
-                  ) : null}
-                  <SocialIcon href={vm.linkedInUrl} label="LinkedIn" embedded>
-                    <IconLinkedIn className="size-4" />
-                  </SocialIcon>
-                  <SocialIcon href={vm.twitterUrl} label="Twitter / X" embedded>
-                    <IconTwitter className="size-4" />
-                  </SocialIcon>
-                  <SocialIcon href={vm.webUrl} label="Website" embedded>
-                    <ExternalLink className="size-4" />
-                  </SocialIcon>
-                </div>
+            {(vm.linkedInUrl || vm.twitterUrl || vm.webUrl) && (
+              <div className="flex flex-wrap gap-2">
+                <SocialIcon href={vm.linkedInUrl} label="LinkedIn">
+                  <IconLinkedIn className="size-4" />
+                </SocialIcon>
+                <SocialIcon href={vm.twitterUrl} label="Twitter / X">
+                  <IconTwitter className="size-4" />
+                </SocialIcon>
+                <SocialIcon href={vm.webUrl} label="Website">
+                  <ExternalLink className="size-4" />
+                </SocialIcon>
+              </div>
+            )}
+          </aside>
+
+          <div className="min-w-0 space-y-8 lg:pt-2">
+            <section aria-labelledby="kol-about">
+              <h2 id="kol-about" className="display text-body-l text-text">About</h2>
+              {about ? (
+                <p className="prose-lede mt-3 max-w-[68ch] whitespace-pre-line text-body-m leading-relaxed text-dim [overflow-wrap:anywhere]">
+                  {about}
+                </p>
+              ) : (
+                <p className="mt-3 text-body-s text-muted2">A bio for {vm.displayName} is on the way.</p>
               )}
-            </aside>
+            </section>
 
-            <div className="min-w-0 space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="min-w-0">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Role</p>
-                  <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
-                    {entry.role}
-                  </p>
-                </div>
-                {entry.education?.trim() ? (
-                  <div className="min-w-0 sm:col-span-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Education &amp; training
-                    </p>
-                    <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
-                      {entry.education}
-                    </p>
+            {entry.role?.trim() || entry.education?.trim() ? (
+              <section className="grid gap-6 sm:grid-cols-2">
+                {entry.role?.trim() ? (
+                  <div className="min-w-0">
+                    <p className="eyebrow text-faint">Role</p>
+                    <p className="prose-lede mt-1.5 text-body-s text-dim [overflow-wrap:anywhere]">{entry.role}</p>
                   </div>
                 ) : null}
-              </div>
-
-              {displayBrief ? (
-                <article className="rounded-card border border-border bg-card">
-                  <div className="flex items-center gap-2 border-b border-border px-4 py-3">
-                    <Sparkles
-                      className={`size-4 shrink-0 ${displayBrief.isAiGenerated ? 'text-steel-600 dark:text-steel-400' : 'text-muted-foreground'}`}
-                      aria-hidden
-                    />
-                    <span className="text-sm font-semibold text-foreground">Intel summary</span>
-                    <span className="ms-auto text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      {displayBrief.isAiGenerated ? 'From Content Hub · AI' : 'Profile summary'}
-                    </span>
+                {entry.education?.trim() ? (
+                  <div className="min-w-0">
+                    <p className="eyebrow text-faint">Education &amp; training</p>
+                    <p className="prose-lede mt-1.5 text-body-s text-dim [overflow-wrap:anywhere]">{entry.education}</p>
                   </div>
-                  <div className="space-y-4 px-4 py-4 text-sm leading-relaxed text-muted-foreground">
-                    <div>
-                      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                        Who they are
-                      </p>
-                      <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
-                        {displayBrief.whoTheyAre}
-                      </p>
-                    </div>
-                    {displayBrief.focus ? (
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          What they focus on
-                        </p>
-                        <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
-                          {displayBrief.focus}
-                        </p>
-                      </div>
-                    ) : null}
-                    {displayBrief.chmContext ? (
-                      <div>
-                        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                          CHM context
-                        </p>
-                        <p className="mt-1.5 text-pretty text-foreground [overflow-wrap:anywhere]">
-                          {displayBrief.chmContext}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </article>
-              ) : null}
+                ) : null}
+              </section>
+            ) : null}
 
-              <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
-
-              {showBioOnBackground ? (
-                <article className="rounded-card border border-border bg-background p-4">
-                  <h2 className="text-sm font-semibold text-foreground">Summary</h2>
-                  <p className="mt-2 text-pretty text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                    {entry.bio}
-                  </p>
-                </article>
-              ) : null}
-              {vm.researchHighlights ? (
-                <article className="rounded-card border border-border bg-background p-4">
-                  <h2 className="text-sm font-semibold text-foreground">Research highlights</h2>
-                  <p className="mt-2 text-pretty text-sm text-muted-foreground [overflow-wrap:anywhere]">
-                    {vm.researchHighlights}
-                  </p>
-                </article>
-              ) : null}
-              {vm.awards && vm.awards.length > 0 ? (
-                <article className="rounded-card border border-border bg-background p-4">
-                  <h2 className="text-sm font-semibold text-foreground">Recognition</h2>
-                  <ul className="mt-2 list-inside list-disc space-y-1 text-sm text-muted-foreground">
-                    {vm.awards.map((a) => (
-                      <li key={a}>{a}</li>
-                    ))}
-                  </ul>
-                </article>
-              ) : null}
-            </div>
+            <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
           </div>
         </div>
       </div>
