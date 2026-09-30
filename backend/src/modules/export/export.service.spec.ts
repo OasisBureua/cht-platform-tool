@@ -188,6 +188,7 @@ describe('ExportService.getCampaignInputPacket', () => {
             id: 'survey-1',
             type: 'FEEDBACK',
             title: 'Feedback',
+            jotformFormId: null,
             responses: [
               {
                 userId: 'u1',
@@ -195,6 +196,7 @@ describe('ExportService.getCampaignInputPacket', () => {
                 score: 4,
                 schemaVersion: 1,
                 answers: { q1: 'yes' },
+                submissionId: 'native-sub-1',
               },
             ],
           },
@@ -213,12 +215,82 @@ describe('ExportService.getCampaignInputPacket', () => {
     expect(packet.surveys[0]).toMatchObject({
       surveyId: 'survey-1',
       type: 'FEEDBACK',
+      jotformFormId: null,
+      source: 'native',
       responseCount: 1,
     });
     expect(packet.surveys[0].responses[0]).toMatchObject({
       userId: 'u1',
       submittedAt: submittedAt.toISOString(),
       answers: { q1: 'yes' },
+      submissionId: 'native-sub-1',
     });
+  });
+
+  it('marks a survey jotform when jotformFormId is set', async () => {
+    const submittedAt = new Date('2026-09-02T12:00:00.000Z');
+    const { service } = buildService([
+      {
+        id: 'prog-1',
+        title: 'Live session',
+        zoomSessionType: 'WEBINAR',
+        startDate: null,
+        zoomMeetingId: null,
+        chmProgramId: null,
+        campaignId,
+        zoomRecordingSessions: [],
+        webinarParticipantEvents: [],
+        surveys: [
+          {
+            id: 'survey-jot',
+            type: 'POST_TEST',
+            title: 'Post',
+            jotformFormId: '  jf-99  ',
+            responses: [
+              {
+                userId: 'u2',
+                submittedAt,
+                score: null,
+                schemaVersion: 2,
+                answers: { q1: 'no' },
+                submissionId: '  jf-sub-1  ',
+              },
+            ],
+          },
+          {
+            id: 'survey-blank',
+            type: 'INTAKE',
+            title: 'Intake',
+            jotformFormId: '   ',
+            responses: [
+              {
+                userId: 'u3',
+                submittedAt,
+                score: null,
+                schemaVersion: 1,
+                answers: {},
+                submissionId: '  ',
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+    expect(packet.surveys[0]).toMatchObject({
+      surveyId: 'survey-jot',
+      type: 'POST_TEST',
+      jotformFormId: 'jf-99',
+      source: 'jotform',
+    });
+    expect(packet.surveys[0].responses[0].submissionId).toBe('jf-sub-1');
+    expect(packet.surveys[1]).toMatchObject({
+      surveyId: 'survey-blank',
+      type: 'INTAKE',
+      jotformFormId: null,
+      source: 'native',
+    });
+    expect(packet.surveys[1].responses[0].submissionId).toBeNull();
   });
 });
