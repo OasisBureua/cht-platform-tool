@@ -121,10 +121,12 @@ const AFFILIATION_STATE_HINTS: ReadonlyArray<{ pattern: RegExp; state: string }>
   { pattern: /md\s+anderson|texas\s+oncology|baylor\s+college|ut\s+southwestern|memorial\s+hermann|houston/i, state: 'TX' },
   { pattern: /rocky\s+mountain\s+cancer|denver|lone\s+tree/i, state: 'CO' },
   { pattern: /ucla\s+health|los\s+angeles/i, state: 'CA' },
-  { pattern: /stanford\s+(?:medicine|cancer)/i, state: 'CA' },
+  { pattern: /stanford\s+(?:medicine|cancer|university|health)/i, state: 'CA' },
+  { pattern: /uc\s+san\s+diego|moores\s+cancer|san\s+diego/i, state: 'CA' },
   { pattern: /city\s+of\s+hope|duarte/i, state: 'CA' },
   { pattern: /providence\s+cancer|portland/i, state: 'OR' },
-  { pattern: /swedish\s+cancer|seattle/i, state: 'WA' },
+  { pattern: /swedish\s+cancer|fred\s+hutch|seattle/i, state: 'WA' },
+  { pattern: /allina|abbott\s+northwestern\s+hospital|minneapolis/i, state: 'MN' },
 ];
 
 function stateFromAffiliationHints(text: string): string | null {
@@ -200,9 +202,10 @@ export function deriveKolUsState(
     entry?.role,
     kol.title,
     kol.institution,
-    kol.bio,
     kol.specialty,
   ];
+  // Not the bio: it tells a career story, so its places include past
+  // training sites (e.g. a residency in Dallas for a Stanford oncologist).
 
   for (const text of practiceFields) {
     if (!text?.trim()) continue;
