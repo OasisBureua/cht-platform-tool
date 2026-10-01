@@ -65,24 +65,6 @@ export default function ThumbnailStudio() {
             ) : null}
           </div>
 
-          <Section label="Colourway">
-            <Seg label="Colourway" value={palette} options={[['disease', 'Disease states'], ['v2', 'Brand v2']]} onChange={setPalette} />
-          </Section>
-          {palette === 'disease' && meta ? (
-            <Section label="Disease state">
-              <Swatches areas={meta.areas} value={area} onChange={setArea} />
-            </Section>
-          ) : null}
-
-          <Section label="Layout">
-            <Seg label="Layout" wrap value={layout} options={(meta?.layouts ?? [['auto', 'Auto']]) as [string, string][]} onChange={setLayout} />
-          </Section>
-          {layout === 'bigword' ? (
-            <Section label="Hero term">
-              <TextField label="Term" value={hero} onChange={setHero} />
-              <Seg label="Hero style" value={heroMode} options={[['fit', 'Overlap'], ['stack', 'Stacked']]} onChange={setHeroMode} />
-            </Section>
-          ) : null}
         </div>
       </aside>
 
@@ -110,6 +92,33 @@ export default function ThumbnailStudio() {
           }
         />
       </div>
+
+      {/* the look: colour, layout and hero, under the preview so the content panel stays short */}
+      <section aria-label="Look" className="card order-3 grid gap-5 p-4 md:grid-cols-2 lg:col-span-2 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1.3fr)]">
+        <Section label="Colourway">
+          <Seg label="Colourway" value={palette} options={[['disease', 'Disease states'], ['v2', 'Brand v2']]} onChange={setPalette} />
+        </Section>
+        {palette === 'disease' && meta ? (
+          <Section label="Disease state">
+            <Swatches areas={meta.areas} value={area} onChange={setArea} />
+          </Section>
+        ) : (
+          <Section label="Disease state" hint="Brand v2 uses Knowledge Blue and Deep Expertise, so there's no disease colour to pick.">
+            <span />
+          </Section>
+        )}
+        <div className="space-y-5 md:col-span-2 xl:col-span-1">
+          <Section label="Layout">
+            <Seg label="Layout" wrap value={layout} options={(meta?.layouts ?? [['auto', 'Auto']]) as [string, string][]} onChange={setLayout} />
+          </Section>
+          {layout === 'bigword' ? (
+            <Section label="Hero term">
+              <TextField label="Term" value={hero} onChange={setHero} />
+              <Seg label="Hero style" value={heroMode} options={[['fit', 'Overlap'], ['stack', 'Stacked']]} onChange={setHeroMode} />
+            </Section>
+          ) : null}
+        </div>
+      </section>
     </div>
   );
 }

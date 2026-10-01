@@ -7,11 +7,14 @@ import { latestEpisode } from '../components/podcasts/PodcastSeriesSection';
 import { FeatureCarousel, type FeatureSlide } from '../components/home/FeatureCarousel';
 import { waveBars } from '../components/home/waveBars';
 import { episodeDisplayTitle, podcastEpisodeWatchPath } from '../utils/podcastRoutes';
+import { KOL_NETWORK_APP_BASE } from '../utils/kol-network-paths';
+import { Button } from '../components/ui';
+import { PodcastHero } from '../components/podcasts/PodcastHero';
 
 /**
- * The podcast network hub: a Featured hero carrying the newest episode
- * from each show (the dashboard's feature card), the four channels, then
- * the episodes that came before. Channel cards are the homepage's podcast
+ * The podcast network hub: the public site's hero (the four covers
+ * fanned), then Featured episodes carrying the newest from each show,
+ * the four channels, and the episodes that came before. Channel cards are the homepage's podcast
  * card, permanently deep teal, so their text stays fixed white in both
  * appearances.
  */
@@ -116,6 +119,9 @@ export default function Podcasts() {
   const featured = newest.sort(byDate);
   const recent = rest.sort(byDate).slice(0, 8);
 
+  const latest = featured[0];
+  const latestHref = latest?.ep.videoId ? podcastEpisodeWatchPath(latest.show.id, latest.ep.videoId) : channelHref((latest?.show ?? PODCAST_SHOWS[0]).id);
+
   const slides: FeatureSlide[] = featured.map(({ show, ep }) => ({
     id: `${show.id}-${ep.videoId ?? ep.num}`,
     eyebrow: `New episode · ${show.title}`,
@@ -131,14 +137,19 @@ export default function Podcasts() {
 
   return (
     <div className="space-y-10 pb-24 md:pb-16">
-      <header className="space-y-2">
-        <p className="eyebrow text-anchor">CHM podcast network</p>
-        <h1 className="display text-display-s text-text md:text-display-m">Podcasts</h1>
-        <p className="prose-lede max-w-2xl text-body-s text-muted2">
-          Four shows, each with its own voice. Open a channel for every episode, or copy its link to
-          share it with anyone.
-        </p>
-      </header>
+      <PodcastHero
+        actions={
+          <>
+            <Button to={latestHref} className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+              Play the latest episode
+              <ArrowRight className="size-4" strokeWidth={1.75} />
+            </Button>
+            <Button to={KOL_NETWORK_APP_BASE} variant="outline">
+              Browse the KOL directory
+            </Button>
+          </>
+        }
+      />
 
       <section aria-labelledby="podcasts-featured" className="space-y-4">
         <h2 id="podcasts-featured" className="display text-display-s text-text">

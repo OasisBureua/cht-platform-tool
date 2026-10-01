@@ -98,37 +98,6 @@ export default function SocialStudio() {
             </Section>
           ) : null}
 
-          {slide ? (
-            <div className="space-y-4 border-t border-hairline pt-4">
-              <div className="space-y-1.5">
-                <p className="display text-body-l text-text">Slide {current + 1}</p>
-                <SlideOps
-                  index={current}
-                  count={slides.length}
-                  onMove={move}
-                  onDuplicate={() => {
-                    setSlides((ss) => [...ss.slice(0, current + 1), { ...slide, images: [...slide.images] }, ...ss.slice(current + 1)]);
-                    setCurrent(current + 1);
-                  }}
-                  onDelete={() => {
-                    setSlides((ss) => ss.filter((_, i) => i !== current));
-                    setCurrent(Math.max(0, current - 1));
-                  }}
-                />
-              </div>
-              <Seg label="Slide kind" value={slide.kind} options={KINDS} onChange={(kind) => edit({ kind })} />
-              <TextField label="Eyebrow" value={slide.eyebrow} onChange={(eyebrow) => edit({ eyebrow })} />
-              <TextArea label="Headline" value={slide.headline} onChange={(headline) => edit({ headline })} rows={3} hint="[Square brackets] highlight a phrase; {braces} take the accent colour." />
-              <TextArea label="Body" value={slide.body} onChange={(body) => edit({ body })} rows={5} />
-              {style === 'N' ? <TextField label="Unit" value={slide.unit} onChange={(unit) => edit({ unit })} placeholder="MONTHS" /> : null}
-              <TextField label="Speaker credit" value={slide.credit} onChange={(credit) => edit({ credit })} placeholder="Dr. Komal Jhaveri" />
-              <Section label={`Images · up to ${MAX_IMAGES}`}>
-                <FacultyPicker picked={slide.images.map((im) => im.url)} onPick={pickFaculty} max={MAX_IMAGES} />
-                <UploadButton max={MAX_IMAGES - slide.images.length} onImages={(ims) => edit({ images: [...slide.images, ...ims].slice(0, MAX_IMAGES) })} />
-                <ImageChips images={slide.images} onRemove={(i) => edit({ images: slide.images.filter((_, k) => k !== i) })} />
-              </Section>
-            </div>
-          ) : null}
         </div>
       </aside>
 
@@ -169,6 +138,49 @@ export default function SocialStudio() {
           }
         />
       </div>
+
+      {/* the slide being edited, under the preview where there's room for its copy */}
+      {slide ? (
+        <section aria-label={`Slide ${current + 1}`} className="card order-3 space-y-4 p-4 lg:col-span-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="display text-body-l text-text">Slide {current + 1}</p>
+            <div className="w-full max-w-[22rem]">
+              <Seg label="Slide kind" value={slide.kind} options={KINDS} onChange={(kind) => edit({ kind })} />
+            </div>
+            <span className="ms-auto">
+              <SlideOps
+                index={current}
+                count={slides.length}
+                onMove={move}
+                onDuplicate={() => {
+                  setSlides((ss) => [...ss.slice(0, current + 1), { ...slide, images: [...slide.images] }, ...ss.slice(current + 1)]);
+                  setCurrent(current + 1);
+                }}
+                onDelete={() => {
+                  setSlides((ss) => ss.filter((_, i) => i !== current));
+                  setCurrent(Math.max(0, current - 1));
+                }}
+              />
+            </span>
+          </div>
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-4">
+              <TextField label="Eyebrow" value={slide.eyebrow} onChange={(eyebrow) => edit({ eyebrow })} />
+              <TextArea label="Headline" value={slide.headline} onChange={(headline) => edit({ headline })} rows={3} hint="[Square brackets] highlight a phrase; {braces} take the accent colour." />
+              <TextArea label="Body" value={slide.body} onChange={(body) => edit({ body })} rows={6} />
+              {style === 'N' ? <TextField label="Unit" value={slide.unit} onChange={(unit) => edit({ unit })} placeholder="MONTHS" /> : null}
+            </div>
+            <div className="space-y-4">
+              <TextField label="Speaker credit" value={slide.credit} onChange={(credit) => edit({ credit })} placeholder="Dr. Komal Jhaveri" />
+              <Section label={`Images · up to ${MAX_IMAGES}`} hint="Picking faculty writes the credit, so the faces always match the names.">
+                <FacultyPicker picked={slide.images.map((im) => im.url)} onPick={pickFaculty} max={MAX_IMAGES} />
+                <UploadButton max={MAX_IMAGES - slide.images.length} onImages={(ims) => edit({ images: [...slide.images, ...ims].slice(0, MAX_IMAGES) })} />
+                <ImageChips images={slide.images} onRemove={(i) => edit({ images: slide.images.filter((_, k) => k !== i) })} />
+              </Section>
+            </div>
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
