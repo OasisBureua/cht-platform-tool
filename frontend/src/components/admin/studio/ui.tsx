@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
-import { Check, ChevronLeft, ChevronRight, Copy, Loader2, Plus, Search, Trash2, Upload, X } from 'lucide-react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
+import { Check, ChevronLeft, ChevronRight, Copy, Plus, Search, Trash2, Upload, X } from 'lucide-react';
 import { FACULTY, type Faculty } from './faculty';
 import { filesToImages, type StudioImage } from './engine';
 
@@ -176,22 +176,6 @@ export function UploadButton({ onImages, max, label = 'Upload images' }: { onIma
         }}
       />
     </>
-  );
-}
-
-/** The artwork itself, drawn by the studio page inside a frame of the output's shape. */
-export function Canvas({ frameRef, src, onLoad, ready, aspect, maxH = '68vh', label }: { frameRef: RefObject<HTMLIFrameElement | null>; src: string; onLoad: () => void; ready: boolean; aspect: number; maxH?: string; label: string }) {
-  return (
-    <div className="mx-auto w-full" style={{ maxWidth: `calc(${maxH} * ${aspect})` }}>
-      <div className="relative w-full overflow-hidden rounded-card bg-surface-2 shadow-card ring-1 ring-hairline" style={{ aspectRatio: String(aspect) }}>
-        <iframe ref={frameRef} src={src} onLoad={onLoad} title={label} className="absolute inset-0 size-full border-0" />
-        {ready ? null : (
-          <div className="absolute inset-0 grid place-items-center bg-surface-2 text-muted2">
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-          </div>
-        )}
-      </div>
-    </div>
   );
 }
 

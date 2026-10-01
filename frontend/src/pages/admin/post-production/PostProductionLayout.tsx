@@ -15,11 +15,12 @@ const TABS = [
 
 export default function PostProductionLayout() {
   return (
-    <div className="space-y-5">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
+    <div className="space-y-4">
+      {/* one compact row, so the workspace below gets the screen's height */}
+      <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <div className="min-w-0">
           <p className="eyebrow text-anchor">Post-production</p>
-          <h1 className="display mt-1 text-display-s text-text md:text-display-m">Clips, thumbnails, social and decks</h1>
+          <h1 className="display text-body-l text-text md:text-display-s">Clips, thumbnails, social and decks</h1>
         </div>
         <nav aria-label="Post-production tools" className="flex gap-1 rounded-[10px] bg-surface-2 p-1">
           {TABS.map(({ to, label, icon: Icon }) => (

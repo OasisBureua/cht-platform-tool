@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { Download, FileArchive, FileText, Plus } from 'lucide-react';
 import { useStudioEngine, type DeckEngine, type DeckSlide } from '../../../components/admin/studio/engine';
-import { Canvas, ImageChips, Section, SlideOps, SlideStrip, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { ImageChips, Section, SlideOps, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { Stage, ViewSwitch } from '../../../components/admin/studio/stage';
+import { useStageView } from '../../../components/admin/studio/stageView';
 
 /**
  * Post-production › Deck: the CHM Studio deck builder (brand v2, 1920×1080)
@@ -24,18 +26,19 @@ export default function DeckStudio() {
   const [current, setCurrent] = useState(0);
   const [addType, setAddType] = useState('numbered');
   const [thumbs, setThumbs] = useState<string[]>([]);
+  const [view, setView] = useStageView('deck');
 
   useEffect(() => {
     if (!engine || !slides.length) return undefined;
     let live = true;
     const t = window.setTimeout(() => {
-      void engine.set({ title, current, slides }).then(() => engine.thumbs(220)).then((th) => live && setThumbs(th));
+      void engine.set({ title, current, slides }).then(() => engine.thumbs(view === 'grid' ? 480 : 220)).then((th) => live && setThumbs(th));
     }, 60);
     return () => {
       live = false;
       window.clearTimeout(t);
     };
-  }, [engine, title, current, slides]);
+  }, [engine, title, current, slides, view]);
 
   const slide = slides[current];
   const type = slide && meta ? meta.types[slide.type] : null;
@@ -57,8 +60,8 @@ export default function DeckStudio() {
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
-      <aside className="card order-2 flex min-h-[30rem] flex-col overflow-hidden p-0 xl:sticky xl:top-4 xl:order-1 xl:h-[calc(100dvh-9.5rem)]">
+    <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[23rem_minmax(0,1fr)]">
+      <aside className="card order-2 flex min-h-[24rem] flex-col overflow-hidden p-0 lg:sticky lg:top-4 lg:order-1 lg:h-[max(24rem,calc(100dvh-12.5rem))]">
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <TextField label="Deck" value={title} onChange={setTitle} />
 
@@ -82,8 +85,8 @@ export default function DeckStudio() {
 
           {slide && type ? (
             <div className="space-y-4 border-t border-hairline pt-4">
-              <div className="flex items-center justify-between gap-2">
-                <p className="display min-w-0 truncate text-body-l text-text">
+              <div className="space-y-1.5">
+                <p className="display text-body-l text-text">
                   {current + 1} · {type.name}
                 </p>
                 <SlideOps
@@ -118,25 +121,34 @@ export default function DeckStudio() {
         </div>
       </aside>
 
-      <div className="order-1 min-w-0 space-y-3 xl:order-2">
-        <Canvas frameRef={ref} src={src} onLoad={onLoad} ready={!!engine && !!slides.length} aspect={16 / 9} label="Deck slide preview" />
-        <div className="card space-y-3 p-3">
-          <SlideStrip thumbs={thumbs} current={current} count={slides.length} aspect={16 / 9} onPick={setCurrent} onAdd={add} />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="meta text-faint">{slides.length} slides · 1920 × 1080 · brand v2</span>
-            <span className="ms-auto flex flex-wrap gap-2">
-              <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
-                <Download className="size-4" aria-hidden /> This slide
-              </button>
-              <button type="button" disabled={!engine} onClick={() => engine?.exportZip()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
-                <FileArchive className="size-4" aria-hidden /> All · ZIP
-              </button>
-              <button type="button" disabled={!engine} onClick={() => engine?.exportPdf()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
-                <FileText className="size-4" aria-hidden /> Deck · PDF
-              </button>
-            </span>
-          </div>
-        </div>
+      <div className="order-1 min-w-0 lg:order-2">
+        <Stage
+          view={view}
+          aspect={16 / 9}
+          frameRef={ref}
+          src={src}
+          onLoad={onLoad}
+          ready={!!engine && !!slides.length}
+          label="Deck slide preview"
+          slides={{ thumbs, current, count: slides.length, onPick: setCurrent, onAdd: add }}
+          footer={
+            <>
+              <ViewSwitch view={view} onView={setView} />
+              <span className="meta text-faint">{slides.length} slides · 1920 × 1080</span>
+              <span className="ms-auto flex flex-wrap gap-2">
+                <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
+                  <Download className="size-4" aria-hidden /> This slide
+                </button>
+                <button type="button" disabled={!engine} onClick={() => engine?.exportZip()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
+                  <FileArchive className="size-4" aria-hidden /> ZIP
+                </button>
+                <button type="button" disabled={!engine} onClick={() => engine?.exportPdf()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
+                  <FileText className="size-4" aria-hidden /> PDF
+                </button>
+              </span>
+            </>
+          }
+        />
       </div>
     </div>
   );

@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Download, Shuffle } from 'lucide-react';
 import { useStudioEngine, type StudioImage, type ThumbEngine } from '../../../components/admin/studio/engine';
 import { creditFor, FACULTY, type Faculty } from '../../../components/admin/studio/faculty';
-import { Canvas, FacultyPicker, ImageChips, Section, Seg, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { FacultyPicker, ImageChips, Section, Seg, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { Stage } from '../../../components/admin/studio/stage';
 
 /**
  * Post-production › Thumbnails: the CHM Studio thumbnail generator with the
@@ -40,8 +41,8 @@ export default function ThumbnailStudio() {
     setFaces((fs) => (fs.some((x) => x.url === f.url) ? fs.filter((x) => x.url !== f.url) : [...fs, { url: f.url, name: f.name, stem: f.stem, zoom: 1 }].slice(0, MAX_FACES)));
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
-      <aside className="card order-2 flex min-h-[30rem] flex-col overflow-hidden p-0 xl:sticky xl:top-4 xl:order-1 xl:h-[calc(100dvh-9.5rem)]">
+    <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[23rem_minmax(0,1fr)]">
+      <aside className="card order-2 flex min-h-[24rem] flex-col overflow-hidden p-0 lg:sticky lg:top-4 lg:order-1 lg:h-[max(24rem,calc(100dvh-12.5rem))]">
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <TextArea label="Title" value={title} onChange={setTitle} rows={3} />
 
@@ -85,19 +86,29 @@ export default function ThumbnailStudio() {
         </div>
       </aside>
 
-      <div className="order-1 min-w-0 space-y-3 xl:order-2">
-        <Canvas frameRef={ref} src={src} onLoad={onLoad} ready={!!engine} aspect={16 / 9} label="Thumbnail preview" />
-        <div className="card flex flex-wrap items-center gap-2 p-2.5">
-          <span className="meta ms-1 text-faint">1280 × 720 · drag a face in the preview to move it</span>
-          <span className="ms-auto flex gap-2">
-            <button type="button" disabled={!engine} onClick={() => engine?.regenerate()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
-              <Shuffle className="size-4" aria-hidden /> New field
-            </button>
-            <button type="button" disabled={!engine} onClick={() => engine?.exportPng()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
-              <Download className="size-4" aria-hidden /> Export PNG
-            </button>
-          </span>
-        </div>
+      <div className="order-1 min-w-0 lg:order-2">
+        <Stage
+          view={null}
+          aspect={16 / 9}
+          frameRef={ref}
+          src={src}
+          onLoad={onLoad}
+          ready={!!engine}
+          label="Thumbnail preview"
+          footer={
+            <>
+              <span className="meta ms-1 text-faint">1280 × 720 · drag a face in the preview to move it</span>
+              <span className="ms-auto flex gap-2">
+                <button type="button" disabled={!engine} onClick={() => engine?.regenerate()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
+                  <Shuffle className="size-4" aria-hidden /> New field
+                </button>
+                <button type="button" disabled={!engine} onClick={() => engine?.exportPng()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
+                  <Download className="size-4" aria-hidden /> Export PNG
+                </button>
+              </span>
+            </>
+          }
+        />
       </div>
     </div>
   );

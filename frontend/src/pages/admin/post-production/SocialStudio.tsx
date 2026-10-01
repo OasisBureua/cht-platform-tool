@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import { Download, FileArchive } from 'lucide-react';
 import { useStudioEngine, type SocialEngine, type SocialSlide } from '../../../components/admin/studio/engine';
 import { creditFor, type Faculty } from '../../../components/admin/studio/faculty';
-import { Canvas, FacultyPicker, ImageChips, Section, Seg, SlideOps, SlideStrip, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { FacultyPicker, ImageChips, Section, Seg, SlideOps, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { Stage, ViewSwitch } from '../../../components/admin/studio/stage';
+import { useStageView } from '../../../components/admin/studio/stageView';
 
 /**
  * Post-production › Social: the CHM Studio carousel builder with the
@@ -34,18 +36,19 @@ export default function SocialStudio() {
   const [grounds, setGrounds] = useState<Record<string, string>>({ Q: 'bright', P: 'v2' });
   const [current, setCurrent] = useState(0);
   const [thumbs, setThumbs] = useState<string[]>([]);
+  const [view, setView] = useStageView('social');
 
   useEffect(() => {
     if (!engine || !slides.length) return undefined;
     let live = true;
     const t = window.setTimeout(() => {
-      void engine.set({ style, format, palette, area, grounds, current, slides }).then(() => engine.thumbs(176)).then((th) => live && setThumbs(th));
+      void engine.set({ style, format, palette, area, grounds, current, slides }).then(() => engine.thumbs(view === 'grid' ? 360 : 176)).then((th) => live && setThumbs(th));
     }, 60);
     return () => {
       live = false;
       window.clearTimeout(t);
     };
-  }, [engine, style, format, palette, area, grounds, current, slides]);
+  }, [engine, style, format, palette, area, grounds, current, slides, view]);
 
   const slide = slides[current];
   const edit = (patch: Partial<SocialSlide>) => setSlides((ss) => ss.map((s, i) => (i === current ? { ...s, ...patch } : s)));
@@ -72,8 +75,8 @@ export default function SocialStudio() {
   const showArea = palette === 'disease' && !(style === 'P' && grounds.P === 'v2');
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
-      <aside className="card order-2 flex min-h-[30rem] flex-col overflow-hidden p-0 xl:sticky xl:top-4 xl:order-1 xl:h-[calc(100dvh-9.5rem)]">
+    <div className="grid gap-4 lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[23rem_minmax(0,1fr)]">
+      <aside className="card order-2 flex min-h-[24rem] flex-col overflow-hidden p-0 lg:sticky lg:top-4 lg:order-1 lg:h-[max(24rem,calc(100dvh-12.5rem))]">
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
           <Section label="Style" hint={meta?.hints[style]}>
             <Seg label="Style" wrap value={style} options={Object.entries(meta?.styles ?? { A: 'Photo' }) as [string, string][]} onChange={setStyle} />
@@ -97,7 +100,7 @@ export default function SocialStudio() {
 
           {slide ? (
             <div className="space-y-4 border-t border-hairline pt-4">
-              <div className="flex items-center justify-between gap-2">
+              <div className="space-y-1.5">
                 <p className="display text-body-l text-text">Slide {current + 1}</p>
                 <SlideOps
                   index={current}
@@ -129,34 +132,42 @@ export default function SocialStudio() {
         </div>
       </aside>
 
-      <div className="order-1 min-w-0 space-y-3 xl:order-2">
-        <Canvas frameRef={ref} src={src} onLoad={onLoad} ready={!!engine && !!slides.length} aspect={aspect} maxH="62vh" label="Social slide preview" />
-        <div className="card space-y-3 p-3">
-          <SlideStrip
-            thumbs={thumbs}
-            current={current}
-            count={slides.length}
-            aspect={aspect}
-            onPick={setCurrent}
-            onAdd={() => {
+      <div className="order-1 min-w-0 lg:order-2">
+        <Stage
+          view={view}
+          aspect={aspect}
+          frameRef={ref}
+          src={src}
+          onLoad={onLoad}
+          ready={!!engine && !!slides.length}
+          label="Social slide preview"
+          slides={{
+            thumbs,
+            current,
+            count: slides.length,
+            onPick: setCurrent,
+            onAdd: () => {
               setSlides((ss) => [...ss, { kind: 'point', eyebrow: '', headline: 'New slide', body: '', credit: '', unit: '', images: [] }]);
               setCurrent(slides.length);
-            }}
-          />
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="meta text-faint">
-              {slides.length} slides · {format === '4x5' ? '1080 × 1350' : '1080 × 1080'}
-            </span>
-            <span className="ms-auto flex gap-2">
-              <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
-                <Download className="size-4" aria-hidden /> This slide
-              </button>
-              <button type="button" disabled={!engine} onClick={() => engine?.exportZip()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
-                <FileArchive className="size-4" aria-hidden /> Carousel · ZIP
-              </button>
-            </span>
-          </div>
-        </div>
+            },
+          }}
+          footer={
+            <>
+              <ViewSwitch view={view} onView={setView} />
+              <span className="meta text-faint">
+                {slides.length} slides · {format === '4x5' ? '1080 × 1350' : '1080 × 1080'}
+              </span>
+              <span className="ms-auto flex gap-2">
+                <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
+                  <Download className="size-4" aria-hidden /> This slide
+                </button>
+                <button type="button" disabled={!engine} onClick={() => engine?.exportZip()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
+                  <FileArchive className="size-4" aria-hidden /> Carousel · ZIP
+                </button>
+              </span>
+            </>
+          }
+        />
       </div>
     </div>
   );
