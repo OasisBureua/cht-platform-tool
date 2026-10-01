@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import AppSidebar from '../../components/navigation/AppSidebar';
+import AdminSidebar from '../../components/navigation/AdminSidebar';
 import KolNetwork from '../../pages/KolNetwork';
 import KolProfilePage from '../../pages/public/KolProfilePage';
 import { PodcastChannel } from '../../components/podcasts/PodcastChannel';
@@ -112,6 +113,30 @@ describe('App sidebar', () => {
     window.matchMedia = vi.fn().mockReturnValue({ matches: true }) as unknown as typeof window.matchMedia;
     wrap(<AppSidebar />);
     expect(screen.getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
+  });
+});
+
+describe('Admin sidebar', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.matchMedia = vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn(), removeEventListener: vi.fn() }) as unknown as typeof window.matchMedia;
+  });
+
+  it('matches the app rail: Dashboard first, Tools opening in place', () => {
+    wrap(<AdminSidebar />, '/admin');
+    expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/admin');
+    expect(screen.queryByRole('link', { name: 'Post-production' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
+    expect(screen.getByRole('link', { name: 'Post-production' })).toHaveAttribute('href', '/admin/post-production');
+  });
+
+  it('opens Tools already when you are on one of its pages, and as a flyout when collapsed', () => {
+    wrap(<AdminSidebar />, '/admin/post-production/clipper');
+    expect(screen.getByRole('link', { name: 'Post-production' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(window.localStorage.getItem('chm-admin-sidebar-collapsed')).toBe('1');
+    fireEvent.click(screen.getByRole('button', { name: 'Tools' }));
+    expect(screen.getByRole('menu', { name: 'Tools' })).toBeInTheDocument();
   });
 });
 
