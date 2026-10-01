@@ -1,0 +1,550 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CHM Beta: Product Requirements Document</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @page {
+    size: Letter;
+    margin: 0.75in 0.7in 0.8in;
+    @bottom-left { content: "CHM Beta PRD  |  v2.0  |  Confidential"; font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+  }
+  @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  :root {
+    --ink: #14202e;
+    --muted: #5b6878;
+    --line: #dfe4ea;
+    --soft: #f4f6f9;
+    --brand: #0f6f7a;
+    --brand-soft: #e6f3f4;
+    --accent: #c2410c;
+    --ok: #15803d;
+    --ok-soft: #e8f5ec;
+    --warn: #a16207;
+    --warn-soft: #fdf6e3;
+    --plan: #4338ca;
+    --plan-soft: #eef0fd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font: 10pt/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: #fff;
+  }
+  main { max-width: 7.1in; margin: 0 auto; }
+  @media screen { main { padding: 48px 24px 96px; } body { background: #eef1f4; } main { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 56px 64px 96px; margin: 32px auto; } }
+
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; margin: 0; }
+  h2 {
+    font-size: 16pt; margin: 30px 0 10px; padding-top: 6px;
+    border-top: 2px solid var(--brand);
+    break-after: avoid;
+  }
+  h2 .num { color: var(--brand); margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 20px 0 6px; break-after: avoid; }
+  h4 { font-size: 10pt; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; break-after: avoid; }
+  p { margin: 6px 0 10px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  a { color: var(--brand); text-decoration: none; }
+  code { font: 8.8pt/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; break-inside: auto; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; color: var(--ink); border-bottom: 1px solid #c9d1da; }
+  td.id { white-space: nowrap; font-weight: 600; color: var(--brand); width: 1%; }
+  td.nowrap { white-space: nowrap; }
+
+  .cover { min-height: 9.1in; display: flex; flex-direction: column; break-after: page; }
+  .cover .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 9pt; }
+  .cover h1 { font-size: 34pt; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 5.6in; }
+  .cover .bar { height: 6px; width: 72px; background: var(--brand); border-radius: 3px; margin: 28px 0 32px; }
+  .cover .meta { margin-top: auto; }
+  .cover .meta table { font-size: 9.5pt; }
+  .cover .meta td:first-child { color: var(--muted); width: 1.6in; }
+
+  .callout { border-left: 3px solid var(--brand); background: var(--brand-soft); padding: 10px 14px; margin: 12px 0 16px; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout .t { font-weight: 600; margin-bottom: 2px; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 7.8pt; font-weight: 600; white-space: nowrap; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.beta { background: var(--warn-soft); color: var(--warn); }
+  .pill.plan { background: var(--plan-soft); color: var(--plan); }
+  .pill.p0 { background: #fde8e1; color: var(--accent); }
+  .pill.p1 { background: var(--soft); color: var(--ink); }
+  .pill.p2 { background: var(--soft); color: var(--muted); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .card h4 { margin-top: 0; color: var(--brand); }
+  .card ul { margin-bottom: 0; }
+
+  .toc ol { list-style: none; padding: 0; columns: 2; column-gap: 28px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .toc .num { color: var(--brand); font-weight: 600; display: inline-block; width: 24px; }
+
+  pre.diagram { font: 8pt/1.35 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 12px; white-space: pre; overflow: hidden; break-inside: avoid; }
+  .legend { font-size: 8.5pt; color: var(--muted); margin: -4px 0 12px; }
+  .sig td { height: 34px; }
+  .page-break { break-before: page; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="eyebrow">Community Health Media · CHT Platform</div>
+  <h1>CHM Beta</h1>
+  <div class="sub">Product Requirements Document for the beta release of the CHM platform: public site, HCP member app, live programs and honoraria, content library, and the admin and reporting console.</div>
+  <div class="bar"></div>
+
+  <div class="callout">
+    <div class="t">What changed in v2.0 (Updated)</div>
+    <ul>
+      <li>Auth is on <strong>Amazon Cognito</strong> with optional TOTP or SMS MFA (GoTrue retired for end users).</li>
+      <li>Honoraria move from <strong>Bill.com to Stripe Connect</strong> (ACH only; paper checks dropped).</li>
+      <li>New <strong>Reports</strong> console at <code>/admin/reports</code>: link programs to Hub campaigns and generate executive PDF reports.</li>
+      <li>Platform and Content Hub talk over <strong>Cognito M2M</strong> (client credentials) with scoped access.</li>
+      <li>Native surveys and survey analytics replace JotForm for new programs.</li>
+    </ul>
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td>Document</td><td>CHM Beta PRD</td></tr>
+      <tr><td>Version</td><td>2.0 (Updated)</td></tr>
+      <tr><td>Date</td><td>September 29, 2026</td></tr>
+      <tr><td>Status</td><td>Draft for review</td></tr>
+      <tr><td>Owner</td><td>Uche Aduaka (CHT Platform)</td></tr>
+      <tr><td>Reviewers</td><td>CHM leadership, CHT engineering, Content Hub (MediaHub) engineering, Compliance, Finance</td></tr>
+      <tr><td>Companion docs</td><td>FRS (<code>docs/FRS-functional-requirements-specification.md</code>), Roadmap (<code>docs/reports/CHM-Platform-Roadmap-Plan.md</code>), Architecture (<code>docs/engineering/architecture.md</code>)</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ TOC ============================ -->
+<section class="toc">
+  <h2 style="border-top:none;margin-top:0;">Contents</h2>
+  <ol>
+    <li><span class="num">1</span>Summary</li>
+    <li><span class="num">2</span>Problem and goals</li>
+    <li><span class="num">3</span>Users and personas</li>
+    <li><span class="num">4</span>Beta scope</li>
+    <li><span class="num">5</span>Success metrics</li>
+    <li><span class="num">6</span>Functional requirements</li>
+    <li><span class="num">7</span>Reports console (new)</li>
+    <li><span class="num">8</span>Non-functional requirements</li>
+    <li><span class="num">9</span>Architecture and integrations</li>
+    <li><span class="num">10</span>Release plan</li>
+    <li><span class="num">11</span>Risks and mitigations</li>
+    <li><span class="num">12</span>Open questions</li>
+    <li><span class="num">13</span>Appendix</li>
+    <li><span class="num">14</span>Approval</li>
+  </ol>
+  <p class="legend">
+    Status: <span class="pill ok">Shipped</span> live on dev/testapp,
+    <span class="pill beta">In beta</span> built, hardening during beta,
+    <span class="pill plan">Planned</span> committed for beta but not yet built.
+    Priority: <span class="pill p0">P0</span> required for beta launch,
+    <span class="pill p1">P1</span> expected during beta,
+    <span class="pill p2">P2</span> nice to have.
+  </p>
+</section>
+
+<!-- ============================ 1 ============================ -->
+<h2><span class="num">1</span>Summary</h2>
+<p>
+  CHM (Community Health Media) connects oncology healthcare professionals (HCPs), key and digital opinion leaders (KOLs/DOLs), and pharma sponsors through live CME-style programs, a clinical conversation library, podcasts, and paid participation. The CHT platform is the product that delivers this: a public marketing and catalog site, an authenticated member app for HCPs, and an admin console for CHM operations.
+</p>
+<p>
+  The <strong>beta</strong> is the first release where the whole loop runs end to end on CHT-owned infrastructure: an HCP discovers a program, registers, attends in Zoom, completes a survey, gets paid, and CHM reports the outcome back to the sponsor. This document defines what the beta must do, how we will measure it, and what is explicitly deferred.
+</p>
+
+<!-- ============================ 2 ============================ -->
+<h2><span class="num">2</span>Problem and goals</h2>
+<h3>Problems today</h3>
+<ul>
+  <li><strong>Fragmented tools.</strong> Registration, attendance, surveys, payouts and reporting lived across Zoom, JotForm, Bill.com and spreadsheets, with manual reconciliation between them.</li>
+  <li><strong>Identity owned elsewhere.</strong> End users authenticated against MediaHub GoTrue, coupling CHT sign-in to a separate system and blocking MFA and compliance controls.</li>
+  <li><strong>Slow sponsor reporting.</strong> Executive reports were assembled by hand or through a synchronous endpoint that timed out, and HTML output was not client-ready.</li>
+  <li><strong>Payout friction.</strong> Bill.com sessions, vendor setup and paper checks slowed honoraria and created support load.</li>
+</ul>
+<h3>Beta goals</h3>
+<div class="grid2">
+  <div class="card"><h4>G1 · One loop</h4><p>Registration → attendance → survey → payment → report runs without manual hand-offs for a standard program.</p></div>
+  <div class="card"><h4>G2 · Trusted identity</h4><p>All users on Cognito with MFA available; admin actions audited; no secrets or tokens in logs.</p></div>
+  <div class="card"><h4>G3 · Fast, safe payouts</h4><p>Eligible HCPs are paid by ACH through Stripe Connect with tax details collected in onboarding.</p></div>
+  <div class="card"><h4>G4 · Sponsor-ready reporting</h4><p>Admins generate a printed PDF executive report for any campaign in minutes, without seeing raw HTML or storage URLs.</p></div>
+</div>
+<h3>Non-goals for beta</h3>
+<ul>
+  <li>Native mobile apps (responsive web only).</li>
+  <li>Self-serve sponsor portal (sponsors receive PDFs; no sponsor log-in in beta).</li>
+  <li>Paper checks or non-US payouts.</li>
+  <li>Accredited CME certificate issuance beyond the existing certificate worker.</li>
+</ul>
+
+<!-- ============================ 3 ============================ -->
+<h2><span class="num">3</span>Users and personas</h2>
+<table>
+  <thead><tr><th>Persona</th><th>Who</th><th>Primary jobs in beta</th><th>Surface</th></tr></thead>
+  <tbody>
+    <tr><td><strong>HCP member</strong></td><td>Oncologists, PCPs, NPs/PAs, pharmacists with an NPI</td><td>Find and register for sessions, attend, complete surveys, get paid, watch clips and podcasts</td><td><code>/app</code></td></tr>
+    <tr><td><strong>KOL / DOL</strong></td><td>Faculty and digital opinion leaders</td><td>Appear in the KOL network, host sessions, receive honoraria</td><td><code>/kol-network</code>, <code>/app</code></td></tr>
+    <tr><td><strong>Visitor</strong></td><td>Unauthenticated HCPs and partners</td><td>Browse catalog, KOLs, podcasts and upcoming programs; join</td><td>Public site</td></tr>
+    <tr><td><strong>CHM admin / ops</strong></td><td>Program managers, finance, content</td><td>Schedule programs, approve registrations, manage surveys and payments, generate reports</td><td><code>/admin</code></td></tr>
+    <tr><td><strong>Pharma sponsor</strong></td><td>Brand and medical affairs teams</td><td>Receive executive PDF reports and campaign results (offline in beta)</td><td>PDF delivery</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 4 ============================ -->
+<h2><span class="num">4</span>Beta scope</h2>
+<div class="grid2">
+  <div class="card">
+    <h4>In scope</h4>
+    <ul>
+      <li>Public site, catalog, KOL network, podcast network</li>
+      <li>Join, login, Google sign-in, MFA, profile completion (NPI)</li>
+      <li>Webinars and CHM Office Hours: register, multi-register, in-app Zoom, approvals</li>
+      <li>Native intake and post-event surveys with analytics</li>
+      <li>Honoraria via Stripe Connect (ACH) with admin Pay-now</li>
+      <li>Admin console: programs hub, schedulers, users, HCP explorer, payments, audit log, Zoom recordings, campaigns funnel</li>
+      <li>Reports console: campaign links, analytics report, executive PDF reports</li>
+      <li>Chatbot (CHM assistant) for members</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Out of scope / deferred</h4>
+    <ul>
+      <li>Sponsor log-in and self-serve dashboards</li>
+      <li>Paper checks, international payouts</li>
+      <li>HTML report delivery (PDF only)</li>
+      <li>Report version history UI beyond regenerate (v1…v3)</li>
+      <li>Native mobile apps</li>
+      <li>MediaHub move onto CHT ECS (roadmap Phase 4)</li>
+      <li>Catalog Redis cache (roadmap Phase 4e)</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============================ 5 ============================ -->
+<h2><span class="num">5</span>Success metrics</h2>
+<div class="callout warn"><div class="t">Targets to confirm</div>Targets below are proposed starting points for the beta review. Leadership to confirm before launch.</div>
+<table>
+  <thead><tr><th>Metric</th><th>Definition</th><th>Beta target</th></tr></thead>
+  <tbody>
+    <tr><td>Registration completion</td><td>Registrations submitted ÷ registration wizards started</td><td>≥ 70%</td></tr>
+    <tr><td>Attendance match rate</td><td>Attendees auto-matched to a registration via Zoom email ÷ all attendees</td><td>≥ 90%</td></tr>
+    <tr><td>Survey completion</td><td>Post-event surveys submitted ÷ verified attendees</td><td>≥ 80%</td></tr>
+    <tr><td>Time to payout</td><td>Median time from survey submission to Stripe transfer initiated</td><td>≤ 5 business days</td></tr>
+    <tr><td>Report turnaround</td><td>Median time from "Generate report" to PDF ready</td><td>≤ 10 minutes</td></tr>
+    <tr><td>Report first-pass acceptance</td><td>Reports downloaded without a regenerate</td><td>≥ 60%</td></tr>
+    <tr><td>MFA adoption</td><td>Active members with MFA enrolled</td><td>≥ 50% members, 100% admins</td></tr>
+    <tr><td>Reliability</td><td>API 5xx rate on <code>/api</code> (excluding upstream outages)</td><td>&lt; 0.5% of requests</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 6 ============================ -->
+<h2><span class="num">6</span>Functional requirements</h2>
+<p>Requirement IDs map to the FRS where one exists. Detailed error and edge-case behavior lives in the FRS; this section states what the beta must deliver and its current status.</p>
+
+<h3>6.1 Accounts and access</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">AUTH-1</td><td>Email and password sign-up (<code>/join</code>) and log-in via Cognito; sessions are httpOnly cookies backed by Postgres.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-2</td><td>Google sign-in via Cognito Hosted UI, linked to the existing account by email.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-3</td><td>MFA with TOTP or SMS; members can enroll after joining (<code>/mfa/setup</code>); SMS code prefilled from profile phone.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-4</td><td>Profile completion gate (<code>/complete-profile</code>) for profession, NPI, institution, city, state and ZIP before protected actions.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-5</td><td>Forgot and reset password, email verification; responses never reveal whether an email exists.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-6</td><td>Bot protection with reCAPTCHA v3 on login and join, plus Cognito WAF.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-7</td><td>Role-based access: <code>/admin</code> requires the ADMIN role; server enforces on every admin API.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">AUTH-8</td><td>Server-side session revocation on logout and password change; 401s return the user to log-in.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.2 Public site and discovery</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">PUB-1</td><td>Marketing pages: home, about, services, what we do, for HCPs, portfolios, contact, privacy, terms.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PUB-2</td><td>Public catalog: disease areas, playlists, series, clip detail with YouTube playback and related clips.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PUB-3</td><td>KOL network: directory by state and region, curated and verified profile data only, links to the KOL's clips.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PUB-4</td><td>Podcast network: show pages and episode playback.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PUB-5</td><td>Upcoming programs: webinars and office hours listings with detail pages and a registration call to action.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PUB-6</td><td>Search across clips, sessions and surveys; legacy URLs (<code>/webinars</code>, <code>/watch</code>) redirect.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.3 Live programs</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">PROG-1</td><td>Admins schedule webinars and office hours; the backend creates the Zoom webinar or meeting and stores it.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-2</td><td>Registration wizard: intake survey, time slot where applicable, attestations; draft survives refresh.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-3</td><td>Register for several programs in one flow (<code>/app/live/register-multiple</code>).</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-4</td><td>Approval workflow: admins approve or reject registrations with a reason email; approved HCPs receive join details.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-5</td><td>In-app Zoom session page (Meeting SDK) with auto-join and clean teardown on exit.</td><td><span class="pill p1">P1</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">PROG-6</td><td>Attendance recorded automatically from Zoom when the attendee email matches the HCP account.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-7</td><td>Post-event flow: survey then payout details then done, resumable from server state.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PROG-8</td><td>Zoom recordings catalog and transcript (VTT) export to S3 with Hub notification.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.4 Surveys</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">SURV-1</td><td>Native survey builder for intake, feedback, pre-test and post-test surveys; reusable across programs.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">SURV-2</td><td>Profile prefill for untouched answers; drafts preserved.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">SURV-3</td><td>Post-event survey unlocks after verified attendance and closes after a set window.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">SURV-4</td><td>Response analytics: choice distributions, per-question summaries, CSV export.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">SURV-5</td><td>JotForm remains supported for legacy programs only.</td><td><span class="pill p2">P2</span></td><td><span class="pill ok">Shipped</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.5 Honoraria and payments</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">PAY-1</td><td>Eligibility: attendance verified, survey acknowledged, and tax details complete before a payment is queued.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PAY-2</td><td>Stripe Connect embedded onboarding (recipient account); legal name or business entity, bank account and TIN collected by Stripe.</td><td><span class="pill p0">P0</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">PAY-3</td><td>ACH payouts only; users previously paid by check must re-onboard with a bank account.</td><td><span class="pill p0">P0</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">PAY-4</td><td>Admin payment queue with Pay-now, status tracking and reconciliation; irreversible actions confirmed and audited.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PAY-5</td><td>Member earnings and payment history pages with clear statuses.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">PAY-6</td><td>Cut over per environment with no dual-run: dev, then testapp, then production.</td><td><span class="pill p0">P0</span></td><td><span class="pill plan">Planned</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.6 Member app</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">APP-1</td><td>Dashboard with onboarding, spotlight carousel, upcoming sessions, open surveys and catalog rows.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">APP-2</td><td>In-app catalog, playlists, KOL network and podcasts with watch tracking.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">APP-3</td><td>Settings: profile, notifications, security (password, MFA).</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">APP-4</td><td>Notification bell for missing profile items and MFA reminder, once per session.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">APP-5</td><td>CHM assistant chatbot with usage disclaimers; authenticated through the backend.</td><td><span class="pill p2">P2</span></td><td><span class="pill beta">In beta</span></td></tr>
+  </tbody>
+</table>
+
+<h3>6.7 Admin console</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">ADM-1</td><td>Program hub per program: registrations, attendance, survey responses (CSV), operational email, invites.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">ADM-2</td><td>Users and HCP explorer with role changes, suspension and PII safeguards.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">ADM-3</td><td>Audit log of admin actions (actor, action, resource, IP, user agent).</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">ADM-4</td><td>Campaigns funnel and campaigns dashboard for HubSpot-sourced campaigns.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">ADM-5</td><td>Content management: WordPress posts and disease areas feeding the catalog.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">ADM-6</td><td>Rx analytics views respecting data governance thresholds.</td><td><span class="pill p2">P2</span></td><td><span class="pill beta">In beta</span></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 7 ============================ -->
+<h2><span class="num">7</span>Reports console (new)</h2>
+<p>
+  The Reports console (<code>/admin/reports</code>, formerly <code>/admin/content-hub</code>) is where CHM admins set up sponsor campaigns, connect their data, and produce reports. It is backed by the Content Hub for campaign data and by the cht-reports pipeline for executive PDFs. Old <code>/admin/content-hub</code> links redirect.
+</p>
+<p>
+  The reports API (CPR-30) is merged. The admin UI (CPR-27: program linking, report history, notify picker, route rename) is on dev and marked <span class="pill beta">In beta</span> until it merges.
+</p>
+
+<h3>7.1 User flow</h3>
+<ol>
+  <li><strong>Create a campaign</strong> in the Create report wizard: type (analytics or executive PDF), campaign details, data connection (platform CSVs, CHT feedback survey), validation.</li>
+  <li><strong>Link programs</strong> on the campaign's Programs tab so Zoom sessions, attendance and surveys from Platform are included.</li>
+  <li><strong>Generate</strong> on the Reports tab: pick a 30, 60 or 90-day window and sources (HubSpot, LinkedIn, Meta, YouTube, Livestream, Zoom sessions, Surveys), optionally choose admins to email.</li>
+  <li><strong>Track and download</strong>: the request returns immediately; status moves from queued to ready in Report history; download the printed PDF.</li>
+  <li><strong>Regenerate</strong> with optional instructions (up to 2,000 characters), at most three times per report.</li>
+</ol>
+
+<h3>7.2 Requirements</h3>
+<table>
+  <thead><tr><th>ID</th><th>Requirement</th><th>Priority</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="id">RPT-1</td><td>All report endpoints require an admin session; every route is JWT and ADMIN guarded.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-2</td><td><code>POST /api/reports</code> validates input, freezes the date window, and returns <strong>202</strong> immediately with the queued report; generation is asynchronous.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-3</td><td>Only one report per campaign and template generates at a time; a second request returns 409 with a clear message.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-4</td><td>Report history lists every report for a campaign, newest first, and refreshes every 5 seconds while any report is in progress.</td><td><span class="pill p0">P0</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">RPT-5</td><td><strong>PDF only.</strong> Users only ever receive a printed PDF; HTML output is never shown or downloadable.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-6</td><td>Downloads are streamed through Platform with a friendly filename; the storage (S3) URL is never exposed to the browser. Keys outside <code>reports/</code> or non-PDF content are rejected.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-7</td><td>Regenerate is allowed only for completed reports and at most three times; the fourth attempt returns 409.</td><td><span class="pill p0">P0</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-8</td><td>Notify list is limited to active admins, chosen with a type-to-search picker; unknown addresses are rejected.</td><td><span class="pill p1">P1</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">RPT-9</td><td>Program to campaign linking via a dedicated endpoint that only updates the link (no side effects on surveys or Zoom).</td><td><span class="pill p0">P0</span></td><td><span class="pill beta">In beta</span></td></tr>
+    <tr><td class="id">RPT-10</td><td>Analytics report view with KPI tiles, platform breakdowns, validation status and glossary.</td><td><span class="pill p1">P1</span></td><td><span class="pill ok">Shipped</span></td></tr>
+    <tr><td class="id">RPT-11</td><td>Report versions (v1, v2, v3) stored under <code>reports/…/vN.pdf</code> and selectable in history.</td><td><span class="pill p2">P2</span></td><td><span class="pill plan">Planned</span></td></tr>
+  </tbody>
+</table>
+
+<h3>7.3 Report lifecycle</h3>
+<table>
+  <thead><tr><th>Status</th><th>Shown as</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td class="nowrap"><code>queued</code></td><td>Queued</td><td>Request accepted and sent to the report queue.</td></tr>
+    <tr><td class="nowrap"><code>pulling_data</code></td><td>Pulling data</td><td>Pipeline is gathering sources, including Platform export for linked programs.</td></tr>
+    <tr><td class="nowrap"><code>generating</code></td><td>Writing report</td><td>Narrative and charts are being produced.</td></tr>
+    <tr><td class="nowrap"><code>rendering</code></td><td>Printing PDF</td><td>Report is printed to PDF.</td></tr>
+    <tr><td class="nowrap"><code>uploading</code></td><td>Saving PDF</td><td>PDF is stored under <code>reports/</code>.</td></tr>
+    <tr><td class="nowrap"><code>complete</code></td><td>Ready</td><td>PDF can be downloaded or regenerated.</td></tr>
+    <tr><td class="nowrap"><code>failed</code></td><td>Failed</td><td>Error shown; admin can generate again.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 8 ============================ -->
+<h2><span class="num">8</span>Non-functional requirements</h2>
+<table>
+  <thead><tr><th>Area</th><th>Requirement</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Security</strong></td><td>MFA available to all users and required for admins before launch. httpOnly, secure session cookies. Helmet security headers and HSTS in production. Admin API docs gated by admin session.</td></tr>
+    <tr><td><strong>Secrets and logging</strong></td><td>Tokens, client secrets and Authorization headers are never logged. Logs are structured JSON without emojis. Success and failure of integrations may be logged.</td></tr>
+    <tr><td><strong>Service-to-service</strong></td><td>Platform and Content Hub authenticate with Cognito client credentials and least-privilege scopes (for example <code>hub/reports.read</code>, <code>platform/export.read</code>).</td></tr>
+    <tr><td><strong>Privacy</strong></td><td>No patient data (PHI) is collected. HCP PII (NPI, contact, tax details) is limited to what programs and payouts need; tax details are held by Stripe, not CHT.</td></tr>
+    <tr><td><strong>Auditability</strong></td><td>Admin actions, report requests and payment actions write audit log entries.</td></tr>
+    <tr><td><strong>Performance</strong></td><td>Public pages interactive in under 3 s on broadband; API p95 under 800 ms for reads excluding upstream calls; report requests return in under 1 s.</td></tr>
+    <tr><td><strong>Availability</strong></td><td>Production on ECS Fargate behind an ALB with health checks; RDS backups and documented disaster recovery.</td></tr>
+    <tr><td><strong>Accessibility</strong></td><td>WCAG 2.1 AA as the target: visible labels, keyboard access, focus rings, announced errors, 16 px minimum input text on mobile.</td></tr>
+    <tr><td><strong>Browsers</strong></td><td>Latest two versions of Chrome, Safari, Edge and Firefox; iOS Safari and Android Chrome.</td></tr>
+    <tr><td><strong>Quality gates</strong></td><td>Typecheck, lint and unit tests pass for backend and frontend before merge; deploys go dev, then testapp, then production.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 9 ============================ -->
+<h2><span class="num">9</span>Architecture and integrations</h2>
+<pre class="diagram">
+  Users (CHT domain only)
+     │
+     ▼
+  CloudFront + S3 (React SPA) ──► ALB ──► chm-backend (NestJS, Prisma, Postgres)
+                                              │
+     ┌──────────────┬──────────────┬──────────┼──────────────┬───────────────┐
+     ▼              ▼              ▼          ▼              ▼               ▼
+  Cognito        Zoom           Stripe      SQS          Content Hub     cht-reports
+  users, MFA,    API, webhooks, Connect     │            (MediaHub)      report queue,
+  M2M tokens     Meeting SDK    payouts     ▼            catalog, KOLs,  PDF render
+                                         chm-worker      campaigns            │
+                                         email, payouts,                      ▼
+                                         CME PDFs ──► SES                S3 reports/
+
+  Platform ◄──► Content Hub: Cognito M2M (client credentials), least-privilege scopes
+</pre>
+<table>
+  <thead><tr><th>Integration</th><th>Used for</th><th>Beta notes</th></tr></thead>
+  <tbody>
+    <tr><td>Amazon Cognito</td><td>User auth, MFA, Google IdP, service-to-service tokens</td><td>Dev and prod pools; M2M clients per service with scoped access</td></tr>
+    <tr><td>Zoom</td><td>Session creation, attendance webhooks, in-app SDK, recordings and transcripts</td><td>Server-to-Server OAuth</td></tr>
+    <tr><td>Stripe Connect</td><td>Honorarium payouts and tax detail collection</td><td>Replaces Bill.com per environment; ACH only</td></tr>
+    <tr><td>Content Hub (MediaHub)</td><td>Catalog, KOL network, campaigns, analytics</td><td>External API until the roadmap moves it onto CHT ECS</td></tr>
+    <tr><td>cht-reports</td><td>Executive report generation and PDF rendering</td><td>Consumes the report queue; writes <code>s3_key_pdf</code> under <code>reports/</code></td></tr>
+    <tr><td>Amazon SES</td><td>Transactional email and report notifications</td><td>Sent by the worker</td></tr>
+    <tr><td>HubSpot</td><td>Campaign CRM data</td><td>Optional per campaign</td></tr>
+    <tr><td>YouTube / WordPress</td><td>Clip playback, podcasts, editorial content</td><td>Read-only</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 10 ============================ -->
+<h2><span class="num">10</span>Release plan</h2>
+<table>
+  <thead><tr><th>Stage</th><th>Who</th><th>Entry criteria</th><th>Exit criteria</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Dev</strong></td><td>CHT engineering</td><td>Features merged; checks green</td><td>End-to-end loop passes on a test program; report generated and downloaded</td></tr>
+    <tr><td><strong>Testapp (closed beta)</strong></td><td>CHM staff and 10–20 invited HCPs</td><td>Stripe test mode connected; report pipeline live</td><td>Two real programs run end to end; no open P0 defects</td></tr>
+    <tr><td><strong>Production (open beta)</strong></td><td>All members; selected sponsors receive PDFs</td><td>Stripe live cutover; admins on MFA; runbooks signed</td><td>Beta metrics reviewed after 30 days; go or no-go for general availability</td></tr>
+  </tbody>
+</table>
+<h3>Launch checklist</h3>
+<ul>
+  <li>All P0 requirements shipped and verified on testapp.</li>
+  <li>Stripe cutover complete for the environment; legacy check users notified to re-onboard.</li>
+  <li>Admin accounts enrolled in MFA; audit log reviewed.</li>
+  <li>Report pipeline processing jobs, with PDFs under <code>reports/</code> and Platform read access to the artifacts bucket.</li>
+  <li>Support path and FAQ published for sign-in, MFA, payouts and surveys.</li>
+  <li>Incident response and disaster recovery runbooks current.</li>
+</ul>
+
+<!-- ============================ 11 ============================ -->
+<h2><span class="num">11</span>Risks and mitigations</h2>
+<table>
+  <thead><tr><th>Risk</th><th>Impact</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr><td>HCPs abandon payout re-onboarding after the Stripe switch</td><td>Delayed honoraria, support load</td><td>In-app prompts, email reminders, clear copy on why re-onboarding is needed</td></tr>
+    <tr><td>Zoom email mismatch prevents attendance matching</td><td>Surveys stay locked, payouts delayed</td><td>Registration copy on using the account email; admin override in the program hub</td></tr>
+    <tr><td>Report pipeline delays or failures</td><td>Sponsor deliverables late</td><td>Asynchronous generation, visible status, one-click retry, failure alerts</td></tr>
+    <tr><td>Report data gaps when programs are not linked</td><td>Incomplete reports</td><td>Warning on the Reports tab and in the wizard; Programs tab with search and link</td></tr>
+    <tr><td>MFA friction at sign-in</td><td>Lower activation</td><td>Optional for members during beta, required for admins; SMS and TOTP options</td></tr>
+    <tr><td>Content Hub dependency outage</td><td>Catalog or reports unavailable</td><td>Health checks, graceful empty states, 503 with retry messaging</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 12 ============================ -->
+<h2><span class="num">12</span>Open questions</h2>
+<table>
+  <thead><tr><th>#</th><th>Question</th><th>Owner</th><th>Needed by</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Confirm beta success targets in section 5.</td><td>CHM leadership</td><td>Before testapp beta</td></tr>
+    <tr><td>2</td><td>Should MFA become required for members at general availability?</td><td>Product, Compliance</td><td>End of beta</td></tr>
+    <tr><td>3</td><td>Production date for the Stripe cutover and communication plan for check users.</td><td>Finance, Platform</td><td>Before production beta</td></tr>
+    <tr><td>4</td><td>Do sponsors need report version history (v1 to v3) in beta, or is the latest PDF enough?</td><td>Product</td><td>Mid beta</td></tr>
+    <tr><td>5</td><td>Beta HCP cohort: who is invited and how feedback is collected.</td><td>CHM ops</td><td>Before testapp beta</td></tr>
+    <tr><td>6</td><td>Timing for moving Content Hub onto CHT infrastructure (roadmap Phase 4).</td><td>Engineering</td><td>Post beta</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 13 ============================ -->
+<h2><span class="num">13</span>Appendix</h2>
+<h3>A. Route map</h3>
+<table>
+  <thead><tr><th>Area</th><th>Routes</th></tr></thead>
+  <tbody>
+    <tr><td>Public</td><td><code>/home</code>, <code>/about</code>, <code>/services</code>, <code>/what-we-do</code>, <code>/for-hcps</code>, <code>/portfolios</code>, <code>/contact</code>, <code>/privacy</code>, <code>/terms</code></td></tr>
+    <tr><td>Catalog</td><td><code>/catalog</code>, <code>/catalog/:diseaseSlug</code>, <code>/catalog/clip/:id</code>, <code>/catalog/playlist/:playlistId</code></td></tr>
+    <tr><td>Network</td><td><code>/kol-network</code>, <code>/kol-network/:regionSlug</code>, <code>/kol-network/profile/:kolId</code>, <code>/podcast-network</code></td></tr>
+    <tr><td>Programs</td><td><code>/live</code>, <code>/live/:id</code>, <code>/chm-office-hours</code>, <code>/chm-office-hours/:id</code></td></tr>
+    <tr><td>Auth</td><td><code>/join</code>, <code>/login</code>, <code>/forgot-password</code>, <code>/reset-password/confirm</code>, <code>/verify-email</code>, <code>/mfa/setup</code>, <code>/complete-profile</code>, <code>/auth/callback</code></td></tr>
+    <tr><td>Member app</td><td><code>/app/home</code>, <code>/app/live</code>, <code>/app/chm-office-hours</code>, <code>/app/surveys</code>, <code>/app/catalog</code>, <code>/app/podcasts</code>, <code>/app/earnings</code>, <code>/app/payments</code>, <code>/app/settings</code>, <code>/app/chatbot</code></td></tr>
+    <tr><td>Admin</td><td><code>/admin</code>, <code>/admin/programs</code>, <code>/admin/webinar-approvals</code>, <code>/admin/webinar-scheduler</code>, <code>/admin/office-hours-scheduler</code>, <code>/admin/surveys</code>, <code>/admin/payments</code>, <code>/admin/users</code>, <code>/admin/hcp-explorer</code>, <code>/admin/audit-log</code>, <code>/admin/zoom-recordings</code>, <code>/admin/funnel</code>, <code>/admin/campaigns-dashboard</code>, <code>/admin/rx-analytics</code></td></tr>
+    <tr><td>Reports</td><td><code>/admin/reports</code>, <code>/admin/reports/new</code>, <code>/admin/reports/campaigns/:id?tab=reports|programs|sources|validation|settings</code>, <code>/admin/reports/campaigns/:id/report</code></td></tr>
+  </tbody>
+</table>
+
+<h3>B. Glossary</h3>
+<table>
+  <thead><tr><th>Term</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>HCP</td><td>Healthcare professional, identified by NPI.</td></tr>
+    <tr><td>KOL / DOL</td><td>Key opinion leader / digital opinion leader.</td></tr>
+    <tr><td>Program</td><td>A scheduled webinar or office hours session with registration.</td></tr>
+    <tr><td>Campaign</td><td>A sponsor engagement in the Content Hub that groups programs and channel data for reporting.</td></tr>
+    <tr><td>Executive report</td><td>Client-ready PDF summary of a campaign over a chosen window.</td></tr>
+    <tr><td>M2M</td><td>Machine-to-machine authentication using Cognito client credentials.</td></tr>
+    <tr><td>Honorarium</td><td>Payment to an HCP for eligible participation.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 14 ============================ -->
+<h2><span class="num">14</span>Approval</h2>
+<table class="sig">
+  <thead><tr><th style="width:22%">Role</th><th style="width:30%">Name</th><th style="width:18%">Date</th><th>Signature</th></tr></thead>
+  <tbody>
+    <tr><td>Product</td><td></td><td></td><td></td></tr>
+    <tr><td>Engineering</td><td></td><td></td><td></td></tr>
+    <tr><td>Design</td><td></td><td></td><td></td></tr>
+    <tr><td>Compliance</td><td></td><td></td><td></td></tr>
+    <tr><td>Finance</td><td></td><td></td><td></td></tr>
+  </tbody>
+</table>
+
+</main>
+</body>
+</html>
