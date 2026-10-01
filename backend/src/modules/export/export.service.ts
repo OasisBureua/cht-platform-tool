@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JotformService } from '../jotform/jotform.service';
+import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
 
 export type TranscriptStatus = 'ok' | 'missing';
 
@@ -60,7 +62,10 @@ const TRANSCRIPT_FILE_TYPES = new Set(['TRANSCRIPT', 'CC']);
 export class ExportService {
   private readonly logger = new Logger(ExportService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jotform: JotformService,
+  ) {}
 
   /**
    * Build Hub ingest packet for a campaign.
@@ -192,6 +197,8 @@ export class ExportService {
           })),
         });
       }
+
+      await this.appendLegacyJotformSurveys(program, surveys);
     }
 
     this.logger.log(
@@ -206,6 +213,72 @@ export class ExportService {
       attendance,
       surveys,
     };
+  }
+
+  /**
+   * CPR-5: a program can still have only a Jotform URL and no Survey row.
+   * Those answers are not in the database, so the packet reads them from
+   * Jotform. A Survey row of the same type wins and is not fetched again.
+   * A Jotform failure skips that form and leaves the rest of the packet.
+   */
+  private async appendLegacyJotformSurveys(
+    program: {
+      id: string;
+      jotformIntakeFormUrl?: string | null;
+      jotformSurveyUrl?: string | null;
+      surveys: Array<{ type: string }>;
+    },
+    surveys: ExportSurveyPacket[],
+  ): Promise<void> {
+    const types = new Set(program.surveys.map((survey) => survey.type));
+    const slots: Array<{ type: 'INTAKE' | 'FEEDBACK'; url: string | null }> = [];
+    if (!types.has('INTAKE')) {
+      slots.push({
+        type: 'INTAKE',
+        url: program.jotformIntakeFormUrl?.trim() || null,
+      });
+    }
+    if (!types.has('FEEDBACK')) {
+      slots.push({
+        type: 'FEEDBACK',
+        url: program.jotformSurveyUrl?.trim() || null,
+      });
+    }
+
+    for (const slot of slots) {
+      if (!slot.url) continue;
+      const formId = extractJotformFormIdFromUrl(slot.url);
+      if (!formId) continue;
+      let submissions: Awaited<ReturnType<JotformService['listFormSubmissions']>>;
+      try {
+        submissions = await this.jotform.listFormSubmissions(formId);
+      } catch (err) {
+        this.logger.warn(
+          `[export] legacy jotform skipped programId=${program.id} type=${slot.type} formId=${formId} error=${err instanceof Error ? err.message : String(err)}`,
+        );
+        continue;
+      }
+      surveys.push({
+        platformToolProgramId: program.id,
+        surveyId: `legacy-${slot.type.toLowerCase()}:${formId}`,
+        type: slot.type,
+        title:
+          slot.type === 'INTAKE'
+            ? 'Legacy Jotform intake'
+            : 'Legacy Jotform post-event',
+        jotformFormId: formId,
+        source: 'jotform',
+        responseCount: submissions.length,
+        responses: submissions.map((row) => ({
+          userId: row.userId ?? '',
+          submittedAt: row.submittedAt,
+          score: null,
+          schemaVersion: 1,
+          answers: row.answers,
+          submissionId: row.submissionId,
+        })),
+      });
+    }
   }
 }
 

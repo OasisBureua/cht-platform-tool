@@ -1,20 +1,28 @@
 import { ExportService } from './export.service';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { JotformService } from '../jotform/jotform.service';
 
 describe('ExportService.getCampaignInputPacket', () => {
   const campaignId = 'AZ-25-01_LIV001';
   const requestId = 'req-test-1';
 
-  function buildService(programs: unknown[]) {
+  function buildService(
+    programs: unknown[],
+    listFormSubmissions: jest.Mock = jest.fn().mockResolvedValue([]),
+  ) {
     const findMany = jest.fn().mockResolvedValue(programs);
     const prisma = {
       program: {
         findMany,
       },
     } as unknown as PrismaService;
+    const jotform = {
+      listFormSubmissions,
+    } as unknown as JotformService;
     return {
-      service: new ExportService(prisma),
+      service: new ExportService(prisma, jotform),
       findMany,
+      listFormSubmissions,
     };
   }
 
@@ -293,5 +301,117 @@ describe('ExportService.getCampaignInputPacket', () => {
       source: 'native',
     });
     expect(packet.surveys[1].responses[0].submissionId).toBeNull();
+  });
+
+  it('adds a legacy Jotform survey when the program has a URL and no Survey row', async () => {
+    const listFormSubmissions = jest.fn().mockResolvedValue([
+      {
+        submissionId: '501',
+        submittedAt: '2026-08-01T12:00:00.000Z',
+        userId: 'user-9',
+        answers: { q1: 'yes' },
+      },
+    ]);
+    const { service } = buildService(
+      [
+        {
+          id: 'prog-legacy',
+          title: 'Old webinar',
+          zoomSessionType: 'WEBINAR',
+          startDate: null,
+          zoomMeetingId: null,
+          chmProgramId: null,
+          campaignId,
+          jotformIntakeFormUrl: null,
+          jotformSurveyUrl:
+            'https://communityhealthmedia.jotform.com/260624911991966',
+          zoomRecordingSessions: [],
+          webinarParticipantEvents: [],
+          surveys: [],
+        },
+      ],
+      listFormSubmissions,
+    );
+
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+
+    expect(listFormSubmissions).toHaveBeenCalledWith('260624911991966');
+    expect(packet.surveys).toHaveLength(1);
+    expect(packet.surveys[0]).toMatchObject({
+      platformToolProgramId: 'prog-legacy',
+      surveyId: 'legacy-feedback:260624911991966',
+      type: 'FEEDBACK',
+      jotformFormId: '260624911991966',
+      source: 'jotform',
+      responseCount: 1,
+    });
+    expect(packet.surveys[0].responses[0]).toMatchObject({
+      userId: 'user-9',
+      submissionId: '501',
+      answers: { q1: 'yes' },
+    });
+  });
+
+  it('does not call Jotform when a Survey row of that type already exists', async () => {
+    const listFormSubmissions = jest.fn().mockResolvedValue([]);
+    const { service } = buildService(
+      [
+        {
+          id: 'prog-1',
+          title: 'Live session',
+          zoomSessionType: 'WEBINAR',
+          startDate: null,
+          zoomMeetingId: null,
+          chmProgramId: null,
+          campaignId,
+          jotformSurveyUrl: 'https://communityhealthmedia.jotform.com/111111111',
+          zoomRecordingSessions: [],
+          webinarParticipantEvents: [],
+          surveys: [
+            {
+              id: 'survey-1',
+              type: 'FEEDBACK',
+              title: 'Feedback',
+              jotformFormId: '111111111',
+              responses: [],
+            },
+          ],
+        },
+      ],
+      listFormSubmissions,
+    );
+
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+    expect(listFormSubmissions).not.toHaveBeenCalled();
+    expect(packet.surveys).toHaveLength(1);
+    expect(packet.surveys[0].surveyId).toBe('survey-1');
+  });
+
+  it('keeps the packet when the legacy Jotform call fails', async () => {
+    const listFormSubmissions = jest
+      .fn()
+      .mockRejectedValue(new Error('jotform down'));
+    const { service } = buildService(
+      [
+        {
+          id: 'prog-legacy',
+          title: 'Old webinar',
+          zoomSessionType: 'WEBINAR',
+          startDate: null,
+          zoomMeetingId: null,
+          chmProgramId: null,
+          campaignId,
+          jotformSurveyUrl: 'https://communityhealthmedia.jotform.com/222222222',
+          zoomRecordingSessions: [],
+          webinarParticipantEvents: [],
+          surveys: [],
+        },
+      ],
+      listFormSubmissions,
+    );
+
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+    expect(packet.sessions).toHaveLength(1);
+    expect(packet.surveys).toEqual([]);
   });
 });
