@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { KolCatalogContentSection } from '../../components/kol/KolCatalogContentSection';
 import { KolPortrait } from '../../components/kol/KolPortrait';
+import { KolPublications } from '../../components/kol/KolPublications';
 import { Button } from '../../components/ui';
 import { useKolProfile } from '../../hooks/useKolProfile';
 import type { DolEntry, DolRegion } from '../../hooks/useKolDirectory';
@@ -201,6 +202,8 @@ export default function KolProfilePage() {
               )}
             </section>
 
+            <KolPublications publications={entry.publications} />
+
             {entry.role?.trim() || entry.education?.trim() ? (
               <section className="grid gap-6 sm:grid-cols-2">
                 {entry.role?.trim() ? (
@@ -346,7 +349,7 @@ export default function KolProfilePage() {
                   <div className="space-y-5 px-6 py-5 text-body-s leading-relaxed text-muted2">
                     <div>
                       <p className="eyebrow text-faint">Who they are</p>
-                      <p className="mt-2">{displayBrief.whoTheyAre}</p>
+                      <p className="mt-2 whitespace-pre-line">{displayBrief.whoTheyAre}</p>
                     </div>
                     {displayBrief.focus ? (
                       <div>
@@ -372,12 +375,14 @@ export default function KolProfilePage() {
                 </article>
               ) : null}
 
+              <KolPublications publications={entry.publications} variant="card" />
+
               <KolCatalogContentSection entry={entry} variant="overview" limit={8} />
 
               {showBioOnBackground ? (
                 <article className="card p-6">
                   <h2 className="display text-body-m text-text">Summary</h2>
-                  <p className="prose-lede mt-3 text-body-s text-muted2">{entry.bio}</p>
+                  <p className="prose-lede mt-3 whitespace-pre-line text-body-s text-muted2">{entry.bio}</p>
                 </article>
               ) : null}
               {vm.researchHighlights ? (

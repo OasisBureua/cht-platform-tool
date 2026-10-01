@@ -1,3 +1,5 @@
+import type { KolPublication } from '../api/kol-network';
+
 /** Optional MediaHub / NPPES-style enrichment (mock today; replace with API later). */
 export type KolIntel = {
   npi?: string;
@@ -45,6 +47,8 @@ export type DolEntry = {
   featured?: boolean;
   /** SCRUM-70: manual sort weight; lower first, null last. */
   displayOrder?: number | null;
+  /** Curated publications, newest first (profile page only). */
+  publications?: KolPublication[];
   intel?: KolIntel;
 };
 
