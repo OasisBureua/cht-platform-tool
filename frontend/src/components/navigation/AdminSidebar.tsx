@@ -1,8 +1,6 @@
-import { useNavigate } from 'react-router-dom';
 import { LayoutGrid } from 'lucide-react';
 import RailSidebar, { type RailEntry } from './RailSidebar';
 import { ADMIN_NAV_ITEMS, isAdminNavGroup } from './adminNavItems';
-import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * The admin console's rail, in the member app's style: Dashboard first,
@@ -26,8 +24,6 @@ const ITEMS: RailEntry[] = [
 ];
 
 export default function AdminSidebar() {
-  const { logout } = useAuth();
-  const navigate = useNavigate();
   return (
     <RailSidebar
       homeTo="/admin"
@@ -36,10 +32,6 @@ export default function AdminSidebar() {
       storageKey="chm-admin-sidebar-collapsed"
       ariaLabel="Admin"
       alwaysVisible
-      onLogout={() => {
-        logout();
-        navigate('/');
-      }}
     />
   );
 }

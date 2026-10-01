@@ -58,3 +58,10 @@
 
 /* Embedded in the CHM admin panel: the platform shell carries the brand and the studio tabs. */
 .embedded header .brand, .embedded header nav.tabs { display: none; }
+
+/* Inside the platform's native studios (?canvas): the artwork only, sized to the frame. */
+.canvas-only, .canvas-only body { background: transparent; height: 100%; overflow: hidden; }
+.canvas-only header, .canvas-only aside, .canvas-only .strip, .canvas-only .meta { display: none !important; }
+.canvas-only main { display: block; height: 100%; }
+.canvas-only section.stage { height: 100% !important; padding: 0 !important; gap: 0 !important; background: transparent !important; }
+.canvas-only canvas { width: 100vw !important; height: 100vh !important; max-width: none !important; max-height: none !important; aspect-ratio: auto !important; object-fit: contain; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; }

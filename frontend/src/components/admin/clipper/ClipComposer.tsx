@@ -11,6 +11,7 @@ import { isCaptionFile, isVideoFile, pickVideo, type Source } from './sources';
  */
 
 const PRESETS: [string, string][] = [
+  ['Moments worth clipping', 'Find the moments worth clipping for TikTok'],
   ['Audience questions', 'Every audience question'],
   ['Split into 3-minute clips', 'Split into 3-minute clips'],
   ['Opening 90 seconds', 'First 90 seconds'],
@@ -109,8 +110,8 @@ export function ClipComposer({ onStart }: { onStart: (source: Source, captions: 
       <div className="text-center">
         <h2 className="display text-display-s text-text md:text-display-m">What should we clip?</h2>
         <p className="prose-lede mx-auto mt-2 max-w-xl text-body-s text-muted2">
-          Describe the moments and add a recording. Times are cut straight away; anything found in the transcript waits
-          for your OK.
+          Describe the moments and add a recording. Times are cut straight away; moments found in the transcript come
+          back scored strong, maybe or skip, with the exact quote, for your OK.
         </p>
       </div>
 
@@ -143,7 +144,7 @@ export function ClipComposer({ onStart }: { onStart: (source: Source, captions: 
               }
             }}
             rows={3}
-            placeholder="Every audience question, or 12:30 to 14:05 ILD monitoring"
+            placeholder="Find the moments worth clipping for TikTok, or 12:30 to 14:05 ILD monitoring"
             className="block w-full resize-none rounded-t-card bg-transparent px-5 pb-2 pt-5 text-body-l text-text outline-none placeholder:text-faint"
           />
         </label>

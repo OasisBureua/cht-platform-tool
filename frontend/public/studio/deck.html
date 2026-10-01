@@ -29,7 +29,7 @@
   .field .sub { font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 14px 0 8px; }
   #fields textarea.lines { font-family: "Geist Mono"; font-size: 12.5px; min-height: 110px; }
 </style>
-<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded')</script>
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded');if(/[?&]canvas\b/.test(location.search))document.documentElement.classList.add('canvas-only')</script>
 </head>
 <body>
 <header>
@@ -330,6 +330,39 @@ window.__studio = {
     state.current = spec.current ?? 0; syncForm(); render();
   },
 };
+
+/* engine API for the platform's native studio pages */
+async function engineImages(list, prev) {
+  const old = prev || [];
+  return (await Promise.all((list || []).map(async (im) => {
+    const hit = old.find((o) => o && o.url === im.url);
+    if (hit) { if (im.zoom != null) hit.zoom = im.zoom; if (im.name) hit.name = im.name; return hit; }
+    const got = await CHM.loadUrl(im.url, im.name);
+    if (got && im.zoom != null) got.zoom = im.zoom;
+    return got;
+  }))).filter(Boolean);
+}
+async function engineThumbs(n, drawOne, w, h, width) {
+  const out = []; const t = document.createElement('canvas'); t.width = width; t.height = Math.round(width * h / w);
+  for (let i = 0; i < n; i++) { const c = drawOne(i); t.getContext('2d').clearRect(0, 0, t.width, t.height); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); out.push(t.toDataURL('image/jpeg', 0.72)); }
+  return out;
+}
+
+window.__engine = {
+  ready: true,
+  meta: () => ({ size: [W, H], types: TYPES, sample: SAMPLE, title: state.title }),
+  async set(s) {
+    if (s.title !== undefined) state.title = s.title;
+    if (s.slides) state.slides = await Promise.all(s.slides.map(async (sl, i) => ({ ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+    if (s.current !== undefined) state.current = Math.min(s.current, state.slides.length - 1);
+    syncForm(); render();
+  },
+  thumbs: (width = 240) => engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, H, width),
+  exportSlide() { $('#exportOne').click(); },
+  exportZip() { $('#exportZip').click(); },
+  exportPdf() { $('#exportPdf').click(); },
+};
+
 CHM.fontsReady().then(() => { syncForm(); render(); });
 </script>
 </body>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   Presentation,
@@ -134,7 +134,14 @@ const bentoPending =
   'card group relative flex min-h-[148px] flex-col overflow-hidden p-5 text-left active:scale-[0.995]';
 
 export default function Dashboard() {
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  // First visit opens the onboarding; read once, so the first paint is already right.
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(() => {
+    try {
+      return typeof window !== 'undefined' && !window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
+    } catch {
+      return false;
+    }
+  });
   const [brokenCarouselThumbIds, setBrokenCarouselThumbIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -148,12 +155,6 @@ export default function Dashboard() {
       next.add(key);
       return next;
     });
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const seen = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (!seen) setIsOnboardingOpen(true);
   }, []);
 
   const closeOnboarding = () => {

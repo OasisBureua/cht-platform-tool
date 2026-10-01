@@ -11,6 +11,11 @@ import {
   findQuestions,
   splitEvenly,
   tightenToSpeech,
+  findMoments,
+  keepRanges,
+  sentencesOf,
+  spokenWords,
+  formatFrom,
 } from '../../components/admin/clipper/clipperCore';
 
 const ZOOM_VTT = `WEBVTT
@@ -176,5 +181,96 @@ Mark Pegram: After it resolves, yes, with close monitoring.
     expect(tightenToSpeech({ start: 400, end: 420 }, QA)).toEqual({ start: 400, end: 420 });
     expect(interpretRequest('tighten to speech', { duration: 600, cues: QA, clipCount: 2 }).tighten).toBe(true);
     expect(interpretRequest('tighten to speech', { duration: 600, cues: [], clipCount: 2 }).tighten).toBeUndefined();
+  });
+});
+
+describe('moments worth clipping (the clip bot rubric)', () => {
+  const TALK = parseCaptions(`WEBVTT
+
+1
+00:00:00.000 --> 00:00:09.000
+Dr. Iyengar: Okay, so, um, can everyone hear me? Let me just share my screen here.
+
+2
+00:00:09.000 --> 00:00:30.000
+Dr. Iyengar: Uh, thanks for having us, it's, you know, great to be here and, um, we'll kind of get into it, so yeah.
+
+3
+00:12:48.000 --> 00:13:05.000
+Dr. Badve: So 85% were negative to begin with, now 85% are positive and only 15 are negative.
+
+4
+00:13:05.000 --> 00:13:29.000
+Dr. Badve: That's a huge population of patients who now qualify for therapy they could never get before.
+
+5
+00:23:08.000 --> 00:23:26.000
+Dr. Badve: If one lesson you want to take out from today's talk, from the pathology side I would say retest the samples.
+
+6
+00:23:26.000 --> 00:23:42.000
+Dr. Badve: An old negative result is not the final answer for a patient with metastatic disease.
+
+7
+00:28:11.000 --> 00:28:40.000
+Dr. Iyengar: Just accepting zero at face value is no longer a good practice.
+
+8
+00:28:40.000 --> 00:29:16.000
+Dr. Iyengar: We should ask pathology to report the ultra-low range, because the trial data shows real benefit there.
+`);
+
+  it('turns cues into sentences with times', () => {
+    const ss = sentencesOf(TALK);
+    expect(ss.find((s) => s.text.startsWith('If one lesson'))?.start).toBe(23 * 60 + 8);
+    expect(ss.every((s) => s.end > s.start)).toBe(true);
+  });
+
+  it('finds the complete, quotable thoughts and skips the setup', () => {
+    const ms = findMoments(TALK);
+    const strong = ms.filter((m) => m.verdict === 'strong');
+    expect(strong.length).toBeGreaterThanOrEqual(2);
+    expect(strong.some((m) => m.quote.startsWith('So 85% were negative'))).toBe(true);
+    expect(ms.some((m) => m.quote.startsWith('Just accepting zero'))).toBe(true);
+    for (const m of ms) {
+      expect(m.end - m.start).toBeGreaterThanOrEqual(20);
+      expect(m.end - m.start).toBeLessThanOrEqual(90);
+      // every quote is a real line of the transcript
+      expect(TALK.some((c) => c.text.includes(m.quote))).toBe(true);
+    }
+    expect(ms.some((m) => m.start < 30 && m.verdict === 'strong')).toBe(false);
+  });
+
+  it('reads output requests the way the trial rounds asked for them', () => {
+    expect(formatFrom('clip this for TikTok').hint.aspect).toBe('9:16');
+    expect(formatFrom('make a stacked view so we see both hosts, karaoke captions').hint).toMatchObject({ framing: 'stacked', captions: 'karaoke' });
+    expect(formatFrom('add a logo').hint.logo).toBe(true);
+    expect(formatFrom('cut filler words and stutters').hint.tighten).toBe(true);
+    const r = interpretRequest('find the moments worth clipping for TikTok', { duration: 1800, cues: TALK, clipCount: 0 });
+    expect(r.kind).toBe('moments');
+    expect(r.format?.aspect).toBe('9:16');
+    expect(interpretRequest('add a logo', { duration: 1800, cues: TALK, clipCount: 1 }).kind).toBe('format');
+  });
+
+  it('cuts filler-only lines and long pauses out of a clip', () => {
+    const cues = parseCaptions(`WEBVTT
+
+1
+00:00:00.000 --> 00:00:04.000
+Ana: The first point.
+
+2
+00:00:04.200 --> 00:00:05.000
+Ana: Um, uh.
+
+3
+00:00:08.000 --> 00:00:12.000
+Ana: The second point.
+`);
+    expect(keepRanges({ start: 0, end: 12 }, cues)).toEqual([
+      { start: 0, end: 4 },
+      { start: 8, end: 12 },
+    ]);
+    expect(spokenWords(cues[2], 10)).toBe(2);
   });
 });

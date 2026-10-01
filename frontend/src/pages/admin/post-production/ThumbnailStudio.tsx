@@ -1,0 +1,104 @@
+import { useEffect, useMemo, useState } from 'react';
+import { Download, Shuffle } from 'lucide-react';
+import { useStudioEngine, type StudioImage, type ThumbEngine } from '../../../components/admin/studio/engine';
+import { creditFor, FACULTY, type Faculty } from '../../../components/admin/studio/faculty';
+import { Canvas, FacultyPicker, ImageChips, Section, Seg, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+
+/**
+ * Post-production › Thumbnails: the CHM Studio thumbnail generator with the
+ * platform's controls. Faculty come from the KOL network's cut-outs, and
+ * picking them writes the credit, so the faces always match the names.
+ */
+
+type Face = StudioImage & { stem?: string };
+const MAX_FACES = 5;
+const START = ['komal-jhaveri', 'aditya-bardia'];
+
+export default function ThumbnailStudio() {
+  const { ref, engine, onLoad, src } = useStudioEngine<ThumbEngine>('index');
+  const [title, setTitle] = useState('Why first-line HER2+ therapy selection matters');
+  const [palette, setPalette] = useState<'disease' | 'v2'>('disease');
+  const [area, setArea] = useState(0);
+  const [layout, setLayout] = useState('auto');
+  const [hero, setHero] = useState('PFS');
+  const [heroMode, setHeroMode] = useState<'fit' | 'stack'>('fit');
+  const [faces, setFaces] = useState<Face[]>(() =>
+    START.map((s) => FACULTY.find((f) => f.stem === s)).filter(Boolean).map((f) => ({ url: f!.url, name: f!.name, stem: f!.stem, zoom: 1 })),
+  );
+  const [ownCredit, setOwnCredit] = useState<string | null>(null);
+  const meta = useMemo(() => engine?.meta(), [engine]);
+
+  const autoCredit = creditFor(faces.filter((f) => f.stem).map((f) => f.name));
+  const credit = ownCredit ?? autoCredit;
+
+  useEffect(() => {
+    if (!engine) return;
+    void engine.set({ title, credit, palette, area, layout, hero, heroMode, faces: faces.map(({ url, name, zoom }) => ({ url, name, zoom })) });
+  }, [engine, title, credit, palette, area, layout, hero, heroMode, faces]);
+
+  const toggleFaculty = (f: Faculty) =>
+    setFaces((fs) => (fs.some((x) => x.url === f.url) ? fs.filter((x) => x.url !== f.url) : [...fs, { url: f.url, name: f.name, stem: f.stem, zoom: 1 }].slice(0, MAX_FACES)));
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
+      <aside className="card order-2 flex min-h-[30rem] flex-col overflow-hidden p-0 xl:sticky xl:top-4 xl:order-1 xl:h-[calc(100dvh-9.5rem)]">
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
+          <TextArea label="Title" value={title} onChange={setTitle} rows={3} />
+
+          <Section label={`Faculty · up to ${MAX_FACES}`} hint="Picking faculty writes the credit, so the faces always match the names.">
+            <FacultyPicker picked={faces.map((f) => f.url)} onPick={toggleFaculty} max={MAX_FACES} />
+            <UploadButton max={MAX_FACES - faces.length} label="Upload a headshot" onImages={(ims) => setFaces((fs) => [...fs, ...ims].slice(0, MAX_FACES))} />
+            <ImageChips
+              images={faces}
+              onRemove={(i) => setFaces((fs) => fs.filter((_, k) => k !== i))}
+              onZoom={(i, z) => setFaces((fs) => fs.map((f, k) => (k === i ? { ...f, zoom: z } : f)))}
+            />
+          </Section>
+
+          <div className="space-y-1.5">
+            <TextField label="Credit" value={credit} onChange={(v) => setOwnCredit(v)} placeholder="Drs. Name & Name" />
+            {ownCredit !== null && autoCredit ? (
+              <button type="button" onClick={() => setOwnCredit(null)} className="meta text-anchor hover:underline">
+                Use the faculty names
+              </button>
+            ) : null}
+          </div>
+
+          <Section label="Colourway">
+            <Seg label="Colourway" value={palette} options={[['disease', 'Disease states'], ['v2', 'Brand v2']]} onChange={setPalette} />
+          </Section>
+          {palette === 'disease' && meta ? (
+            <Section label="Disease state">
+              <Swatches areas={meta.areas} value={area} onChange={setArea} />
+            </Section>
+          ) : null}
+
+          <Section label="Layout">
+            <Seg label="Layout" wrap value={layout} options={(meta?.layouts ?? [['auto', 'Auto']]) as [string, string][]} onChange={setLayout} />
+          </Section>
+          {layout === 'bigword' ? (
+            <Section label="Hero term">
+              <TextField label="Term" value={hero} onChange={setHero} />
+              <Seg label="Hero style" value={heroMode} options={[['fit', 'Overlap'], ['stack', 'Stacked']]} onChange={setHeroMode} />
+            </Section>
+          ) : null}
+        </div>
+      </aside>
+
+      <div className="order-1 min-w-0 space-y-3 xl:order-2">
+        <Canvas frameRef={ref} src={src} onLoad={onLoad} ready={!!engine} aspect={16 / 9} label="Thumbnail preview" />
+        <div className="card flex flex-wrap items-center gap-2 p-2.5">
+          <span className="meta ms-1 text-faint">1280 × 720 · drag a face in the preview to move it</span>
+          <span className="ms-auto flex gap-2">
+            <button type="button" disabled={!engine} onClick={() => engine?.regenerate()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
+              <Shuffle className="size-4" aria-hidden /> New field
+            </button>
+            <button type="button" disabled={!engine} onClick={() => engine?.exportPng()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3 text-body-s font-medium text-ground disabled:opacity-40">
+              <Download className="size-4" aria-hidden /> Export PNG
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}

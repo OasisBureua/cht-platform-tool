@@ -2,14 +2,14 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronDown, LogOut, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { ChevronDown, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 import { ChmMark } from '../brand/ChmMark';
 
 /**
  * The shell's labelled rail, shared by the member app and the admin
- * console: a home row, the current page as a filled pill and Log out
- * pinned to the foot.
+ * console: a home row, the current page as a filled pill and the collapse
+ * control at the foot. Log out lives in the profile menu, top right.
  *
  * The rows share the rail's height evenly rather than packing at the top,
  * so a tall screen doesn't leave a well of empty space at the foot and a
@@ -211,7 +211,6 @@ export default function RailSidebar({
   items,
   storageKey,
   ariaLabel = 'Primary',
-  onLogout,
   alwaysVisible = false,
 }: {
   homeTo: string;
@@ -219,7 +218,6 @@ export default function RailSidebar({
   items: RailEntry[];
   storageKey: string;
   ariaLabel?: string;
-  onLogout: () => void;
   /** Keep the rail on phones too (as icons), for shells with no bottom bar. */
   alwaysVisible?: boolean;
 }) {
@@ -285,16 +283,6 @@ export default function RailSidebar({
       </nav>
 
       <div className={['flex shrink-0 flex-col gap-1 pb-4 pt-2', collapsed ? 'px-2' : 'px-3'].join(' ')}>
-        <button
-          type="button"
-          onClick={onLogout}
-          title="Log out"
-          aria-label={collapsed ? 'Log out' : undefined}
-          className={[ROW, rowLayout, 'text-left', idle].join(' ')}
-        >
-          <LogOut className={ICON} strokeWidth={1.9} aria-hidden />
-          {collapsed ? null : 'Log out'}
-        </button>
         {narrow ? null : (
           <button
             type="button"

@@ -17,6 +17,7 @@ import {
   Search,
   SkipBack,
   SkipForward,
+  Smartphone,
   Trash2,
   Undo2,
 } from 'lucide-react';
@@ -34,12 +35,15 @@ import {
   type Clip,
   type Cue,
   type ProposedClip,
+  type Verdict,
 } from '../../../components/admin/clipper/clipperCore';
 import type { RenderMode } from '../../../components/admin/clipper/renderClip';
 import { ClipComposer } from '../../../components/admin/clipper/ClipComposer';
 import { ClipTimeline } from '../../../components/admin/clipper/ClipTimeline';
 import { pickTranscript, type Source } from '../../../components/admin/clipper/sources';
 import { useFilmstrip, useWaveform, type Thumb } from '../../../components/admin/clipper/useMediaPreview';
+import { DEFAULT_FORMAT, type CutFormat } from '../../../components/admin/clipper/socialCut';
+import { CutPreview, OutputPanel } from '../../../components/admin/clipper/OutputPanel';
 
 /**
  * Post-production › Clipper. Describe the clips, add a recording, then
@@ -57,8 +61,28 @@ import { useFilmstrip, useWaveform, type Thumb } from '../../../components/admin
  */
 
 type TranscriptState = 'none' | 'loading' | 'ready' | 'blocked' | 'error';
-type Panel = 'direct' | 'clips' | 'transcript';
-type ChatMessage = { id: string; role: 'you' | 'assistant'; text: string; proposals?: ProposedClip[]; before?: Clip[]; undone?: boolean };
+type Panel = 'direct' | 'clips' | 'transcript' | 'output';
+type Suggestion = ProposedClip & { verdict?: Verdict; quote?: string };
+type ChatMessage = { id: string; role: 'you' | 'assistant'; text: string; proposals?: Suggestion[]; before?: Clip[]; undone?: boolean };
+
+const FORMAT_KEY = 'chm-clipper-format';
+function loadFormat(): CutFormat {
+  try {
+    const raw = window.localStorage.getItem(FORMAT_KEY);
+    return raw ? { ...DEFAULT_FORMAT, ...(JSON.parse(raw) as Partial<CutFormat>) } : DEFAULT_FORMAT;
+  } catch {
+    return DEFAULT_FORMAT;
+  }
+}
+
+const VERDICT_STYLE: Record<Verdict, string> = {
+  strong: 'bg-anchor text-ground',
+  maybe: 'bg-amber-400/90 text-[#22303C]',
+  skip: 'bg-surface-2 text-faint',
+};
+function VerdictBadge({ v }: { v: Verdict }) {
+  return <span className={['meta inline-flex h-5 items-center rounded-full px-2 capitalize', VERDICT_STYLE[v]].join(' ')}>{v}</span>;
+}
 
 const FRAME = 1 / 30;
 const CLIP_COLORS = ['#2eaacc', '#e2704a', '#8b6ad8', '#2f9e6b', '#d9a13b', '#d0548f'];
@@ -113,6 +137,7 @@ export default function Clipper() {
   const [transcriptQuery, setTranscriptQuery] = useState('');
   const [lineSel, setLineSel] = useState<{ from: number; to: number } | null>(null);
   const [renderMode, setRenderMode] = useState<RenderMode>('fast');
+  const [format, setFormat] = useState<CutFormat>(loadFormat);
   const [rendering, setRendering] = useState<Record<string, number | 'error'>>({});
   const videoRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<Clip | null>(null);
@@ -127,6 +152,14 @@ export default function Clipper() {
   useEffect(() => {
     live.current = { duration, cues, clips };
   }, [duration, cues, clips]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(FORMAT_KEY, JSON.stringify(format));
+    } catch {
+      /* ignore */
+    }
+  }, [format]);
 
   /* keep clips saved per source */
   useEffect(() => {
@@ -151,7 +184,8 @@ export default function Clipper() {
     const ctx = { ...live.current, ...override };
     const result = interpretRequest(text, { duration: ctx.duration, cues: ctx.cues, clipCount: ctx.clips.length });
     let before: Clip[] | undefined;
-    let proposals: ProposedClip[] = result.proposals;
+    let proposals: Suggestion[] = result.proposals;
+    if (result.format) setFormat((f) => ({ ...f, ...result.format }));
     if (result.clearAll) {
       before = ctx.clips;
       setClips([]);
@@ -354,14 +388,16 @@ export default function Clipper() {
     runRequest(text);
     setDraft('');
   };
-  const acceptProposal = (msgId: string, p: ProposedClip) => {
-    addClip({ title: p.title, start: p.start, end: p.end, note: p.reason });
+  const asClip = (p: Suggestion): Omit<Clip, 'id'> => ({ title: p.title, start: p.start, end: p.end, note: p.quote ? `“${p.quote}”` : p.reason, verdict: p.verdict });
+  const acceptProposal = (msgId: string, p: Suggestion) => {
+    addClip(asClip(p));
     setChat((m) => m.map((x) => (x.id === msgId ? { ...x, proposals: x.proposals?.filter((q) => q !== p) } : x)));
   };
-  const acceptAll = (msgId: string, ps: ProposedClip[]) => {
-    const added = ps.map((p) => ({ id: uid(), title: p.title, start: p.start, end: p.end, note: p.reason }));
+  const acceptAll = (msgId: string, ps: Suggestion[]) => {
+    const added = ps.map((p) => ({ id: uid(), ...asClip(p) }));
     setClips((cs) => [...cs, ...added].sort(byStart));
-    setChat((m) => m.map((x) => (x.id === msgId ? { ...x, proposals: [] } : x)));
+    const taken = new Set(ps);
+    setChat((m) => m.map((x) => (x.id === msgId ? { ...x, proposals: x.proposals?.filter((q) => !taken.has(q)) } : x)));
   };
   const undo = (msg: ChatMessage) => {
     if (!msg.before) return;
@@ -431,6 +467,7 @@ export default function Clipper() {
 
   const pendingOut = markOut ?? (markIn != null ? time : null);
   const quick = [
+    cues.length ? 'Moments worth clipping' : null,
     cues.length ? 'Every audience question' : null,
     cues.length && clips.length ? 'Tighten to speech' : null,
     'Split into 3-minute clips',
@@ -466,6 +503,7 @@ export default function Clipper() {
                 ['direct', 'Direct', MessageSquare],
                 ['clips', `Clips${clips.length ? ` (${clips.length})` : ''}`, Scissors],
                 ['transcript', 'Transcript', FileText],
+                ['output', 'Output', Smartphone],
               ] as const
             ).map(([id, label, Icon]) => (
               <button
@@ -475,7 +513,7 @@ export default function Clipper() {
                 aria-selected={panel === id}
                 onClick={() => setPanel(id)}
                 className={[
-                  'relative flex flex-1 items-center justify-center gap-1.5 px-2 py-3 text-body-s transition-colors',
+                  'relative flex flex-1 items-center justify-center gap-1.5 px-1.5 py-3 text-[13px] transition-colors',
                   panel === id ? 'font-medium text-text' : 'text-muted2 hover:text-text',
                 ].join(' ')}
               >
@@ -518,11 +556,18 @@ export default function Clipper() {
                                 <li key={i} className="flex items-start gap-2.5 rounded-[10px] bg-surface-2 p-2">
                                   {th ? <img src={th.url} alt="" className="aspect-video w-16 shrink-0 rounded-[6px] object-cover" /> : null}
                                   <div className="min-w-0 flex-1">
-                                    <p className="truncate text-body-s font-medium text-text">{p.title}</p>
+                                    <p className="flex items-center gap-1.5">
+                                      {p.verdict ? <VerdictBadge v={p.verdict} /> : null}
+                                      <span className="truncate text-body-s font-medium text-text">{p.title}</span>
+                                    </p>
                                     <button type="button" onClick={() => seek(p.start)} className="meta tabular-nums text-anchor hover:underline">
-                                      {formatTime(p.start)} – {formatTime(p.end)}
+                                      {formatTime(p.start, 0)} – {formatTime(p.end, 0)} · {Math.round(p.end - p.start)}s
                                     </button>
-                                    {p.reason ? <p className="mt-0.5 line-clamp-2 text-xs text-muted2">{p.reason}</p> : null}
+                                    {p.quote ? (
+                                      <p className="mt-1 line-clamp-3 text-xs text-dim">“{p.quote}”</p>
+                                    ) : p.reason ? (
+                                      <p className="mt-0.5 line-clamp-2 text-xs text-muted2">{p.reason}</p>
+                                    ) : null}
                                   </div>
                                   <button
                                     type="button"
@@ -536,11 +581,18 @@ export default function Clipper() {
                               );
                             })}
                           </ul>
-                          {m.proposals.length > 1 ? (
-                            <button type="button" onClick={() => acceptAll(m.id, m.proposals ?? [])} className="meta inline-flex items-center gap-1 text-anchor hover:underline">
-                              <Plus className="size-3.5" aria-hidden /> Add all {m.proposals.length}
-                            </button>
-                          ) : null}
+                          <div className="flex flex-wrap gap-3">
+                            {m.proposals.filter((p) => p.verdict === 'strong').length > 1 ? (
+                              <button type="button" onClick={() => acceptAll(m.id, (m.proposals ?? []).filter((p) => p.verdict === 'strong'))} className="meta inline-flex items-center gap-1 text-anchor hover:underline">
+                                <Plus className="size-3.5" aria-hidden /> Add the {m.proposals.filter((p) => p.verdict === 'strong').length} strong ones
+                              </button>
+                            ) : null}
+                            {m.proposals.length > 1 ? (
+                              <button type="button" onClick={() => acceptAll(m.id, m.proposals ?? [])} className="meta inline-flex items-center gap-1 text-anchor hover:underline">
+                                <Plus className="size-3.5" aria-hidden /> Add all {m.proposals.length}
+                              </button>
+                            ) : null}
+                          </div>
                         </div>
                       ) : null}
                     </div>
@@ -604,8 +656,11 @@ export default function Clipper() {
                               <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: CLIP_COLORS[i % CLIP_COLORS.length] }} />
                             )}
                             <button type="button" onClick={() => setSelectedId(open ? null : c.id)} className="min-w-0 flex-1 text-left">
-                              <span className="block truncate text-body-s font-medium text-text">
-                                {i + 1}. {c.title}
+                              <span className="flex items-center gap-1.5">
+                                <span className="truncate text-body-s font-medium text-text">
+                                  {i + 1}. {c.title}
+                                </span>
+                                {c.verdict ? <VerdictBadge v={c.verdict} /> : null}
                               </span>
                               <span className="meta block tabular-nums text-faint">
                                 {formatTime(c.start)} – {formatTime(c.end)} · {formatTime(c.end - c.start)}
@@ -785,15 +840,28 @@ export default function Clipper() {
               )}
             </div>
           ) : null}
+
+          {panel === 'output' ? (
+            <OutputPanel
+              format={format}
+              onChange={(patch) => setFormat((f) => ({ ...f, ...patch }))}
+              cues={cues}
+              clips={clips}
+              selectedId={selectedId}
+              source={source}
+              colors={CLIP_COLORS}
+            />
+          ) : null}
         </aside>
 
         {/* right: the picture, transport and timeline */}
         <div className="order-1 min-w-0 space-y-3 xl:order-2">
-          <div className="overflow-hidden rounded-card bg-black shadow-card">
+          <div className="flex flex-col gap-3 lg:flex-row">
+          <div className="min-w-0 flex-1 overflow-hidden rounded-card bg-black shadow-card">
             <video
               ref={videoRef}
               src={source.url}
-              className="aspect-video max-h-[54vh] w-full bg-black object-contain"
+              className="aspect-video max-h-[min(54vh,32rem)] w-full bg-black object-contain"
               preload="metadata"
               playsInline
               onLoadedMetadata={(e) => {
@@ -809,6 +877,8 @@ export default function Clipper() {
               onSeeked={() => setTime(videoRef.current?.currentTime ?? 0)}
               onClick={togglePlay}
             />
+          </div>
+          <CutPreview videoRef={videoRef} format={format} cues={cues} time={time} playing={playing} onOpen={() => setPanel('output')} />
           </div>
 
           <div className="card flex flex-wrap items-center gap-2 p-2.5">

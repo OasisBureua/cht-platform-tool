@@ -26,7 +26,7 @@
   .toolbar button:disabled { opacity: .4; }
   .field .sub { font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 14px 0 8px; }
 </style>
-<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded')</script>
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded');if(/[?&]canvas\b/.test(location.search))document.documentElement.classList.add('canvas-only')</script>
 </head>
 <body>
 <header>
@@ -597,6 +597,40 @@ window.__studio = {
     [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === state.area));
     syncVisibility(); syncForm(); render();
   },
+};
+
+
+/* engine API for the platform's native studio pages */
+async function engineImages(list, prev) {
+  const old = prev || [];
+  return (await Promise.all((list || []).map(async (im) => {
+    const hit = old.find((o) => o && o.url === im.url);
+    if (hit) { if (im.zoom != null) hit.zoom = im.zoom; if (im.name) hit.name = im.name; return hit; }
+    const got = await CHM.loadUrl(im.url, im.name);
+    if (got && im.zoom != null) got.zoom = im.zoom;
+    return got;
+  }))).filter(Boolean);
+}
+async function engineThumbs(n, drawOne, w, h, width) {
+  const out = []; const t = document.createElement('canvas'); t.width = width; t.height = Math.round(width * h / w);
+  for (let i = 0; i < n; i++) { const c = drawOne(i); t.getContext('2d').clearRect(0, 0, t.width, t.height); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); out.push(t.toDataURL('image/jpeg', 0.72)); }
+  return out;
+}
+
+window.__engine = {
+  ready: true,
+  meta: () => ({ width: W, styles: STYLE_NAME, hints: STYLE_HINT, grounds: GROUNDS, groundHints: GROUND_HINT, areas: AREAS.map((a) => ({ name: a.name, hex: a.bright })), sample: SAMPLE }),
+  height: () => H(),
+  async set(s) {
+    for (const k of ['style', 'format', 'palette', 'area', 'current']) if (s[k] !== undefined) state[k] = s[k];
+    if (s.grounds) Object.assign(state.grounds, s.grounds);
+    if (s.slides) state.slides = await Promise.all(s.slides.map(async (sl, i) => ({ kind: 'point', eyebrow: '', headline: '', body: '', credit: '', unit: '', ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+    state.current = Math.min(state.current, state.slides.length - 1);
+    syncVisibility(); syncForm(); render();
+  },
+  thumbs: (width = 216) => { const h = H(); off.width = W; off.height = h; const oc = off.getContext('2d'); return engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, h, width); },
+  exportSlide() { $('#exportOne').click(); },
+  exportZip() { $('#exportAll').click(); },
 };
 
 CHM.fontsReady().then(() => { syncVisibility(); syncForm(); render(); });

@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;900&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet" />
 <link rel="stylesheet" href="studio.css" />
-<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded')</script>
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded');if(/[?&]canvas\b/.test(location.search))document.documentElement.classList.add('canvas-only')</script>
 </head>
 <body>
 <header>
@@ -452,6 +452,26 @@ window.__studio = {
     [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === state.area));
     render();
   },
+};
+
+
+window.__engine = {
+  ready: true,
+  meta: () => ({ size: [canvas.width, canvas.height], areas: AREAS.map(([name, hex]) => ({ name, hex })), layouts: Object.entries(LAYOUT_NAME) }),
+  async set(s) {
+    for (const k of ['title', 'credit', 'hero', 'heroMode', 'palette', 'area', 'layout', 'seed']) if (s[k] !== undefined) state[k] = s[k];
+    if (s.faces) {
+      const prev = state.faces;
+      state.faces = (await Promise.all(s.faces.map((f) => {
+        const hit = prev.find((p) => p.url === f.url);
+        if (hit) { hit.zoom = f.zoom ?? hit.zoom; hit.name = f.name ?? hit.name; return hit; }
+        return new Promise((res) => { const img = new Image(); img.onload = () => res({ img, url: f.url, name: f.name || '', zoom: f.zoom ?? 1, dx: 0, dy: 0 }); img.onerror = () => res(null); img.src = f.url; });
+      }))).filter(Boolean);
+    }
+    render();
+  },
+  regenerate() { state.seed = (state.seed * 7 + 13) % 4294967296; render(); return state.seed; },
+  exportPng() { $('#export').click(); },
 };
 
 /* first paint waits for Geist, so the title never measures a fallback */

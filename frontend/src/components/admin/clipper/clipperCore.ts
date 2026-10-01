@@ -4,12 +4,16 @@
  * by unit tests (src/test/components/clipper.test.ts).
  */
 
+export type Verdict = 'strong' | 'maybe' | 'skip';
+
 export type Clip = {
   id: string;
   title: string;
   start: number;
   end: number;
   note?: string;
+  /** Set when the clip came from the moment finder. */
+  verdict?: Verdict;
 };
 
 export type Cue = {
@@ -216,11 +220,209 @@ export function tightenToSpeech<T extends { start: number; end: number }>(clip: 
   return end - start > 0.5 ? { ...clip, start, end } : clip;
 }
 
-export type AssistantKind = 'help' | 'clear' | 'remove' | 'times' | 'split' | 'search' | 'questions' | 'tighten' | 'none';
+/* ── moments worth clipping ────────────────────────────────────── */
+
+export type Sentence = { start: number; end: number; text: string; speaker?: string };
+
+/**
+ * The transcript as sentences with times. Cues are split on sentence ends,
+ * with time shared out by length, and a sentence that runs across cues is
+ * joined back up when the same person keeps talking.
+ */
+export function sentencesOf(cues: Cue[]): Sentence[] {
+  const out: Sentence[] = [];
+  let open: Sentence | null = null;
+  for (const c of cues) {
+    const text = c.text.replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    if (open && (open.speaker !== c.speaker || c.start - open.end > 1.5)) {
+      out.push(open);
+      open = null;
+    }
+    const pieces = text.match(/[^.!?]+[.!?]+["”’)]*\s*|[^.!?]+$/g) ?? [text];
+    const span = Math.max(0.01, c.end - c.start);
+    let at = 0;
+    for (const raw of pieces) {
+      const piece = raw.trim();
+      const from = c.start + (at / text.length) * span;
+      at += raw.length;
+      const to = c.start + (Math.min(at, text.length) / text.length) * span;
+      if (!piece) continue;
+      if (open) {
+        open.text += ` ${piece}`;
+        open.end = to;
+      } else open = { start: from, end: to, text: piece, speaker: c.speaker };
+      if (/[.!?]["”’)]*$/.test(piece)) {
+        out.push(open);
+        open = null;
+      }
+    }
+  }
+  if (open) out.push(open);
+  return out;
+}
+
+const FILLER = /\b(um+|uh+|erm+|ah+|hmm+|you know|kind of|sort of|i mean)\b/gi;
+const HOOK = /\b(lesson|the key|most important|biggest|never|always|no longer|malpractice|huge|game[- ]?changer|remember|mistake|myth|surpris\w*|changed|changing|breakthrough|life[- ]?saving|retest|bottom line|take[- ]?away|what matters|the problem|the reason|the truth|nobody|everyone|every patient|stop|don'?t)\b/i;
+const SETUP = /^(so,? (today|let'?s|we'?re going)|um|uh|okay|ok|alright|all right|thank you|thanks|next slide|can you (hear|see)|let me (share|pull|just)|good (morning|afternoon|evening)|welcome|hi,? everyone|hello|yeah)\b/i;
+const CLAIM = /(\d|%|\b(more|less|better|worse|than|should|must|need to|have to|important|key|only|every|never|always|positive|negative|survival|response|benefit|risk)\b)/i;
+const SOFT_END = /\b(so|and|but|or|right|yeah|okay|you know|anyway|stuff|things)[.!?]*$/i;
+
+const words = (s: string) => s.split(/\s+/).filter(Boolean);
+
+export type Moment = ProposedClip & { verdict: Verdict; quote: string; speaker?: string; score: number; why: string[] };
+
+function scoreRun(run: Sentence[]): { score: number; quote: string; why: string[] } {
+  const first = run[0].text;
+  const all = run.map((s) => s.text).join(' ');
+  const n = words(all).length;
+  const why: string[] = [];
+  let score = 0;
+  if (SETUP.test(first)) {
+    score -= 3;
+    why.push('opens on setup');
+  } else if (/^(and|but|because|or|which)\b/i.test(first)) {
+    score -= 1.5;
+    why.push('starts mid-thought');
+  } else {
+    if (/\d/.test(first)) score += 2;
+    if (HOOK.test(first)) score += 2;
+    if (words(first).length <= 22) score += 1;
+    if (score >= 2) why.push('hooks in the first line');
+  }
+  const claims = run.filter((s) => CLAIM.test(s.text)).length;
+  score += Math.min(3, claims);
+  if (claims >= 2) why.push('makes a concrete claim');
+  // the quote: the strongest single line, kept exactly as said
+  let quote = run[0].text, best = -Infinity;
+  for (const s of run) {
+    const w = words(s.text).length;
+    const fill = (s.text.match(FILLER) ?? []).length;
+    const v = (w >= 8 && w <= 32 ? 2 : 0) + (/\d|%/.test(s.text) ? 1.5 : 0) + (HOOK.test(s.text) ? 1.5 : 0) - fill;
+    if (v > best) {
+      best = v;
+      quote = s.text;
+    }
+  }
+  if (best >= 3) {
+    score += 2;
+    why.push('has a quotable line');
+  }
+  if (SOFT_END.test(run[run.length - 1].text)) {
+    score -= 2;
+    why.push('soft ending');
+  } else score += 1;
+  const fillers = (all.match(FILLER) ?? []).length;
+  const rate = n ? (fillers / n) * 100 : 0;
+  if (rate > 3) {
+    score -= Math.min(3, rate / 2);
+    why.push('a lot of filler');
+  }
+  const len = run[run.length - 1].end - run[0].start;
+  if (len >= 30 && len <= 60) score += 1;
+  return { score, quote, why };
+}
+
+function momentTitle(quote: string): string {
+  const num = /(\d[\d.,]*\s*%|\b\d[\d.,]*\b)\s+(\S+)(?:\s+(\S+))?/.exec(quote);
+  const clean = (s: string) => s.replace(FILLER, '').replace(/[“”"]/g, '').replace(/\s+/g, ' ').trim();
+  if (num) return clean(`${num[1]} ${num[2]}${num[3] ? ` ${num[3]}` : ''}`).replace(/[,.;:!?]+$/, '');
+  const w = words(clean(quote)).slice(0, 6).join(' ').replace(/[,.;:!?]+$/, '');
+  return w.charAt(0).toUpperCase() + w.slice(1) + (words(quote).length > 6 ? '…' : '');
+}
+
+/**
+ * Moments worth clipping, scored the way the CHM clip bot does: a complete
+ * idea that stands alone, a hook in the first line, one claim, and a
+ * natural ending on a sentence boundary. Tangents, setup chatter and soft
+ * endings score maybe or skip. Every quote is a real line of the
+ * transcript; nothing is written for the speaker.
+ */
+export function findMoments(cues: Cue[], opts: { minLen?: number; maxLen?: number; limit?: number } = {}): Moment[] {
+  const minLen = opts.minLen ?? 20, maxLen = opts.maxLen ?? 90, limit = opts.limit ?? 8;
+  const ss = sentencesOf(cues);
+  const cands: Moment[] = [];
+  for (let i = 0; i < ss.length; i++) {
+    let best: Moment | null = null;
+    for (let j = i; j < ss.length; j++) {
+      if (ss[j].speaker !== ss[i].speaker || (j > i && ss[j].start - ss[j - 1].end > 4)) break;
+      const len = ss[j].end - ss[i].start;
+      if (len > maxLen) break;
+      if (len < minLen) continue;
+      const run = ss.slice(i, j + 1);
+      const s = scoreRun(run);
+      if (!best || s.score > best.score) {
+        best = {
+          title: momentTitle(s.quote),
+          start: ss[i].start,
+          end: ss[j].end,
+          quote: s.quote,
+          speaker: ss[i].speaker,
+          score: s.score,
+          why: s.why,
+          verdict: 'skip',
+          reason: '',
+        };
+      }
+    }
+    if (best) cands.push(best);
+  }
+  cands.sort((a, b) => b.score - a.score || a.start - b.start);
+  const picked: Moment[] = [];
+  for (const c of cands) {
+    // back-to-back moments are fine; real overlaps are not
+    if (picked.some((p) => c.start < p.end - 0.5 && c.end > p.start + 0.5)) continue;
+    c.verdict = c.score >= 6 ? 'strong' : c.score >= 3 ? 'maybe' : 'skip';
+    c.reason = `${c.speaker ? `${c.speaker}: ` : ''}“${c.quote}”`;
+    picked.push(c);
+    if (picked.length >= limit) break;
+  }
+  return picked;
+}
+
+/**
+ * The parts of a clip worth keeping when pauses and filler are cut: the
+ * lines inside it, minus lines that are only filler, with gaps longer
+ * than `maxGap` closed up.
+ */
+export function keepRanges(clip: { start: number; end: number }, cues: Cue[], maxGap = 0.6): { start: number; end: number }[] {
+  const inside = cues
+    .filter((c) => c.end > clip.start && c.start < clip.end)
+    .filter((c) => c.text.replace(FILLER, '').replace(/[^\p{L}\p{N}]/gu, '').length > 0)
+    .map((c) => ({ start: Math.max(clip.start, c.start), end: Math.min(clip.end, c.end) }));
+  if (!inside.length) return [{ start: clip.start, end: clip.end }];
+  const out = [{ ...inside[0] }];
+  for (const r of inside.slice(1)) {
+    const last = out[out.length - 1];
+    if (r.start - last.end <= maxGap) last.end = Math.max(last.end, r.end);
+    else out.push({ ...r });
+  }
+  return out;
+}
+
+/** How far through a cue's words the speaker is at `t`, for karaoke captions. */
+export function spokenWords(cue: Cue, t: number): number {
+  const n = words(cue.text).length;
+  if (t <= cue.start) return 0;
+  if (t >= cue.end) return n;
+  return Math.floor(((t - cue.start) / (cue.end - cue.start)) * n + 0.5);
+}
+
+export type FormatHint = {
+  aspect?: '9:16' | '1:1' | '16:9';
+  captions?: 'off' | 'burned' | 'karaoke';
+  framing?: 'full' | 'speaker' | 'stacked';
+  logo?: boolean;
+  tighten?: boolean;
+};
+
+export type AssistantKind = 'help' | 'clear' | 'remove' | 'times' | 'split' | 'search' | 'questions' | 'tighten' | 'moments' | 'format' | 'none';
 
 export type AssistantResult = {
   reply: string;
-  proposals: ProposedClip[];
+  proposals: (ProposedClip | Moment)[];
+  /** Output changes asked for in the same message (vertical, captions, logo…). */
+  format?: FormatHint;
   /** What the request was. Times and splits are applied straight away; finds come back to accept. */
   kind?: AssistantKind;
   removeIndexes?: number[];
@@ -229,9 +431,55 @@ export type AssistantResult = {
 };
 
 export const ASSISTANT_HELP =
-  'Give me times and I’ll cut them: “12:30 to 14:05 ILD monitoring”, “at 3:10 for 45s”, “first 90 seconds” or “split into 3-minute clips”. ' +
-  'With a transcript I can find moments for you to check: “find olanzapine”, “every audience question”. ' +
-  '“Tighten to speech”, “remove clip 2” and “clear all” work too.';
+  'With a transcript I can find the moments worth clipping, scored strong, maybe or skip with the exact quote: “moments for TikTok”. ' +
+  'Or search it: “find olanzapine”, “every audience question”. ' +
+  'Give me times and I’ll cut them: “12:30 to 14:05 ILD monitoring”, “split into 3-minute clips”. ' +
+  'For the output: “vertical”, “focus on the speaker”, “stacked view”, “karaoke captions”, “add the logo”, “cut fillers”.';
+
+/** Output requests in plain words: vertical, stacked, karaoke, logo… */
+export function formatFrom(msg: string): { hint: FormatHint; said: string[] } {
+  const hint: FormatHint = {};
+  const said: string[] = [];
+  if (/\b(tik ?tok|reels?|shorts|vertical|9[:x]16|portrait)\b/i.test(msg)) {
+    hint.aspect = '9:16';
+    said.push('vertical 9:16');
+  } else if (/\b(square|1[:x]1)\b/i.test(msg)) {
+    hint.aspect = '1:1';
+    said.push('square');
+  } else if (/\b(widescreen|landscape|16[:x]9|horizontal)\b/i.test(msg)) {
+    hint.aspect = '16:9';
+    said.push('widescreen');
+  }
+  if (/\b(stack(ed)?|both (hosts|speakers|people|doctors)|split screen)\b/i.test(msg)) {
+    hint.framing = 'stacked';
+    said.push('stacked view');
+  } else if (/\b(focus|follow|track)\w* (on )?(the )?(speaker|whoever|person talking)|speaker focus\b/i.test(msg)) {
+    hint.framing = 'speaker';
+    said.push('speaker focus');
+  }
+  if (/\bkaraoke\b/i.test(msg)) {
+    hint.captions = 'karaoke';
+    said.push('karaoke captions');
+  } else if (/\b(no|without|turn off|remove) captions?\b/i.test(msg)) {
+    hint.captions = 'off';
+    said.push('no captions');
+  } else if (/\b(burn(ed)?[- ]in|captions?|subtitles?)\b/i.test(msg)) {
+    hint.captions = 'burned';
+    said.push('captions burned in');
+  }
+  if (/\b(no|without|remove|drop) (the )?logo\b/i.test(msg)) {
+    hint.logo = false;
+    said.push('no logo');
+  } else if (/\blogo\b/i.test(msg)) {
+    hint.logo = true;
+    said.push('the CHM logo');
+  }
+  if (/\b(fillers?|stutters?|ums?|uhs?|unbroken|dead air|pauses)\b/i.test(msg) && !/\btighten\b/i.test(msg)) {
+    hint.tighten = true;
+    said.push('filler lines and pauses cut');
+  }
+  return { hint, said };
+}
 
 /**
  * Reads a request typed into the assistant. Deterministic on purpose:
@@ -244,12 +492,45 @@ export function interpretRequest(
   message: string,
   ctx: { duration: number; cues: Cue[]; clipCount: number },
 ): AssistantResult {
+  const result = interpretClips(message, ctx);
+  if (result.format) return result;
+  const { hint, said } = formatFrom(message);
+  return said.length ? { ...result, format: hint } : result;
+}
+
+function interpretClips(
+  message: string,
+  ctx: { duration: number; cues: Cue[]; clipCount: number },
+): AssistantResult {
   const msg = message.trim();
   if (!msg) return { reply: ASSISTANT_HELP, proposals: [], kind: 'help' };
   if (/^(help|\?|what can you do)/i.test(msg)) return { reply: ASSISTANT_HELP, proposals: [], kind: 'help' };
   if (/^(clear|remove|delete)\s+(all|every|everything)/i.test(msg)) {
     return { reply: 'Cleared every clip.', proposals: [], clearAll: true, kind: 'clear' };
   }
+  const fmt = formatFrom(msg);
+  const asksMoments = /\b(moments?|worth (clipping|cutting)|best (clips|bits|parts)|highlights?|clip (it|this|the video) for|social clips?)\b/i.test(msg) ||
+    (fmt.hint.aspect === '9:16' && !/\d{1,2}:\d{2}/.test(msg) && !/\bfind\b/i.test(msg) && msg.split(/\s+/).length <= 12 && /\b(clip|cut|make|find|get|pull)\b/i.test(msg));
+  if (asksMoments) {
+    if (!ctx.cues.length) return { reply: 'I need the transcript to find moments. Add one in the Transcript tab.', proposals: [], kind: 'none', format: fmt.hint };
+    const ms = findMoments(ctx.cues);
+    const strong = ms.filter((m) => m.verdict === 'strong').length;
+    const maybe = ms.filter((m) => m.verdict === 'maybe').length;
+    const out = fmt.said.length ? ` Output set to ${fmt.said.join(', ')}.` : '';
+    return ms.length
+      ? {
+          reply: `Scored the recording for complete, quotable thoughts: ${strong} strong, ${maybe} maybe. Each has a hook up front and ends on a sentence; every quote is a real line.${out}`,
+          proposals: ms.filter((m) => m.verdict !== 'skip'),
+          kind: 'moments',
+          format: fmt.hint,
+        }
+      : { reply: 'Nothing in this transcript runs 20 to 90 seconds as one complete thought.', proposals: [], kind: 'moments', format: fmt.hint };
+  }
+  if (fmt.said.length && !RANGE.test(msg) && !/\b(find|search|where|split|every|questions?)\b/i.test(msg)) {
+    RANGE.lastIndex = 0;
+    return { reply: `Done. Output set to ${fmt.said.join(', ')}.`, proposals: [], kind: 'format', format: fmt.hint };
+  }
+  RANGE.lastIndex = 0;
   if (/\b(tighten|trim (?:them |clips |it )?to (?:the )?speech|cut (?:the )?(?:dead air|silences?))\b/i.test(msg)) {
     if (!ctx.cues.length) return { reply: 'I need the transcript to see where people speak. Add one in the Transcript tab.', proposals: [], kind: 'none' };
     if (!ctx.clipCount) return { reply: 'There are no clips to tighten yet.', proposals: [], kind: 'none' };
