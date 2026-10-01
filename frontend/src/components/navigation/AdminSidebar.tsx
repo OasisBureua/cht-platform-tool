@@ -50,15 +50,14 @@ function ToolsNavGroup({ group }: { group: AdminNavGroup }) {
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setOpen(false);
-  }, [location.pathname]);
+  }
 
   useLayoutEffect(() => {
-    if (!open || !buttonRef.current) {
-      setMenuPos(null);
-      return;
-    }
+    if (!open || !buttonRef.current) return;
     const update = () => {
       const rect = buttonRef.current?.getBoundingClientRect();
       if (!rect) return;

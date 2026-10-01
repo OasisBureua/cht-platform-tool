@@ -151,7 +151,9 @@ export class StripeService {
       },
     });
     if (!link.url) {
-      throw new BadRequestException('Stripe did not return an Account Link URL');
+      throw new BadRequestException(
+        'Stripe did not return an Account Link URL',
+      );
     }
     return { url: link.url };
   }

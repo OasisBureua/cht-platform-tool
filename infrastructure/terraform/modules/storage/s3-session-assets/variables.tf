@@ -42,3 +42,9 @@ variable "replication_destination_kms_key_arn" {
   type        = string
   default     = ""
 }
+
+variable "vtt_object_ingest_lambda_arn" {
+  description = "Hub Lambda ARN for Zoom VTT ObjectCreated notify (empty = no notification). Example: contenthub-dev-sync-vtt-object-ingest."
+  type        = string
+  default     = ""
+}

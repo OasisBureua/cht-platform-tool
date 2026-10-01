@@ -1,7 +1,7 @@
 import { cn } from './cn';
 
 /** "Dr. Jane Q. Public, MD" → "JP". Strips honorific + trailing credentials. */
-export function nameInitials(name: string): string {
+function nameInitials(name: string): string {
   const clean = name
     .replace(/^dr\.?\s+/i, '')
     .split(',')[0]

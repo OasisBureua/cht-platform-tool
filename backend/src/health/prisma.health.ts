@@ -21,7 +21,7 @@ export class PrismaHealthIndicator {
       return {
         [key]: {
           status: 'down',
-          message: error.message,
+          message: (error as Error).message,
         },
       };
     }

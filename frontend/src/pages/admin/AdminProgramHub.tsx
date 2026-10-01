@@ -55,6 +55,8 @@ export default function AdminProgramHub() {
     enabled: !!programId,
   });
 
+  const programTitle = typeof program?.title === 'string' ? program.title : '';
+
   const zoomTypeForQueries = program
     ? String((program as Record<string, unknown>).zoomSessionType || 'WEBINAR')
     : null;
@@ -64,7 +66,10 @@ export default function AdminProgramHub() {
     queryFn: () => adminApi.listProgramRegistrations(programId!),
     enabled: !!programId && !!program,
   });
-  const registrations = registrationPayload?.registrations ?? [];
+  const registrations = useMemo(
+    () => registrationPayload?.registrations ?? [],
+    [registrationPayload],
+  );
   const intakeQuestions = registrationPayload?.surveys?.intake?.questions;
   const feedbackQuestions = registrationPayload?.surveys?.feedback?.questions;
   const intakeSurveyId = registrationPayload?.surveys?.intake?.id;
@@ -102,7 +107,7 @@ export default function AdminProgramHub() {
       const blob = await adminApi.downloadSurveyResponsesCsv(surveyId);
       downloadBlob(
         blob,
-        surveyResponsesDownloadFilename(program?.title ?? '', kind),
+        surveyResponsesDownloadFilename(programTitle, kind),
       );
     } finally {
       setCsvDownloading(null);
@@ -1065,7 +1070,7 @@ export default function AdminProgramHub() {
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-foreground">
-                        {adminSurveyDisplayTitle(program?.title, 'INTAKE')}
+                        {adminSurveyDisplayTitle(programTitle, 'INTAKE')}
                       </h3>
                       {intakeSurveyId ? (
                         <div className="flex flex-wrap gap-2">
@@ -1149,7 +1154,7 @@ export default function AdminProgramHub() {
                   <div>
                     <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                       <h3 className="text-sm font-semibold text-foreground">
-                        {adminSurveyDisplayTitle(program?.title, 'FEEDBACK')}
+                        {adminSurveyDisplayTitle(programTitle, 'FEEDBACK')}
                       </h3>
                       {feedbackSurveyId ? (
                         <div className="flex flex-wrap gap-2">

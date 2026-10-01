@@ -18,7 +18,7 @@ export default function AdminAuditLog() {
       }),
   });
 
-  const items = data?.items ?? [];
+  const items = useMemo(() => data?.items ?? [], [data]);
   const resources = useMemo(() => {
     const set = new Set<string>();
     for (const row of items) {

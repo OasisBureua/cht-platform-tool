@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useCallback, useMemo, useState } from 'react';
-import { catalogApi, type MediaHubClip } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
+import { catalogApi, type ContentHubClip } from '../../api/catalog';
+import { getShortClipId, getContentHubThumbnail, shouldSurfaceCatalogClip } from '../../utils/clipUrl';
 import {
   type CarouselConfig,
   getCarousel,
@@ -83,8 +83,8 @@ export function BiomarkerConversationRow({
     staleTime: 5 * 60 * 1000,
   });
 
-  const clips: MediaHubClip[] = useMemo(() => {
-    const surfaced = (data?.items ?? []).filter(shouldSurfaceCatalogClip);
+  const clips: ContentHubClip[] = useMemo(() => {
+    const surfaced = (data?.items ?? []).filter((clip) => shouldSurfaceCatalogClip(clip));
     if (!hideBrokenCatalogThumbnails || brokenThumbIds.size === 0) return surfaced;
     return surfaced.filter((c) => !brokenThumbIds.has(c.id));
   }, [data?.items, hideBrokenCatalogThumbnails, brokenThumbIds]);
@@ -143,7 +143,7 @@ export function BiomarkerConversationRow({
                 : `/catalog/clip/${getShortClipId(c.id)}`
             }
             title={c.title}
-            imageUrl={getMediaHubThumbnail(c)}
+            imageUrl={getContentHubThumbnail(c)}
             description={
               c.doctors && c.doctors.length > 0
                 ? c.doctors.slice(0, 2).join(' · ')
@@ -175,7 +175,7 @@ export function BiomarkerConversationRow({
               : `/catalog/clip/${getShortClipId(c.id)}`
           }
           title={c.title}
-          imageUrl={getMediaHubThumbnail(c)}
+          imageUrl={getContentHubThumbnail(c)}
           description={
             c.doctors && c.doctors.length > 0
               ? c.doctors.slice(0, 2).join(' · ')
@@ -195,9 +195,3 @@ export function BiomarkerConversationRow({
 export const BIOMARKER_CAROUSEL_IDS: string[] = HCP_CAROUSELS.filter((c) =>
   c.id.startsWith('hcp-home-') && c.id !== 'hcp-home-recently-added',
 ).map((c) => c.id);
-
-/** Public marketing home biomarker strips (catalog clips by tag, not YouTube playlists). */
-export const ANON_HOME_BIOMARKER_CAROUSEL_IDS: string[] = [
-  'anon-home-her2',
-  'anon-home-hr',
-];

@@ -8,7 +8,7 @@ import { cn } from './cn';
  * `accent` / `positive` / `outline` are kept for existing callers
  * (AdminKolDirectory renders `accent` for the "New" marker).
  */
-export const badgeVariants = cva(
+const badgeVariants = cva(
   'inline-flex items-center gap-1 rounded-pill border px-2.5 py-0.5 text-xs font-semibold transition-colors duration-200',
   {
     variants: {

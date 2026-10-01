@@ -47,7 +47,8 @@ export interface CognitoIdTokenClaims {
   given_name?: string;
   family_name?: string;
   name?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   aud?: string | string[];
   iss?: string;
   exp?: number;
@@ -59,7 +60,8 @@ export interface CognitoIdTokenClaims {
 export interface CognitoAccessTokenClaims {
   sub: string;
   client_id?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   iss?: string;
   exp?: number;
   username?: string;
@@ -187,7 +189,9 @@ export class CognitoService {
   }
 
   private get hostedUiBaseUrl(): string {
-    const configured = this.configService.get<string>('cognito.hostedUiBaseUrl');
+    const configured = this.configService.get<string>(
+      'cognito.hostedUiBaseUrl',
+    );
     if (configured) return configured.replace(/\/$/, '');
     const domain = this.configService.get<string>('cognito.domainPrefix');
     const region = this.region;
@@ -226,6 +230,60 @@ export class CognitoService {
   }
 
   /**
+   * Verify a Cognito M2M (client_credentials) access token for S2S export.
+   * Does not accept the public cht-web client — only configured M2M client IDs.
+   */
+  async verifyM2mAccessToken(
+    accessToken: string,
+    opts: {
+      allowedClientIds: string[];
+      requiredScope: string;
+    },
+  ): Promise<CognitoAccessTokenClaims> {
+    const allowed = opts.allowedClientIds
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (allowed.length === 0) {
+      throw new Error('No M2M export clients configured');
+    }
+    const requiredScope = opts.requiredScope.trim();
+    if (!requiredScope) {
+      throw new Error('M2M required scope is empty');
+    }
+
+    const claims = await this.verifyJwt(accessToken, {
+      expectedTokenUse: 'access',
+    });
+    const accessClaims = claims as CognitoAccessTokenClaims;
+    if (!accessClaims.client_id || !allowed.includes(accessClaims.client_id)) {
+      this.logger.warn(
+        `[Cognito] M2M reject reason=client_id_mismatch got=${accessClaims.client_id || '(none)'} allowed=${allowed.join(',')}`,
+      );
+      throw new Error('Invalid M2M access token client_id');
+    }
+
+    const scopes = (accessClaims.scope || '')
+      .split(/\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (!scopes.includes(requiredScope)) {
+      this.logger.warn(
+        `[Cognito] M2M reject reason=missing_scope required=${requiredScope} got=${scopes.join(' ') || '(none)'} clientId=${accessClaims.client_id}`,
+      );
+      const err = new Error(
+        `Missing required scope ${requiredScope}`,
+      ) as Error & { code?: string };
+      err.code = 'MISSING_SCOPE';
+      throw err;
+    }
+
+    this.logger.debug(
+      `[Cognito] M2M token ok clientId=${accessClaims.client_id} scope=${scopes.join(' ')}`,
+    );
+    return accessClaims;
+  }
+
+  /**
    * Verify both tokens returned by Cognito before session creation.
    */
   async verifyTokenPair(tokens: CognitoTokens): Promise<CognitoIdTokenClaims> {
@@ -246,7 +304,9 @@ export class CognitoService {
       audience?: string;
     },
   ): Promise<jwt.JwtPayload> {
-    if (!this.userPoolId || !this.clientId) {
+    // JWKS / iss checks need the pool; client_id is enforced by callers
+    // (verifyAccessToken → cht-web, verifyM2mAccessToken → M2M clients).
+    if (!this.userPoolId) {
       throw new Error('Cognito is not configured');
     }
 
@@ -587,7 +647,9 @@ export class CognitoService {
   /**
    * Start TOTP enrollment. Returns the shared secret for an authenticator app.
    */
-  async associateSoftwareToken(accessToken: string): Promise<{ secretCode: string }> {
+  async associateSoftwareToken(
+    accessToken: string,
+  ): Promise<{ secretCode: string }> {
     const response = await this.client.send(
       new AssociateSoftwareTokenCommand({ AccessToken: accessToken }),
       { abortSignal: this.cognitoAbortSignal() },
@@ -655,10 +717,7 @@ export class CognitoService {
   }
 
   /** Confirm phone_number with the SMS code Cognito sent. */
-  async verifyPhoneAttribute(
-    accessToken: string,
-    code: string,
-  ): Promise<void> {
+  async verifyPhoneAttribute(accessToken: string, code: string): Promise<void> {
     await this.client.send(
       new VerifyUserAttributeCommand({
         AccessToken: accessToken,
@@ -697,8 +756,7 @@ export class CognitoService {
       );
       const settings = user.UserMFASettingList ?? [];
       return (
-        settings.includes('SOFTWARE_TOKEN_MFA') ||
-        settings.includes('SMS_MFA')
+        settings.includes('SOFTWARE_TOKEN_MFA') || settings.includes('SMS_MFA')
       );
     } catch (err) {
       this.logger.warn(
@@ -987,9 +1045,7 @@ export class CognitoService {
     };
   }
 
-  private toTokens(
-    result?: AuthenticationResultType,
-  ): CognitoTokens | null {
+  private toTokens(result?: AuthenticationResultType): CognitoTokens | null {
     if (!result?.IdToken || !result.AccessToken) return null;
     return {
       idToken: result.IdToken,

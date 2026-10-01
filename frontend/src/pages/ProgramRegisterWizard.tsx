@@ -97,11 +97,12 @@ export default function ProgramRegisterWizard() {
     refetchInterval: (q) => (q.state.data?.status === 'PENDING' ? 4000 : false),
   });
 
-  useEffect(() => {
-    if (myRegistration?.intakeSubmissionId?.trim()) {
-      setIntakeSubmissionId(myRegistration.intakeSubmissionId.trim());
-    }
-  }, [myRegistration?.intakeSubmissionId]);
+  const serverIntakeId = myRegistration?.intakeSubmissionId?.trim() || undefined;
+  const [prevServerIntakeId, setPrevServerIntakeId] = useState<string | undefined>(undefined);
+  if (serverIntakeId !== prevServerIntakeId) {
+    setPrevServerIntakeId(serverIntakeId);
+    if (serverIntakeId) setIntakeSubmissionId(serverIntakeId);
+  }
 
   const { data: slots = [] } = useQuery({
     queryKey: ['program-slots', id],
@@ -128,13 +129,14 @@ export default function ProgramRegisterWizard() {
     enabled: !!userId && !!program?.intakeSurveyId,
   });
 
-  useEffect(() => {
-    if (!intakeMyResponse?.submitted) return;
-    const sid = intakeMyResponse.submissionId ?? intakeMyResponse.responseId;
-    if (sid?.trim()) {
-      setIntakeSubmissionId((prev) => prev?.trim() || sid.trim());
-    }
-  }, [intakeMyResponse]);
+  const [intakeResponseFrom, setIntakeResponseFrom] = useState<typeof intakeMyResponse>(undefined);
+  if (intakeMyResponse !== intakeResponseFrom) {
+    setIntakeResponseFrom(intakeMyResponse);
+    const sid = intakeMyResponse?.submitted
+      ? (intakeMyResponse.submissionId ?? intakeMyResponse.responseId)?.trim()
+      : undefined;
+    if (sid) setIntakeSubmissionId((prev) => prev?.trim() || sid);
+  }
 
   // After intake answers exist but registration is not submitted yet, advance to
   // the slot step when present. Never auto-call submitRegistration.
@@ -152,6 +154,7 @@ export default function ProgramRegisterWizard() {
     const slotIdx = steps.indexOf('slot');
     const draft = readDraft(id);
     if (draft && draft.stepIndex > 0 && draft.stepIndex < steps.length) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore from localStorage draft once server data is ready
       setStepIndex(draft.stepIndex);
     } else if (slotIdx >= 0 && !selectedSlotId) {
       setStepIndex(slotIdx);
@@ -178,11 +181,11 @@ export default function ProgramRegisterWizard() {
 
   const currentStepKey = steps[stepIndex];
 
-  useEffect(() => {
-    if (currentStepKey !== 'intake') {
-      setIntakeSubmitting(false);
-    }
-  }, [currentStepKey]);
+  const [prevStepKey, setPrevStepKey] = useState(currentStepKey);
+  if (currentStepKey !== prevStepKey) {
+    setPrevStepKey(currentStepKey);
+    if (currentStepKey !== 'intake') setIntakeSubmitting(false);
+  }
 
   const submitMut = useMutation({
     mutationFn: () =>

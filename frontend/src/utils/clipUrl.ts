@@ -88,7 +88,7 @@ export function nextCatalogThumbnailFallback(currentSrc: string, videoId: string
 }
 
 /** Thumbnail for MediaHub clip cards (matches Catalog / Videos / Explore). */
-export function getMediaHubThumbnail(clip: {
+export function getContentHubThumbnail(clip: {
   id?: string;
   thumbnail_url?: string;
   youtube_url?: string;

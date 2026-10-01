@@ -14,6 +14,8 @@ export const CACHE_NAMESPACE = {
   KOL_NETWORK: 'cht:kol-network',
   /** Auth sessions: `cht:session:{token}`; TTL matches remaining Session.expiresAt */
   SESSION: 'cht:session',
+  /** Terms acceptance per user: `cht:terms:{userId}`; short TTL, set on accept */
+  TERMS: 'cht:terms',
 } as const;
 
 export type CacheClearScope = 'catalog' | 'contenthub' | 'all';
@@ -47,4 +49,8 @@ export function cachePatternsForScope(scope: CacheClearScope): string[] {
 
 export function sessionCacheKey(token: string): string {
   return `${CACHE_NAMESPACE.SESSION}:${token.trim()}`;
+}
+
+export function termsCacheKey(userId: string): string {
+  return `${CACHE_NAMESPACE.TERMS}:${userId}`;
 }

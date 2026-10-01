@@ -43,10 +43,18 @@ export function buildMonthWindows(
   toDate: Date,
 ): Array<{ from: string; to: string }> {
   const start = new Date(
-    Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate()),
+    Date.UTC(
+      fromDate.getUTCFullYear(),
+      fromDate.getUTCMonth(),
+      fromDate.getUTCDate(),
+    ),
   );
   const end = new Date(
-    Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth(), toDate.getUTCDate()),
+    Date.UTC(
+      toDate.getUTCFullYear(),
+      toDate.getUTCMonth(),
+      toDate.getUTCDate(),
+    ),
   );
   if (start.getTime() > end.getTime()) return [];
 

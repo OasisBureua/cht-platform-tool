@@ -63,29 +63,16 @@ function profileInitials(name: string): string {
     .join('');
 }
 
-function inferredSpecialty(entry: DolEntry): string {
-  if (entry.intel?.specialty) return entry.intel.specialty;
-  const r = entry.role;
-  if (/oncology|oncologist/i.test(r)) return 'Medical Oncology · Breast Cancer';
-  if (/hematology/i.test(r)) return 'Hematology / Oncology';
-  return 'Oncology & breast cancer';
-}
-
 function buildViewModel(region: DolRegion, entry: DolEntry) {
   const i = entry.intel;
   const stateName = region.title;
-  const institution =
-    entry.institution?.trim() && entry.institution !== '-'
-      ? entry.institution
-      : i?.affiliation?.split('·')[0]?.trim() ?? '-';
+  const institution = entry.institution?.trim() || '-';
 
   return {
     displayName: entry.name,
-    specialty: inferredSpecialty(entry),
+    specialty: entry.specialty,
     stateName,
     institution,
-    location: i?.location ?? stateName,
-    affiliation: institution !== '-' ? institution : (i?.affiliation ?? entry.role.split('—')[0]?.trim() ?? ''),
     rosterOnly: i?.rosterOnly ?? false,
     phone: i?.phone,
     linkedInUrl: i?.linkedInUrl,
@@ -183,12 +170,9 @@ export default function KolProfilePage() {
               <dl className="mt-5 divide-y divide-border border-t border-border">
                 {(
                   [
-                    ['Specialty', vm.specialty],
+                    vm.specialty ? ['Specialty', vm.specialty] : null,
                     ['Location', vm.stateName],
                     entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
-                    entry.intel?.publicationsApprox
-                      ? ['Publications', `~${entry.intel.publicationsApprox}`]
-                      : null,
                     // NPI is admin/public intel only — never on the member /app/kols surface.
                     !embedded && entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
                   ].filter(Boolean) as [string, string][]
@@ -241,16 +225,6 @@ export default function KolProfilePage() {
                     {entry.role}
                   </p>
                 </div>
-                {entry.intel?.affiliation ? (
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                      Affiliation
-                    </p>
-                    <p className="mt-1 text-pretty text-sm text-foreground [overflow-wrap:anywhere]">
-                      {entry.intel.affiliation}
-                    </p>
-                  </div>
-                ) : null}
                 {entry.education?.trim() ? (
                   <div className="min-w-0 sm:col-span-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -387,20 +361,10 @@ export default function KolProfilePage() {
             <dl className="mt-6 border-t border-hairline">
               {(
                 [
-                  ['Specialty', vm.specialty],
+                  vm.specialty ? ['Specialty', vm.specialty] : null,
                   ['Location', vm.stateName],
                   entry.shootCount ? ['Sessions', String(entry.shootCount)] : null,
-                  entry.intel?.publicationsApprox
-                    ? ['Publications', `~${entry.intel.publicationsApprox}`]
-                    : null,
-                  entry.intel?.openPayments
-                    ? ['Open Payments', `$${entry.intel.openPayments.total.toLocaleString()}`]
-                    : null,
-                  entry.intel?.openPayments
-                    ? ['Records', `${entry.intel.openPayments.records} · ${entry.intel.openPayments.years}`]
-                    : null,
                   entry.intel?.npi ? ['NPI', entry.intel.npi] : null,
-                  entry.intel?.handle ? ['Handle', entry.intel.handle] : null,
                 ].filter(Boolean) as [string, string][]
               ).map(([k, v]) => (
                 <div
@@ -450,12 +414,6 @@ export default function KolProfilePage() {
                 <p className="eyebrow text-faint">Role</p>
                 <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.role}</p>
               </div>
-              {entry.intel?.affiliation ? (
-                <div>
-                  <p className="eyebrow text-faint">Affiliation</p>
-                  <p className="prose-lede mt-1.5 text-body-s text-dim">{entry.intel.affiliation}</p>
-                </div>
-              ) : null}
               {entry.education?.trim() ? (
                 <div className="sm:col-span-2">
                   <p className="eyebrow text-faint">Education &amp; training</p>

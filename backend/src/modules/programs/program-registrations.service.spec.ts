@@ -185,7 +185,7 @@ describe('ProgramRegistrationsService', () => {
           where: expect.objectContaining({
             status: ProgramRegistrationStatus.APPROVED,
             reviewedAt: { not: null },
-          }),
+          }) as unknown,
         }),
       );
       expect(rows.map((r) => r.id)).toEqual(['reg-visible']);
@@ -214,6 +214,28 @@ describe('ProgramRegistrationsService', () => {
           after,
         ),
       ).toBe(false);
+    });
+  });
+
+  describe('listRegistrationsForAdmin', () => {
+    it('selects institution and role alongside the existing user fields', async () => {
+      prisma.programRegistration.findMany.mockResolvedValue([]);
+
+      await service.listRegistrationsForAdmin('program-1');
+
+      expect(prisma.programRegistration.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          include: expect.objectContaining({
+            user: expect.objectContaining({
+              select: expect.objectContaining({
+                specialty: true,
+                institution: true,
+                role: true,
+              }) as unknown,
+            }) as unknown,
+          }) as unknown,
+        }),
+      );
     });
   });
 });

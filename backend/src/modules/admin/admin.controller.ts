@@ -211,8 +211,9 @@ export class AdminController {
   getAuthStatus() {
     const cognitoPoolId =
       this.config.get<string>('cognito.userPoolId')?.trim() || '';
-    const contenthubApiKey =
-      this.config.get<string>('contenthub.apiKey')?.trim() || '';
+    const m2mConfigured = !!(
+      this.config.get<string>('cognito.m2mPlatformClientId')?.trim() || ''
+    );
     const contenthubBaseUrl =
       this.config.get<string>('contenthub.baseUrl')?.trim() || '';
 
@@ -224,8 +225,8 @@ export class AdminController {
       },
       contenthubIntegration: {
         contenthubBaseUrl,
-        apiKeyConfigured: !!contenthubApiKey,
-        hcpUpsertEnabled: !!contenthubApiKey,
+        m2mConfigured,
+        hcpUpsertEnabled: !!(contenthubBaseUrl && m2mConfigured),
       },
     };
   }
@@ -260,48 +261,55 @@ export class AdminController {
     const now = new Date();
     const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const [activeHcpsCount, activeHcpsCountPreviousWeek, paymentsPaidCount, paymentsPaidCents, pendingPaymentsCount, pendingRegistrationsCount, publishedLiveProgramsCount] =
-      await Promise.all([
-        this.prisma.user.count({
-          where: {
-            role: UserRole.HCP,
-            status: UserStatus.ACTIVE,
-          },
-        }),
-        this.prisma.user.count({
-          where: {
-            role: UserRole.HCP,
-            status: UserStatus.ACTIVE,
-            createdAt: { lte: oneWeekAgo },
-          },
-        }),
-        this.prisma.payment.count({
-          where: { status: PaymentStatus.PAID },
-        }),
-        this.prisma.payment.aggregate({
-          where: { status: PaymentStatus.PAID },
-          _sum: { amount: true },
-        }),
-        this.prisma.payment.count({
-          where: { status: PaymentStatus.PENDING },
-        }),
-        this.prisma.programRegistration.count({
-          where: {
-            status: ProgramRegistrationStatus.PENDING,
-            program: {
-              status: 'PUBLISHED',
-              zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
-              registrationRequiresApproval: true,
-            },
-          },
-        }),
-        this.prisma.program.count({
-          where: {
+    const [
+      activeHcpsCount,
+      activeHcpsCountPreviousWeek,
+      paymentsPaidCount,
+      paymentsPaidCents,
+      pendingPaymentsCount,
+      pendingRegistrationsCount,
+      publishedLiveProgramsCount,
+    ] = await Promise.all([
+      this.prisma.user.count({
+        where: {
+          role: UserRole.HCP,
+          status: UserStatus.ACTIVE,
+        },
+      }),
+      this.prisma.user.count({
+        where: {
+          role: UserRole.HCP,
+          status: UserStatus.ACTIVE,
+          createdAt: { lte: oneWeekAgo },
+        },
+      }),
+      this.prisma.payment.count({
+        where: { status: PaymentStatus.PAID },
+      }),
+      this.prisma.payment.aggregate({
+        where: { status: PaymentStatus.PAID },
+        _sum: { amount: true },
+      }),
+      this.prisma.payment.count({
+        where: { status: PaymentStatus.PENDING },
+      }),
+      this.prisma.programRegistration.count({
+        where: {
+          status: ProgramRegistrationStatus.PENDING,
+          program: {
             status: 'PUBLISHED',
             zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+            registrationRequiresApproval: true,
           },
-        }),
-      ]);
+        },
+      }),
+      this.prisma.program.count({
+        where: {
+          status: 'PUBLISHED',
+          zoomSessionType: { in: ['WEBINAR', 'MEETING'] },
+        },
+      }),
+    ]);
     const pct =
       activeHcpsCountPreviousWeek === 0
         ? activeHcpsCount > 0
@@ -327,10 +335,18 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'List recent admin audit log entries' })
-  @ApiQuery({ name: 'limit', required: false, description: 'Max rows (1–500, default 100)' })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max rows (1–500, default 100)',
+  })
   @ApiQuery({ name: 'resource', required: false })
   @ApiQuery({ name: 'actorId', required: false })
-  @ApiQuery({ name: 'actorRole', required: false, description: 'ADMIN | HCP | anonymous' })
+  @ApiQuery({
+    name: 'actorRole',
+    required: false,
+    description: 'ADMIN | HCP | anonymous',
+  })
   async listAuditLogs(
     @Query('limit') limit?: string,
     @Query('resource') resource?: string,
@@ -1050,6 +1066,7 @@ export class AdminController {
             ? p.honorariumAmount / 100
             : undefined,
         chmProgramId: p.chmProgramId ?? null,
+        campaignId: p.campaignId ?? null,
         createdAt: p.createdAt.toISOString(),
         zoomPanelistLinks:
           (p.zoomPanelistLinks as Array<{
@@ -1609,11 +1626,7 @@ export class AdminController {
   })
   async listReusableSurveys(@Query('type') type?: string) {
     const normalized = type?.toUpperCase();
-    if (
-      normalized &&
-      normalized !== 'INTAKE' &&
-      normalized !== 'FEEDBACK'
-    ) {
+    if (normalized && normalized !== 'INTAKE' && normalized !== 'FEEDBACK') {
       throw new BadRequestException('type must be INTAKE or FEEDBACK');
     }
     return this.surveysService.listReusableSurveyTemplates(
@@ -1651,9 +1664,13 @@ export class AdminController {
       select: { id: true, title: true },
     });
     if (!program) throw new NotFoundException('Program not found');
-    return this.surveysService.cloneSurveyOntoProgram(program.id, sourceSurveyId, {
-      programTitle: program.title,
-    });
+    return this.surveysService.cloneSurveyOntoProgram(
+      program.id,
+      sourceSurveyId,
+      {
+        programTitle: program.title,
+      },
+    );
   }
 
   @Post('webinars/ensure-native-surveys')
@@ -1754,13 +1771,13 @@ export class AdminController {
 
     const recipients = [
       ...new Set(
-        body.to
-          .map((e) => e.trim().toLowerCase())
-          .filter((e) => e.length > 0),
+        body.to.map((e) => e.trim().toLowerCase()).filter((e) => e.length > 0),
       ),
     ];
     if (recipients.length === 0) {
-      throw new BadRequestException('At least one recipient email is required.');
+      throw new BadRequestException(
+        'At least one recipient email is required.',
+      );
     }
     if (recipients.length > 50) {
       throw new BadRequestException('At most 50 recipients per send.');
@@ -2014,9 +2031,7 @@ export class AdminController {
       disposition !== 'inline' &&
       disposition !== 'attachment'
     ) {
-      throw new BadRequestException(
-        'disposition must be inline or attachment',
-      );
+      throw new BadRequestException('disposition must be inline or attachment');
     }
     return this.programZoomRecordings.createDownloadUrl(id, recordingId, {
       disposition: disposition === 'inline' ? 'inline' : 'attachment',
@@ -2491,6 +2506,11 @@ export class AdminController {
       sessionHeroImageUrl?: string | null;
       /** Admin-only internal nomenclature / CHM Content ID (not shown to learners). */
       chmProgramId?: string | null;
+      /**
+       * Hub campaign id for Cross-Platform Reporting (e.g. AZ-25-01_LIV001).
+       * Null/empty clears the link; unlinked programs are omitted from export.
+       */
+      campaignId?: string | null;
       /** WEBINAR only. Zoom Q&A / Backstage / HD / recording toggles. */
       zoomSettings?: Record<string, unknown>;
     },
@@ -2639,6 +2659,11 @@ export class AdminController {
         body.chmProgramId === null || body.chmProgramId === ''
           ? null
           : body.chmProgramId.trim() || null;
+    if (body.campaignId !== undefined)
+      updateData.campaignId =
+        body.campaignId === null || body.campaignId === ''
+          ? null
+          : body.campaignId.trim() || null;
 
     if (
       speakersChanged &&

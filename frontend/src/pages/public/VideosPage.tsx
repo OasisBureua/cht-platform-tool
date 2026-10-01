@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { ArrowRight, ListVideo, Loader2, Play, Search } from 'lucide-react';
-import { catalogApi, type CatalogItem, type MediaHubClip, type WordPressTermItem } from '../../api/catalog';
+import { catalogApi, type CatalogItem, type ContentHubClip, type WordPressTermItem } from '../../api/catalog';
 import { ChmMark } from '../../components/brand/ChmMark';
 import { Button, Chip, SegmentedControl } from '../../components/ui';
 import {
@@ -22,14 +22,14 @@ import {
 import DISEASE_AREAS from '../../data/disease-areas';
 import {
   extractYoutubeVideoIdFromUrl,
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   getShortClipId,
   nextCatalogThumbnailFallback,
   normalizeCatalogThumbnailUrl,
   shouldSurfaceCatalogClip,
 } from '../../utils/clipUrl';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
-import { clipStripeSubtitle } from '../../utils/mediaHubClipText';
+import { clipStripeSubtitle } from '../../utils/contentHubClipText';
 import { extractPlaylistSpeakers, playlistDisplayTitle } from '../../utils/playlistWpSections';
 import {
   WORDPRESS_CATALOG_STALE_MS,
@@ -57,7 +57,7 @@ const FORMATS: { key: FormatKey; label: string }[] = [
  * behind it. Podcast has no source in the catalogue yet and returns
  * nothing, which is exactly what the empty state below says.
  */
-function matchesFormat(clip: MediaHubClip, format: FormatKey): boolean {
+function matchesFormat(clip: ContentHubClip, format: FormatKey): boolean {
   if (format === 'all') return true;
   if (format === 'video') return !clip.is_short;
   if (format === 'editorial') return !!clip.wordpress?.permalink;
@@ -142,7 +142,7 @@ function Thumb({
   className = '',
   rounded = 'rounded-[6px]',
 }: {
-  clip: MediaHubClip;
+  clip: ContentHubClip;
   className?: string;
   rounded?: string;
 }) {
@@ -150,10 +150,10 @@ function Thumb({
   const videoId =
     extractYoutubeVideoIdFromUrl(clip.youtube_url) ||
     (/^[a-zA-Z0-9_-]{11}$/.test(short) ? short : null);
-  const [src, setSrc] = useState(() => getMediaHubThumbnail(clip));
+  const [src, setSrc] = useState(() => getContentHubThumbnail(clip));
 
   useEffect(() => {
-    setSrc(getMediaHubThumbnail(clip));
+    setSrc(getContentHubThumbnail(clip));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clip.id, clip.thumbnail_url, clip.youtube_url]);
 
@@ -188,7 +188,7 @@ function Thumb({
   );
 }
 
-function FormatBadge({ clip }: { clip: MediaHubClip }) {
+function FormatBadge({ clip }: { clip: ContentHubClip }) {
   return (
     <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
       {clip.is_short ? 'clip' : 'video'}
@@ -406,8 +406,8 @@ function FeaturedCarousel({
   clips,
   hrefFor,
 }: {
-  clips: MediaHubClip[];
-  hrefFor: (clip: MediaHubClip) => string;
+  clips: ContentHubClip[];
+  hrefFor: (clip: ContentHubClip) => string;
 }) {
   const slides = clips.slice(0, 3);
   const [i, setI] = useState(0);
@@ -520,7 +520,7 @@ export default function VideosPage() {
   const RAIL = isInApp ? 'mx-auto w-full max-w-[90rem]' : 'rail';
 
   const clipHref = useCallback(
-    (clip: MediaHubClip) =>
+    (clip: ContentHubClip) =>
       isInApp ? `/app/clip/${getShortClipId(clip.id)}` : `/catalog/clip/${getShortClipId(clip.id)}`,
     [isInApp],
   );
@@ -618,7 +618,7 @@ export default function VideosPage() {
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 
-  const { data: mediaHubTags = {} } = useQuery({
+  const { data: contentHubTags = {} } = useQuery({
     queryKey: ['catalog', 'tags'],
     queryFn: catalogApi.getTags,
     staleTime: WORDPRESS_CATALOG_STALE_MS,
@@ -761,7 +761,7 @@ export default function VideosPage() {
     }
     const seen = new Set<string>();
     const out: { value: string; label: string; count: number | null }[] = [];
-    for (const raw of mediaHubTags['biomarker'] ?? []) {
+    for (const raw of contentHubTags['biomarker'] ?? []) {
       const value = String(raw);
       const label = tagLabel(value);
       if (!label || seen.has(label)) continue;
@@ -769,7 +769,7 @@ export default function VideosPage() {
       out.push({ value: `tag:${value}`, label, count: null });
     }
     return out.slice(0, 8);
-  }, [wpCategoriesData, mediaHubTags]);
+  }, [wpCategoriesData, contentHubTags]);
 
   /* Playlists used to sit below an infinite-scroll grid, which meant
      paging the whole catalogue in before you could reach them. They are
@@ -1118,7 +1118,7 @@ export default function VideosPage() {
                     clip={item}
                     to={clipHref(item)}
                         title={item.title}
-                        imageUrl={getMediaHubThumbnail(item)}
+                        imageUrl={getContentHubThumbnail(item)}
                     duration={clipDuration(item.duration_seconds)}
                     description={
                       item.doctors?.[0]

@@ -12,8 +12,8 @@ import { podcastEpisodeWatchPath, podcastShowPath } from '../utils/podcastRoutes
 import { ChmMark } from '../components/brand/ChmMark';
 import { Button, Chip, chipKind, Thumb } from '../components/ui';
 import { useQuery } from '@tanstack/react-query';
-import { catalogApi, type MediaHubClip } from '../api/catalog';
-import { getMediaHubThumbnail, getShortClipId, shouldSurfaceCatalogClip } from '../utils/clipUrl';
+import { catalogApi, type ContentHubClip } from '../api/catalog';
+import { getContentHubThumbnail, getShortClipId, shouldSurfaceCatalogClip } from '../utils/clipUrl';
 
 function Eyebrow({
   children,
@@ -105,9 +105,9 @@ export default function PodcastEpisodeWatch() {
     enabled: !!episodeForRec,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const out: MediaHubClip[] = [];
+      const out: ContentHubClip[] = [];
       const seen = new Set<string>();
-      const take = (items: MediaHubClip[]) => {
+      const take = (items: ContentHubClip[]) => {
         for (const c of items) {
           if (out.length >= 5) return;
           if (seen.has(c.id) || !shouldSurfaceCatalogClip(c)) continue;
@@ -115,8 +115,8 @@ export default function PodcastEpisodeWatch() {
           out.push(c);
         }
       };
-      const safe = (p: Promise<{ items: MediaHubClip[] }>) =>
-        p.catch(() => ({ items: [] as MediaHubClip[] }));
+      const safe = (p: Promise<{ items: ContentHubClip[] }>) =>
+        p.catch(() => ({ items: [] as ContentHubClip[] }));
       const byGuest = await Promise.all(
         guestNames.slice(0, 2).map((g) => safe(catalogApi.getClips({ q: g, limit: 4, sort_by: 'recent' }))),
       );
@@ -282,7 +282,7 @@ export default function PodcastEpisodeWatch() {
                         </span>
                         <span className="img-ring relative block h-12 w-[5.25rem] shrink-0 overflow-hidden rounded-[6px] bg-surface-2">
                           <img
-                            src={getMediaHubThumbnail(c)}
+                            src={getContentHubThumbnail(c)}
                             alt=""
                             loading="lazy"
                             referrerPolicy="no-referrer"

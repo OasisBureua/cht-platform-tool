@@ -31,6 +31,8 @@ import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { CompanionModule } from './modules/companion/companion.module';
+import { ExportModule } from './modules/export/export.module';
+import { ReportsModule } from './modules/reports/reports.module';
 import configuration from './config/configuration';
 import { validationSchema } from './config/validation';
 import { ConfigModule } from '@nestjs/config';
@@ -85,7 +87,9 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
             return incoming.trim();
           }
           if (Array.isArray(incoming)) {
-            const first = incoming.find((v) => typeof v === 'string' && v.trim());
+            const first = incoming.find(
+              (v) => typeof v === 'string' && v.trim(),
+            );
             if (first?.trim()) return first.trim();
           }
           return randomUUID();
@@ -94,8 +98,13 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
           ? { target: 'pino-pretty', options: { colorize: true } }
           : undefined,
         serializers: {
-          req: (req) => ({ method: req.method, url: req.url }),
-          res: (res) => ({ statusCode: res.statusCode }),
+          req: (req: { method?: string; url?: string }) => ({
+            method: req.method,
+            url: req.url,
+          }),
+          res: (res: { statusCode?: number }) => ({
+            statusCode: res.statusCode,
+          }),
         },
       },
     }),
@@ -162,6 +171,8 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     AdminContentHubModule,
     CampaignsModule,
     CompanionModule,
+    ExportModule,
+    ReportsModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

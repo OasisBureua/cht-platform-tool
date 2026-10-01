@@ -78,10 +78,14 @@ enable_cognito_mrr                  = true
 cognito_mrr_replica_region          = "us-east-2"
 cognito_mrr_associate_waf_replica   = true
 
+# Platform → Hub M2M. Hub prod must create RS `hub` on cht-platform-users first,
+# otherwise the outbound client apply fails (unknown hub/… scopes).
+enable_cognito_platform_outbound_m2m = true
+
 # Non-secret app configuration (same pattern as dev.github.tfvars)
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 
-# Redis cache for upstream Content Hub reads (4h TTL in app)
+# Redis cache for upstream Content Hub reads (1h TTL in app)
 enable_elasticache    = true
 elasticache_node_type = "cache.t3.medium"
 

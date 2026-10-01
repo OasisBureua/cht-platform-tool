@@ -54,7 +54,7 @@ export default function Payments() {
     enabled: !!userId,
   });
 
-  const historyRows = history || [];
+  const historyRows = useMemo(() => history || [], [history]);
 
   const programOptions = useMemo(() => {
     const map = new Map<string, string>();

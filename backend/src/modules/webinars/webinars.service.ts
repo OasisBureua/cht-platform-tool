@@ -173,7 +173,11 @@ export class WebinarsService {
         imageUrl: imageUrl || undefined,
         startTime: p.startDate?.toISOString(),
         duration: p.duration ?? undefined,
-        joinUrl: this.gatedLearnerJoinUrl(p.zoomJoinUrl, p.startDate, p.duration),
+        joinUrl: this.gatedLearnerJoinUrl(
+          p.zoomJoinUrl,
+          p.startDate,
+          p.duration,
+        ),
         source: 'program',
         sessionKind: 'WEBINAR',
         hostDisplayName: p.hostDisplayName || undefined,
@@ -256,7 +260,11 @@ export class WebinarsService {
         imageUrl: imageUrl || undefined,
         startTime: p.startDate?.toISOString(),
         duration: p.duration ?? undefined,
-        joinUrl: this.gatedLearnerJoinUrl(p.zoomJoinUrl, p.startDate, p.duration),
+        joinUrl: this.gatedLearnerJoinUrl(
+          p.zoomJoinUrl,
+          p.startDate,
+          p.duration,
+        ),
         source: 'program',
         sessionKind: 'MEETING',
         hostDisplayName: p.hostDisplayName || undefined,
@@ -295,7 +303,9 @@ export class WebinarsService {
     if (!program) return null;
 
     const imageUrl = this.programImageUrl(program);
-    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([program.id]);
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([
+      program.id,
+    ]);
     const intakeSurveyId = intakeByProgramId.get(program.id);
 
     return {
@@ -330,7 +340,9 @@ export class WebinarsService {
     if (!program) return null;
 
     const imageUrl = this.programImageUrl(program);
-    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([program.id]);
+    const intakeByProgramId = await this.intakeSurveyIdsByProgramId([
+      program.id,
+    ]);
     const intakeSurveyId = intakeByProgramId.get(program.id);
 
     return {
@@ -401,7 +413,11 @@ export class WebinarsService {
     }
 
     if (!asHost) {
-      await this.assertMeetingSdkJoinEligibility(userId, programId, sessionType);
+      await this.assertMeetingSdkJoinEligibility(
+        userId,
+        programId,
+        sessionType,
+      );
 
       const joinWindow = resolveLiveJoinWindow(
         program.startDate,
@@ -452,7 +468,10 @@ export class WebinarsService {
     }
 
     const role: 0 | 1 = asHost ? 1 : 0;
-    const signature = this.zoomMeetingSdk.generateSignature(meetingNumber, role);
+    const signature = this.zoomMeetingSdk.generateSignature(
+      meetingNumber,
+      role,
+    );
 
     let zak: string | undefined;
     if (asHost) {
@@ -462,7 +481,10 @@ export class WebinarsService {
         );
       }
       try {
-        const hostId = await this.zoom.getSessionHostId(sessionType, meetingNumber);
+        const hostId = await this.zoom.getSessionHostId(
+          sessionType,
+          meetingNumber,
+        );
         if (!hostId) {
           throw new BadRequestException(
             'Could not resolve the Zoom host user for this session. Use the Zoom host start link instead.',
@@ -480,7 +502,9 @@ export class WebinarsService {
       }
     }
 
-    const tk = asHost ? undefined : tkFromJoinUrl(program.zoomJoinUrl) || undefined;
+    const tk = asHost
+      ? undefined
+      : tkFromJoinUrl(program.zoomJoinUrl) || undefined;
 
     return {
       signature,

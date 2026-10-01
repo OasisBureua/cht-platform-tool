@@ -7,7 +7,9 @@ export class UpdateKolVisibilityDto {
   @IsBoolean()
   visibleOnPublic?: boolean;
 
-  @ApiPropertyOptional({ description: 'Show in the member app CHM Docs directory' })
+  @ApiPropertyOptional({
+    description: 'Show in the member app CHM Docs directory',
+  })
   @IsOptional()
   @IsBoolean()
   visibleOnApp?: boolean;

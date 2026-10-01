@@ -289,10 +289,12 @@ export function StripCard({
 }: StripCardProps) {
   const [thumbSrc, setThumbSrc] = useState(imageUrl);
   const [thumbFailed, setThumbFailed] = useState(false);
-  useEffect(() => {
+  const [prevImageUrl, setPrevImageUrl] = useState(imageUrl);
+  if (imageUrl !== prevImageUrl) {
+    setPrevImageUrl(imageUrl);
     setThumbSrc(imageUrl);
     setThumbFailed(false);
-  }, [imageUrl]);
+  }
 
   const external = /^https?:\/\//i.test(to);
   const v = variant ?? 'compact';

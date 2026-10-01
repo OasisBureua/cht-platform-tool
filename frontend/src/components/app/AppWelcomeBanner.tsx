@@ -1,15 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { CheckCircle2 } from 'lucide-react';
 
 const STORAGE_KEY = 'cht_app_welcome_seen';
 
 export default function AppWelcomeBanner() {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    const seen = sessionStorage.getItem(STORAGE_KEY);
-    if (!seen) setVisible(true);
-  }, []);
+  const [visible, setVisible] = useState(() => !sessionStorage.getItem(STORAGE_KEY));
 
   if (!visible) return null;
 

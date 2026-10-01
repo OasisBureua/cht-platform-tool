@@ -41,8 +41,7 @@ export function DoctorBioRail({ slug, isInApp, onClear, className = '' }: Props)
     kol?.specialty?.trim() ||
     kol?.intel?.ai_brief?.what_they_focus_on?.trim() ||
     null;
-  const institution =
-    kol?.institution?.trim() || kol?.intel?.affiliation?.trim() || null;
+  const institution = kol?.institution?.trim() || null;
   const photo = kol?.photo_url?.trim() || null;
 
   return (

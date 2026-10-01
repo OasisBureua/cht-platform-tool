@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import multer from 'multer';
@@ -12,10 +13,12 @@ import { getSessionTokenFromRequest } from './auth/session-cookie';
 import { isProductionEnv } from './utils/is-production-env';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bufferLogs: true,
+  });
   app.useLogger(app.get(Logger));
   // Honor X-Forwarded-For from ALB so throttle/lockout keys by client IP.
-  app.getHttpAdapter().getInstance().set('trust proxy', 1);
+  app.set('trust proxy', 1);
 
   // SCRUM-108: standard security headers via helmet.
   // - HSTS enabled in production so browsers refuse http:// downgrades (2yr max-age,
@@ -103,6 +106,7 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
+    exposedHeaders: ['Content-Disposition'],
   });
 
   // Global validation pipe
@@ -126,28 +130,29 @@ async function bootstrap() {
 
   // Swagger - available in all envs but only accessible internally in prod
   const authService = app.get(AuthService);
-  app.use('/api/docs', async (req, res, next) => {
+  const requireAdminSession = (
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ): void => {
     const sessionToken = getSessionTokenFromRequest(req);
     if (!sessionToken) {
-      return res.status(401).json({ error: 'Admin session required.' });
+      res.status(401).json({ error: 'Admin session required.' });
+      return;
     }
-    const user = await authService.getSession(sessionToken);
-    if (!user || user.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required.' });
-    }
-    return next();
-  });
-  app.use('/api/docs-json', async (req, res, next) => {
-    const sessionToken = getSessionTokenFromRequest(req);
-    if (!sessionToken) {
-      return res.status(401).json({ error: 'Admin session required.' });
-    }
-    const user = await authService.getSession(sessionToken);
-    if (!user || user.role !== 'ADMIN') {
-      return res.status(403).json({ error: 'Admin access required.' });
-    }
-    return next();
-  });
+    authService
+      .getSession(sessionToken)
+      .then((user) => {
+        if (!user || user.role !== 'ADMIN') {
+          res.status(403).json({ error: 'Admin access required.' });
+          return;
+        }
+        next();
+      })
+      .catch(next);
+  };
+  app.use('/api/docs', requireAdminSession);
+  app.use('/api/docs-json', requireAdminSession);
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('CHT Platform API')
@@ -179,19 +184,21 @@ async function bootstrap() {
     process.env.FRONTEND_URL ||
     process.env.API_BASE_URL ||
     `http://localhost:${port}`;
-  logger.log(`🚀 Application is running on: ${baseUrl}`);
-  logger.log(`📡 API base: ${baseUrl}/api`);
+  logger.log(`Application is running on: ${baseUrl}`);
+  logger.log(`API base: ${baseUrl}/api`);
   logger.log(
-    `🔐 Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
+    `Auth: ${process.env.COGNITO_USER_POOL_ID ? 'Cognito' : 'Dev (DB)'}`,
   );
-  logger.log(`📊 Health check: ${baseUrl}/health`);
-  logger.log(`🔍 Health ready: ${baseUrl}/health/ready`);
-  logger.log(`💚 Health live: ${baseUrl}/health/live`);
-  logger.log(`📋 Health detail: ${baseUrl}/health/detail`);
-  logger.log(`ℹ️  Actuator info: ${baseUrl}/actuator/info`);
-  logger.log(`📦 Version: ${process.env.IMAGE_TAG || process.env.APP_VERSION || 'local'}`);
-  logger.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-  logger.log(`📖 Swagger docs: ${baseUrl}/api/docs`);
+  logger.log(`Health check: ${baseUrl}/health`);
+  logger.log(`Health ready: ${baseUrl}/health/ready`);
+  logger.log(`Health live: ${baseUrl}/health/live`);
+  logger.log(`Health detail: ${baseUrl}/health/detail`);
+  logger.log(`Actuator info: ${baseUrl}/actuator/info`);
+  logger.log(
+    `Version: ${process.env.IMAGE_TAG || process.env.APP_VERSION || 'local'}`,
+  );
+  logger.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  logger.log(`Swagger docs: ${baseUrl}/api/docs`);
 }
 
-bootstrap();
+void bootstrap();

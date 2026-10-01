@@ -55,6 +55,7 @@ export function NotificationBell() {
     } catch {
       /* ignore */
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- open once per session, gated by sessionStorage
     setOpen(true);
   }, [user?.userId, missingProfile.length, mfaNeeded]);
 

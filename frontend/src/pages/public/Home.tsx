@@ -345,8 +345,6 @@ function initials(name: string): string {
 function institutionLine(k: DolEntry): string {
   const inst = k.institution?.trim();
   if (inst && inst !== '-') return inst;
-  const affiliation = k.intel?.affiliation?.split('·')[0]?.trim();
-  if (affiliation) return affiliation;
   const roleLead = k.role.split(/[.;]/)[0]?.trim() ?? k.role;
   return roleLead.length > 46 ? `${roleLead.slice(0, 45)}…` : roleLead;
 }
@@ -363,7 +361,10 @@ export default function Home() {
     queryFn: () => catalogApi.getRandomVideos(8),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
-  const randomVideos = Array.isArray(randomVideosData) ? randomVideosData : [];
+  const randomVideos = useMemo(
+    () => (Array.isArray(randomVideosData) ? randomVideosData : []),
+    [randomVideosData],
+  );
 
   const [brokenFeaturedIds, setBrokenFeaturedIds] = useState<Set<string>>(() => new Set());
   const markBroken = (id: string) =>
@@ -398,7 +399,8 @@ export default function Home() {
   const { regions, loadState } = useKolDirectory({ surface: 'public' });
   const faculty: DolEntry[] = useMemo(() => {
     const live = regions.flatMap((r) => r.entries);
-    const roster = live.length > 0 ? live : kolStaticEnrichment;
+    const roster: DolEntry[] =
+      live.length > 0 ? live : kolStaticEnrichment.map((k) => ({ ...k, role: '', bio: '' }));
     return [...roster].sort((a, b) => Number(!!b.photoUrl) - Number(!!a.photoUrl)).slice(0, 5);
   }, [regions]);
 

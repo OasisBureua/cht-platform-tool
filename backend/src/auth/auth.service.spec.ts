@@ -7,14 +7,34 @@ import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.serv
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { UserRole } from '@prisma/client';
 
+type PrismaMock = {
+  user: {
+    findUnique: jest.Mock;
+    findFirst: jest.Mock;
+    create: jest.Mock;
+    update: jest.Mock;
+  };
+  session: {
+    updateMany: jest.Mock;
+    findMany: jest.Mock;
+    create: jest.Mock;
+    findUnique: jest.Mock;
+    deleteMany: jest.Mock;
+    delete: jest.Mock;
+    update: jest.Mock;
+  };
+};
+
+type CacheMock = {
+  getJson: jest.Mock;
+  setJson: jest.Mock<Promise<void>, [string, unknown, number]>;
+  del: jest.Mock;
+};
+
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: PrismaService;
-  let cache: {
-    getJson: jest.Mock;
-    setJson: jest.Mock;
-    del: jest.Mock;
-  };
+  let prisma: PrismaMock;
+  let cache: CacheMock;
 
   const mockUser = {
     id: 'user-1',
@@ -27,28 +47,36 @@ describe('AuthService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    prisma = {
+      user: {
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
+      session: {
+        updateMany: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        deleteMany: jest.fn(),
+        delete: jest.fn(),
+        update: jest.fn(),
+      },
+    };
+    cache = {
+      getJson: jest.fn().mockResolvedValue(null),
+      setJson: jest
+        .fn<Promise<void>, [string, unknown, number]>()
+        .mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
         {
           provide: PrismaService,
-          useValue: {
-            user: {
-              findUnique: jest.fn(),
-              findFirst: jest.fn(),
-              create: jest.fn(),
-              update: jest.fn(),
-            },
-            session: {
-              updateMany: jest.fn(),
-              findMany: jest.fn().mockResolvedValue([]),
-              create: jest.fn(),
-              findUnique: jest.fn(),
-              deleteMany: jest.fn(),
-              delete: jest.fn(),
-              update: jest.fn(),
-            },
-          },
+          useValue: prisma,
         },
         {
           provide: CognitoService,
@@ -75,24 +103,18 @@ describe('AuthService', () => {
         },
         {
           provide: RedisCacheService,
-          useValue: {
-            getJson: jest.fn().mockResolvedValue(null),
-            setJson: jest.fn().mockResolvedValue(undefined),
-            del: jest.fn().mockResolvedValue(undefined),
-          },
+          useValue: cache,
         },
       ],
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    prisma = module.get<PrismaService>(PrismaService);
-    cache = module.get(RedisCacheService);
   });
 
   describe('findOrCreateByAuthId', () => {
     it('should create user when not in DB', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
-      (prisma.user.create as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(null);
+      prisma.user.create.mockResolvedValue(mockUser);
 
       const result = await service.findOrCreateByAuthId(
         mockUser.authId,
@@ -105,14 +127,14 @@ describe('AuthService', () => {
 
     it('should link existing user by email when authId changes', async () => {
       const existing = { ...mockUser, authId: 'old-cognito-sub' };
-      (prisma.user.findUnique as jest.Mock).mockImplementation(
+      prisma.user.findUnique.mockImplementation(
         ({ where }: { where: { authId?: string; email?: string } }) => {
           if (where.authId === mockUser.authId) return null;
           if (where.email === mockUser.email) return existing;
           return null;
         },
       );
-      (prisma.user.update as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.update.mockResolvedValue(mockUser);
 
       const result = await service.findOrCreateByAuthId(
         mockUser.authId,
@@ -128,7 +150,7 @@ describe('AuthService', () => {
     });
 
     it('should return existing user from DB', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       const result = await service.findOrCreateByAuthId(mockUser.authId);
 
@@ -139,7 +161,7 @@ describe('AuthService', () => {
 
   describe('findByUserId', () => {
     it('should return user when found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(mockUser);
+      prisma.user.findUnique.mockResolvedValue(mockUser);
 
       const result = await service.findByUserId(mockUser.id);
 
@@ -148,7 +170,7 @@ describe('AuthService', () => {
     });
 
     it('should return null when user not found', async () => {
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+      prisma.user.findUnique.mockResolvedValue(null);
 
       const result = await service.findByUserId('unknown');
 
@@ -158,7 +180,7 @@ describe('AuthService', () => {
 
   describe('session cache', () => {
     it('createSession writes Redis with session TTL', async () => {
-      (prisma.session.create as jest.Mock).mockResolvedValue({});
+      prisma.session.create.mockResolvedValue({});
       const authUser = {
         authId: mockUser.authId,
         userId: mockUser.id,
@@ -179,7 +201,7 @@ describe('AuthService', () => {
         }),
         expect.any(Number),
       );
-      const ttl = cache.setJson.mock.calls[0][2] as number;
+      const ttl = cache.setJson.mock.calls[0][2];
       expect(ttl).toBeGreaterThan(1700);
       expect(ttl).toBeLessThanOrEqual(1800);
     });
@@ -226,7 +248,7 @@ describe('AuthService', () => {
       cache.getJson.mockResolvedValue(null);
       const createdAt = new Date(Date.now() - 60_000);
       const expiresAt = new Date(Date.now() + 5 * 60_000); // 5 min left of 30
-      (prisma.session.findUnique as jest.Mock).mockResolvedValue({
+      prisma.session.findUnique.mockResolvedValue({
         id: 'sess-1',
         token: 'tok-slide',
         authId: mockUser.authId,
@@ -237,10 +259,10 @@ describe('AuthService', () => {
         expiresAt,
         createdAt,
       });
-      (prisma.user.findUnique as jest.Mock).mockResolvedValue({
+      prisma.user.findUnique.mockResolvedValue({
         role: UserRole.HCP,
       });
-      (prisma.session.update as jest.Mock).mockResolvedValue({});
+      prisma.session.update.mockResolvedValue({});
 
       const result = await service.getSession('tok-slide');
 
@@ -249,14 +271,14 @@ describe('AuthService', () => {
         expect.objectContaining({
           where: { id: 'sess-1' },
           data: expect.objectContaining({
-            expiresAt: expect.any(Date),
-          }),
+            expiresAt: expect.any(Date) as unknown,
+          }) as unknown,
         }),
       );
     });
 
     it('revokeSession deletes DB row and Redis key', async () => {
-      (prisma.session.deleteMany as jest.Mock).mockResolvedValue({ count: 1 });
+      prisma.session.deleteMany.mockResolvedValue({ count: 1 });
 
       await service.revokeSession('tok-2');
 
@@ -267,11 +289,11 @@ describe('AuthService', () => {
     });
 
     it('revokeAllUserSessions deletes Postgres rows and Redis keys', async () => {
-      (prisma.session.findMany as jest.Mock).mockResolvedValue([
+      prisma.session.findMany.mockResolvedValue([
         { token: 'tok-a' },
         { token: 'tok-b' },
       ]);
-      (prisma.session.deleteMany as jest.Mock).mockResolvedValue({ count: 2 });
+      prisma.session.deleteMany.mockResolvedValue({ count: 2 });
 
       const count = await service.revokeAllUserSessions(mockUser.id);
 
@@ -284,9 +306,7 @@ describe('AuthService', () => {
     });
 
     it('invalidateAuthCache only clears Redis (keeps Postgres sessions)', async () => {
-      (prisma.session.findMany as jest.Mock).mockResolvedValue([
-        { token: 'tok-a' },
-      ]);
+      prisma.session.findMany.mockResolvedValue([{ token: 'tok-a' }]);
 
       await service.invalidateAuthCache(mockUser.id);
 

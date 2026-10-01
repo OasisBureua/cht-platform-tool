@@ -138,7 +138,7 @@ export default function AdminDashboard() {
               </p>
             </div>
             <Link
-              to="/admin/content-hub"
+              to="/admin/reports"
               className="shrink-0 text-xs font-semibold text-brand-700 hover:underline dark:text-brand-400"
             >
               Reporting →
@@ -177,7 +177,7 @@ export default function AdminDashboard() {
 
         <div className="col-span-2 flex flex-col gap-3 md:col-span-4 md:gap-5">
           <Link
-            to="/admin/content-hub"
+            to="/admin/reports"
             className="rounded-card bg-white/90 p-4 shadow-[0_10px_40px_-26px_rgba(0,0,0,0.14)] ring-1 ring-gray-200/70 transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 dark:bg-zinc-900/80 dark:ring-zinc-700/60"
           >
             <div className="flex items-center justify-between gap-2">

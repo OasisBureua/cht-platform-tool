@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export type RejectEmailReason = 'GENERIC' | 'INCOMPLETE_INTAKE';
 
@@ -21,12 +21,14 @@ export default function RejectRegistrationModal({
   const [reason, setReason] = useState<RejectEmailReason>('GENERIC');
   const [adminNotes, setAdminNotes] = useState('');
 
-  useEffect(() => {
+  const [wasOpen, setWasOpen] = useState(open);
+  if (open !== wasOpen) {
+    setWasOpen(open);
     if (open) {
       setReason('GENERIC');
       setAdminNotes('');
     }
-  }, [open]);
+  }
 
   if (!open) {
     return null;

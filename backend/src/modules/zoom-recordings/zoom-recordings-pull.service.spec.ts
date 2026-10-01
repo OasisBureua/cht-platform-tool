@@ -14,11 +14,13 @@ import { ZoomRecordingsSessionService } from './zoom-recordings-session.service'
 import { ZoomRecordingsStorageService } from './zoom-recordings-storage.service';
 
 const mockS3Send = jest.fn();
-const mockUploadDone = jest.fn();
+const mockUploadDone = jest.fn<Promise<unknown>, unknown[]>();
 
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: mockS3Send })),
-  PutObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
+  PutObjectCommand: jest
+    .fn()
+    .mockImplementation((input: unknown) => ({ input })),
   GetObjectCommand: jest.fn(),
 }));
 
@@ -69,12 +71,15 @@ describe('ZoomRecordingsPullService', () => {
         }),
       },
       zoomRecordingFile: {
-        upsert: jest.fn().mockImplementation(({ create }) =>
-          Promise.resolve({
-            id: `row-${create.zoomRecordingFileId}`,
-            ...create,
-          }),
-        ),
+        upsert: jest
+          .fn()
+          .mockImplementation(
+            ({ create }: { create: { zoomRecordingFileId: string } }) =>
+              Promise.resolve({
+                id: `row-${create.zoomRecordingFileId}`,
+                ...create,
+              }),
+          ),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
     };
@@ -94,7 +99,10 @@ describe('ZoomRecordingsPullService', () => {
     };
     const config = {
       get: jest.fn((key: string) => {
-        if (key === 'sessionAssets.s3Bucket' || key === 'zoomRecordings.s3Bucket') {
+        if (
+          key === 'sessionAssets.s3Bucket' ||
+          key === 'zoomRecordings.s3Bucket'
+        ) {
           return 'cht-platform-session-assets';
         }
         if (key === 'zoomRecordings.streamFileTypes') return ['MP4', 'M4A'];
@@ -188,12 +196,14 @@ describe('ZoomRecordingsPullService', () => {
     expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledTimes(4);
     expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ pullStatus: 'IN_PROGRESS' }),
+        create: expect.objectContaining({
+          pullStatus: 'IN_PROGRESS',
+        }) as unknown,
       }),
     );
     expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
-        create: expect.objectContaining({ pullStatus: 'COMPLETED' }),
+        create: expect.objectContaining({ pullStatus: 'COMPLETED' }) as unknown,
       }),
     );
     expect(result.upserted).toHaveLength(2);

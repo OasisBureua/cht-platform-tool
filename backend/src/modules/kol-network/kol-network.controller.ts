@@ -8,8 +8,12 @@ import {
 } from '@nestjs/common';
 import { isAxiosError } from 'axios';
 import { ContentHubKolService } from './content-hub-kol.service';
-import { KolVisibilityService, type KolDirectorySurface } from './kol-visibility.service';
+import {
+  KolVisibilityService,
+  type KolDirectorySurface,
+} from './kol-visibility.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
+import { toPublicKol, toPublicKolList } from './public-kol';
 import type {
   PublicKol,
   PublicKolList,
@@ -32,7 +36,10 @@ export class KolNetworkController {
     private readonly visibility: KolVisibilityService,
   ) {}
 
-  private logKolError(label: string, err: unknown): { status: number; message: string } {
+  private logKolError(
+    label: string,
+    err: unknown,
+  ): { status: number; message: string } {
     const meta = isAxiosError(err)
       ? axiosContentHubErrorMeta(err)
       : { status: 500, message: 'Unknown error' };
@@ -70,7 +77,9 @@ export class KolNetworkController {
     };
 
     if (!this.contentHub.isConfigured()) {
-      this.logger.warn('Content Hub not configured, /kol-network returning empty');
+      this.logger.warn(
+        'Content Hub not configured, /kol-network returning empty',
+      );
       return empty;
     }
 
@@ -83,7 +92,9 @@ export class KolNetworkController {
     }
 
     const visibility = await this.visibility.getVisibilityMap();
-    return this.visibility.filterKolList(list, surface, visibility);
+    return toPublicKolList(
+      this.visibility.filterKolList(list, surface, visibility),
+    );
   }
 
   @Get(':slug/publications')
@@ -105,7 +116,10 @@ export class KolNetworkController {
     try {
       return await this.contentHub.getKolPublications(slug, params);
     } catch (err: unknown) {
-      this.logKolError(`Content Hub GET /kols/${slug}/publications failed`, err);
+      this.logKolError(
+        `Content Hub GET /kols/${slug}/publications failed`,
+        err,
+      );
       return empty;
     }
   }
@@ -126,7 +140,7 @@ export class KolNetworkController {
       if (!visible) {
         throw new NotFoundException(`KOL "${slug}" not found`);
       }
-      return kol;
+      return toPublicKol(kol);
     } catch (err: unknown) {
       if (err instanceof NotFoundException) throw err;
       const meta = this.logKolError(`GET /kols/${slug} failed`, err);

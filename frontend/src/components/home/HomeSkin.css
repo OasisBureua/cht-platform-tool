@@ -317,10 +317,19 @@
   transform: translateX(-50%);
   object-fit: contain;
 }
-/* A headshot with no cut-out yet still has its white studio backdrop.
-   Multiply turns that white into the card's blue instead of a pale
-   rectangle; the face darkens slightly, which is the tradeoff. */
-.chm-skin .person img.person__photo--raw { mix-blend-mode: multiply; }
+/* A headshot with no cut-out keeps whatever backdrop and shape it was
+   shot with (white, grey, landscape, square). Blending it into the card
+   made faces see-through, so it sits in a fixed opaque portrait frame
+   instead: same size for every photo, cropped to the face, clear of the
+   name above. */
+.chm-skin .person img.person__photo--raw {
+  width: 72%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: 50% 20%;
+  border-radius: 0.875rem 0.875rem 0 0;
+  box-shadow: 0 -6px 24px hsl(193 52% 18% / .25);
+}
 .chm-skin .person__mono {
   position: absolute; inset-block-end: 12%; inset-inline: 0;
   display: grid; place-items: center;
@@ -332,15 +341,26 @@
    has no edge to read down; left-aligning gives the five one. */
 .chm-skin .person__label {
   position: absolute; inset-inline: 0; inset-block-start: 0;
-  padding: 1.15rem 1.1rem; text-align: start;
+  padding: 1.15rem 1.1rem 1.75rem; text-align: start;
   color: #fff;
+  /* The card's own top colour fading out: invisible on wide cards, where
+     the label already sits on plain blue, but on narrow cards it keeps
+     the name readable over whatever portrait reaches up behind it. */
+  background: linear-gradient(to bottom,
+    hsl(193 52% 34%) 0%,
+    hsl(193 52% 34% / .9) 60%,
+    hsl(193 52% 34% / 0) 100%);
 }
 .chm-skin .person__label h3 {
   font-family: var(--font-sans); font-size: 1.0625rem; font-weight: 500;
   line-height: 1.25; letter-spacing: -0.01em; color: #fff;
   text-wrap: balance;
 }
-.chm-skin .person__label p { margin-top: 0.35rem; font-size: 0.8125rem; line-height: 1.4; color: hsl(0 0% 100% / .8); }
+.chm-skin .person__label p {
+  margin-top: 0.35rem; font-size: 0.8125rem; line-height: 1.4; color: hsl(0 0% 100% / .8);
+  /* Two lines at most, so a long institution never runs into the portrait. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+}
 
 
 /* ── podcast network ── */

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { catalogApi, type CatalogItem, type MediaHubClip } from '../../api/catalog';
+import { catalogApi, type CatalogItem, type ContentHubClip } from '../../api/catalog';
 import { webinarsApi, type WebinarItem } from '../../api/webinars';
 import { isSessionExpired } from '../../utils/live-session-timing';
 import DISEASE_AREAS from '../../data/disease-areas';
@@ -151,7 +151,7 @@ function playlistToCard(p: CatalogItem, key: string): PlaylistCard {
   };
 }
 
-function clipToTile(c: MediaHubClip, key: string): PanelTile {
+function clipToTile(c: ContentHubClip, key: string): PanelTile {
   return {
     key,
     title: c.title,

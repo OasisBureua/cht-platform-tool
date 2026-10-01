@@ -56,6 +56,7 @@ export default function OperationalEmailModal({
 
   useEffect(() => {
     if (!open) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the form each time the modal opens or its recipients change
     setResult(null);
     setSubject('');
     setBody('');

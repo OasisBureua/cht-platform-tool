@@ -35,7 +35,9 @@ export class CompanionController {
       typeof incoming === 'string'
         ? incoming.trim()
         : Array.isArray(incoming)
-          ? (incoming.find((v) => typeof v === 'string' && v.trim()) || '').trim()
+          ? (
+              incoming.find((v) => typeof v === 'string' && v.trim()) || ''
+            ).trim()
           : '';
     const requestId =
       fromHeader ||

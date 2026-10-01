@@ -1,11 +1,14 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
 import { CognitoService } from './cognito.service';
 import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { RedisCacheService } from '../cache/redis-cache.service';
-import { sessionCacheKey } from '../cache/cache-keys';
+import { sessionCacheKey, termsCacheKey } from '../cache/cache-keys';
+import { hasAcceptedCurrentTerms } from '../common/terms';
+
+const TERMS_CACHE_TTL_SECONDS = 300;
 import { UserRole } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
@@ -42,6 +45,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    @Inject(forwardRef(() => OutboundSyncService))
     private outboundSync: OutboundSyncService,
     private cognitoService: CognitoService,
     private cache: RedisCacheService,
@@ -75,7 +79,9 @@ export class AuthService {
   private remainingAbsoluteSeconds(createdAt: Date, now = new Date()): number {
     return Math.max(
       0,
-      Math.floor((this.absoluteDeadline(createdAt).getTime() - now.getTime()) / 1000),
+      Math.floor(
+        (this.absoluteDeadline(createdAt).getTime() - now.getTime()) / 1000,
+      ),
     );
   }
 
@@ -138,7 +144,9 @@ export class AuthService {
   ): Promise<void> {
     await Promise.all([
       sessionId
-        ? this.prisma.session.delete({ where: { id: sessionId } }).catch(() => {})
+        ? this.prisma.session
+            .delete({ where: { id: sessionId } })
+            .catch(() => {})
         : this.prisma.session.deleteMany({ where: { token } }),
       this.deleteSessionCache(token),
     ]);
@@ -347,9 +355,7 @@ export class AuthService {
       where: { userId },
       select: { token: true },
     });
-    await Promise.all(
-      sessions.map((s) => this.deleteSessionCache(s.token)),
-    );
+    await Promise.all(sessions.map((s) => this.deleteSessionCache(s.token)));
   }
 
   /**
@@ -503,13 +509,7 @@ export class AuthService {
         return null;
       } else {
         const user = this.toAuthUser(cached);
-        await this.maybeSlideSession(
-          trimmed,
-          user,
-          expiresAt,
-          createdAt,
-          now,
-        );
+        await this.maybeSlideSession(trimmed, user, expiresAt, createdAt, now);
         return {
           user,
           cookieMaxAgeSeconds: this.remainingAbsoluteSeconds(createdAt, now),
@@ -530,7 +530,8 @@ export class AuthService {
 
     // createdAt is required after migration; coerce for safety mid-rollout.
     const createdAt =
-      session.createdAt instanceof Date && !Number.isNaN(session.createdAt.getTime())
+      session.createdAt instanceof Date &&
+      !Number.isNaN(session.createdAt.getTime())
         ? session.createdAt
         : new Date(
             session.expiresAt.getTime() - this.sessionIdleTtlSeconds() * 1000,
@@ -642,6 +643,8 @@ export class AuthService {
     state: string | null;
     zipCode: string | null;
     phoneNumber: string | null;
+    termsAcceptedAt: Date | null;
+    termsVersion: string | null;
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -655,9 +658,65 @@ export class AuthService {
         state: true,
         zipCode: true,
         phoneNumber: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
       },
     });
     return user;
+  }
+
+  /** Record Terms of Service & Privacy Policy acceptance on the user's profile. */
+  async acceptTerms(
+    userId: string,
+    version: string,
+  ): Promise<{ termsAcceptedAt: Date; termsVersion: string }> {
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { termsAcceptedAt: new Date(), termsVersion: version },
+      select: { termsAcceptedAt: true, termsVersion: true },
+    });
+    const saved = {
+      termsAcceptedAt: updated.termsAcceptedAt as Date,
+      termsVersion: updated.termsVersion as string,
+    };
+    await this.cache.setJson(
+      termsCacheKey(userId),
+      { termsVersion: saved.termsVersion, accepted: true },
+      TERMS_CACHE_TTL_SECONDS,
+    );
+    return saved;
+  }
+
+  /**
+   * Whether the user has accepted the current terms. Checked on every guarded request,
+   * so the answer is cached briefly per user (keyed by version so a bump re-prompts).
+   */
+  async hasAcceptedTerms(userId: string): Promise<boolean> {
+    const key = termsCacheKey(userId);
+    const cached = await this.cache.getJson<{
+      termsVersion: string | null;
+      accepted: boolean;
+    }>(key);
+    if (cached && typeof cached.accepted === 'boolean') {
+      return (
+        cached.accepted &&
+        hasAcceptedCurrentTerms({
+          termsAcceptedAt: new Date(0),
+          termsVersion: cached.termsVersion,
+        })
+      );
+    }
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { termsAcceptedAt: true, termsVersion: true },
+    });
+    const accepted = hasAcceptedCurrentTerms(user);
+    await this.cache.setJson(
+      key,
+      { termsVersion: user?.termsVersion ?? null, accepted },
+      TERMS_CACHE_TTL_SECONDS,
+    );
+    return accepted;
   }
 
   /** Persist verified E.164 phone used for SMS MFA. */

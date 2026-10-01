@@ -1,5 +1,5 @@
 /**
- * Server-side podcast show registry. YouTube channel handles stay here, 
+ * Server-side podcast show registry. YouTube channel handles stay here,
  * clients call /api/podcasts/:showId/episodes only.
  */
 export type PodcastShowConfig = {
@@ -29,7 +29,7 @@ export const PODCAST_SHOWS: Record<string, PodcastShowConfig> = {
     youtubeChannelHandle: 'BigCEnergyPodcast',
     minEpisodeDurationSeconds: 15 * 60,
   },
-  'tetalks': {
+  tetalks: {
     id: 'tetalks',
     title: 'TeTalks',
     youtubeChannelHandle: 'tetalkspodcast',

@@ -73,3 +73,6 @@ cognito_mrr_associate_waf_replica     = false
 # service_connect_namespace = "cht-dev.local"
 # companion_base_url = "http://cht-companion:8080"
 # companion_internal_secret = ""
+
+# Hub VTT ingest (CPR-29) — from Content Hub terraform outputs
+# vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest"

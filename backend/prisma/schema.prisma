@@ -56,6 +56,10 @@ model User {
   /// Last 4 of bank account when ACH is configured (never store full account).
   bankAccountLast4       String?
 
+  /// Terms of Service & Privacy Policy acceptance; re-prompted when termsVersion != CURRENT_TERMS_VERSION.
+  termsAcceptedAt DateTime?
+  termsVersion    String?
+
   // Earnings tracking
   totalEarnings       Int @default(0)  // Total lifetime earnings in cents
   activitiesCompleted Int @default(0)  // Count of completed programs
@@ -181,6 +185,9 @@ model Program {
   importedViaWebhook Boolean @default(false)
   /// Official CHM Content ID (CLIENT-YY-SS_BBBnn) when assigned via Program Registry.
   chmProgramId       String?
+  /// Hub campaigns.id stored as a string (e.g. "42"). Nullable until an admin links the Program.
+  /// Export and Hub VTT ingest key off this; unlinked programs are omitted from packets.
+  campaignId         String?
 
   // Timestamps
   createdAt         DateTime @default(now())
@@ -204,6 +211,7 @@ model Program {
   @@index([startDate])
   @@index([status, startDate])
   @@index([chmProgramId])
+  @@index([campaignId])
   @@map("Program")
 }
 

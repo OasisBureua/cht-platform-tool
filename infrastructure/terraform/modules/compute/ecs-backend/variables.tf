@@ -180,6 +180,18 @@ variable "cognito_client_id" {
   default     = ""
 }
 
+variable "cognito_m2m_export_client_id" {
+  description = "Cognito M2M client ID allowed for /api/export (client_credentials)"
+  type        = string
+  default     = ""
+}
+
+variable "cognito_m2m_platform_secret_arn" {
+  description = "Secrets Manager ARN for Platform → Hub M2M (client_id, client_secret, token_url, scope). Empty disables outbound Hub M2M."
+  type        = string
+  default     = ""
+}
+
 variable "cognito_hosted_ui_base_url" {
   description = "Cognito Hosted UI base URL for OAuth token exchange"
   type        = string
@@ -231,6 +243,21 @@ variable "companion_base_url" {
   description = "cht-companion Service Connect base URL (e.g. http://cht-companion:8080). Empty disables chat proxy."
   type        = string
   default     = ""
+}
+
+variable "reports" {
+  description = "cht-reports table/queue/bucket for /api/reports (owned by cht-reports TF). Empty table_name disables."
+  type = object({
+    table_name      = string
+    report_id_index = optional(string, "report_id-index")
+    queue_url       = string
+    bucket          = string
+  })
+  default = {
+    table_name = ""
+    queue_url  = ""
+    bucket     = ""
+  }
 }
 
 variable "service_connect_namespace" {

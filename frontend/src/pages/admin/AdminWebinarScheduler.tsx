@@ -52,7 +52,7 @@ export default function AdminWebinarScheduler({
   const [feedbackSurveySourceId, setFeedbackSurveySourceId] = useState('');
 
   const [validationError, setValidationError] = useState<string | null>(null);
-  const [zoomWarning, setZoomWarning] = useState<string | null>(null);
+  const [zoomWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setZoomSessionType(defaultZoomSessionType);

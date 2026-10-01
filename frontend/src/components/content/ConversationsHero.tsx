@@ -1,12 +1,12 @@
 import { Link } from 'react-router-dom';
 import { Play, Info } from 'lucide-react';
-import type { MediaHubClip } from '../../api/catalog';
-import { getShortClipId, getMediaHubThumbnail } from '../../utils/clipUrl';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import type { ContentHubClip } from '../../api/catalog';
+import { getShortClipId, getContentHubThumbnail } from '../../utils/clipUrl';
+import { clipDisplaySummary } from '../../utils/contentHubClipText';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
 
 type ConversationsHeroProps = {
-  clip: MediaHubClip;
+  clip: ContentHubClip;
   isInApp: boolean;
 };
 
@@ -24,7 +24,7 @@ export function ConversationsHero({ clip, isInApp }: ConversationsHeroProps) {
   const playHref = isInApp
     ? `/app/clip/${getShortClipId(clip.id)}`
     : `/catalog/clip/${getShortClipId(clip.id)}`;
-  const thumb = getMediaHubThumbnail(clip);
+  const thumb = getContentHubThumbnail(clip);
   const summary = clipDisplaySummary(clip);
   const body = (summary && summary.trim()) || (clip.description && clip.description.trim()) || '';
   const tag = Array.isArray(clip.tags)

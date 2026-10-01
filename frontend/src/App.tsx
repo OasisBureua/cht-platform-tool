@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, Outlet, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import ScrollToTop from './components/ScrollToTop';
@@ -108,8 +108,6 @@ const ContentHubIntegrations    = lazy(() => import('./pages/admin/content-hub/I
 const ContentHubCampaignDetail  = lazy(() => import('./pages/admin/content-hub/CampaignDetail'));
 const ContentHubUploadData      = lazy(() => import('./pages/admin/content-hub/UploadData'));
 const ContentHubAnalyticsReport = lazy(() => import('./pages/admin/content-hub/AnalyticsReport'));
-const ContentHubExecutiveReport = lazy(() => import('./pages/admin/content-hub/ExecutiveReport'));
-
 // ── Shared page-level loading fallback ───────────────────────────────────────
 function PageLoader() {
   return (
@@ -378,8 +376,8 @@ function App() {
               </Route>
               <Route path="campaigns-dashboard/:campaignId" element={<AdminCampaignDetail />} />
 
-              {/* Content Hub: ported report generator (self-contained, localStorage data layer) */}
-              <Route path="content-hub" element={<ContentHubLayout />}>
+              {/* Reports (Content Hub campaigns, analytics and executive PDFs) */}
+              <Route path="reports" element={<ContentHubLayout />}>
                 <Route index element={<ContentHubDashboard />} />
                 <Route path="new" element={<ContentHubNewReport />} />
                 <Route path="templates" element={<ContentHubTemplates />} />
@@ -387,8 +385,12 @@ function App() {
                 <Route path="campaigns/:id" element={<ContentHubCampaignDetail />} />
                 <Route path="campaigns/:id/upload" element={<ContentHubUploadData />} />
                 <Route path="campaigns/:id/report" element={<ContentHubAnalyticsReport />} />
-                <Route path="campaigns/:id/executive-report" element={<ContentHubExecutiveReport />} />
+                <Route
+                  path="campaigns/:id/executive-report"
+                  element={<ExecutiveReportRedirect />}
+                />
               </Route>
+              <Route path="content-hub/*" element={<LegacyReportsRedirect />} />
             </Route>
           </Routes>
         </Suspense>
@@ -402,6 +404,21 @@ export default App;
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
+}
+
+function LegacyReportsRedirect() {
+  const { pathname, search, hash } = useLocation();
+  return (
+    <Navigate
+      to={`${pathname.replace(/^\/admin\/content-hub/, '/admin/reports')}${search}${hash}`}
+      replace
+    />
+  );
+}
+
+function ExecutiveReportRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={`/admin/reports/campaigns/${id ?? ''}?tab=reports`} replace />;
 }
 
 function AdminProgramHubRedirect() {

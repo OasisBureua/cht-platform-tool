@@ -239,8 +239,10 @@ export default function AdminSurveyResponses() {
   const total = data?.pagination?.total ?? 0;
   const pageSize = data?.pagination?.pageSize ?? PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const responses =
-    data?.pagination?.page === page ? (data.responses ?? []) : [];
+  const responses = useMemo(
+    () => (data?.pagination?.page === page ? (data.responses ?? []) : []),
+    [data, page],
+  );
 
   const responseIds = useMemo(() => responses.map((r) => r.id), [responses]);
 

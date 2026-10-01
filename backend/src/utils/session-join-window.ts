@@ -33,8 +33,7 @@ export function resolveLiveJoinWindow(
     };
   }
 
-  const start =
-    startDate instanceof Date ? startDate : new Date(startDate);
+  const start = startDate instanceof Date ? startDate : new Date(startDate);
   if (Number.isNaN(start.getTime())) {
     return {
       canJoin: false,

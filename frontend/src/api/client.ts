@@ -23,6 +23,15 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler | null) {
   onUnauthorized = handler;
 }
 
+/** Matches the backend 403 code sent before the current terms are accepted. */
+export const TERMS_NOT_ACCEPTED_CODE = 'TERMS_NOT_ACCEPTED';
+
+let onTermsRequired: (() => void) | null = null;
+
+export function setTermsRequiredHandler(handler: (() => void) | null) {
+  onTermsRequired = handler;
+}
+
 apiClient.interceptors.request.use(
   async (config) => {
     if (authHeaderGetter) {
@@ -50,6 +59,12 @@ apiClient.interceptors.response.use(
       if (!isAuthEndpoint) {
         onUnauthorized?.();
       }
+    }
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === TERMS_NOT_ACCEPTED_CODE
+    ) {
+      onTermsRequired?.();
     }
     return Promise.reject(error);
   },

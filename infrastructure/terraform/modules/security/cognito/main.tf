@@ -15,6 +15,25 @@ locals {
     var.ses_source_arn != "" ? var.ses_source_arn :
     "arn:aws:ses:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:identity/${local.ses_domain}"
   ) : ""
+
+  hosted_ui_base_url = "https://${aws_cognito_user_pool_domain.main.domain}.auth.${data.aws_region.current.name}.amazoncognito.com"
+
+  # M2M client/secret names only: TF env "platform" → "prod" so we never emit
+  # cht-platform-m2m-platform / cht-platform-cognito-m2m-platform.
+  # Pool / other Cognito resources still use name_prefix (cht-platform-*).
+  env_label = var.environment == "platform" ? "prod" : var.environment
+
+  m2m_export_scope      = "${aws_cognito_resource_server.platform.identifier}/export.read"
+  m2m_cache_clear_scope = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
+  m2m_hub_client_scopes = "${local.m2m_export_scope} ${local.m2m_cache_clear_scope}"
+
+  # Caller-based names (who holds the secret).
+  # Content Hub → Platform: cht-contenthub-m2m-{env_label} / cht-{env_label}-cognito-m2m-contenthub
+  # Platform → Content Hub:  cht-platform-m2m-{env_label} / cht-{env_label}-cognito-m2m-platform
+  m2m_hub_client_name      = "cht-contenthub-m2m-${local.env_label}"
+  m2m_hub_secret_name      = var.m2m_hub_secret_name != "" ? var.m2m_hub_secret_name : "cht-${local.env_label}-cognito-m2m-contenthub"
+  m2m_platform_client_name = "cht-platform-m2m-${local.env_label}"
+  m2m_platform_secret_name = "cht-${local.env_label}-cognito-m2m-platform"
 }
 
 # ============================================
@@ -182,6 +201,141 @@ resource "aws_cognito_user_pool_client" "cht_web" {
   prevent_user_existence_errors = "ENABLED"
 
   depends_on = [aws_cognito_identity_provider.google]
+}
+
+# ============================================
+# Resource server: CHT Platform API (identifier: platform)
+# Hub (and others) request platform/… scopes with their own clients.
+# ============================================
+resource "aws_cognito_resource_server" "platform" {
+  identifier   = "platform"
+  name         = "CHT Platform API"
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  scope {
+    scope_name        = "export.read"
+    scope_description = "Read platform export endpoints (Hub scheduled ingest)"
+  }
+
+  scope {
+    scope_name        = "cache.clear"
+    scope_description = "Clear platform Redis upstream cache (Hub / ops)"
+  }
+}
+
+# Hub → platform (export + cache.clear). One Hub identity per env.
+resource "aws_cognito_user_pool_client" "hub_m2m" {
+  name         = local.m2m_hub_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = true
+
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes = [
+    local.m2m_export_scope,
+    local.m2m_cache_clear_scope,
+  ]
+
+  supported_identity_providers = ["COGNITO"]
+
+  token_validity_units {
+    access_token = "hours"
+  }
+  access_token_validity = 1
+
+  enable_token_revocation       = true
+  prevent_user_existence_errors = "ENABLED"
+
+  depends_on = [aws_cognito_resource_server.platform]
+}
+
+resource "aws_secretsmanager_secret" "m2m_hub" {
+  name                    = local.m2m_hub_secret_name
+  description             = "Cognito M2M for Content Hub → platform (scopes platform/export.read platform/cache.clear). Client ${local.m2m_hub_client_name}."
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = local.m2m_hub_secret_name
+    Environment = local.env_label
+    Purpose     = "hub-m2m"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "m2m_hub" {
+  secret_id = aws_secretsmanager_secret.m2m_hub.id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.hub_m2m.id
+    client_secret = aws_cognito_user_pool_client.hub_m2m.client_secret
+    token_url     = "${local.hosted_ui_base_url}/oauth2/token"
+    scope         = local.m2m_hub_client_scopes
+  })
+}
+
+# Platform → Hub. Requires Hub resource server `hub` on this pool first
+# (Content Hub terraform). Set enable_platform_outbound_m2m = true after Hub RS exists.
+resource "aws_cognito_user_pool_client" "platform_m2m" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  name         = local.m2m_platform_client_name
+  user_pool_id = aws_cognito_user_pool.main.id
+
+  generate_secret = true
+
+  allowed_oauth_flows                  = ["client_credentials"]
+  allowed_oauth_flows_user_pool_client = true
+  allowed_oauth_scopes                 = var.platform_outbound_hub_scopes
+
+  supported_identity_providers = ["COGNITO"]
+
+  token_validity_units {
+    access_token = "hours"
+  }
+  access_token_validity = 1
+
+  enable_token_revocation       = true
+  prevent_user_existence_errors = "ENABLED"
+}
+
+resource "aws_secretsmanager_secret" "m2m_platform" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  name                    = local.m2m_platform_secret_name
+  description             = "Cognito M2M for Platform → Hub (hub/… scopes). Client ${local.m2m_platform_client_name}."
+  recovery_window_in_days = 30
+
+  tags = {
+    Name        = local.m2m_platform_secret_name
+    Environment = local.env_label
+    Purpose     = "platform-m2m"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "m2m_platform" {
+  count = var.enable_platform_outbound_m2m ? 1 : 0
+
+  secret_id = aws_secretsmanager_secret.m2m_platform[0].id
+  secret_string = jsonencode({
+    client_id     = aws_cognito_user_pool_client.platform_m2m[0].id
+    client_secret = aws_cognito_user_pool_client.platform_m2m[0].client_secret
+    token_url     = "${local.hosted_ui_base_url}/oauth2/token"
+    scope         = join(" ", var.platform_outbound_hub_scopes)
+  })
+}
+
+moved {
+  from = aws_cognito_user_pool_client.content_hub_export
+  to   = aws_cognito_user_pool_client.hub_m2m
+}
+
+moved {
+  from = aws_secretsmanager_secret.m2m_export
+  to   = aws_secretsmanager_secret.m2m_hub
+}
+
+moved {
+  from = aws_secretsmanager_secret_version.m2m_export
+  to   = aws_secretsmanager_secret_version.m2m_hub
 }
 
 # ============================================

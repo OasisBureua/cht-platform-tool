@@ -4,7 +4,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomRecordingsPullService } from './zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from './zoom-recordings-storage.service';
 import { ZoomService } from '../webinars/zoom.service';
-import { extForFile, type RecordingUrlDisposition } from './zoom-recordings-media.util';
+import {
+  extForFile,
+  type RecordingUrlDisposition,
+} from './zoom-recordings-media.util';
 import { ZoomAttendanceImportService } from './zoom-attendance-import.service';
 import {
   buildSessionAttendeeStatusFields,
@@ -38,9 +41,19 @@ export class ZoomRecordingsCatalogService {
       ...(opts.q?.trim()
         ? {
             OR: [
-              { topic: { contains: opts.q.trim(), mode: 'insensitive' as const } },
+              {
+                topic: {
+                  contains: opts.q.trim(),
+                  mode: 'insensitive' as const,
+                },
+              },
               { zoomMeetingId: { contains: opts.q.trim() } },
-              { hostEmail: { contains: opts.q.trim(), mode: 'insensitive' as const } },
+              {
+                hostEmail: {
+                  contains: opts.q.trim(),
+                  mode: 'insensitive' as const,
+                },
+              },
             ],
           }
         : {}),
@@ -114,7 +127,8 @@ export class ZoomRecordingsCatalogService {
         },
       },
     });
-    if (!session) throw new NotFoundException('Zoom recording session not found');
+    if (!session)
+      throw new NotFoundException('Zoom recording session not found');
 
     const filesInS3Count = session.files.filter(
       (f) => !!f.s3Key && !!f.s3Bucket,
@@ -197,7 +211,8 @@ export class ZoomRecordingsCatalogService {
       sessionType: session.sessionType,
       programId: session.programId,
       programTitle: session.program?.title ?? null,
-      chmProgramId: session.chmProgramId ?? session.program?.chmProgramId ?? null,
+      chmProgramId:
+        session.chmProgramId ?? session.program?.chmProgramId ?? null,
       linked: !!session.programId,
       fileCount: counts.fileCount,
       filesInS3Count: counts.filesInS3Count,
@@ -225,7 +240,8 @@ export class ZoomRecordingsCatalogService {
       bucket: row.s3Bucket,
       key: row.s3Key,
       fileType: row.fileType,
-      fileExtension: row.fileExtension || extForFile(row.fileType, row.fileExtension),
+      fileExtension:
+        row.fileExtension || extForFile(row.fileType, row.fileExtension),
       zoomRecordingFileId: row.zoomRecordingFileId,
       chmAssetFilename: row.chmAssetFilename,
       disposition: opts?.disposition,
@@ -288,7 +304,8 @@ export class ZoomRecordingsCatalogService {
       where: { id: sessionId },
       select: { id: true },
     });
-    if (!session) throw new NotFoundException('Zoom recording session not found');
+    if (!session)
+      throw new NotFoundException('Zoom recording session not found');
 
     await this.prisma.$transaction(async (tx) => {
       await tx.zoomRecordingSession.update({
@@ -338,15 +355,15 @@ export class ZoomRecordingsCatalogService {
         },
       },
     });
-    if (!session) throw new NotFoundException('Zoom recording session not found');
+    if (!session)
+      throw new NotFoundException('Zoom recording session not found');
 
     const linked = !!session.programId && !!session.program;
     if (!linked || !session.program) {
       return {
         linked: false,
         canFetchSurveys: false,
-        reason:
-          'Link this session to a Program to fetch and view surveys.',
+        reason: 'Link this session to a Program to fetch and view surveys.',
         programId: null as string | null,
         programTitle: null as string | null,
         surveys: [] as Array<{
@@ -395,7 +412,7 @@ export class ZoomRecordingsCatalogService {
         id: s.id,
         title: s.title,
         type: s.type,
-        source: (jotformFormId ? 'jotform' : 'native') as 'native' | 'jotform',
+        source: jotformFormId ? 'jotform' : 'native',
         jotformFormId,
         jotformFormUrl: jotformFormId
           ? `https://communityhealthmedia.jotform.com/${jotformFormId}`

@@ -44,7 +44,9 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
   beforeEach(() => {
     prisma = {
       program: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'prog-new', title: 'DB09 New' }),
+        findUnique: jest
+          .fn()
+          .mockResolvedValue({ id: 'prog-new', title: 'DB09 New' }),
         update: jest.fn().mockResolvedValue({}),
       },
       survey: {
@@ -61,10 +63,14 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
           jotformFormId: null,
         }),
         findFirst: jest.fn().mockResolvedValue(null),
-        create: jest.fn().mockImplementation(async ({ data }) => ({
-          id: 'created-1',
-          ...data,
-        })),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+            Promise.resolve({
+              id: 'created-1',
+              ...data,
+            }),
+          ),
         update: jest.fn(),
       },
       surveyResponse: { count: jest.fn().mockResolvedValue(0) },
@@ -98,7 +104,7 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
           isCustomized: true,
           schemaVersion: 3,
           title: 'DB09 New - Registration',
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -120,7 +126,10 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
     expect(prisma.survey.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'existing-1' },
-        data: expect.objectContaining({ isCustomized: true, schemaVersion: 3 }),
+        data: expect.objectContaining({
+          isCustomized: true,
+          schemaVersion: 3,
+        }) as unknown,
       }),
     );
   });

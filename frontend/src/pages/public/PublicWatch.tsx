@@ -5,17 +5,17 @@ import { useQuery } from '@tanstack/react-query';
 import { Loader2, Play } from 'lucide-react';
 import { format as formatDate, isValid } from 'date-fns';
 
-import { catalogApi, type MediaHubClip } from '../../api/catalog';
+import { catalogApi, type ContentHubClip } from '../../api/catalog';
 import { ChmMark } from '../../components/brand/ChmMark';
 import { YouTubePlayer } from '../../components/YouTubePlayer';
 import { Button, Chip, chipKind, Reveal } from '../../components/ui';
 import { useAuth } from '../../contexts/AuthContext';
 import { pushClipView } from '../../lib/analytics';
 import { doctorLabelFromSlug } from '../../utils/doctorLabel';
-import { clipDisplaySummary } from '../../utils/mediaHubClipText';
+import { clipDisplaySummary } from '../../utils/contentHubClipText';
 import {
   extractYoutubeVideoIdFromUrl,
-  getMediaHubThumbnail,
+  getContentHubThumbnail,
   getShortClipId,
   isLinkedinCatalogClipId,
   nextCatalogThumbnailFallback,
@@ -49,13 +49,13 @@ function clipDuration(seconds: number | undefined): string | undefined {
 
 /** MediaHub sends snake_case; some ContentHub paths send camelCase. */
 
-function readString(clip: MediaHubClip, snake: string, camel: string): string {
+function readString(clip: ContentHubClip, snake: string, camel: string): string {
   const raw = clip as unknown as Record<string, unknown>;
   const v = raw[snake] ?? raw[camel];
   return typeof v === 'string' ? v : '';
 }
 
-function clipYoutubeUrl(clip: MediaHubClip): string {
+function clipYoutubeUrl(clip: ContentHubClip): string {
   const direct = readString(clip, 'youtube_url', 'youtubeUrl').trim();
   if (direct) return direct;
   const short = getShortClipId(clip.id);
@@ -69,7 +69,7 @@ function tagLabel(value: string): string {
 }
 
 /** `brand:` tags are internal routing, never shown to a reader. */
-function readerTags(clip: MediaHubClip): string[] {
+function readerTags(clip: ContentHubClip): string[] {
   const seen = new Set<string>();
   const out: string[] = [];
   for (const raw of clip.tags ?? []) {
@@ -167,15 +167,15 @@ function SectionHead({
  * YouTube 404s, and a missing video answers 200 with a 120×90 grey box,
  * so both failures walk down the size ladder rather than showing a hole.
  */
-function PosterImage({ clip, className = '' }: { clip: MediaHubClip; className?: string }) {
+function PosterImage({ clip, className = '' }: { clip: ContentHubClip; className?: string }) {
   const short = getShortClipId(clip.id);
   const videoId =
     extractYoutubeVideoIdFromUrl(clipYoutubeUrl(clip)) ||
     (/^[a-zA-Z0-9_-]{11}$/.test(short) ? short : null);
-  const [src, setSrc] = useState(() => getMediaHubThumbnail(clip));
+  const [src, setSrc] = useState(() => getContentHubThumbnail(clip));
 
   useEffect(() => {
-    setSrc(getMediaHubThumbnail(clip));
+    setSrc(getContentHubThumbnail(clip));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clip.id, clip.thumbnail_url, clip.youtube_url]);
 
@@ -207,7 +207,7 @@ function PosterImage({ clip, className = '' }: { clip: MediaHubClip; className?:
  * The card poster. Permanently dark under the gradient, so the mark and
  * the runtime take fixed white rather than the page-following tokens.
  */
-function Thumb({ clip, className = '' }: { clip: MediaHubClip; className?: string }) {
+function Thumb({ clip, className = '' }: { clip: ContentHubClip; className?: string }) {
   const duration = clipDuration(clip.duration_seconds);
   return (
     <div className={`relative overflow-hidden rounded-[6px] bg-surface-2 ${className}`}>
@@ -223,7 +223,7 @@ function Thumb({ clip, className = '' }: { clip: MediaHubClip; className?: strin
   );
 }
 
-function FormatBadge({ clip }: { clip: MediaHubClip }) {
+function FormatBadge({ clip }: { clip: ContentHubClip }) {
   return (
     <span className="eyebrow inline-flex h-6 items-center rounded-[6px] bg-ground/70 px-3 text-text backdrop-blur-sm">
       {clip.is_short ? 'clip' : 'video'}
@@ -247,10 +247,10 @@ function SessionPlayer({
   queue,
   hrefFor,
 }: {
-  clip: MediaHubClip;
+  clip: ContentHubClip;
   youtubeUrl: string;
-  queue: MediaHubClip[];
-  hrefFor: (clip: MediaHubClip) => string;
+  queue: ContentHubClip[];
+  hrefFor: (clip: ContentHubClip) => string;
 }) {
   const [playing, setPlaying] = useState(false);
   const duration = clipDuration(clip.duration_seconds);
@@ -344,7 +344,7 @@ function SessionPlayer({
 }
 
 /** The track card. One link, so its tags are labels rather than links. */
-function CompactCard({ clip, to }: { clip: MediaHubClip; to: string }) {
+function CompactCard({ clip, to }: { clip: ContentHubClip; to: string }) {
   const tags = readerTags(clip).slice(0, 2);
   const runtime = clipDuration(clip.duration_seconds);
   const lead = clip.doctors?.[0] ? doctorLabelFromSlug(clip.doctors[0]) : null;
@@ -399,7 +399,7 @@ export default function PublicWatch() {
   const { user, isAuthenticated } = useAuth();
 
   const skipLinkedInClip = !!clipId && isLinkedinCatalogClipId(clipId);
-  const stateClip = (location.state as { clip?: MediaHubClip } | null)?.clip;
+  const stateClip = (location.state as { clip?: ContentHubClip } | null)?.clip;
   const stateClipMatches =
     !!stateClip && !!clipId && (stateClip.id === clipId || getShortClipId(stateClip.id) === clipId);
 
@@ -439,7 +439,7 @@ export default function PublicWatch() {
               limit: TRACK_FETCH_LIMIT,
               sort_by: 'recorded_at',
             })
-          : Promise.resolve({ items: [] as MediaHubClip[], total: 0 }),
+          : Promise.resolve({ items: [] as ContentHubClip[], total: 0 }),
         catalogApi.getClips({ limit: TRACK_FETCH_LIMIT, sort_by: 'recorded_at' }),
       ]);
       return [...inCategory.items, ...newest.items];
@@ -467,7 +467,7 @@ export default function PublicWatch() {
 
   const track = useMemo(() => {
     const seen = new Set<string>();
-    const out: MediaHubClip[] = [];
+    const out: ContentHubClip[] = [];
     for (const candidate of trackPool) {
       if (!candidate?.id) continue;
       if (candidate.id === clip?.id) continue;
@@ -568,7 +568,7 @@ export default function PublicWatch() {
 
   /* ── the record, in the design's slots ────────────────────────────── */
 
-  const hrefFor = (c: MediaHubClip) => `${base}/catalog/clip/${getShortClipId(c.id)}`;
+  const hrefFor = (c: ContentHubClip) => `${base}/catalog/clip/${getShortClipId(c.id)}`;
 
   const categoryLabel = category ? formatWordPressCategoryLabel(category) : null;
   const seriesLabel = seriesSlug

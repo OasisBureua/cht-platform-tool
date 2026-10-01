@@ -38,7 +38,9 @@ describe('zoom-session-attendee-status.util', () => {
     });
 
     it('marks imported when import count is positive', () => {
-      expect(buildSessionAttendeeStatusFields(base, 3).attendeesImported).toBe(true);
+      expect(buildSessionAttendeeStatusFields(base, 3).attendeesImported).toBe(
+        true,
+      );
     });
 
     it('marks imported when report was exported to S3', () => {
@@ -63,9 +65,9 @@ describe('zoom-session-attendee-status.util', () => {
     it('returns staging counts for unlinked sessions', async () => {
       const prisma = {
         zoomAttendanceParticipant: {
-          groupBy: jest.fn().mockResolvedValue([
-            { sessionId: 'sess-u', _count: { _all: 4 } },
-          ]),
+          groupBy: jest
+            .fn()
+            .mockResolvedValue([{ sessionId: 'sess-u', _count: { _all: 4 } }]),
         },
         webinarParticipantEvent: {
           findMany: jest.fn(),
@@ -73,7 +75,9 @@ describe('zoom-session-attendee-status.util', () => {
       };
 
       const counts = await loadSessionAttendeeImportCounts(
-        prisma as unknown as Parameters<typeof loadSessionAttendeeImportCounts>[0],
+        prisma as unknown as Parameters<
+          typeof loadSessionAttendeeImportCounts
+        >[0],
         [{ id: 'sess-u', programId: null, zoomMeetingId: '111' }],
       );
 
@@ -95,10 +99,10 @@ describe('zoom-session-attendee-status.util', () => {
       };
 
       const counts = await loadSessionAttendeeImportCounts(
-        prisma as unknown as Parameters<typeof loadSessionAttendeeImportCounts>[0],
-        [
-          { id: 'sess-l', programId: 'prog-1', zoomMeetingId: '222' },
-        ],
+        prisma as unknown as Parameters<
+          typeof loadSessionAttendeeImportCounts
+        >[0],
+        [{ id: 'sess-l', programId: 'prog-1', zoomMeetingId: '222' }],
       );
 
       expect(counts.get('sess-l')).toBe(2);
@@ -107,7 +111,7 @@ describe('zoom-session-attendee-status.util', () => {
           where: expect.objectContaining({
             source: 'REPORT_IMPORT',
             event: 'JOINED',
-          }),
+          }) as unknown,
         }),
       );
     });

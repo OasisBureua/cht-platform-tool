@@ -35,9 +35,11 @@ export default function CityTypeahead({
     [value, stateCode],
   );
 
-  useEffect(() => {
+  const [prevSuggestions, setPrevSuggestions] = useState(suggestions);
+  if (suggestions !== prevSuggestions) {
+    setPrevSuggestions(suggestions);
     setHighlight(0);
-  }, [suggestions]);
+  }
 
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {

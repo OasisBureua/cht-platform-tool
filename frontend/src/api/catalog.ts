@@ -20,7 +20,7 @@ export interface PublicClipWordPress {
   modified_gmt: string;
 }
 
-export interface MediaHubClip {
+export interface ContentHubClip {
   id: string;
   title: string;
   description: string;
@@ -30,6 +30,7 @@ export interface MediaHubClip {
   doctors: string[];
   thumbnail_url: string;
   youtube_url: string;
+  youtubeUrl?: string;
   duration_seconds: number;
   is_short: boolean;
   posted_at: string;
@@ -98,7 +99,7 @@ export interface WordPressPostsResponse {
   total: number;
 }
 
-export type MediaHubTags = Record<string, string[]>;
+export type ContentHubTags = Record<string, string[]>;
 
 export interface GetClipsParams {
   q?: string;
@@ -120,8 +121,8 @@ export const catalogApi = {
     return data;
   },
 
-  getTags: async (): Promise<MediaHubTags> => {
-    const { data } = await apiClient.get<MediaHubTags>('/catalog/tags');
+  getTags: async (): Promise<ContentHubTags> => {
+    const { data } = await apiClient.get<ContentHubTags>('/catalog/tags');
     return data || {};
   },
 
@@ -203,7 +204,7 @@ export const catalogApi = {
     return { items: data?.items ?? [], total: data?.total ?? 0 };
   },
 
-  getClips: async (params?: GetClipsParams): Promise<{ items: MediaHubClip[]; total: number }> => {
+  getClips: async (params?: GetClipsParams): Promise<{ items: ContentHubClip[]; total: number }> => {
     const query = params
       ? {
           ...params,
@@ -215,15 +216,15 @@ export const catalogApi = {
                 : undefined,
         }
       : undefined;
-    const { data } = await apiClient.get<{ items?: MediaHubClip[]; total?: number }>(
+    const { data } = await apiClient.get<{ items?: ContentHubClip[]; total?: number }>(
       '/catalog/clips',
       { params: query },
     );
     return { items: data?.items || [], total: data?.total ?? 0 };
   },
 
-  getClip: async (id: string): Promise<MediaHubClip | null> => {
-    const { data } = await apiClient.get<MediaHubClip | null>(
+  getClip: async (id: string): Promise<ContentHubClip | null> => {
+    const { data } = await apiClient.get<ContentHubClip | null>(
       `/catalog/clips/${encodeURIComponent(id)}`,
     );
     return data;
@@ -234,13 +235,13 @@ export const catalogApi = {
     return Array.isArray(data) ? data : [];
   },
 
-  getDoctor: async (slug: string): Promise<{ clips?: MediaHubClip[] } | null> => {
+  getDoctor: async (slug: string): Promise<{ clips?: ContentHubClip[] } | null> => {
     const { data } = await apiClient.get(`/catalog/doctors/${slug}`);
     return data;
   },
 
-  search: async (q: string, params?: { limit?: number; offset?: number }): Promise<{ items: MediaHubClip[]; total: number }> => {
-    const { data } = await apiClient.get<{ items?: MediaHubClip[]; total?: number }>('/catalog/search', {
+  search: async (q: string, params?: { limit?: number; offset?: number }): Promise<{ items: ContentHubClip[]; total: number }> => {
+    const { data } = await apiClient.get<{ items?: ContentHubClip[]; total?: number }>('/catalog/search', {
       params: { q, ...params },
     });
     return { items: data?.items || [], total: data?.total ?? 0 };

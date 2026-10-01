@@ -25,6 +25,13 @@ export const validationSchema = Joi.object({
   // Cognito (optional in local/dev; required for production auth)
   COGNITO_USER_POOL_ID: Joi.string().allow('').optional(),
   COGNITO_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_EXPORT_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_EXPORT_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_CACHE_CLEAR_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_PLATFORM_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_PLATFORM_CLIENT_SECRET: Joi.string().allow('').optional(),
+  COGNITO_M2M_TOKEN_URL: Joi.string().allow('').optional(),
+  COGNITO_M2M_HUB_SCOPES: Joi.string().allow('').optional(),
   COGNITO_REGION: Joi.string().allow('').optional(),
   COGNITO_HOSTED_UI_BASE_URL: Joi.string().allow('').optional(),
   COGNITO_DOMAIN_PREFIX: Joi.string().allow('').optional(),
@@ -75,13 +82,20 @@ export const validationSchema = Joi.object({
   // SQS (payment queue - optional for local dev)
   SQS_PAYMENT_QUEUE_URL: Joi.string().allow('').optional(),
 
+  // On-demand reports (cht-reports table/queue/bucket); empty disables /api/reports
+  REPORTS_TABLE_NAME: Joi.string().allow('').optional(),
+  REPORTS_REPORT_INDEX: Joi.string().allow('').optional(),
+  REPORTS_QUEUE_URL: Joi.string().allow('').optional(),
+  REPORTS_BUCKET: Joi.string().allow('').optional(),
+  REPORTS_MAX_EDIT_ATTEMPTS: Joi.number().integer().min(0).optional(),
+  REPORTS_LOCK_TTL_SECONDS: Joi.number().integer().min(60).optional(),
+
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
 
   // Content Hub (catalog clips/tags/KOLs + HCP upsert)
   CONTENTHUB_BASE_URL: Joi.string().allow('').optional(),
   CONTENTHUB_ADMIN_BASE_URL: Joi.string().allow('').optional(),
-  CONTENTHUB_API_KEY: Joi.string().allow('').optional(),
 
   // YouTube (optional – for catalog playlists, fallback when Content Hub not configured)
   YOUTUBE_API_KEY: Joi.string().allow('').optional(),

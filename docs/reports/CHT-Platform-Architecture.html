@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CHT Platform: Technical Architecture</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @page {
+    size: Letter;
+    margin: 0.75in 0.7in 0.8in;
+    @bottom-left { content: "CHT Platform Architecture  |  v1.0  |  Confidential"; font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+  }
+  @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  :root {
+    --ink: #14202e;
+    --muted: #5b6878;
+    --line: #dfe4ea;
+    --soft: #f4f6f9;
+    --brand: #0f6f7a;
+    --brand-soft: #e6f3f4;
+    --warn: #a16207;
+    --warn-soft: #fdf6e3;
+    --ok: #15803d;
+    --ok-soft: #e8f5ec;
+    --plan: #4338ca;
+    --plan-soft: #eef0fd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); font: 10pt/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif; background: #fff; }
+  main { max-width: 7.1in; margin: 0 auto; }
+  @media screen { body { background: #eef1f4; } main { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 56px 64px 96px; margin: 32px auto; } }
+
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; margin: 0; }
+  h2 { font-size: 16pt; margin: 30px 0 10px; padding-top: 6px; border-top: 2px solid var(--brand); break-after: avoid; }
+  h2 .num { color: var(--brand); margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 20px 0 6px; break-after: avoid; }
+  h4 { font-size: 10pt; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; break-after: avoid; }
+  p { margin: 6px 0 10px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  code { font: 8.8pt/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; border-bottom: 1px solid #c9d1da; }
+  td.k { font-weight: 600; white-space: nowrap; width: 1%; }
+
+  .cover { min-height: 9.1in; display: flex; flex-direction: column; break-after: page; }
+  .cover .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 9pt; }
+  .cover h1 { font-size: 34pt; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 5.8in; }
+  .cover .bar { height: 6px; width: 72px; background: var(--brand); border-radius: 3px; margin: 28px 0 32px; }
+  .cover .meta { margin-top: auto; }
+  .cover .meta table { font-size: 9.5pt; }
+  .cover .meta td:first-child { color: var(--muted); width: 1.6in; }
+
+  .callout { border-left: 3px solid var(--brand); background: var(--brand-soft); padding: 10px 14px; margin: 12px 0 16px; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout .t { font-weight: 600; margin-bottom: 2px; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 7.8pt; font-weight: 600; white-space: nowrap; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.beta { background: var(--warn-soft); color: var(--warn); }
+  .pill.plan { background: var(--plan-soft); color: var(--plan); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .card h4 { margin-top: 0; color: var(--brand); }
+  .card ul, .card p { margin-bottom: 0; }
+
+  .toc ol { list-style: none; padding: 0; columns: 2; column-gap: 28px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .toc .num { color: var(--brand); font-weight: 600; display: inline-block; width: 24px; }
+
+  pre.diagram { font: 7.9pt/1.35 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 12px; white-space: pre; overflow: hidden; break-inside: avoid; }
+  .legend { font-size: 8.5pt; color: var(--muted); margin: -4px 0 12px; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ============================ COVER ============================ -->
+<section class="cover">
+  <div class="eyebrow">Community Health Media · CHT Platform</div>
+  <h1>Technical Architecture</h1>
+  <div class="sub">How the CHT platform is built and run: frontend, backend, database, authentication, APIs, storage, third-party services, environments and external dependencies.</div>
+  <div class="bar"></div>
+
+  <div class="callout">
+    <div class="t">At a glance</div>
+    <ul>
+      <li>React single-page app on <strong>S3 + CloudFront</strong>, with <code>/api</code> served from the same domain through an ALB.</li>
+      <li><strong>NestJS</strong> API and a <strong>Python</strong> worker on <strong>ECS Fargate</strong>, deployed by Terraform from GitHub Actions.</li>
+      <li><strong>PostgreSQL 15</strong>: Aurora Global in production (us-east-1 writer, us-east-2 reader), RDS on dev.</li>
+      <li><strong>Amazon Cognito</strong> for member and admin sign-in (MFA, Google) and for service-to-service tokens with Content Hub.</li>
+      <li>Two environments in one AWS account: <strong>Dev</strong> (<code>devapp.communityhealth.media</code>) and <strong>Platform / production</strong> (<code>testapp.communityhealth.media</code>, alias <code>app.communityhealth.media</code>).</li>
+    </ul>
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td>Document</td><td>CHT Platform Technical Architecture</td></tr>
+      <tr><td>Version</td><td>1.0</td></tr>
+      <tr><td>Date</td><td>September 29, 2026</td></tr>
+      <tr><td>Status</td><td>Draft for review</td></tr>
+      <tr><td>Owner</td><td>Uche Aduaka (CHT Platform)</td></tr>
+      <tr><td>Reviewers</td><td>CHT engineering, Content Hub engineering, Security, CHM leadership</td></tr>
+      <tr><td>Source of truth</td><td><code>cht-platform-tool</code> repository: <code>frontend/</code>, <code>backend/</code>, <code>worker/</code>, <code>infrastructure/terraform/</code>, <code>.github/workflows/</code></td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ============================ TOC ============================ -->
+<section class="toc">
+  <h2 style="border-top:none;margin-top:0;">Contents</h2>
+  <ol>
+    <li><span class="num">1</span>Description</li>
+    <li><span class="num">2</span>Frontend</li>
+    <li><span class="num">3</span>Backend</li>
+    <li><span class="num">4</span>Database</li>
+    <li><span class="num">5</span>Authentication</li>
+    <li><span class="num">6</span>APIs</li>
+    <li><span class="num">7</span>Storage</li>
+    <li><span class="num">8</span>Third-party services</li>
+    <li><span class="num">9</span>Production environment</li>
+    <li><span class="num">10</span>Dev environment</li>
+    <li><span class="num">11</span>External dependencies</li>
+    <li><span class="num">12</span>Open items</li>
+  </ol>
+  <p class="legend">
+    Status: <span class="pill ok">Live</span> running today,
+    <span class="pill beta">Transition</span> being migrated or partly rolled out,
+    <span class="pill plan">Planned</span> designed but not yet deployed.
+  </p>
+</section>
+
+<!-- ============================ 1 ============================ -->
+<h2><span class="num">1</span>Description</h2>
+<p>
+  The CHT platform is the web product behind Community Health Media. It serves three audiences from one codebase and one domain per environment:
+</p>
+<ul>
+  <li><strong>Public site</strong>: marketing pages, the clinical conversation catalog, the KOL network, podcasts and upcoming programs.</li>
+  <li><strong>Member app</strong> (<code>/app</code>): HCPs register for webinars and office hours, attend in Zoom, complete surveys, get paid honoraria, and watch content.</li>
+  <li><strong>Admin console</strong> (<code>/admin</code>): CHM staff schedule programs, approve registrations, manage surveys, users and payments, review audit logs and Zoom recordings, and generate sponsor reports.</li>
+</ul>
+<p>
+  The platform owns identity, programs, registrations, attendance, surveys and payments. Catalog content, KOL data and campaign analytics come from the separate <strong>Content Hub</strong> service. Executive PDF reports are produced by the separate <strong>cht-reports</strong> pipeline.
+</p>
+
+<h3>System overview</h3>
+<pre class="diagram">
+                         HCPs, KOLs, CHM admins (browser)
+                                        │
+                                        ▼
+                     Route 53 ──► CloudFront (+ WAF, TLS via ACM)
+                                   │                     │
+                         static files│                     │/api/*
+                                   ▼                     ▼
+                        S3 frontend bucket        Application Load Balancer
+                        (primary + us-east-2 DR)         │
+                                                         ▼
+     ┌──────────────── ECS Fargate cluster (private subnets, us-east-1) ─────────────────┐
+     │  chm-backend (NestJS API)  ──Service Connect──►  cht-companion (chat, planned)    │
+     │        │           │                                                              │
+     │        │           └──► SQS (email, payment, CME, scheduled jobs + DLQs)          │
+     │        │                          │                                               │
+     │        │                          ▼                                               │
+     │        │                 chm-worker (Python) ──► SES, Bill.com, S3 certificates   │
+     └────────┼──────────────────────────────────────────────────────────────────────────┘
+              │
+              ├──► Aurora PostgreSQL Global (prod) / RDS PostgreSQL (dev)
+              ├──► ElastiCache Redis (prod: Content Hub read cache)
+              ├──► Amazon Cognito (users, MFA, M2M) ── Secrets Manager, KMS, AppConfig
+              ├──► Content Hub API (catalog, KOLs, campaigns)   ◄── Cognito M2M both ways
+              ├──► cht-reports (DynamoDB state, SQS requests, S3 PDFs)
+              └──► Zoom, Stripe, Bill.com, JotForm, HubSpot, YouTube, reCAPTCHA, NPI Registry
+</pre>
+
+<!-- ============================ 2 ============================ -->
+<h2><span class="num">2</span>Frontend</h2>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Framework</td><td>React 19 single-page app, TypeScript, built with Vite 7</td></tr>
+    <tr><td class="k">Routing</td><td>React Router 7 with lazy-loaded route chunks; public, <code>/app</code> (member) and <code>/admin</code> trees with auth and role guards</td></tr>
+    <tr><td class="k">Data</td><td>TanStack React Query 5 over an Axios client; cookies sent with every request (<code>withCredentials</code>); polling for long-running jobs such as reports</td></tr>
+    <tr><td class="k">UI</td><td>Tailwind CSS 3, shared kit in <code>components/ui</code> (Button, Field, Chip, SegmentedControl) and admin patterns (section cards, alerts, status badges); Lucide icons; Recharts for analytics</td></tr>
+    <tr><td class="k">Payments UI</td><td>Stripe Connect embedded components (<code>@stripe/connect-js</code>) for payout onboarding</td></tr>
+    <tr><td class="k">Zoom</td><td>Meeting SDK Client View 5.1.4 loaded from the Zoom CDN inside a same-origin iframe (<code>/zoom-embed.html</code>). CloudFront sends <code>Cross-Origin-Opener-Policy: same-origin</code> and <code>Cross-Origin-Embedder-Policy: credentialless</code> so live video works.</td></tr>
+    <tr><td class="k">Bot protection</td><td>Google reCAPTCHA v3 on join and login when keys are configured</td></tr>
+    <tr><td class="k">Quality</td><td>ESLint (React Compiler rules), <code>tsc</code>, Vitest unit tests; all run in CI before deploy</td></tr>
+    <tr><td class="k">Hosting</td><td>Static build synced to S3 and served by CloudFront; hashed assets cached long-term, <code>index.html</code> and <code>zoom-embed.html</code> uploaded separately; CloudFront invalidation after each deploy</td></tr>
+  </tbody>
+</table>
+<p>
+  Because the SPA and API share one origin, session cookies are first-party and no cross-origin CORS is needed for the browser. The API also exposes <code>Content-Disposition</code> so downloaded files (for example report PDFs) keep friendly names.
+</p>
+
+<!-- ============================ 3 ============================ -->
+<h2><span class="num">3</span>Backend</h2>
+<h3>3.1 API service (chm-backend)</h3>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Runtime</td><td>Node.js 20 (Alpine container), NestJS 11, TypeScript</td></tr>
+    <tr><td class="k">Data access</td><td>Prisma 5.22 ORM for PostgreSQL; AWS SDK v3 for DynamoDB, S3, SQS and Cognito; ioredis for the cache</td></tr>
+    <tr><td class="k">Structure</td><td>Feature modules: admin, auth, campaigns, catalog, companion, contact, content-hub, dashboard, email, export, hubspot, internal, invites, jotform, kol-network, outbound-sync, payments, podcasts, programs, reports, surveys, webinars, zoom-recordings</td></tr>
+    <tr><td class="k">Conventions</td><td>Global <code>/api</code> prefix; DTO validation on every input; guards for session, roles (ADMIN) and M2M scopes; admin actions written to the audit log</td></tr>
+    <tr><td class="k">Security</td><td>Helmet headers, HSTS in production, <code>trust proxy</code> behind the ALB, rate-limited auth with account lockout, Swagger docs (<code>/api/docs</code>) gated to admin sessions</td></tr>
+    <tr><td class="k">Logging</td><td>Structured JSON logs (pino) to CloudWatch; tokens, secrets and Authorization headers are never logged</td></tr>
+    <tr><td class="k">Health</td><td><code>GET /health</code> (liveness), <code>GET /health/ready</code> (database; used by the ALB and deploy gates), <code>GET /actuator/info</code> (region, image tag)</td></tr>
+    <tr><td class="k">Config</td><td>Environment variables validated at start-up; secrets injected from Secrets Manager into the ECS task; feature flags through AWS AppConfig</td></tr>
+  </tbody>
+</table>
+
+<h3>3.2 Worker (chm-worker)</h3>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Runtime</td><td>Python 3.11 (slim container), boto3, SQLAlchemy with psycopg2, ReportLab and Pillow</td></tr>
+    <tr><td class="k">Consumers</td><td>SQS queues for <strong>email</strong> (SES), <strong>payment</strong> (honorarium payouts) and <strong>CME</strong> (certificate PDFs to S3), plus a <strong>scheduled jobs</strong> queue</td></tr>
+    <tr><td class="k">Reliability</td><td>Each queue has a dead-letter queue with a CloudWatch alarm; health check script for ECS</td></tr>
+    <tr><td class="k">Schedules</td><td>EventBridge rules: session reminders (every 12 hours on dev, every 6 hours in production) and, in production, a Bill.com MFA reminder every 20 days</td></tr>
+  </tbody>
+</table>
+
+<h3>3.3 Key flows</h3>
+<ol>
+  <li><strong>Program to payment.</strong> Admin schedules a program (Zoom meeting or webinar created by API) → HCP registers and is approved → Zoom webhooks and in-app SDK events record attendance → HCP submits the post-event survey → backend checks eligibility and queues a payment → worker pays out and updates status.</li>
+  <li><strong>Executive report.</strong> Admin requests a report → backend writes state to DynamoDB, sends a message to the report queue and returns 202 → cht-reports pulls Content Hub and Platform data (via the M2M export endpoint), renders a PDF to S3 → backend streams the PDF to the admin without exposing the S3 location.</li>
+  <li><strong>Catalog.</strong> Backend reads Content Hub public and admin APIs with an M2M Bearer token, caches results in Redis (production, 1 hour), and serves them to the SPA.</li>
+</ol>
+
+<!-- ============================ 4 ============================ -->
+<h2><span class="num">4</span>Database</h2>
+<h3>4.1 PostgreSQL (system of record)</h3>
+<table>
+  <thead><tr><th></th><th>Production (platform)</th><th>Dev</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Engine</td><td>Aurora PostgreSQL Global 15.17</td><td>RDS PostgreSQL 15.17</td></tr>
+    <tr><td class="k">Topology</td><td>Writer in us-east-1, reader in us-east-2 (managed failover)</td><td>Single instance, single AZ</td></tr>
+    <tr><td class="k">Size</td><td><code>db.r6g.large</code></td><td><code>db.t3.micro</code>, 20 GB</td></tr>
+    <tr><td class="k">Backups</td><td>7-day retention</td><td>1-day retention</td></tr>
+    <tr><td class="k">Encryption</td><td colspan="2">At rest with KMS; TLS in transit; private subnets only; AWS Config rule checks RDS encryption</td></tr>
+  </tbody>
+</table>
+<p>The schema is managed by Prisma migrations (51 to date), applied automatically during each deploy through ECS Exec on the backend task. It has 24 models, grouped as follows:</p>
+<table>
+  <thead><tr><th>Area</th><th>Models</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Identity</td><td><code>User</code>, <code>Session</code>, <code>KolDirectoryVisibility</code></td></tr>
+    <tr><td class="k">Programs</td><td><code>Program</code>, <code>OfficeHoursSlot</code>, <code>ProgramRegistration</code>, <code>ProgramEnrollment</code>, <code>RegistrationInvite</code>, <code>ProgramFormLink</code></td></tr>
+    <tr><td class="k">Zoom</td><td><code>WebinarParticipantEvent</code>, <code>ZoomRecordingSession</code>, <code>ZoomRecordingFile</code>, <code>ZoomSyncJob</code>, <code>ZoomAttendanceImportJob</code>, <code>ZoomAttendanceParticipant</code></td></tr>
+    <tr><td class="k">Surveys</td><td><code>Survey</code>, <code>SurveyResponse</code>, <code>FormJotformProgress</code></td></tr>
+    <tr><td class="k">Payments and CME</td><td><code>Payment</code>, <code>CMECredit</code></td></tr>
+    <tr><td class="k">Content and analytics</td><td><code>Video</code>, <code>VideoView</code>, <code>AnalyticsEvent</code></td></tr>
+    <tr><td class="k">Governance</td><td><code>AdminAuditLog</code></td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 Other data stores</h3>
+<table>
+  <thead><tr><th>Store</th><th>Used for</th><th>Owner</th></tr></thead>
+  <tbody>
+    <tr><td class="k">DynamoDB</td><td>Report state (<code>cht-{env}-report-state</code>, partition key <code>campaign_id</code>, sort key <code>report_id</code>, <code>report_id-index</code>); per-campaign lock rows prevent duplicate generation</td><td>cht-reports (platform has scoped access)</td></tr>
+    <tr><td class="k">ElastiCache Redis</td><td>Read cache for Content Hub responses (production, <code>cache.t3.medium</code>)</td><td>Platform</td></tr>
+    <tr><td class="k">Companion DB</td><td>PostgreSQL with pgvector for chat retrieval</td><td>cht-companion <span class="pill plan">Planned</span></td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 5 ============================ -->
+<h2><span class="num">5</span>Authentication</h2>
+<h3>5.1 Members and admins</h3>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Identity provider</td><td>Amazon Cognito user pool per environment (Essentials tier), Hosted UI domains <code>chm-dev</code> and <code>chm-platform</code></td></tr>
+    <tr><td class="k">Sign-in methods</td><td>Email and password (<code>POST /api/auth/cognito/login</code>); Google through Cognito Hosted UI (<code>/auth/callback</code>)</td></tr>
+    <tr><td class="k">MFA</td><td>Optional at the pool level with TOTP and SMS; the app prompts all users to enroll (<code>/mfa/setup</code>). Plan: switch to required once users have enrolled.</td></tr>
+    <tr><td class="k">Sessions</td><td>Backend exchanges Cognito tokens for its own session: httpOnly, secure cookie backed by the <code>Session</code> table; revoked on logout and password change</td></tr>
+    <tr><td class="k">Authorization</td><td>Roles on <code>User</code> (member, KOL, ADMIN); route guards in the SPA and enforced server-side on every API</td></tr>
+    <tr><td class="k">Protection</td><td>Cognito WAF, CloudFront WAF, reCAPTCHA v3, login lockout, responses that don't reveal whether an email exists</td></tr>
+    <tr><td class="k">Resilience</td><td>Cognito multi-region replica in us-east-2 (production and dev); email sent from <code>noreply@communityhealth.media</code> via SES</td></tr>
+    <tr><td class="k">Profile checks</td><td>NPI validated against the public NPI Registry during profile completion</td></tr>
+  </tbody>
+</table>
+
+<h3>5.2 Service-to-service</h3>
+<table>
+  <thead><tr><th>Direction</th><th>Mechanism</th><th>Scope / secret</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Content Hub → Platform</td><td>Cognito client credentials, Bearer token</td><td><code>platform/export.read</code> (report input packet), <code>platform/cache.clear</code></td></tr>
+    <tr><td class="k">Platform → Content Hub</td><td>Cognito client credentials (client <code>cht-platform-m2m-{env}</code>), Bearer token cached until expiry</td><td>Hub resource server scopes (public and admin APIs)</td></tr>
+    <tr><td class="k">Platform → Companion</td><td>ECS Service Connect (private) plus internal shared secret</td><td><code>COMPANION_INTERNAL_SECRET</code></td></tr>
+    <tr><td class="k">Vendors → Platform</td><td>Webhook signatures (HMAC, Stripe-Signature)</td><td>Zoom, Stripe, Stripe Connect, Bill.com, JotForm webhook secrets</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 6 ============================ -->
+<h2><span class="num">6</span>APIs</h2>
+<p>All endpoints are served under <code>/api</code> on the environment domain. There are 29 controllers; the main groups are below.</p>
+<table>
+  <thead><tr><th>Group</th><th>Base path</th><th>Access</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Auth</td><td><code>/api/auth</code></td><td>Public / session</td><td>Login, join, Google callback, MFA, password reset, session</td></tr>
+    <tr><td class="k">Catalog and content</td><td><code>/api/catalog</code>, <code>/api/kol-network</code>, <code>/api/podcasts</code></td><td>Public</td><td>Clips, playlists, KOL directory, podcast episodes</td></tr>
+    <tr><td class="k">Programs</td><td><code>/api/programs</code>, <code>/api/webinars</code>, <code>/api/office-hours</code>, <code>/api/invites</code></td><td>Public / member</td><td>Listings, registration, Meeting SDK auth, SDK attendance</td></tr>
+    <tr><td class="k">Surveys</td><td><code>/api/surveys</code>, <code>/api/jotform</code></td><td>Member</td><td>Native surveys, drafts, submissions, legacy JotForm</td></tr>
+    <tr><td class="k">Payments</td><td><code>/api/payments</code></td><td>Member</td><td>Earnings, payout onboarding, payment history</td></tr>
+    <tr><td class="k">Member dashboard</td><td><code>/api/dashboard</code></td><td>Member</td><td>Home data, notifications</td></tr>
+    <tr><td class="k">Admin</td><td><code>/api/admin/*</code></td><td>ADMIN</td><td>Programs, approvals, users, HCP explorer, surveys, payments, audit log, campaigns, KOL curation, Zoom recordings, Content Hub campaigns and program links</td></tr>
+    <tr><td class="k">Reports</td><td><code>/api/reports</code></td><td>ADMIN</td><td>Generate (202), list, poll, regenerate, streamed PDF download</td></tr>
+    <tr><td class="k">Export</td><td><code>/api/export</code></td><td>M2M</td><td>Report input packet for Content Hub / cht-reports</td></tr>
+    <tr><td class="k">Internal</td><td><code>/api/internal/cache</code></td><td>M2M</td><td>Cache clear from Content Hub</td></tr>
+    <tr><td class="k">Webhooks</td><td><code>/api/webhooks/{zoom,stripe,bill,jotform}</code></td><td>Signed</td><td>Vendor events</td></tr>
+    <tr><td class="k">Other</td><td><code>/api/contact</code>, companion chat routes</td><td>Public / member</td><td>Contact form, chat proxy</td></tr>
+    <tr><td class="k">Ops</td><td><code>/health</code>, <code>/health/ready</code>, <code>/actuator/info</code>, <code>/api/docs</code></td><td>Public / ADMIN</td><td>Health, build info, OpenAPI (admin only)</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 7 ============================ -->
+<h2><span class="num">7</span>Storage</h2>
+<table>
+  <thead><tr><th>Store</th><th>Contents</th><th>Access</th></tr></thead>
+  <tbody>
+    <tr><td class="k">S3 frontend</td><td>SPA build (primary bucket plus a synced us-east-2 DR bucket)</td><td>CloudFront origin access only</td></tr>
+    <tr><td class="k">S3 certificates</td><td>CME certificate PDFs written by the worker</td><td>Backend and worker task roles</td></tr>
+    <tr><td class="k">S3 session assets</td><td>Program and session images and files</td><td>Backend task role; public URL base for approved assets</td></tr>
+    <tr><td class="k">S3 report artifacts</td><td>Executive report PDFs under <code>reports/…</code> (dev: <code>cht-reports-dev-artifacts</code>)</td><td>Owned by cht-reports; platform reads via bucket policy and streams to admins. Only <code>reports/</code> keys and PDF content are served.</td></tr>
+    <tr><td class="k">S3 audit buckets</td><td>CloudTrail and AWS Config logs</td><td>Security tooling only</td></tr>
+    <tr><td class="k">ECR</td><td>Backend and worker images with lifecycle rules; replicated to us-east-2 in production</td><td>CI and ECS</td></tr>
+    <tr><td class="k">Secrets Manager</td><td>Database URL, vendor keys, Cognito M2M client secrets; replicated to us-east-2 in production</td><td>ECS task roles; set by Terraform from GitHub Environment secrets</td></tr>
+    <tr><td class="k">KMS</td><td>Keys for database, secrets and bucket encryption</td><td>Service roles</td></tr>
+  </tbody>
+</table>
+<p>All buckets block public access; an AWS Config rule checks for public-read buckets.</p>
+
+<!-- ============================ 8 ============================ -->
+<h2><span class="num">8</span>Third-party services</h2>
+<table>
+  <thead><tr><th>Service</th><th>Used for</th><th>Integration</th><th>Status</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Zoom</td><td>Create webinars and meetings, attendance, in-app join, cloud recordings and transcripts</td><td>Server-to-Server OAuth, Meeting SDK JWT, signed webhooks</td><td><span class="pill ok">Live</span></td></tr>
+    <tr><td class="k">Stripe Connect</td><td>Honorarium payouts (ACH), tax detail collection in onboarding</td><td>Secret key, embedded onboarding, Connect webhooks</td><td><span class="pill beta">Transition</span></td></tr>
+    <tr><td class="k">Bill.com</td><td>Legacy honorarium payouts; disabled wherever Stripe is configured</td><td>Connect v3 API from the worker, webhooks</td><td><span class="pill beta">Transition</span></td></tr>
+    <tr><td class="k">JotForm</td><td>Legacy surveys for older programs</td><td>API key, webhooks</td><td><span class="pill beta">Transition</span></td></tr>
+    <tr><td class="k">HubSpot</td><td>Campaign and funnel data</td><td>Private app access token</td><td><span class="pill ok">Live</span></td></tr>
+    <tr><td class="k">YouTube Data API</td><td>Catalog playlists and podcast episodes</td><td>API key</td><td><span class="pill ok">Live</span></td></tr>
+    <tr><td class="k">Google</td><td>Sign-in (through Cognito) and reCAPTCHA v3</td><td>OAuth IdP, site and secret keys</td><td><span class="pill ok">Live</span></td></tr>
+    <tr><td class="k">NPI Registry (CMS)</td><td>Validate HCP NPI numbers</td><td>Public API</td><td><span class="pill ok">Live</span></td></tr>
+    <tr><td class="k">Amazon Bedrock</td><td>LLM for the member chat companion</td><td>Via cht-companion</td><td><span class="pill plan">Planned</span></td></tr>
+  </tbody>
+</table>
+<p>AWS managed services used directly: CloudFront, Route 53, ACM, WAF, ALB, ECS Fargate, ECR, Aurora/RDS, DynamoDB, ElastiCache, SQS, SES, EventBridge, SNS, Secrets Manager, KMS, AppConfig, CloudWatch, CloudTrail, AWS Config and GuardDuty.</p>
+
+<!-- ============================ 9 ============================ -->
+<h2><span class="num">9</span>Production environment</h2>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Name</td><td>Platform (<code>cht-platform</code>), GitHub Environment <code>platform</code></td></tr>
+    <tr><td class="k">Domains</td><td><code>testapp.communityhealth.media</code>, alias <code>app.communityhealth.media</code></td></tr>
+    <tr><td class="k">Regions</td><td>Primary us-east-1; disaster recovery standby in us-east-2</td></tr>
+    <tr><td class="k">Compute</td><td>Backend: 2 tasks (0.5 vCPU, 1 GB). Worker: 2 tasks (0.5 vCPU, 1 GB).</td></tr>
+    <tr><td class="k">Database</td><td>Aurora Global <code>db.r6g.large</code>, writer us-east-1, reader us-east-2, 7-day backups</td></tr>
+    <tr><td class="k">Cache</td><td>ElastiCache Redis <code>cache.t3.medium</code></td></tr>
+    <tr><td class="k">Network</td><td>VPC with public and private subnets across AZs; one NAT gateway per AZ</td></tr>
+    <tr><td class="k">Content Hub</td><td><code>contenthub.communityhealth.media</code></td></tr>
+    <tr><td class="k">Disaster recovery</td><td>CloudFront origin failover to the us-east-2 ALB; Aurora managed failover; replicated secrets, ECR images and frontend bucket; Cognito replica. DR compute is deployed separately (<code>deploy-secondary.sh</code>); API traffic is not routed there by default.</td></tr>
+    <tr><td class="k">Monitoring</td><td>CloudWatch alarms (ALB 5xx, application errors, ECS and database CPU, primary down, every DLQ) to SNS email; GuardDuty findings; CloudTrail; AWS Config rules</td></tr>
+    <tr><td class="k">Deploy</td><td><code>deploy-prod.yml</code>: runs when a release or hotfix PR merges to <code>main</code>, or manually. Tests, image build to ECR, Terraform plan, manual approval, apply, migrations, frontend sync, health gate. Deploys are queued, never cancelled. <code>rollback.yml</code> redeploys a known-good image.</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 10 ============================ -->
+<h2><span class="num">10</span>Dev environment</h2>
+<table>
+  <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Name</td><td>Dev (<code>cht-dev</code>), GitHub Environment <code>dev</code></td></tr>
+    <tr><td class="k">Domain</td><td><code>devapp.communityhealth.media</code> (API at <code>/api</code>)</td></tr>
+    <tr><td class="k">Region</td><td>us-east-1 (single region; no API failover)</td></tr>
+    <tr><td class="k">Compute</td><td>Backend and worker: 1 task each (0.25 vCPU, 512 MB), autoscale to 2</td></tr>
+    <tr><td class="k">Database</td><td>RDS PostgreSQL <code>db.t3.micro</code>, single AZ, 1-day backups</td></tr>
+    <tr><td class="k">Network</td><td>Single shared NAT gateway to reduce cost</td></tr>
+    <tr><td class="k">Content Hub</td><td><code>devhub.communityhealth.media</code></td></tr>
+    <tr><td class="k">Reports</td><td>DynamoDB <code>cht-dev-report-state</code>, SQS <code>cht-dev-report-requests</code>, S3 <code>cht-reports-dev-artifacts</code></td></tr>
+    <tr><td class="k">Companion</td><td>Service Connect namespace <code>cht-dev.local</code>, <code>http://cht-companion:8080</code></td></tr>
+    <tr><td class="k">Transcripts</td><td>Zoom VTT uploads trigger the Content Hub dev ingest Lambda</td></tr>
+    <tr><td class="k">Deploy</td><td><code>deploy-dev.yml</code>: runs on every push to <code>feature/**</code> that touches app, infra or workflow paths, or manually. Change detection deploys only the backend, worker or frontend lanes that changed.</td></tr>
+    <tr><td class="k">Local</td><td>Developers run the frontend (Vite) and backend (Nest) locally against a local or dev database; a dev-auth bypass exists for local use only</td></tr>
+  </tbody>
+</table>
+
+<h3>Promotion path</h3>
+<p><code>feature/*</code> branch → automatic deploy to <strong>Dev</strong> → merge to <code>develop</code> → release or hotfix PR to <code>main</code> (PR validation: lint, typecheck, tests, Terraform validate) → approved deploy to <strong>Production</strong>.</p>
+
+<!-- ============================ 11 ============================ -->
+<h2><span class="num">11</span>External dependencies</h2>
+<p>Systems outside this repository that the platform needs to work.</p>
+<table>
+  <thead><tr><th>Dependency</th><th>What the platform needs from it</th><th>If it's down</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Content Hub (MediaHub)</td><td>Catalog, KOL data, campaigns, analytics; Cognito M2M in both directions</td><td>Catalog serves cached data where available, otherwise empty states; report generation fails and can be retried</td></tr>
+    <tr><td class="k">cht-reports</td><td>Report queue consumer, DynamoDB state table, S3 artifacts bucket and their resource policies</td><td>Reports stay queued; the rest of the platform is unaffected</td></tr>
+    <tr><td class="k">cht-companion</td><td>Chat API over Service Connect</td><td>Chat unavailable; rest of the platform unaffected</td></tr>
+    <tr><td class="k">Content Hub VTT ingest Lambda</td><td>Receives S3 notifications for Zoom transcripts</td><td>Transcripts not indexed; recordings still stored</td></tr>
+    <tr><td class="k">Amazon Cognito</td><td>All user sign-in and M2M tokens</td><td>New sign-ins fail; existing sessions continue until expiry</td></tr>
+    <tr><td class="k">Zoom, Stripe, Bill.com</td><td>Live sessions, attendance and payouts</td><td>Sessions or payouts delayed; webhooks retried by vendors; payment jobs held in SQS / DLQ</td></tr>
+    <tr><td class="k">GitHub and GitHub Actions</td><td>Source, CI, deploys, Environment secrets</td><td>No deploys; running system unaffected</td></tr>
+    <tr><td class="k">DNS and certificates</td><td>Route 53 zone for <code>communityhealth.media</code>, ACM certificates (us-east-1 and us-east-2)</td><td>Site unreachable if DNS fails or certificates lapse</td></tr>
+    <tr><td class="k">Package registries and CDNs</td><td>npm, PyPI and Docker Hub at build time; Zoom CDN at runtime for the Meeting SDK</td><td>Builds fail; in-app Zoom falls back to the Zoom client link</td></tr>
+  </tbody>
+</table>
+
+<!-- ============================ 12 ============================ -->
+<h2><span class="num">12</span>Open items</h2>
+<div class="callout warn">
+  <div class="t">To resolve</div>
+  <ul>
+    <li><strong>Reports in production.</strong> The report table, queue and bucket are configured for dev only. Production values must be added to the platform Terraform variables before reports go live there.</li>
+    <li><strong>MFA enforcement.</strong> Cognito MFA is optional in both environments. Decide when to require it, starting with admins.</li>
+    <li><strong>Stripe cutover.</strong> Production still has Bill.com reminders enabled. Remove them after the Stripe cutover, and retire JotForm once legacy programs close.</li>
+    <li><strong>DR compute.</strong> The us-east-2 backend is deployed manually and API traffic is not routed there. Schedule and document a failover test.</li>
+    <li><strong>Docs drift.</strong> <code>docs/engineering/architecture.md</code> lists React 18, <code>integrations.md</code> still describes GoTrue auth, and <code>deployment.md</code> describes older production triggers. Update them to match this document.</li>
+  </ul>
+</div>
+
+</main>
+</body>
+</html>

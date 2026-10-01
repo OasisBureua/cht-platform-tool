@@ -214,9 +214,7 @@ export class AdminZoomRecordingsController {
       disposition !== 'inline' &&
       disposition !== 'attachment'
     ) {
-      throw new BadRequestException(
-        'disposition must be inline or attachment',
-      );
+      throw new BadRequestException('disposition must be inline or attachment');
     }
     return this.catalog.createDownloadUrl(sessionId, fileId, {
       disposition: disposition === 'inline' ? 'inline' : 'attachment',
@@ -301,9 +299,16 @@ export class AdminZoomRecordingsController {
 
   @Get('sessions/:sessionId/attendance')
   @Header('Cache-Control', 'no-store')
-  @ApiOperation({ summary: 'List imported/staged attendees for a catalog session' })
+  @ApiOperation({
+    summary: 'List imported/staged attendees for a catalog session',
+  })
   @ApiQuery({ name: 'page', required: false, type: Number })
-  @ApiQuery({ name: 'pageSize', required: false, type: Number, description: 'Default 10' })
+  @ApiQuery({
+    name: 'pageSize',
+    required: false,
+    type: Number,
+    description: 'Default 10',
+  })
   @ApiQuery({
     name: 'search',
     required: false,
@@ -411,7 +416,8 @@ export class AdminZoomRecordingsController {
     const job = await this.attendanceImport.startImport({
       monthsBack: body?.monthsBack,
       runAutoVerify: body?.runAutoVerify,
-      sessionTypeFilter: body?.sessionTypeFilter ?? ProgramZoomSessionType.WEBINAR,
+      sessionTypeFilter:
+        body?.sessionTypeFilter ?? ProgramZoomSessionType.WEBINAR,
       startedByUserId: admin.userId,
     });
     return serializeAttendanceImportJob(job);

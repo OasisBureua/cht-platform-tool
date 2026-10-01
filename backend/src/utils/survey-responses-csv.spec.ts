@@ -52,7 +52,9 @@ describe('survey-responses-csv', () => {
     const csv = buildSurveyResponsesCsv({
       surveyTitle: 'Intake',
       surveyType: 'INTAKE',
-      questionsSchema: { sections: [{ questions: [{ id: 'q1', prompt: 'Notes' }] }] },
+      questionsSchema: {
+        sections: [{ questions: [{ id: 'q1', prompt: 'Notes' }] }],
+      },
       responses: [
         {
           submittedAt: '2026-07-10T12:00:00.000Z',

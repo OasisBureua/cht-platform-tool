@@ -1,8 +1,8 @@
-import { useEffect, useState, type ReactNode, type SyntheticEvent } from 'react';
+import { useState, type ReactNode, type SyntheticEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Rail, Thumb } from '../ui';
-import type { MediaHubClip } from '../../api/catalog';
+import type { ContentHubClip } from '../../api/catalog';
 import { nextCatalogThumbnailFallback } from '../../utils/clipUrl';
 import {
   catalogConversationBrowseFingerFromHref,
@@ -104,17 +104,19 @@ export function CatalogSessionCard({
   imageUrl: string;
   duration?: string;
   /** Handed to the detail route as router state, exactly as the grid does. */
-  clip?: MediaHubClip;
+  clip?: ContentHubClip;
   hideOnBrokenPoster?: boolean;
   onPosterFailed?: () => void;
 }) {
   const [src, setSrc] = useState(imageUrl);
   const [failed, setFailed] = useState(false);
 
-  useEffect(() => {
+  const [prevImageUrl, setPrevImageUrl] = useState(imageUrl);
+  if (imageUrl !== prevImageUrl) {
+    setPrevImageUrl(imageUrl);
     setSrc(imageUrl);
     setFailed(false);
-  }, [imageUrl]);
+  }
 
   const handleError = () => {
     const videoId = src.match(/\/vi\/([a-zA-Z0-9_-]{11})\//)?.[1] ?? null;

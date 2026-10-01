@@ -74,7 +74,9 @@ describe('ZoomService report participants', () => {
     const get = jest
       .fn()
       .mockImplementationOnce(() => {
-        throw { response: { status: 404 }, message: 'Not found' };
+        throw Object.assign(new Error('Not found'), {
+          response: { status: 404 },
+        });
       })
       .mockReturnValueOnce(
         of({

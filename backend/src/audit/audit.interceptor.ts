@@ -5,7 +5,27 @@ import {
   CallHandler,
 } from '@nestjs/common';
 import { Observable, tap } from 'rxjs';
+import { Prisma } from '@prisma/client';
 import { AuditService } from './audit.service';
+
+type AuditActor = {
+  userId?: string | number;
+  id?: string | number;
+  email?: string | null;
+  role?: string | null;
+};
+
+type AuditRequest = {
+  method?: string;
+  originalUrl?: string;
+  url?: string;
+  user?: AuditActor;
+  route?: { path?: string };
+  params?: Record<string, string>;
+  query?: Prisma.InputJsonObject;
+  ip?: string;
+  headers: Record<string, string | string[] | undefined>;
+};
 
 const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
@@ -27,7 +47,7 @@ export class AuditInterceptor implements NestInterceptor {
   constructor(private readonly audit: AuditService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<AuditRequest>();
     const method = request.method?.toUpperCase?.() ?? '';
     if (!MUTATING_METHODS.has(method)) {
       return next.handle();
@@ -40,7 +60,7 @@ export class AuditInterceptor implements NestInterceptor {
 
     const actor = request.user;
     const actorId = actor?.userId ?? actor?.id;
-    if (!actorId) {
+    if (!actor || !actorId) {
       // Unauthenticated mutations (login/signup/recover) are logged explicitly.
       return next.handle();
     }

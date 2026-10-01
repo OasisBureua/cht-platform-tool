@@ -4,7 +4,6 @@ import {
   emailButton,
   emailInfoCard,
   emailSupportLine,
-  emailUrlLine,
 } from './email-layout';
 
 export type WebinarAccessTemplateInput = {

@@ -268,11 +268,13 @@ export function ZoomEmbed({
 
   // Tear down Zoom on unmount so Back does not leave a blank/white overlay.
   useEffect(() => {
+    // The iframe can mount after this effect runs, so read the ref at unmount.
+    const frameRef = iframeRef;
     return () => {
       joinedRef.current = false;
       pendingCredsRef.current = null;
       try {
-        iframeRef.current?.contentWindow?.postMessage(
+        frameRef.current?.contentWindow?.postMessage(
           { type: 'cht-zoom-leave' },
           '*',
         );

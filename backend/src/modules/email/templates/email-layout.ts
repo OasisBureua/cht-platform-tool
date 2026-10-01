@@ -48,7 +48,7 @@ export function emailWrap(opts: {
   body: string;
   footerNote?: string;
 }): string {
-  const { sponsorName, subtitle, body, footerNote } = opts;
+  const { subtitle, body, footerNote } = opts;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

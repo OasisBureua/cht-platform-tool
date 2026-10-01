@@ -162,7 +162,7 @@ export default function AdminCampaignDetail() {
           </div>
           {campaign.contentHubCampaignId ? (
             <Link
-              to={`/admin/content-hub/campaigns/${campaign.contentHubCampaignId}`}
+              to={`/admin/reports/campaigns/${campaign.contentHubCampaignId}`}
               className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
               Open in Content Hub

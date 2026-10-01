@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Link, useParams, useLocation, Navigate } from 'react-router-dom';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Loader2, Play, ArrowRight, Search } from 'lucide-react';
-import { catalogApi, type MediaHubClip } from '../../api/catalog';
+import { catalogApi, type ContentHubClip } from '../../api/catalog';
 import { shouldSurfaceCatalogClip, getShortClipId } from '../../utils/clipUrl';
 import { webinarsApi } from '../../api/webinars';
 import DISEASE_AREAS from '../../data/disease-areas';
@@ -27,7 +27,7 @@ export default function DiseaseDetail() {
 
   const { data: wpCategories } = useQuery({
     queryKey: ['catalog', 'wordpress', 'categories'],
-    queryFn: catalogApi.getWordPressCategories,
+    queryFn: () => catalogApi.getWordPressCategories(),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
     enabled: wpMode,
   });
@@ -48,7 +48,7 @@ export default function DiseaseDetail() {
 
   const [clipsOffset, setClipsOffset] = useState(0);
   const [loadedClips, setLoadedClips] = useState<
-    { offset: number; items: MediaHubClip[]; q: string }[]
+    { offset: number; items: ContentHubClip[]; q: string }[]
   >([]);
 
   const tagParam = useMemo(
@@ -59,7 +59,7 @@ export default function DiseaseDetail() {
     [wpMode, legacyArea],
   );
 
-  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+  const { isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
     staleTime: 5 * 60 * 1000,

@@ -28,7 +28,8 @@ export class AdminCampaignsController {
 
   @Get('dashboard')
   @ApiOperation({
-    summary: 'HubSpot campaign metrics dashboard (live pull + Content Hub links)',
+    summary:
+      'HubSpot campaign metrics dashboard (live pull + Content Hub links)',
   })
   async getDashboard(
     @Query('startDate') startDate?: string,
