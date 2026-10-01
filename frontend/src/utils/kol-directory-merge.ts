@@ -108,6 +108,7 @@ export function mergePublicKolToEntry(apiKol: PublicKol): DolEntry {
     shootCount: apiKol.shoot_count,
     featured: apiKol.featured ?? false,
     displayOrder: apiKol.display_order ?? null,
+    publications: apiKol.publications ?? [],
     intel,
     institution: kolInstitutionLabel(apiKol, {
       role,

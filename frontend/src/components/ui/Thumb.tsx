@@ -1,4 +1,4 @@
-import type { SyntheticEvent } from 'react';
+import type { ReactNode, SyntheticEvent } from 'react';
 import { ChmMark } from '../brand/ChmMark';
 
 /**
@@ -13,6 +13,7 @@ export function Thumb({
   className = '',
   onError,
   onLoad,
+  children,
 }: {
   src: string;
   duration?: string;
@@ -21,6 +22,8 @@ export function Thumb({
   /** Lets a caller inspect the decoded image (e.g. spot a provider's
       grey "missing poster" placeholder, which loads rather than 404s). */
   onLoad?: (e: SyntheticEvent<HTMLImageElement>) => void;
+  /** Overlays drawn above the scrim (a play badge, a count). */
+  children?: ReactNode;
 }) {
   return (
     <div className={`relative overflow-hidden rounded-[6px] bg-surface-2 ${className}`}>
@@ -39,6 +42,7 @@ export function Thumb({
       <div className="img-ring absolute inset-0 rounded-[inherit]" />
       <ChmMark className="absolute bottom-3 start-3 size-5 text-white/80" />
       {duration ? <span className="meta absolute end-3 bottom-3 text-white/80">{duration}</span> : null}
+      {children}
     </div>
   );
 }

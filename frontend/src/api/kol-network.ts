@@ -18,6 +18,14 @@ export interface PublicKolIntel {
   ai_brief?: PublicKolAiBrief | null;
 }
 
+/** Curated publication listed under a KOL's bio (Content Hub `kols.publications`). */
+export interface KolPublication {
+  title: string;
+  journal: string | null;
+  year: number | null;
+  url: string | null;
+}
+
 /**
  * Public KOL: proxied from Content Hub via CHT GET /api/kol-network/*.
  * Source of truth for roster; static dol-network.ts fills education/social only.
@@ -39,6 +47,8 @@ export interface PublicKol {
   shoot_count: number;
   first_appeared_at: string | null;
   is_new: boolean;
+  /** Only on the single-KOL response; list responses send []. */
+  publications?: KolPublication[];
   intel?: PublicKolIntel | null;
 }
 

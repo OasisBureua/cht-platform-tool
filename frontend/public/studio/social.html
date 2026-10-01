@@ -1,0 +1,650 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHM Social Studio</title>
+<link rel="icon" href="favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;900&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="studio.css" />
+<style>
+  section.stage canvas#c { width: auto; height: min(74vh, 880px); aspect-ratio: auto; border-radius: 10px; cursor: default; }
+  .strip { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; align-items: flex-start; }
+  .strip button { position: relative; padding: 0; border: 2px solid transparent; border-radius: 9px; background: transparent; }
+  .strip button[aria-pressed=true] { border-color: var(--cta); }
+  .strip button canvas { display: block; width: 88px; height: auto; border-radius: 6px; }
+  .strip button .n { position: absolute; left: 6px; top: 6px; font-family: "Geist Mono"; font-size: 11px; color: #fff; background: rgba(0,0,0,.55); padding: 2px 6px; border-radius: 4px; }
+  .strip .add { width: 88px; height: 110px; border: 1px dashed rgba(0,0,0,.3); border-radius: 6px; color: var(--muted); font-size: 22px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface); border-radius: 8px; font-size: 13px; }
+  .chip img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+  .chip button { border: 0; background: transparent; color: var(--faint); font-size: 16px; padding: 0 2px; }
+  .toolbar { display: flex; gap: 6px; margin-top: 8px; }
+  .toolbar button { flex: 1; height: 32px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ground); font-size: 12px; color: var(--dim); }
+  .toolbar button:disabled { opacity: .4; }
+  .field .sub { font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 14px 0 8px; }
+</style>
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded');if(/[?&]canvas\b/.test(location.search))document.documentElement.classList.add('canvas-only')</script>
+</head>
+<body>
+<header>
+  <div class="left">
+    <div class="brand"><span class="mk" id="brandMark"></span> chm <span>Studio</span></div>
+    <nav class="tabs" aria-label="Studios">
+      <a href="index.html">Thumbnails</a>
+      <a href="social.html" aria-current="page">Social</a>
+      <a href="deck.html">Deck</a>
+    </nav>
+  </div>
+  <div class="row">
+    <button class="btn ghost" id="exportOne" type="button">Export this slide</button>
+    <button class="btn" id="exportAll" type="button">Export carousel · ZIP</button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="field">
+      <label>Style</label>
+      <div class="seg" id="style" role="group" aria-label="Style">
+        <button type="button" data-v="A" aria-pressed="true">Photo</button>
+        <button type="button" data-v="Q" aria-pressed="false">Marker</button>
+        <button type="button" data-v="P" aria-pressed="false">Paper</button>
+        <button type="button" data-v="D" aria-pressed="false">Duotone</button>
+        <button type="button" data-v="B" aria-pressed="false">Burst</button>
+        <button type="button" data-v="N" aria-pressed="false">Stat</button>
+      </div>
+      <div class="hint" id="styleHint">Photo: full-bleed portraits or a deep tone, white type. Marker: a highlighted phrase, ringed portraits.</div>
+    </div>
+    <div class="field">
+      <label>Format</label>
+      <div class="seg" id="format" role="group" aria-label="Format">
+        <button type="button" data-v="4x5" aria-pressed="true">4:5 · 1080×1350</button>
+        <button type="button" data-v="1x1" aria-pressed="false">1:1 · 1080×1080</button>
+      </div>
+    </div>
+    <div class="field">
+      <label>Colourway</label>
+      <div class="seg" id="palette" role="group" aria-label="Colourway">
+        <button type="button" data-v="disease" aria-pressed="true">Disease states</button>
+        <button type="button" data-v="v2" aria-pressed="false">Brand v2</button>
+      </div>
+      <div class="hint">Brand v2 swaps the disease hue for Knowledge Blue on Precision Ink, and puts light grounds on Base White.</div>
+    </div>
+    <div class="field" id="areaField">
+      <label>Disease state</label>
+      <div class="areas" id="areas"></div>
+    </div>
+    <div class="field" id="groundField" hidden>
+      <label>Ground</label>
+      <div class="seg" id="ground" role="group" aria-label="Ground"></div>
+      <div class="hint" id="groundHint"></div>
+    </div>
+    <div class="field" id="unitField" hidden>
+      <label for="unit">Unit</label>
+      <input id="unit" type="text" placeholder="MONTHS" />
+      <div class="hint">The label under the figure. The headline field carries the figure itself.</div>
+    </div>
+
+    <div class="field">
+      <label>Slide <span id="slideNo">1</span> · content</label>
+      <div class="seg" id="kind" role="group" aria-label="Slide kind">
+        <button type="button" data-v="cover" aria-pressed="true">Cover</button>
+        <button type="button" data-v="point" aria-pressed="false">Point</button>
+        <button type="button" data-v="quote" aria-pressed="false">Quote</button>
+        <button type="button" data-v="cta" aria-pressed="false">Close</button>
+      </div>
+      <div class="sub">Eyebrow</div>
+      <input id="eyebrow" type="text" />
+      <div class="sub">Headline</div>
+      <textarea id="headline"></textarea>
+      <div class="hint">Wrap a phrase in [square brackets] to mark it. Paper covers also take {curly braces} for a second colour.</div>
+      <div class="sub">Body</div>
+      <textarea id="body" style="min-height:120px"></textarea>
+      <div class="hint">A blank line starts a new block. On Paper close slides each block becomes its own card.</div>
+      <div class="sub" id="creditLabel">Speaker credit</div>
+      <input id="credit" type="text" placeholder="Dr. Komal Jhaveri" />
+      <div class="sub">Images · up to two</div>
+      <div class="drop" id="drop">Drop headshots here, or <u>choose files</u><input id="files" type="file" accept="image/*" multiple /></div>
+      <div class="chips" id="chips"></div>
+      <div class="toolbar">
+        <button type="button" id="mvL" title="Move earlier">◀</button>
+        <button type="button" id="dup">Duplicate</button>
+        <button type="button" id="del">Delete</button>
+        <button type="button" id="mvR" title="Move later">▶</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <canvas id="c" width="1080" height="1350" aria-label="Slide preview"></canvas>
+    <div class="strip" id="strip"></div>
+    <div class="meta" id="meta">1080 × 1350</div>
+  </section>
+</main>
+
+<script src="shared.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const { PAL, AREAS, V2 } = CHM;
+CHM.svgMark($('#brandMark'), '#0f0e0d');
+/* Photo style grounds: one deep tone per disease state */
+const TONES = ['#3a1236', '#2a1b4d', '#0f2a4d', '#144c60', '#0f3a24', '#3d1a1a'];
+const W = 1080;
+
+const SAMPLE = [
+  { kind: 'cover', eyebrow: 'Breaking · Two FDA approvals · 2026', headline: 'The [FDA] just changed breast cancer treatment {forever.}', body: "Here's what it means for you.", credit: '' },
+  { kind: 'point', eyebrow: 'What happened', headline: 'Two [approvals.]', body: 'T-DXd (Enhertu), May 2026. Two new indications in early-stage HER2+: neoadjuvant for stage II to III high-risk disease, adjuvant for residual disease after surgery.\n\nGedatolisib, July 14 2026. With fulvestrant, with or without palbociclib, for HR-positive, HER2-negative locally advanced or metastatic breast cancer.', credit: '' },
+  { kind: 'point', eyebrow: 'Why it matters', headline: 'More options, [earlier.]', body: 'T-DXd was already one of the most powerful drugs in breast cancer. Now patients can access it before and after surgery, not just in late-stage disease. For oncologists: a new sequencing conversation.', credit: '' },
+  { kind: 'cta', eyebrow: 'Want more info?', headline: 'Bring this to your next [oncology appointment.]', body: 'Follow @communityhealth.media for real-time oncology coverage.\n\nLink in bio for the full breakdown.', credit: '' },
+];
+const state = { style: 'A', format: '4x5', palette: 'disease', area: 0, grounds: { Q: 'bright', P: 'v2' }, backdrop: 'studio', amber: 'accents', current: 0, slides: SAMPLE.map(s => ({ ...s, unit: '', images: [] })) };
+const GROUNDS = {
+  Q: [['bright', 'Disease colour'], ['black', 'Black']],
+  P: [['v2', 'Amber'], ['light', 'Light'], ['dark', 'Dark']],
+};
+const GROUND_HINT = {
+  Q: 'The disease colour reads loudest in a feed. Black is the quieter one for quotes.',
+  P: 'Amber is the Canva palette. Light puts the card on the page ground with the cluster; Dark haloes the same card with the burst.',
+};
+const STYLE_NAME = { A: 'Photo', Q: 'Marker', P: 'Paper', D: 'Duotone', B: 'Burst', N: 'Stat' };
+const STYLE_HINT = {
+  A: 'Photo: full-bleed portraits or a deep tone, white type. One or two images per slide.',
+  Q: 'Marker: uppercase headline with one highlighted phrase, portraits in ringed circles.',
+  P: 'Paper: the taped-card carousel. The portrait is the story, the copy is a caption.',
+  D: 'Duotone: the portrait fills the frame in the disease colour, copy on a floating card.',
+  B: 'Burst: the library motif at full volume. Type carries it, so it works with no headshot on file.',
+  N: 'Stat: one figure at a size nobody scrolls past. Put the source in the credit line.',
+};
+/* One field per slide, stable across renders, so a burst never reshuffles while you type. */
+const seedFor = (i) => 20260914 + i * 977;
+/* bright leads; second takes the labels, which is where Brand v2 puts its amber */
+const active = () => CHM.palette(state.palette, state.area, state.amber);
+const rgba = (hex, a) => { const v = parseInt(hex.slice(1), 16); return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`; };
+const H = () => state.format === '1x1' ? 1080 : 1350;
+const canvas = $('#c'), ctx = canvas.getContext('2d');
+
+/* ── slide renderers ────────────────────────────────────────────── */
+function eyebrow(c, text, color) { if (text) CHM.mono(c, text, 72, 116, 24, color, { track: 2 }); }
+function footer(c, i, n, markColor, textColor, h) {
+  CHM.mark(c, 72, h - 98, 46, markColor);
+  if (i === n - 1) CHM.wordmark(c, 138, h - 55, 52, textColor);
+  else { c.fillStyle = textColor; c.font = '500 54px Geist'; c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillText('→', 1008, h - 58); c.textAlign = 'left'; }
+}
+/* bottom-anchored copy stack shared by Photo and Marker: headline, credit, body */
+function copyStack(c, s, h, o) {
+  const bottom = h - 154, bodyText = s.body || '', creditText = s.credit || '';
+  const bodyO = { w: 910, lines: o.bodyLines ?? 7, max: o.bodySize ?? 36, min: 26, weight: o.bodyWeight ?? 400, track: -0.01, leading: 1.28, color: o.bodyColor };
+  const bodyM = bodyText ? CHM.measure(c, bodyText, bodyO) : { height: 0 };
+  const headO = { w: 936, lines: o.headLines ?? 3, max: o.headSize, min: 44, track: -0.04, leading: 0.98, color: o.headColor, marks: o.marks };
+  const headM = CHM.marked(c, o.upper ? s.headline.toUpperCase() : s.headline, 72, 0, headO, true);
+  const creditH = creditText ? 46 : 0, gap = 26;
+  let y = bottom - bodyM.height;
+  if (bodyText) CHM.block(c, bodyText, 72, y, bodyO);
+  if (creditText) CHM.mono(c, creditText, 72, y - 18, 22, o.creditColor, { track: 1.6 });
+  y = y - creditH - gap - headM.height;
+  CHM.marked(c, o.upper ? s.headline.toUpperCase() : s.headline, 72, y, headO);
+  return y;
+}
+
+function drawA(c, s, i, n, h) {
+  const A = active(), imgs = s.images.filter(Boolean), bright = A.bright;
+  c.fillStyle = A.isV2 ? V2.deep : TONES[state.area]; c.fillRect(0, 0, W, h);
+  if (imgs.length) {
+    if (imgs.length === 1) CHM.cover(c, imgs[0], { x: 0, y: 0, w: W, h }, { ay: h * 0.34 });
+    else { CHM.cover(c, imgs[0], { x: 0, y: 0, w: 540, h }, { ay: h * 0.34 }); CHM.cover(c, imgs[1], { x: 540, y: 0, w: 540, h }, { ay: h * 0.34 }); }
+    let g = c.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 300);
+    g = c.createLinearGradient(0, h * 0.34, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.55, 'rgba(0,0,0,.78)'); g.addColorStop(1, 'rgba(0,0,0,.94)'); c.fillStyle = g; c.fillRect(0, h * 0.34, W, h * 0.66);
+  } else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 300, bright);
+  eyebrow(c, s.eyebrow, imgs.length ? '#fff' : A.second);
+  copyStack(c, s, h, { headSize: s.kind === 'cover' ? 96 : 84, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: A.second });
+  footer(c, i, n, bright, '#fff', h);
+}
+
+function drawQ(c, s, i, n, h) {
+  const A = active(), dark = state.grounds.Q === 'black', imgs = s.images.filter(Boolean).slice(0, 2);
+  const fg = dark ? '#fff' : A.dark, accent = dark ? A.bright : A.dark;
+  c.fillStyle = dark ? A.dark : A.bright; c.fillRect(0, 0, W, h);
+  const ring = { ring: accent, ringW: 10, empty: dark ? rgba(A.dark, 1) : '#fff' };
+  if (imgs.length === 1) CHM.circle(c, imgs[0], 768, h * 0.338, 480, ring);
+  else if (imgs.length === 2) { CHM.circle(c, imgs[0], 282, h * 0.387, 420, ring); CHM.circle(c, imgs[1], 754, h * 0.387, 420, ring); }
+  else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 460, accent);
+  const label = dark ? A.second : accent;
+  eyebrow(c, s.eyebrow, label);
+  copyStack(c, s, h, { upper: true, headSize: s.kind === 'cover' ? 84 : 76, headColor: fg, bodyColor: fg, bodyWeight: 600, bodySize: 34, bodyLines: 6, creditColor: label,
+    marks: { a: { rect: accent, text: dark ? A.dark : '#fff' }, b: { rect: accent, text: dark ? A.dark : '#fff' } } });
+  footer(c, i, n, accent, fg, h);
+}
+
+/* Paper: the taped-card carousel. One structure, three grounds — the brand v2
+   palette, a light page carrying the disease cluster, and ink haloed by the burst. */
+const INK = '#0f0e0d';
+function paperTheme(g, A) {
+  const INK = A.dark;
+  if (g === 'light') return {
+    ground: A.isV2 ? A.light : '#ffffff', poster: INK, card: A.bright, edge: null, tag: INK, tagText: '#ffffff',
+    box: '#ffffff', boxText: INK, hiA: A.ink, hiB: A.ink, ring: INK, ringW: 10,
+    tape: 'rgba(255,255,255,.80)', mark: INK, coverMark: INK, credit: A.ink,
+    coverMarks: { a: { text: A.ink }, b: { rect: A.bright, text: INK } },
+    coverText: '#ffffff', eyebrow: A.ink, shadow: 0.16, sticker: true, empty: A.ink,
+    decor: (c, h, kind) => {
+      CHM.burst(c, kind === 'cover' ? 960 : 900, kind === 'cover' ? 240 : 170, 820, A.bright, 20260914, 1200, 1);
+      CHM.burst(c, 60, h - 210, 560, A.bright, 44, 700, 1);
+    },
+  };
+  if (g === 'dark') return {
+    ground: INK, poster: INK, card: INK, edge: A.bright, tag: A.second, tagText: INK,
+    box: '#ffffff', boxText: INK, hiA: A.ink, hiB: A.ink, ring: A.bright, ringW: 12,
+    tape: 'rgba(255,255,255,.32)', mark: A.bright, coverMark: '#ffffff', credit: A.ink,
+    coverMarks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } },
+    coverText: '#ffffff', eyebrow: A.second, shadow: 0.55, sticker: false, empty: rgba(A.bright, .16),
+    decor: (c, h, kind) => {
+      CHM.burst(c, kind === 'cover' ? 900 : 860, 220, 1150, A.bright, 20260914, 1500, 1);
+      CHM.burst(c, 90, h - 230, 820, A.bright, 88, 900, 1);
+    },
+  };
+  return {
+    ground: V2.amber, poster: V2.ink, card: V2.blue, edge: null, tag: V2.ink, tagText: '#ffffff',
+    box: '#ffffff', boxText: V2.ink, hiA: V2.amber, hiB: V2.blue, ring: '#ffffff', ringW: 12,
+    tape: 'rgba(255,255,255,.55)', mark: V2.ink, coverMark: '#ffffff', credit: V2.deep,
+    coverMarks: { a: { text: V2.blue }, b: { text: V2.amber } },
+    coverText: '#ffffff', eyebrow: V2.ink, shadow: 0.22, sticker: false, empty: V2.deep, decor: null,
+  };
+}
+function tag(c, text, cx, y, T) {
+  const lines = String(text || '').toUpperCase().split(/\s+/).reduce((a, w) => { const l = a[a.length - 1]; if (l && (l + ' ' + w).length <= 12) a[a.length - 1] = l + ' ' + w; else a.push(w); return a; }, []).slice(0, 2);
+  c.font = '900 64px Geist'; c.letterSpacing = '-2px';
+  const tw = Math.max(...lines.map(l => c.measureText(l).width)), pw = tw + 96, ph = lines.length * 66 + 40;
+  c.save(); c.translate(cx, y + ph / 2); c.rotate(-0.035);
+  c.fillStyle = T.tag; c.beginPath(); c.moveTo(-pw / 2, -ph / 2); c.lineTo(pw / 2 - 30, -ph / 2); c.lineTo(pw / 2 + 34, 0); c.lineTo(pw / 2 - 30, ph / 2); c.lineTo(-pw / 2, ph / 2); c.closePath(); c.fill();
+  c.fillStyle = T.tagText; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+  lines.forEach((l, k) => c.fillText(l, -8, -ph / 2 + 20 + (k + 1) * 66 - 12));
+  c.restore(); c.letterSpacing = '0px'; c.textAlign = 'left';
+  return y + ph;
+}
+function paperBox(c, x, y, w, text, T, o) {
+  const base = { w: w - 80, lines: 6, max: o.size ?? 32, min: 24, weight: 600, track: -0.015, leading: 1.25, color: T.boxText, align: 'center' };
+  const bh = CHM.marked(c, text, 0, 0, base, true).height + 64;
+  c.fillStyle = T.box; CHM.roundRect(c, x, y, w, bh, 16); c.fill();
+  CHM.marked(c, text, x + w / 2, y + 32, { ...base, marks: { a: { text: T.hiA }, b: { text: T.hiB } } });
+  return y + bh;
+}
+function tape(c, x, y, w, hgt, fill, rot) {
+  c.save(); c.translate(x, y); c.rotate(rot); c.fillStyle = fill; c.fillRect(-w / 2, -hgt / 2, w, hgt); c.restore();
+}
+function drawP(c, s, i, n, h) {
+  const T = paperTheme(state.grounds.P, active());
+  c.fillStyle = T.ground; c.fillRect(0, 0, W, h);
+  if (T.decor) T.decor(c, h, s.kind === 'cover' ? 'cover' : 'inner');
+  const imgs = s.images.filter(Boolean).slice(0, 2);
+
+  if (s.kind === 'cover') {
+    CHM.mark(c, W / 2 - 78, 60, 56, T.coverMark); CHM.wordmark(c, W / 2 - 2, 106, 54, T.coverMark);
+    const top = h * 0.138, bot = h * 0.862, ch = bot - top;
+    c.save(); c.translate(W / 2, (top + bot) / 2); c.rotate(-0.018);
+    c.shadowColor = `rgba(0,0,0,${T.shadow + 0.06})`; c.shadowBlur = 40; c.shadowOffsetY = 18;
+    c.fillStyle = T.poster; CHM.roundRect(c, -444, -ch / 2, 888, ch, 22); c.fill();
+    c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+    if (T.edge) { c.strokeStyle = T.edge; c.lineWidth = 2; CHM.roundRect(c, -444, -ch / 2, 888, ch, 22); c.stroke(); }
+    const subH = s.body ? 60 : 0, avail = ch - 150 - subH;
+    const headO = { w: 780, lines: 7, max: 168, min: 72, track: -0.05, leading: 0.9, align: 'center', color: T.coverText, marks: T.coverMarks };
+    let m = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true);
+    while (m.height > avail && headO.max > 72) { headO.max -= 6; m = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true); }
+    const y0 = -(m.height + subH) / 2 - 10;
+    CHM.marked(c, s.headline.toUpperCase(), 0, y0, headO);
+    if (s.body) CHM.mono(c, s.body.split('\n')[0], 0, y0 + m.height + 44, 26, T.coverText, { align: 'center', track: 2.4 });
+    c.restore();
+    /* The light ground takes the sticker-sheet furniture: tape at two corners
+       and the date lifted out of the eyebrow onto a round sticker. */
+    const parts = String(s.eyebrow || '').split('·').map(v => v.trim()).filter(Boolean);
+    let foot = s.eyebrow;
+    if (T.sticker) {
+      tape(c, 128, top + 6, 200, 40, T.tape, -0.6); tape(c, W - 128, bot - 6, 200, 40, T.tape, -0.6);
+      if (parts.length > 1) {
+        foot = parts.slice(0, -1).join(' · ');
+        const st = parts[parts.length - 1].toUpperCase().split(/\s+/).slice(0, 2);
+        c.fillStyle = T.poster; c.beginPath(); c.arc(W - 200, top + 4, 90, 0, Math.PI * 2); c.fill();
+        c.fillStyle = T.card; c.font = '900 44px Geist'; c.letterSpacing = '-2px'; c.textAlign = 'center'; c.textBaseline = 'alphabetic';
+        st.forEach((l, k) => c.fillText(l, W - 200, top + (st.length > 1 ? -8 : 18) + k * 44));
+        c.letterSpacing = '0px'; c.textAlign = 'left';
+      }
+    }
+    if (foot) CHM.mono(c, foot, W / 2, h - 58, 24, T.eyebrow, { align: 'center', track: 2 });
+    return;
+  }
+
+  CHM.mark(c, W / 2 - 30, 44, 60, T.mark);
+  const tagBottom = tag(c, s.eyebrow, W / 2, h * 0.096, T);
+  const cardTop = Math.max(tagBottom + 36, h * 0.26), cardBot = h - 60, cardH = cardBot - cardTop;
+  c.save(); c.translate(W / 2, (cardTop + cardBot) / 2); c.rotate(0.012);
+  c.shadowColor = `rgba(0,0,0,${T.shadow})`; c.shadowBlur = 36; c.shadowOffsetY = 14;
+  c.fillStyle = T.card; CHM.roundRect(c, -468, -cardH / 2, 936, cardH, 28); c.fill();
+  c.shadowColor = 'transparent'; c.shadowBlur = 0; c.shadowOffsetY = 0;
+  if (T.edge) { c.strokeStyle = T.edge; c.lineWidth = 2; CHM.roundRect(c, -468, -cardH / 2, 936, cardH, 28); c.stroke(); }
+  tape(c, 0, -cardH / 2 + 4, 180, 36, T.tape, -0.06);
+  const x = -468, w = 936;
+  if (s.kind === 'cta') {
+    const paras = (s.body || '').split(/\n\s*\n/).filter(Boolean).slice(0, 3);
+    const hs = paras.map(pp => CHM.marked(c, pp, 0, 0, { w: w - 160, lines: 6, max: 34, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: T.boxText }, true).height + 64);
+    let y = -(hs.reduce((a, b) => a + b, 0) + (paras.length - 1) * 28) / 2;
+    paras.forEach((pp, k) => { paperBox(c, x + 40, y, w - 80, pp, T, { size: 34 }); y += hs[k] + 28; });
+  } else {
+    const boxText = s.body || s.headline;
+    const textM = CHM.marked(c, boxText, 0, 0, { w: w - 160, lines: 5, max: 32, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: T.boxText }, true);
+    const boxH = textM.height + 64 + (s.credit ? 30 : 0);
+    const photoTop = -cardH / 2 + 44, photoBot = cardH / 2 - boxH - 60;
+    const d = Math.min(photoBot - photoTop, 640), cy = (photoTop + photoBot) / 2;
+    const ring = { ring: T.ring, ringW: T.ringW, empty: T.empty };
+    if (imgs.length === 2) { const d2 = Math.min(d, 420); CHM.circle(c, imgs[0], -222, cy, d2, ring); CHM.circle(c, imgs[1], 222, cy, d2, ring); }
+    else if (imgs.length === 1) CHM.circle(c, imgs[0], 0, cy, d, ring);
+    else { c.globalAlpha = .35; CHM.mark(c, -d * 0.42, cy - d * 0.42, d * 0.84, T.box); c.globalAlpha = 1; }
+    const by = cardH / 2 - 40 - boxH;
+    c.fillStyle = T.box; CHM.roundRect(c, x + 40, by, w - 80, boxH, 16); c.fill();
+    let ty = by + 32;
+    if (s.credit) { CHM.mono(c, s.credit, 0, ty + 12, 20, T.credit, { align: 'center', track: 1.6 }); ty += 30; }
+    CHM.marked(c, boxText, 0, ty, { w: w - 160, lines: 5, max: 32, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: T.boxText, marks: { a: { text: T.hiA }, b: { text: T.hiB } } });
+  }
+  c.restore();
+}
+
+/* Shared furniture for the three type-led styles. */
+function chip(c, label, x, y, fill, color) {
+  c.font = '700 20px "Geist Mono"'; c.letterSpacing = '1.8px';
+  const w = c.measureText(String(label).toUpperCase()).width + 36; c.letterSpacing = '0px';
+  c.fillStyle = fill; CHM.roundRect(c, x, y, w, 44, 6); c.fill();
+  CHM.mono(c, label, x + 18, y + 29, 20, color, { track: 1.8 });
+  return w;
+}
+function flagTag(c, label, x, y, fill, color, size) {
+  const rows = String(label || '').toUpperCase().split(/\s+/).reduce((a, w) => { const l = a[a.length - 1]; if (l && (l + ' ' + w).length <= 12) a[a.length - 1] = l + ' ' + w; else a.push(w); return a; }, []).slice(0, 2);
+  c.font = `900 ${size}px Geist`; c.letterSpacing = '-2px';
+  const tw = Math.max(...rows.map(l => c.measureText(l).width)), pw = tw + 80 + 48, ph = rows.length * (size + 6) + 34;
+  c.save(); c.translate(x + pw / 2, y + ph / 2); c.rotate(-0.035);
+  c.fillStyle = fill; c.beginPath(); c.moveTo(-pw / 2, -ph / 2); c.lineTo(pw / 2 - 48, -ph / 2); c.lineTo(pw / 2, 0); c.lineTo(pw / 2 - 48, ph / 2); c.lineTo(-pw / 2, ph / 2); c.closePath(); c.fill();
+  c.fillStyle = color; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  rows.forEach((l, k) => c.fillText(l, -pw / 2 + 40, -ph / 2 + 17 + (k + 1) * (size + 6) - 8));
+  c.restore(); c.letterSpacing = '0px';
+  return y + ph;
+}
+
+/* Duotone: the portrait fills the frame, desaturated and multiplied with the
+   disease colour, and the copy floats on a white card the way the thumbnails run. */
+function drawD(c, s, i, n, h) {
+  const A = active(), INK = A.dark, imgs = s.images.filter(Boolean).slice(0, 2), seed = seedFor(i);
+  c.fillStyle = INK; c.fillRect(0, 0, W, h);
+  const photo = imgs.length > 0 && s.kind !== 'cover' && s.kind !== 'cta';
+  if (photo) {
+    const cells = imgs.length === 2 ? [[0, W / 2], [W / 2, W / 2]] : [[0, W]];
+    cells.forEach(([cx, cw], k) => CHM.cover(c, imgs[k], { x: cx, y: 0, w: cw, h }, { ay: h * 0.34, filter: 'grayscale(1) contrast(1.15)' }));
+    c.save(); c.globalCompositeOperation = 'multiply'; c.fillStyle = A.bright; c.fillRect(0, 0, W, h); c.restore();
+    if (imgs.length === 2) { c.fillStyle = INK; c.fillRect(W / 2 - 3, 0, 6, h); }
+    let g = c.createLinearGradient(0, 0, 0, 260);
+    g.addColorStop(0, rgba(INK, .55)); g.addColorStop(1, rgba(INK, 0));
+    c.fillStyle = g; c.fillRect(0, 0, W, 260);
+    g = c.createLinearGradient(0, h * 0.42, 0, h);
+    g.addColorStop(0, rgba(INK, 0)); g.addColorStop(1, rgba(INK, .94));
+    c.fillStyle = g; c.fillRect(0, h * 0.42, W, h * 0.58);
+  } else {
+    CHM.burst(c, W * 0.54, h * 0.4, 1250, A.bright, seed, 1600, 1);
+  }
+
+  if (s.kind === 'cover') {
+    if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
+    const headO = { w: 936, lines: 6, max: 148, min: 72, track: -0.04, leading: 0.9, color: '#ffffff', marks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } } };
+    const m = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true);
+    const top = Math.max(300, h - 320 - m.height);
+    CHM.marked(c, s.headline.toUpperCase(), 72, top, headO);
+    c.fillStyle = A.second; c.fillRect(72, top + m.height + 40, 300, 14);
+    if (s.body) CHM.mono(c, s.body.split('\n')[0], 72, top + m.height + 108, 26, A.second, { track: 2.4 });
+  } else if (s.kind === 'cta') {
+    flagTag(c, s.eyebrow, 72, 96, A.second, INK, 62);
+    const paras = (s.body || '').split(/\n\s*\n/).filter(Boolean).slice(0, 3);
+    const hs = paras.map(pp => CHM.marked(c, pp, 0, 0, { w: 776, lines: 5, max: 36, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: INK }, true).height + 64);
+    let y = 330 + (h - 480 - hs.reduce((a, b) => a + b, 0)) / 2;
+    const boxT = { box: '#ffffff', boxText: INK, hiA: A.ink, hiB: A.ink };
+    paras.forEach((pp, k) => {
+      c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 28; c.shadowOffsetY = 10;
+      paperBox(c, 112, y, 856, pp, boxT, { size: 36 });
+      c.restore(); y += hs[k] + 36;
+    });
+  } else {
+    flagTag(c, s.eyebrow, 72, 96, A.second, INK, 62);
+    CHM.mark(c, 956, 96, 52, photo ? INK : A.bright);
+    const w = 856, x = 112, text = s.body || s.headline;
+    const base = { w: w - 80, lines: 5, max: 34, min: 24, weight: 600, track: -0.015, leading: 1.25, color: INK, align: 'center' };
+    const creditH = s.credit ? 34 : 0;
+    const bh = CHM.marked(c, text, 0, 0, base, true).height + 64 + creditH;
+    /* clears the lockup: the card stops above the footer rather than sitting on it */
+    const y = h - 136 - bh;
+    c.save(); c.shadowColor = 'rgba(0,0,0,.4)'; c.shadowBlur = 32; c.shadowOffsetY = 12;
+    c.fillStyle = '#ffffff'; CHM.roundRect(c, x, y, w, bh, 16); c.fill(); c.restore();
+    if (s.credit) CHM.mono(c, s.credit, x + w / 2, y + 42, 18, A.ink, { align: 'center', track: 1.6 });
+    CHM.marked(c, text, x + w / 2, y + 32 + creditH, { ...base, marks: { a: { text: A.ink }, b: { text: A.ink } } });
+  }
+  footer(c, i, n, A.bright, '#ffffff', h);
+}
+
+/* Burst: the library field at full volume. Type carries it, so this is the one
+   that still works when nobody in the session has a headshot on file. */
+function drawB(c, s, i, n, h) {
+  const A = active(), INK = A.dark, imgs = s.images.filter(Boolean).slice(0, 2), seed = seedFor(i);
+  c.fillStyle = INK; c.fillRect(0, 0, W, h);
+  CHM.burst(c, W * 0.56, h * (imgs.length ? 0.3 : 0.38), imgs.length ? 1000 : 1320, A.bright, seed, 1700, 1);
+  if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
+  if (imgs.length) {
+    const d = imgs.length === 2 ? 300 : 360, cy = h * 0.3;
+    const ring = { ring: A.bright, ringW: 12, empty: rgba(INK, 1) };
+    if (imgs.length === 2) { CHM.circle(c, imgs[0], W / 2 - 170, cy, d, ring); CHM.circle(c, imgs[1], W / 2 + 170, cy, d, ring); }
+    else CHM.circle(c, imgs[0], W / 2, cy, d, ring);
+  }
+  const bodyO = { w: 910, lines: 4, max: 32, min: 24, weight: 500, track: -0.01, leading: 1.3, color: 'rgba(255,255,255,.88)' };
+  const bodyH = s.body ? CHM.measure(c, s.body, bodyO).height : 0;
+  const headO = { w: 936, lines: 5, max: 132, min: 64, track: -0.04, leading: 0.9, color: '#ffffff', marks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } } };
+  const headM = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true);
+  const bottom = h - 154;
+  let y = bottom - bodyH;
+  if (s.body) CHM.block(c, s.body, 72, y, bodyO);
+  if (s.credit) CHM.mono(c, s.credit, 72, y - 20, 22, A.second, { track: 1.6 });
+  y = y - (s.credit ? 44 : 0) - 34 - headM.height;
+  CHM.marked(c, s.headline.toUpperCase(), 72, y, headO);
+  footer(c, i, n, A.bright, '#ffffff', h);
+}
+
+/* Stat: one figure at a size nobody scrolls past. The words underneath only say
+   what the figure is, and the credit line is where the source goes. */
+function drawN(c, s, i, n, h) {
+  const A = active();
+  c.fillStyle = A.light; c.fillRect(0, 0, W, h);
+  CHM.burst(c, 980, 250, 700, A.bright, seedFor(i), 700, 1);
+  if (s.eyebrow) CHM.mono(c, s.eyebrow, 72, 116, 24, A.ink, { track: 2 });
+  c.fillStyle = rgba(A.dark, .12); c.fillRect(72, 150, W - 144, 2);
+  const figure = CHM.strip(s.headline || '').split('\n')[0].trim();
+  const figO = { w: 936, lines: 2, max: 400, min: 44, track: -0.05, leading: 0.88, color: A.ink };
+  const figTop = h * 0.28;
+  let y = CHM.block(c, figure, 72, figTop, figO);
+  if (s.unit) { CHM.mono(c, s.unit, 76, y + 62, 38, A.dark, { track: 2 }); y += 62; }
+  c.fillStyle = A.isV2 ? A.second : A.ink; c.fillRect(72, y + 58, 160, 12);
+  y += 58;
+  if (s.body) CHM.block(c, s.body, 72, y + 54, { w: 910, lines: 3, max: 40, min: 26, weight: 500, track: -0.02, leading: 1.3, color: A.dark });
+  if (s.credit) CHM.mono(c, s.credit, 72, h - 190, 20, rgba(A.dark, .6), { track: 1.6 });
+  footer(c, i, n, A.ink, A.dark, h);
+}
+
+function draw(c, s, i, n) {
+  const h = H();
+  c.clearRect(0, 0, W, h);
+  CHM.backdrop(state.backdrop, active()); CHM.fleck(active().fleck);
+  ({ A: drawA, Q: drawQ, P: drawP, D: drawD, B: drawB, N: drawN })[state.style](c, s, i, n, h);
+}
+
+/* ── main render + strip ────────────────────────────────────────── */
+const off = document.createElement('canvas');
+function render() {
+  const h = H(); if (canvas.height !== h) canvas.height = h;
+  const s = state.slides[state.current];
+  draw(ctx, s, state.current, state.slides.length);
+  $('#meta').textContent = `${W} × ${h} · ${STYLE_NAME[state.style]}${state.palette === 'v2' ? ' · Brand v2' : ''} · slide ${state.current + 1} of ${state.slides.length}`;
+  renderStrip();
+}
+function renderStrip() {
+  const el = $('#strip'); el.innerHTML = ''; const h = H();
+  off.width = W; off.height = h; const oc = off.getContext('2d');
+  state.slides.forEach((s, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', i === state.current); b.setAttribute('aria-label', `Slide ${i + 1}`);
+    const t = document.createElement('canvas'); t.width = 176; t.height = Math.round(176 * h / W);
+    draw(oc, s, i, state.slides.length); t.getContext('2d').drawImage(off, 0, 0, t.width, t.height);
+    b.appendChild(t); const num = document.createElement('span'); num.className = 'n'; num.textContent = i + 1; b.appendChild(num);
+    b.onclick = () => { state.current = i; syncForm(); render(); };
+    el.appendChild(b);
+  });
+  const add = document.createElement('button'); add.type = 'button'; add.className = 'add'; add.textContent = '+'; add.setAttribute('aria-label', 'Add slide');
+  add.onclick = () => { state.slides.push({ kind: 'point', eyebrow: '', headline: 'New slide', body: '', credit: '', unit: '', images: [] }); state.current = state.slides.length - 1; syncForm(); render(); };
+  el.appendChild(add);
+}
+
+/* ── controls ───────────────────────────────────────────────────── */
+function seg(id, key, after) {
+  $(id).addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    [...$(id).children].forEach(c => c.setAttribute('aria-pressed', c === b));
+    if (after) after(b.dataset.v); else { state[key] = b.dataset.v; render(); }
+  });
+}
+function pressSeg(id, v) { [...$(id).children].forEach(c => c.setAttribute('aria-pressed', c.dataset.v === v)); }
+seg('#style', 'style', (v) => { state.style = v; syncVisibility(); render(); });
+seg('#format', 'format');
+$('#palette').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.palette = b.dataset.v;
+  [...$('#palette').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  syncVisibility(); render();
+});
+$('#ground').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  state.grounds[state.style] = b.dataset.v;
+  [...$('#ground').children].forEach(c => c.setAttribute('aria-pressed', c === b));
+  syncVisibility(); render();
+});
+seg('#kind', null, (v) => { cur().kind = v; syncVisibility(); render(); });
+const areasEl = $('#areas');
+AREAS.forEach((a, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<i style="background:${a.bright}"></i>${a.name}`;
+  b.setAttribute('aria-pressed', i === 0);
+  b.onclick = () => { state.area = i; [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === i)); render(); };
+  areasEl.appendChild(b);
+});
+const cur = () => state.slides[state.current];
+['eyebrow', 'headline', 'body', 'credit', 'unit'].forEach(k => $('#' + k).addEventListener('input', (e) => { cur()[k] = e.target.value; render(); }));
+function renderGrounds() {
+  const opts = GROUNDS[state.style], el = $('#ground');
+  $('#groundField').hidden = !opts;
+  el.innerHTML = '';
+  if (!opts) return;
+  opts.forEach(([v, label]) => {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.v = v; b.textContent = label;
+    b.setAttribute('aria-pressed', state.grounds[state.style] === v);
+    el.appendChild(b);
+  });
+  $('#groundHint').textContent = GROUND_HINT[state.style] || '';
+}
+function syncVisibility() {
+  renderGrounds();
+  $('#unitField').hidden = state.style !== 'N';
+  /* v2 overrides the hue, so the disease picker would be inert */
+  $('#areaField').hidden = state.palette === 'v2' || (state.style === 'P' && state.grounds.P === 'v2');
+  $('#styleHint').textContent = STYLE_HINT[state.style];
+}
+function syncForm() {
+  const s = cur(); $('#slideNo').textContent = state.current + 1;
+  pressSeg('#kind', s.kind); $('#eyebrow').value = s.eyebrow; $('#headline').value = s.headline; $('#body').value = s.body; $('#credit').value = s.credit; $('#unit').value = s.unit || '';
+  const chips = $('#chips'); chips.innerHTML = '';
+  s.images.forEach((f, i) => {
+    const d = document.createElement('div'); d.className = 'chip'; d.innerHTML = `<img src="${f.url}" alt=""><span>${f.name}</span><button type="button" aria-label="Remove ${f.name}">×</button>`;
+    d.querySelector('button').onclick = () => { s.images.splice(i, 1); syncForm(); render(); }; chips.appendChild(d);
+  });
+  $('#mvL').disabled = state.current === 0; $('#mvR').disabled = state.current === state.slides.length - 1; $('#del').disabled = state.slides.length === 1;
+}
+const drop = $('#drop');
+drop.onclick = () => $('#files').click();
+$('#files').onchange = (e) => addFiles(e.target.files);
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+async function addFiles(list) { const s = cur(); const got = await CHM.loadFiles(list, 2 - s.images.length); s.images.push(...got); syncForm(); render(); }
+$('#dup').onclick = () => { const s = cur(); state.slides.splice(state.current + 1, 0, { ...s, images: [...s.images] }); state.current++; syncForm(); render(); };
+$('#del').onclick = () => { if (state.slides.length === 1) return; state.slides.splice(state.current, 1); state.current = Math.min(state.current, state.slides.length - 1); syncForm(); render(); };
+$('#mvL').onclick = () => { const i = state.current; if (!i) return; [state.slides[i - 1], state.slides[i]] = [state.slides[i], state.slides[i - 1]]; state.current--; syncForm(); render(); };
+$('#mvR').onclick = () => { const i = state.current; if (i >= state.slides.length - 1) return; [state.slides[i + 1], state.slides[i]] = [state.slides[i], state.slides[i + 1]]; state.current++; syncForm(); render(); };
+
+/* ── export ─────────────────────────────────────────────────────── */
+$('#exportOne').onclick = () => canvas.toBlob(b => CHM.download(b, `chm-social-${state.current + 1}-${CHM.slug(CHM.strip(cur().headline))}.png`), 'image/png');
+$('#exportAll').onclick = async () => {
+  const h = H(); off.width = W; off.height = h; const oc = off.getContext('2d'); const entries = [];
+  for (let i = 0; i < state.slides.length; i++) { draw(oc, state.slides[i], i, state.slides.length); entries.push({ name: `${String(i + 1).padStart(2, '0')}-${CHM.slug(CHM.strip(state.slides[i].headline))}.png`, data: await CHM.bytes(off) }); }
+  CHM.download(CHM.zip(entries), `chm-social-${CHM.slug(CHM.strip(state.slides[0].headline))}.zip`);
+};
+
+/* automation hook for the render harness */
+window.__studio = {
+  canvas: () => canvas,
+  async apply(spec) {
+    if (spec.style) state.style = spec.style; if (spec.format) state.format = spec.format;
+    if (spec.area != null) state.area = spec.area;
+    state.palette = spec.palette || 'disease';
+    if (spec.ground) state.grounds[spec.style || state.style] = spec.ground;
+    if (spec.slides) state.slides = await Promise.all(spec.slides.map(async s => ({ kind: 'point', eyebrow: '', headline: '', body: '', credit: '', unit: '', ...s, images: await Promise.all((s.images || []).map(n => CHM.loadUrl(`samples/${n}.jpg`, n))) })));
+    state.current = spec.current ?? 0;
+    pressSeg('#style', state.style); pressSeg('#format', state.format); pressSeg('#palette', state.palette);
+    [...areasEl.children].forEach((c, k) => c.setAttribute('aria-pressed', k === state.area));
+    syncVisibility(); syncForm(); render();
+  },
+};
+
+
+/* engine API for the platform's native studio pages */
+async function engineImages(list, prev) {
+  const old = prev || [];
+  return (await Promise.all((list || []).map(async (im) => {
+    const hit = old.find((o) => o && o.url === im.url);
+    if (hit) { if (im.zoom != null) hit.zoom = im.zoom; if (im.name) hit.name = im.name; return hit; }
+    const got = await CHM.loadUrl(im.url, im.name);
+    if (got && im.zoom != null) got.zoom = im.zoom;
+    return got;
+  }))).filter(Boolean);
+}
+async function engineThumbs(n, drawOne, w, h, width) {
+  const out = []; const t = document.createElement('canvas'); t.width = width; t.height = Math.round(width * h / w);
+  for (let i = 0; i < n; i++) { const c = drawOne(i); t.getContext('2d').clearRect(0, 0, t.width, t.height); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); out.push(t.toDataURL('image/jpeg', 0.72)); }
+  return out;
+}
+
+/* set() awaits new images, so a slow call could land after a newer one and
+   put old slides back. Only the latest call gets to draw. */
+let setSeq = 0;
+window.__engine = {
+  ready: true,
+  meta: () => ({ width: W, styles: STYLE_NAME, hints: STYLE_HINT, grounds: GROUNDS, groundHints: GROUND_HINT, areas: AREAS.map((a) => ({ name: a.name, hex: a.bright })), sample: SAMPLE }),
+  height: () => H(),
+  async set(s) {
+    const seq = ++setSeq;
+    for (const k of ['style', 'format', 'palette', 'area', 'current', 'backdrop', 'amber']) if (s[k] !== undefined) state[k] = s[k];
+    if (s.grounds) Object.assign(state.grounds, s.grounds);
+    if (s.slides) {
+      const slides = await Promise.all(s.slides.map(async (sl, i) => ({ kind: 'point', eyebrow: '', headline: '', body: '', credit: '', unit: '', ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+      if (seq !== setSeq) return;
+      state.slides = slides;
+    }
+    state.current = Math.min(state.current, state.slides.length - 1);
+    syncVisibility(); syncForm(); render();
+  },
+  thumbs: (width = 216) => { const h = H(); off.width = W; off.height = h; const oc = off.getContext('2d'); return engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, h, width); },
+  exportSlide() { $('#exportOne').click(); },
+  exportZip() { $('#exportAll').click(); },
+};
+
+CHM.fontsReady().then(() => { syncVisibility(); syncForm(); render(); });
+</script>
+</body>
+</html>

@@ -4,13 +4,12 @@ import {
   ArrowRight,
   Loader2,
   Search,
-  Sparkles,
   Stethoscope,
 } from 'lucide-react';
 import { useKolDirectory, type DolEntry, type DolRegion } from '../hooks/useKolDirectory';
-import { hasAiSummary, resolveKolDisplayBrief } from '../utils/kol-directory-merge';
 import { kolCatalogBrowseHref } from '../utils/kol-catalog-link';
 import { KOL_NETWORK_APP_BASE, kolProfilePath, kolRegionPath } from '../utils/kol-network-paths';
+import { KolPortrait } from '../components/kol/KolPortrait';
 
 type FlatKol = DolEntry & {
   stateId: string;
@@ -41,20 +40,10 @@ function institutionHint(k: FlatKol): string {
   return cut.length > 48 ? `${cut.slice(0, 47)}…` : cut || '—';
 }
 
-function summaryOf(k: FlatKol): string {
-  const full = resolveKolDisplayBrief(k)?.whoTheyAre ?? k.bio.trim();
-  return full.length > 140 ? `${full.slice(0, 137)}…` : full;
-}
-
-function initials(name: string): string {
-  return name
-    .replace(/^Dr\.\s*/i, '')
-    .split(/\s+/)
-    .filter(Boolean)
-    .map((w) => w[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+/** The member directory shows the bio as written; no generated summary. */
+function bioOf(k: FlatKol): string {
+  const bio = k.bio?.trim();
+  return bio || roleLead(k.role);
 }
 
 const fieldClass =
@@ -134,10 +123,8 @@ export default function KolNetwork() {
     <div className="space-y-6">
       <header className="space-y-3">
         <div className="flex items-center gap-2.5 text-foreground">
-          <Stethoscope className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
-          <h1 className="text-balance text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            KOL Network
-          </h1>
+          <Stethoscope className="h-5 w-5 text-anchor" strokeWidth={2} aria-hidden />
+          <h1 className="display text-balance text-display-s text-text md:text-display-m">KOL Network</h1>
         </div>
         <p className="max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground">
           Oncology and breast cancer specialists on the CHM faculty. Filter by state or institution,
@@ -244,7 +231,7 @@ export default function KolNetwork() {
             className={[
               'inline-flex min-h-[40px] items-center rounded-[6px] px-3.5 text-sm font-medium transition-colors',
               newOnly
-                ? 'bg-steel-600 text-white dark:bg-steel-500'
+                ? 'bg-anchor text-ground'
                 : 'border border-border bg-background text-muted-foreground hover:bg-muted/60 hover:text-foreground',
             ].join(' ')}
           >
@@ -297,7 +284,7 @@ export default function KolNetwork() {
                 </span>
                 <Link
                   to={kolRegionPath(KOL_NETWORK_APP_BASE, st)}
-                  className="ms-auto text-xs font-semibold text-steel-700 hover:underline dark:text-steel-400"
+                  className="ms-auto text-xs font-semibold text-anchor hover:underline"
                 >
                   View state
                 </Link>
@@ -339,7 +326,7 @@ function EmptyCard({
         <button
           type="button"
           onClick={action.onClick}
-          className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-brand-600 px-5 text-sm font-semibold text-white hover:bg-brand-700"
+          className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[6px] bg-anchor px-5 text-sm font-semibold text-ground hover:brightness-110"
         >
           {action.label}
         </button>
@@ -350,7 +337,7 @@ function EmptyCard({
 
 function KolGrid({ list }: { list: FlatKol[] }) {
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
       {list.map((k) => (
         <li key={`${k.stateId}-${k.id}`}>
           <KolCard k={k} />
@@ -366,86 +353,46 @@ function KolCard({ k }: { k: FlatKol }) {
   const inst = institutionHint(k);
 
   return (
-    <div className="flex h-full flex-col rounded-card border border-border/80 bg-card p-4 shadow-[0_1px_0_rgba(0,0,0,0.04),0_6px_20px_-10px_rgba(0,0,0,0.1)] transition-[box-shadow] duration-200 hover:shadow-[0_1px_0_rgba(0,0,0,0.05),0_10px_28px_-10px_rgba(0,0,0,0.14)] dark:shadow-[0_1px_0_rgba(255,255,255,0.04)_inset,0_6px_20px_-10px_rgba(0,0,0,0.45)] md:p-5">
-      <div className="flex items-start gap-3">
-        {k.photoUrl ? (
-          <img
-            src={k.photoUrl}
-            alt=""
-            className="size-11 shrink-0 rounded-full object-cover ring-1 ring-border"
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <span
-            aria-hidden
-            className="grid size-11 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
-          >
-            {initials(k.name)}
-          </span>
-        )}
-        <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-semibold leading-snug text-foreground">
-            <Link to={profileHref} className="hover:text-steel-700 dark:hover:text-steel-300">
-              {k.name}
-            </Link>
-          </h3>
-          <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground" title={k.role}>
-            {roleLead(k.role)}
-          </p>
-        </div>
-        {k.featured ? (
-          <span className="shrink-0 rounded-[6px] bg-amber-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-950 dark:bg-amber-950/50 dark:text-amber-100">
-            Featured
-          </span>
-        ) : k.isNew ? (
-          <span className="shrink-0 rounded-[6px] bg-orange-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-orange-900 dark:bg-orange-950/40 dark:text-orange-200">
-            New
+    <div className="card group flex h-full flex-col overflow-hidden p-0">
+      {/* The portrait is the card's lead: the whole top links to the profile. */}
+      <Link to={profileHref} className="relative block focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring" tabIndex={-1} aria-hidden>
+        <KolPortrait name={k.name} photoUrl={k.photoUrl} className="aspect-[5/4] w-full rounded-b-none" />
+        {k.featured || k.isNew ? (
+          <span className="eyebrow absolute start-3 top-3 rounded-[5px] bg-white/90 px-2 py-1 text-on-bright">
+            {k.featured ? 'Featured' : 'New'}
           </span>
         ) : null}
-      </div>
+      </Link>
 
-      <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
-        <div className="min-w-0">
-          <dt className="font-semibold uppercase tracking-wide text-muted-foreground">State</dt>
-          <dd className="mt-1 truncate text-foreground">{k.stateTitle}</dd>
-        </div>
-        <div className="min-w-0">
-          <dt className="font-semibold uppercase tracking-wide text-muted-foreground">Institution</dt>
-          <dd className="mt-1 truncate text-foreground" title={inst}>
-            {inst}
-          </dd>
-        </div>
-      </dl>
-
-      <div className="mt-3">
-        <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          Summary
-          {hasAiSummary(k) ? (
-            <span className="inline-flex items-center gap-0.5 text-amber-800 dark:text-amber-200">
-              <Sparkles className="size-3" aria-hidden />
-              AI
-            </span>
-          ) : null}
+      <div className="flex flex-1 flex-col p-4 md:p-5">
+        <h3 className="display text-body-l leading-snug text-text">
+          <Link to={profileHref} className="hover:text-anchor focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            {k.name}
+          </Link>
+        </h3>
+        <p className="mt-1 line-clamp-2 text-body-s text-muted2" title={inst}>
+          {inst}
         </p>
-        <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{summaryOf(k)}</p>
-      </div>
+        <p className="meta mt-1 text-faint">{k.stateTitle}</p>
 
-      <div className="mt-auto flex flex-wrap gap-2 pt-4">
-        <Link
-          to={profileHref}
-          className="inline-flex h-9 items-center gap-1.5 rounded-[6px] bg-brand-600 px-3.5 text-xs font-semibold text-white hover:bg-brand-700"
-        >
-          View profile
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
-        <Link
-          to={catalogHref}
-          className="inline-flex h-9 items-center gap-1.5 rounded-[6px] border border-border bg-background px-3.5 text-xs font-semibold text-foreground hover:bg-muted/60"
-        >
-          View content
-          <ArrowRight className="size-3.5" aria-hidden />
-        </Link>
+        <p className="prose-lede mt-3 line-clamp-2 text-body-s text-dim">{bioOf(k)}</p>
+
+        <div className="mt-auto flex flex-wrap gap-2 pt-4">
+          <Link
+            to={profileHref}
+            className="press inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-anchor px-3.5 text-xs font-semibold text-ground hover:brightness-110"
+          >
+            View profile
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+          <Link
+            to={catalogHref}
+            className="press inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface px-3.5 text-xs font-semibold text-text ring-1 ring-hairline-strong hover:bg-surface-2"
+          >
+            View content
+            <ArrowRight className="size-3.5" aria-hidden />
+          </Link>
+        </div>
       </div>
     </div>
   );

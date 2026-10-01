@@ -37,11 +37,11 @@ export default function AdminLayout() {
   }
 
   return (
-    <div className="flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">
+    <div className="flex min-h-screen min-w-0 flex-row bg-app-ground text-text">
       <AdminSidebar />
 
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <header className="flex h-14 shrink-0 items-center justify-between gap-2 border-b border-border bg-card px-3 sm:h-16 sm:px-6">
+        <header className="flex h-16 shrink-0 items-center justify-between gap-2 border-b border-hairline bg-surface px-3 sm:h-[72px] sm:px-6">
           <div className="flex min-w-0 flex-1 flex-col">
             <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:text-xs">
               Admin Console

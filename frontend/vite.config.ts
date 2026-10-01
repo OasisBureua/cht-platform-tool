@@ -18,6 +18,11 @@ logger.warnOnce = (msg, options) => {
 export default defineConfig({
   customLogger: logger,
   plugins: [react()],
+  // ffmpeg.wasm (the admin clipper) spawns its own worker; pre-bundling
+  // breaks the worker URL in dev, so Vite serves it as-is.
+  optimizeDeps: {
+    exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+  },
   server: {
     // Local Meeting SDK / SharedArrayBuffer (mirrors CloudFront COOP+COEP).
     headers: {

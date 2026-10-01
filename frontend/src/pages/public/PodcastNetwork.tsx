@@ -1,4 +1,3 @@
-import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ExternalLink } from 'lucide-react';
 import {
@@ -7,7 +6,7 @@ import {
   type PodcastShow,
 } from '../../data/podcastsCatalog';
 import { Button, Reveal } from '../../components/ui';
-import './PodcastNetwork.css';
+import { PodcastHero } from '../../components/podcasts/PodcastHero';
 
 /**
  * Public Podcast Network hub, at the clean URL `/podcast-network`.
@@ -33,40 +32,20 @@ const NEUTRAL_TONE = { ring: 'var(--color-hairline)', ink: 'var(--color-dim)' };
 export default function PodcastNetwork() {
   return (
     <div className="min-h-screen bg-ground">
-      {/* The covers carry the hero. Four of them fanned reads as a
-          network in a way a headline alone does not, and they are what a
-          listener recognises. The drift is a slow float, ambient rather
-          than something to watch, and it stops under reduced motion. */}
-      <section className="pod-hero">
-        <span className="pod-hero__glow" aria-hidden />
-        <div className="rail pod-hero__in">
-          <div className="pod-hero__copy">
-            <p className="eyebrow text-muted2">Podcast network</p>
-            <h1 className="display text-text">Four shows, one network</h1>
-            <p className="pod-hero__lede">
-              Expert-led conversations in oncology and breast cancer, for clinicians, patients and
-              caregivers. Pick a show, then listen on your platform of choice.
-            </p>
-            <div className="pod-hero__actions flex flex-wrap gap-3">
-              <Button to="/join" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
-                Join CHM
-                <ArrowRight className="size-4" strokeWidth={1.75} />
-              </Button>
-              <Button to="/kols" variant="outline">
-                Browse the KOL directory
-              </Button>
-            </div>
-          </div>
-
-          <ul className="pod-fan" aria-hidden>
-            {PODCAST_SHOWS.map((show, i) => (
-              <li key={show.id} style={{ '--i': i } as CSSProperties}>
-                <img src={show.image} alt="" width={1200} height={1200} decoding="async" />
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
+      <PodcastHero
+        rail
+        actions={
+          <>
+            <Button to="/join" className="bg-signature text-ground hover:bg-signature hover:brightness-[0.94]">
+              Join CHM
+              <ArrowRight className="size-4" strokeWidth={1.75} />
+            </Button>
+            <Button to="/kols" variant="outline">
+              Browse the KOL directory
+            </Button>
+          </>
+        }
+      />
 
       <section className="rail pb-16" aria-labelledby="podcast-shows-heading">
         <h2 id="podcast-shows-heading" className="display text-display-s text-text">
