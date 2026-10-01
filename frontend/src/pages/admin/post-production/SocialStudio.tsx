@@ -3,6 +3,7 @@ import { Download, FileArchive } from 'lucide-react';
 import { useStudioEngine, type SocialEngine, type SocialSlide } from '../../../components/admin/studio/engine';
 import { creditFor, type Faculty } from '../../../components/admin/studio/faculty';
 import { FacultyPicker, ImageChips, Section, Seg, SlideOps, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { AMBER_HINT, AMBERS, BACKDROP_HINT, BACKDROPS, type Amber, type Backdrop } from '../../../components/admin/studio/look';
 import { Stage, ViewSwitch } from '../../../components/admin/studio/stage';
 import { useStageView } from '../../../components/admin/studio/stageView';
 
@@ -34,6 +35,8 @@ export default function SocialStudio() {
   const [palette, setPalette] = useState<'disease' | 'v2'>('disease');
   const [area, setArea] = useState(0);
   const [grounds, setGrounds] = useState<Record<string, string>>({ Q: 'bright', P: 'v2' });
+  const [backdrop, setBackdrop] = useState<Backdrop>('studio');
+  const [amber, setAmber] = useState<Amber>('field');
   const [current, setCurrent] = useState(0);
   const [thumbs, setThumbs] = useState<string[]>([]);
   const [view, setView] = useStageView('social');
@@ -42,13 +45,13 @@ export default function SocialStudio() {
     if (!engine || !slides.length) return undefined;
     let live = true;
     const t = window.setTimeout(() => {
-      void engine.set({ style, format, palette, area, grounds, current, slides }).then(() => engine.thumbs(view === 'grid' ? 360 : 176)).then((th) => live && setThumbs(th));
+      void engine.set({ style, format, palette, area, grounds, backdrop, amber, current, slides }).then(() => engine.thumbs(view === 'grid' ? 360 : 176)).then((th) => live && setThumbs(th));
     }, 60);
     return () => {
       live = false;
       window.clearTimeout(t);
     };
-  }, [engine, style, format, palette, area, grounds, current, slides, view]);
+  }, [engine, style, format, palette, area, grounds, backdrop, amber, current, slides, view]);
 
   const slide = slides[current];
   const edit = (patch: Partial<SocialSlide>) => setSlides((ss) => ss.map((s, i) => (i === current ? { ...s, ...patch } : s)));
@@ -92,12 +95,19 @@ export default function SocialStudio() {
               <Swatches areas={meta.areas} value={area} onChange={setArea} />
             </Section>
           ) : null}
+          {palette === 'v2' ? (
+            <Section label="Amber" hint={AMBER_HINT[amber]}>
+              <Seg label="Amber" value={amber} options={AMBERS} onChange={setAmber} />
+            </Section>
+          ) : null}
           {groundOpts ? (
             <Section label="Ground" hint={meta?.groundHints[style]}>
               <Seg label="Ground" value={grounds[style]} options={groundOpts} onChange={(g) => setGrounds((x) => ({ ...x, [style]: g }))} />
             </Section>
           ) : null}
-
+          <Section label="Backdrop" hint={BACKDROP_HINT}>
+            <Seg label="Backdrop" value={backdrop} options={BACKDROPS} onChange={setBackdrop} />
+          </Section>
         </div>
       </aside>
 

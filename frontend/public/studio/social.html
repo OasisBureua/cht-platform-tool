@@ -140,7 +140,7 @@ const SAMPLE = [
   { kind: 'point', eyebrow: 'Why it matters', headline: 'More options, [earlier.]', body: 'T-DXd was already one of the most powerful drugs in breast cancer. Now patients can access it before and after surgery, not just in late-stage disease. For oncologists: a new sequencing conversation.', credit: '' },
   { kind: 'cta', eyebrow: 'Want more info?', headline: 'Bring this to your next [oncology appointment.]', body: 'Follow @communityhealth.media for real-time oncology coverage.\n\nLink in bio for the full breakdown.', credit: '' },
 ];
-const state = { style: 'A', format: '4x5', palette: 'disease', area: 0, grounds: { Q: 'bright', P: 'v2' }, current: 0, slides: SAMPLE.map(s => ({ ...s, unit: '', images: [] })) };
+const state = { style: 'A', format: '4x5', palette: 'disease', area: 0, grounds: { Q: 'bright', P: 'v2' }, backdrop: 'studio', amber: 'accents', current: 0, slides: SAMPLE.map(s => ({ ...s, unit: '', images: [] })) };
 const GROUNDS = {
   Q: [['bright', 'Disease colour'], ['black', 'Black']],
   P: [['v2', 'Amber'], ['light', 'Light'], ['dark', 'Dark']],
@@ -160,7 +160,8 @@ const STYLE_HINT = {
 };
 /* One field per slide, stable across renders, so a burst never reshuffles while you type. */
 const seedFor = (i) => 20260914 + i * 977;
-const active = () => CHM.palette(state.palette, state.area);
+/* bright leads; second takes the labels, which is where Brand v2 puts its amber */
+const active = () => CHM.palette(state.palette, state.area, state.amber);
 const rgba = (hex, a) => { const v = parseInt(hex.slice(1), 16); return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${a})`; };
 const H = () => state.format === '1x1' ? 1080 : 1350;
 const canvas = $('#c'), ctx = canvas.getContext('2d');
@@ -197,8 +198,8 @@ function drawA(c, s, i, n, h) {
     let g = c.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 300);
     g = c.createLinearGradient(0, h * 0.34, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.55, 'rgba(0,0,0,.78)'); g.addColorStop(1, 'rgba(0,0,0,.94)'); c.fillStyle = g; c.fillRect(0, h * 0.34, W, h * 0.66);
   } else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 300, bright);
-  eyebrow(c, s.eyebrow, imgs.length ? '#fff' : bright);
-  copyStack(c, s, h, { headSize: s.kind === 'cover' ? 96 : 84, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: bright });
+  eyebrow(c, s.eyebrow, imgs.length ? '#fff' : A.second);
+  copyStack(c, s, h, { headSize: s.kind === 'cover' ? 96 : 84, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: A.second });
   footer(c, i, n, bright, '#fff', h);
 }
 
@@ -210,8 +211,9 @@ function drawQ(c, s, i, n, h) {
   if (imgs.length === 1) CHM.circle(c, imgs[0], 768, h * 0.338, 480, ring);
   else if (imgs.length === 2) { CHM.circle(c, imgs[0], 282, h * 0.387, 420, ring); CHM.circle(c, imgs[1], 754, h * 0.387, 420, ring); }
   else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 460, accent);
-  eyebrow(c, s.eyebrow, accent);
-  copyStack(c, s, h, { upper: true, headSize: s.kind === 'cover' ? 84 : 76, headColor: fg, bodyColor: fg, bodyWeight: 600, bodySize: 34, bodyLines: 6, creditColor: accent,
+  const label = dark ? A.second : accent;
+  eyebrow(c, s.eyebrow, label);
+  copyStack(c, s, h, { upper: true, headSize: s.kind === 'cover' ? 84 : 76, headColor: fg, bodyColor: fg, bodyWeight: 600, bodySize: 34, bodyLines: 6, creditColor: label,
     marks: { a: { rect: accent, text: dark ? A.dark : '#fff' }, b: { rect: accent, text: dark ? A.dark : '#fff' } } });
   footer(c, i, n, accent, fg, h);
 }
@@ -233,11 +235,11 @@ function paperTheme(g, A) {
     },
   };
   if (g === 'dark') return {
-    ground: INK, poster: INK, card: INK, edge: A.bright, tag: A.bright, tagText: INK,
+    ground: INK, poster: INK, card: INK, edge: A.bright, tag: A.second, tagText: INK,
     box: '#ffffff', boxText: INK, hiA: A.ink, hiB: A.ink, ring: A.bright, ringW: 12,
     tape: 'rgba(255,255,255,.32)', mark: A.bright, coverMark: '#ffffff', credit: A.ink,
     coverMarks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } },
-    coverText: '#ffffff', eyebrow: A.bright, shadow: 0.55, sticker: false, empty: rgba(A.bright, .16),
+    coverText: '#ffffff', eyebrow: A.second, shadow: 0.55, sticker: false, empty: rgba(A.bright, .16),
     decor: (c, h, kind) => {
       CHM.burst(c, kind === 'cover' ? 900 : 860, 220, 1150, A.bright, 20260914, 1500, 1);
       CHM.burst(c, 90, h - 230, 820, A.bright, 88, 900, 1);
@@ -389,15 +391,15 @@ function drawD(c, s, i, n, h) {
   }
 
   if (s.kind === 'cover') {
-    if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.bright, INK);
+    if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
     const headO = { w: 936, lines: 6, max: 148, min: 72, track: -0.04, leading: 0.9, color: '#ffffff', marks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } } };
     const m = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true);
     const top = Math.max(300, h - 320 - m.height);
     CHM.marked(c, s.headline.toUpperCase(), 72, top, headO);
-    c.fillStyle = A.bright; c.fillRect(72, top + m.height + 40, 300, 14);
-    if (s.body) CHM.mono(c, s.body.split('\n')[0], 72, top + m.height + 108, 26, A.bright, { track: 2.4 });
+    c.fillStyle = A.second; c.fillRect(72, top + m.height + 40, 300, 14);
+    if (s.body) CHM.mono(c, s.body.split('\n')[0], 72, top + m.height + 108, 26, A.second, { track: 2.4 });
   } else if (s.kind === 'cta') {
-    flagTag(c, s.eyebrow, 72, 96, A.bright, INK, 62);
+    flagTag(c, s.eyebrow, 72, 96, A.second, INK, 62);
     const paras = (s.body || '').split(/\n\s*\n/).filter(Boolean).slice(0, 3);
     const hs = paras.map(pp => CHM.marked(c, pp, 0, 0, { w: 776, lines: 5, max: 36, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: INK }, true).height + 64);
     let y = 330 + (h - 480 - hs.reduce((a, b) => a + b, 0)) / 2;
@@ -408,7 +410,7 @@ function drawD(c, s, i, n, h) {
       c.restore(); y += hs[k] + 36;
     });
   } else {
-    flagTag(c, s.eyebrow, 72, 96, A.bright, INK, 62);
+    flagTag(c, s.eyebrow, 72, 96, A.second, INK, 62);
     CHM.mark(c, 956, 96, 52, photo ? INK : A.bright);
     const w = 856, x = 112, text = s.body || s.headline;
     const base = { w: w - 80, lines: 5, max: 34, min: 24, weight: 600, track: -0.015, leading: 1.25, color: INK, align: 'center' };
@@ -430,7 +432,7 @@ function drawB(c, s, i, n, h) {
   const A = active(), INK = A.dark, imgs = s.images.filter(Boolean).slice(0, 2), seed = seedFor(i);
   c.fillStyle = INK; c.fillRect(0, 0, W, h);
   CHM.burst(c, W * 0.56, h * (imgs.length ? 0.3 : 0.38), imgs.length ? 1000 : 1320, A.bright, seed, 1700, 1);
-  if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.bright, INK);
+  if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
   if (imgs.length) {
     const d = imgs.length === 2 ? 300 : 360, cy = h * 0.3;
     const ring = { ring: A.bright, ringW: 12, empty: rgba(INK, 1) };
@@ -444,7 +446,7 @@ function drawB(c, s, i, n, h) {
   const bottom = h - 154;
   let y = bottom - bodyH;
   if (s.body) CHM.block(c, s.body, 72, y, bodyO);
-  if (s.credit) CHM.mono(c, s.credit, 72, y - 20, 22, A.bright, { track: 1.6 });
+  if (s.credit) CHM.mono(c, s.credit, 72, y - 20, 22, A.second, { track: 1.6 });
   y = y - (s.credit ? 44 : 0) - 34 - headM.height;
   CHM.marked(c, s.headline.toUpperCase(), 72, y, headO);
   footer(c, i, n, A.bright, '#ffffff', h);
@@ -463,7 +465,7 @@ function drawN(c, s, i, n, h) {
   const figTop = h * 0.28;
   let y = CHM.block(c, figure, 72, figTop, figO);
   if (s.unit) { CHM.mono(c, s.unit, 76, y + 62, 38, A.dark, { track: 2 }); y += 62; }
-  c.fillStyle = A.ink; c.fillRect(72, y + 58, 160, 12);
+  c.fillStyle = A.isV2 ? A.second : A.ink; c.fillRect(72, y + 58, 160, 12);
   y += 58;
   if (s.body) CHM.block(c, s.body, 72, y + 54, { w: 910, lines: 3, max: 40, min: 26, weight: 500, track: -0.02, leading: 1.3, color: A.dark });
   if (s.credit) CHM.mono(c, s.credit, 72, h - 190, 20, rgba(A.dark, .6), { track: 1.6 });
@@ -473,6 +475,7 @@ function drawN(c, s, i, n, h) {
 function draw(c, s, i, n) {
   const h = H();
   c.clearRect(0, 0, W, h);
+  CHM.backdrop(state.backdrop, active()); CHM.fleck(active().fleck);
   ({ A: drawA, Q: drawQ, P: drawP, D: drawD, B: drawB, N: drawN })[state.style](c, s, i, n, h);
 }
 
@@ -617,14 +620,22 @@ async function engineThumbs(n, drawOne, w, h, width) {
   return out;
 }
 
+/* set() awaits new images, so a slow call could land after a newer one and
+   put old slides back. Only the latest call gets to draw. */
+let setSeq = 0;
 window.__engine = {
   ready: true,
   meta: () => ({ width: W, styles: STYLE_NAME, hints: STYLE_HINT, grounds: GROUNDS, groundHints: GROUND_HINT, areas: AREAS.map((a) => ({ name: a.name, hex: a.bright })), sample: SAMPLE }),
   height: () => H(),
   async set(s) {
-    for (const k of ['style', 'format', 'palette', 'area', 'current']) if (s[k] !== undefined) state[k] = s[k];
+    const seq = ++setSeq;
+    for (const k of ['style', 'format', 'palette', 'area', 'current', 'backdrop', 'amber']) if (s[k] !== undefined) state[k] = s[k];
     if (s.grounds) Object.assign(state.grounds, s.grounds);
-    if (s.slides) state.slides = await Promise.all(s.slides.map(async (sl, i) => ({ kind: 'point', eyebrow: '', headline: '', body: '', credit: '', unit: '', ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+    if (s.slides) {
+      const slides = await Promise.all(s.slides.map(async (sl, i) => ({ kind: 'point', eyebrow: '', headline: '', body: '', credit: '', unit: '', ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+      if (seq !== setSeq) return;
+      state.slides = slides;
+    }
     state.current = Math.min(state.current, state.slides.length - 1);
     syncVisibility(); syncForm(); render();
   },

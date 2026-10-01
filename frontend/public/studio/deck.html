@@ -117,7 +117,7 @@ const SAMPLE = [
   { type: 'faq', title: 'Frequently asked questions', items: 'How do we ensure quality and compliance? | Moderated discussions are unscripted but structured. Medical and production teams pre-review every program with brand teams for accuracy, fair balance, and regulatory alignment.\nHow many HCPs typically attend? | Programs consistently bring 10 to 12+ HCPs to virtual sessions, with regional targeting customized to brand goals.\nHow are KOLs and HCPs recruited? | Recruiting draws on an established national network of academic and community KOLs and verified regional outreach lists.\nCan topics and focus areas be customized? | Every program is fully customizable to the desired outcome while preserving KOL authenticity and compliance.\nWhat deliverables follow the event? | Every program includes an Executive Insight Report with KOL list, HCP breakdown, takeaways, and survey results.\nHow fast is the process? | Most programs turn around in about seven weeks, and potentially faster depending on KOL availability.' },
   { type: 'closing', lines: 'Knowledge.\nCommunity.\nIntelligence.', cta: 'The next step is a single conversation to define the first engagement.', url: 'communityhealth.media' },
 ];
-const state = { title: '2026 Capabilities', current: 0, slides: SAMPLE.map(s => ({ ...s, images: [] })) };
+const state = { title: '2026 Capabilities', backdrop: 'studio', current: 0, slides: SAMPLE.map(s => ({ ...s, images: [] })) };
 const canvas = $('#c'), ctx = canvas.getContext('2d');
 const lines = (t) => String(t ?? '').split('\n').map(l => l.trim()).filter(Boolean);
 const cols = (l) => l.split('|').map(x => x.trim());
@@ -167,7 +167,7 @@ const R = {
     ground(c);
     c.save(); chevron(c, 300, W, 260, 380); c.clip(); photo(c, s.images[0], { x: 300, y: 0, w: 1620, h: H }, { fy: 0.4 }); c.restore();
     card(c, 60, 300, 660, 480, T.ink, 32);
-    if (s.eyebrow) pill(c, s.eyebrow, 108, 352, T.blue, '#fff', { size: 13, h: 34 });
+    if (s.eyebrow) pill(c, s.eyebrow, 108, 352, T.amber, T.ink, { size: 13, h: 34 });
     text(c, s.title, 108, 420, { w: 560, size: 60, weight: 500, track: -0.03, leading: 1.08, lines: 4, color: '#fff' });
     card(c, 1400, 880, 520, 200, T.paper, 24); CHM.lockup(c, 1470, 950, 60, T.blue, T.ink);
   },
@@ -195,10 +195,10 @@ const R = {
   stats(c, s, i, n) {
     ground(c); heading(c, s.title, M, 100, 1300, 48);
     const st = lines(s.stats).slice(0, 4).map(cols), pos = [[M, 330], [M, 530], [1380, 330], [1380, 530]];
-    st.forEach(([v, cap], k) => { const [x, y] = pos[k]; c.fillStyle = T.blue; c.font = '600 72px Geist'; c.letterSpacing = '-3px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, x, y + 60); c.letterSpacing = '0px'; text(c, cap ?? '', x, y + 84, { w: 430, size: 17, color: T.dim, leading: 1.35, lines: 3 }); });
+    st.forEach(([v, cap], k) => { const [x, y] = pos[k]; c.fillStyle = T.amber; c.fillRect(x + 2, y - 12, 56, 6); c.fillStyle = T.blue; c.font = '600 72px Geist'; c.letterSpacing = '-3px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, x, y + 60); c.letterSpacing = '0px'; text(c, cap ?? '', x, y + 84, { w: 430, size: 17, color: T.dim, leading: 1.35, lines: 3 }); });
     card(c, 660, 340, 600, 220, T.paper, 24); CHM.lockup(c, 760, 420, 74, T.blue, T.ink);
     card(c, M, 720, W - 2 * M, 280, T.deep, 24);
-    if (s.bandTitle) CHM.mono(c, s.bandTitle, W / 2, 770, 14, 'rgba(255,255,255,.75)', { align: 'center', track: 2 });
+    if (s.bandTitle) CHM.mono(c, s.bandTitle, W / 2, 770, 14, T.amber, { align: 'center', track: 2 });
     CHM.wordmark(c, W / 2 - 74, 920, 84, '#fff');
     let y = 810; lines(s.bandLeft).slice(0, 3).forEach(l => { y = text(c, l, M + 44, y, { w: 560, size: 19, color: '#fff', leading: 1.3, lines: 2 }) + 16; });
     y = 810; lines(s.bandRight).slice(0, 3).forEach(l => { y = text(c, l, W - M - 44, y, { w: 560, size: 19, color: '#fff', leading: 1.3, lines: 2, align: 'right' }) + 16; });
@@ -224,7 +224,7 @@ const R = {
     if (s.subtitle) y = text(c, s.subtitle, M, y + 10, { w: 700, size: 24, color: T.dim, leading: 1.3, lines: 2 });
     y += 30; pill(c, 'Program summary', M, y, T.blue, '#fff', { size: 13, h: 36 }); y += 60;
     lines(s.summary).slice(0, 4).forEach(l => { y = text(c, l, M, y, { w: 640, size: 18, color: T.ink, leading: 1.35, lines: 3 }) + 12; c.fillStyle = T.line; c.fillRect(M, y, 640, 1); y += 18; });
-    card(c, M, 860, 700, 140, T.deep, 18); CHM.mono(c, 'Designed for', M + 28, 900, 13, 'rgba(255,255,255,.8)', { track: 1.6 });
+    card(c, M, 860, 700, 140, T.deep, 18); CHM.mono(c, 'Designed for', M + 28, 900, 13, T.amber, { track: 1.6 });
     text(c, s.designed, M + 28, 912, { w: 640, size: 17, color: '#fff', leading: 1.35, lines: 3 });
     card(c, 880, 300, 260, 440); pill(c, 'Budget', 904, 324, T.blue, '#fff', { size: 12, h: 32 });
     let by = 400; lines(s.budget).slice(0, 3).forEach(l => { const [v, cap] = cols(l); c.fillStyle = T.blue; c.font = '600 40px Geist'; c.letterSpacing = '-1.5px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, 904, by); c.letterSpacing = '0px'; by = text(c, cap ?? '', 904, by + 8, { w: 212, size: 14, color: T.dim, leading: 1.3, lines: 3 }) + 34; });
@@ -238,7 +238,7 @@ const R = {
     const rows = lines(s.rows).slice(0, 8).map(cols), x1 = M, x2 = 700, x3 = W - M; y += 44;
     label(c, 'Program', x1, y, T.faint, 12); label(c, 'Detail', x2, y, T.faint, 12); CHM.mono(c, 'Investment', x3, y, 12, T.faint, { align: 'right', track: 1.2 }); y += 22;
     rows.forEach(([a, b, v]) => { c.fillStyle = T.line; c.fillRect(x1, y, W - 2 * M, 1); text(c, a, x1, y + 22, { w: 560, size: 22, weight: 600, color: T.ink, leading: 1.2, lines: 1 }); text(c, b ?? '', x2, y + 24, { w: 800, size: 19, color: T.dim, leading: 1.3, lines: 2 }); c.fillStyle = T.blue; c.font = '600 26px Geist'; c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillText(v ?? '', x3, y + 50); c.textAlign = 'left'; y += 78; });
-    if (s.total) { const [tl, tv] = cols(s.total); card(c, x1, y + 10, W - 2 * M, 72, T.deep, 14); text(c, tl, x1 + 28, y + 30, { w: 1100, size: 22, weight: 600, color: '#fff', leading: 1.2, lines: 1 }); c.fillStyle = '#fff'; c.font = '600 30px Geist'; c.textAlign = 'right'; c.fillText(tv ?? '', x3 - 28, y + 58); c.textAlign = 'left'; y += 100; }
+    if (s.total) { const [tl, tv] = cols(s.total); card(c, x1, y + 10, W - 2 * M, 72, T.deep, 14); text(c, tl, x1 + 28, y + 30, { w: 1100, size: 22, weight: 600, color: '#fff', leading: 1.2, lines: 1 }); c.fillStyle = T.amber; c.font = '600 30px Geist'; c.textAlign = 'right'; c.fillText(tv ?? '', x3 - 28, y + 58); c.textAlign = 'left'; y += 100; }
     if (s.note) CHM.mono(c, s.note, x1, y + 24, 12, T.faint, { track: 1, weight: 500, upper: false });
     footer(c, i, n);
   },
@@ -268,7 +268,7 @@ const R = {
     CHM.mark(c, 1760, 918, 60, T.blue);
   },
 };
-function draw(c, s, i, n) { c.clearRect(0, 0, W, H); (R[s.type] || R.about)(c, s, i, n); }
+function draw(c, s, i, n) { c.clearRect(0, 0, W, H); CHM.backdrop(state.backdrop, CHM.palette('v2')); (R[s.type] || R.about)(c, s, i, n); }
 
 /* ── main render + strip ────────────────────────────────────────── */
 const off = document.createElement('canvas'); off.width = W; off.height = H; const oc = off.getContext('2d');
@@ -348,12 +348,21 @@ async function engineThumbs(n, drawOne, w, h, width) {
   return out;
 }
 
+/* set() awaits new images, so a slow call could land after a newer one and
+   put old slides back. Only the latest call gets to draw. */
+let setSeq = 0;
 window.__engine = {
   ready: true,
   meta: () => ({ size: [W, H], types: TYPES, sample: SAMPLE, title: state.title }),
   async set(s) {
+    const seq = ++setSeq;
     if (s.title !== undefined) state.title = s.title;
-    if (s.slides) state.slides = await Promise.all(s.slides.map(async (sl, i) => ({ ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+    if (s.backdrop !== undefined) state.backdrop = s.backdrop;
+    if (s.slides) {
+      const slides = await Promise.all(s.slides.map(async (sl, i) => ({ ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+      if (seq !== setSeq) return;
+      state.slides = slides;
+    }
     if (s.current !== undefined) state.current = Math.min(s.current, state.slides.length - 1);
     syncForm(); render();
   },

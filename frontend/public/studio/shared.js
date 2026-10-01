@@ -18,15 +18,26 @@ window.CHM = (() => {
 
   /* A colourway is an accent pair plus the two grounds it sits on. "disease"
      takes the shipped disease-state hues, "v2" the brand guide v2 set, so a
-     template can be restyled without touching a single layout value. */
-  function palette(id, areaIndex) {
-    if (id === 'v2') return {
-      id: 'v2', name: 'Brand v2', bright: V2.blue, ink: V2.deep, second: V2.amber,
-      dark: V2.ink, light: V2.base, onBright: V2.ink, isV2: true,
-    };
+     template can be restyled without touching a single layout value.
+     `bright` is the lead accent (fields, panels, marks, rings); `second` takes
+     what the guide gives amber: stats, chips and eyebrows on dark grounds.
+     A disease state has one hue, so its second is the same colour.
+     Brand v2's amber can play three parts:
+       accents  the guide's reading: Knowledge Blue leads, amber marks the labels
+       field    accents, plus amber flecks through the particle field
+       lead     amber leads and Knowledge Blue takes the labels */
+  function palette(id, areaIndex, amber = 'accents') {
+    if (id === 'v2') {
+      const lead = amber === 'lead';
+      return {
+        id: 'v2', name: 'Brand v2', bright: lead ? V2.amber : V2.blue, second: lead ? V2.blue : V2.amber,
+        fleck: amber === 'field' ? V2.amber : null, ink: V2.deep,
+        dark: V2.ink, light: V2.base, onBright: V2.ink, isV2: true,
+      };
+    }
     const A = AREAS[areaIndex] ?? AREAS[0];
     return {
-      id: 'disease', name: A.name, bright: A.bright, ink: A.ink, second: A.bright,
+      id: 'disease', name: A.name, bright: A.bright, ink: A.ink, second: A.bright, fleck: null,
       dark: '#0f0e0d', light: PAL.surface, onBright: '#0f0e0d', isV2: false,
     };
   }
@@ -58,16 +69,21 @@ window.CHM = (() => {
   /* ── the particle burst ─────────────────────────────────────────── */
   function rnd(r) { r.s = (r.s * 1664525 + 1013904223) % 4294967296; return r.s / 4294967296; }
   function gauss(r) { return (rnd(r) + rnd(r) + rnd(r) + rnd(r) - 2) / 2; }
+  /* Flecks of a second colour through the field. They come off their own
+     sequence, so turning them on or off never moves a single particle. */
+  let FLECK = null;
+  function fleck(hex) { FLECK = hex || null; }
   function burst(ctx, cx, cy, radius, hex, seed, count = 1500, cell = 1) {
-    const r = { s: seed };
-    const [R, G, B] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+    const r = { s: seed }, fr = { s: (seed ^ 0x5bd1e995) >>> 0 };
+    const [R, G, B] = hex3(hex), F = FLECK && FLECK !== hex ? hex3(FLECK) : null;
     for (let i = 0; i < count; i++) {
       const spread = Math.pow(rnd(r), 0.42);
       const x = cx + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
       const y = cy + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
       const s = (rnd(r) < 0.12 ? 9 : rnd(r) < 0.45 ? 6.5 : 4.5) * cell;
       const a = Math.max(0.08, Math.min(1, 1.10 - spread * 1.18));
-      ctx.fillStyle = `rgba(${R},${G},${B},${a})`;
+      const [cr, cg, cb] = F && rnd(fr) < 0.22 ? F : [R, G, B];
+      ctx.fillStyle = `rgba(${cr},${cg},${cb},${a})`;
       ctx.fillRect(x, y, s, s);
     }
   }
@@ -93,7 +109,9 @@ window.CHM = (() => {
     for (;;) {
       ctx.font = `${weight} ${size}px ${family}`; ctx.letterSpacing = `${size * track}px`;
       lines = wrap(ctx, text, o.w);
-      if (lines.length <= o.lines || size <= min) break; size -= 2;
+      /* a single word wider than the column wraps onto its own line and still overflows, so width counts too */
+      const widest = Math.max(0, ...lines.map(l => ctx.measureText(l).width));
+      if ((lines.length <= o.lines && widest <= o.w) || size <= min) break; size -= 2;
     }
     return { size, lines, lead: size * (o.leading ?? 0.96) };
   }
@@ -120,6 +138,33 @@ window.CHM = (() => {
   /* ── images ─────────────────────────────────────────────────────── */
   /* cover a cell, anchored so the likely face point (fx, fy of the image)
      lands on (ax, ay); scale grows only as far as coverage needs */
+  /* ── cut-outs ───────────────────────────────────────────────────────
+     The templates were drawn for headshot photos, which fill their circle,
+     cell or chevron. A transparent cut-out (the KOL network's faculty images)
+     leaves that shape empty and every layout reads as faces on the ground, so
+     a cut-out is drawn over a backdrop: studio grey, the colourway's hue, or
+     nothing at all. */
+  function isCutout(img) {
+    try {
+      const t = document.createElement('canvas'); t.width = 24; t.height = 24;
+      const x = t.getContext('2d', { willReadFrequently: true }); x.drawImage(img, 0, 0, 24, 24);
+      const d = x.getImageData(0, 0, 24, 24).data;
+      for (let i = 3; i < d.length; i += 4) if (d[i] < 200) return true;
+    } catch { /* a tainted image can't be read; treat it as a photo */ }
+    return false;
+  }
+  const hex3 = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  function mix(a, b, t) { const A = hex3(a), B = hex3(b); return `rgb(${A.map((v, i) => Math.round(v + (B[i] - v) * t)).join(',')})`; }
+  let BACK = { mode: 'studio', P: null };
+  function backdrop(mode, P) { BACK = { mode: mode || 'studio', P }; }
+  function backfill(ctx, c) {
+    if (BACK.mode === 'none') return;
+    const g = ctx.createLinearGradient(0, c.y, 0, c.y + c.h);
+    if (BACK.mode === 'hue' && BACK.P) { g.addColorStop(0, mix(BACK.P.bright, BACK.P.dark, 0.38)); g.addColorStop(1, mix(BACK.P.bright, '#ffffff', 0.42)); }
+    else { g.addColorStop(0, '#eef0f3'); g.addColorStop(1, '#c6ccd4'); }
+    ctx.fillStyle = g; ctx.fillRect(c.x, c.y, c.w, c.h);
+  }
+
   function cover(ctx, f, c, o = {}) {
     if (!f || !f.img) return;
     const fx = o.fx ?? 0.5, fy = o.fy ?? 0.42, ax = o.ax ?? c.x + c.w / 2, ay = o.ay ?? c.y + c.h * 0.46;
@@ -127,6 +172,7 @@ window.CHM = (() => {
     const s = Math.max((ax - c.x) / (fx * iw), (c.x + c.w - ax) / ((1 - fx) * iw), (ay - c.y) / (fy * ih), (c.y + c.h - ay) / ((1 - fy) * ih)) * (f.zoom ?? 1);
     ctx.save(); ctx.beginPath(); ctx.rect(c.x, c.y, c.w, c.h); ctx.clip();
     if (o.filter) ctx.filter = o.filter;
+    if (f.cut) backfill(ctx, c);
     ctx.drawImage(f.img, ax - fx * iw * s + (f.dx ?? 0), ay - fy * ih * s + (f.dy ?? 0), iw * s, ih * s);
     ctx.filter = 'none'; ctx.restore();
   }
@@ -144,12 +190,12 @@ window.CHM = (() => {
   function loadFiles(list, max = 8) {
     return Promise.all([...list].slice(0, max).map(file => new Promise(res => {
       const url = URL.createObjectURL(file), img = new Image();
-      img.onload = () => res({ img, url, name: file.name.replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0 });
+      img.onload = () => res({ img, url, name: file.name.replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0, cut: isCutout(img) });
       img.onerror = () => res(null); img.src = url;
     }))).then(a => a.filter(Boolean));
   }
   function loadUrl(url, name) {
-    return new Promise(res => { const img = new Image(); img.onload = () => res({ img, url, name: name ?? url.split('/').pop().replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0 }); img.onerror = () => res(null); img.src = url; });
+    return new Promise(res => { const img = new Image(); img.onload = () => res({ img, url, name: name ?? url.split('/').pop().replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0, cut: isCutout(img) }); img.onerror = () => res(null); img.src = url; });
   }
   function fontsReady() {
     return Promise.all(['900 64px Geist', '600 32px Geist', '500 32px Geist', '400 32px Geist', '700 18px "Geist Mono"', '500 18px "Geist Mono"'].map(f => document.fonts.load(f)));
@@ -258,5 +304,5 @@ window.CHM = (() => {
   }
   const strip = (t) => String(t ?? '').replace(/[\[\]{}]/g, '');
 
-  return { PAL, AREAS, V2, palette, tokenize, layoutMarked, marked, strip, MARK_A, MARK_B, mark, lockup, wordmark, svgMark, burst, wrap, fit, block, measure, mono, roundRect, cover, circle, placeholder, loadFiles, loadUrl, fontsReady, download, bytes, slug, zip, pdf };
+  return { PAL, AREAS, V2, palette, fleck, isCutout, backdrop, backfill, tokenize, layoutMarked, marked, strip, MARK_A, MARK_B, mark, lockup, wordmark, svgMark, burst, wrap, fit, block, measure, mono, roundRect, cover, circle, placeholder, loadFiles, loadUrl, fontsReady, download, bytes, slug, zip, pdf };
 })();

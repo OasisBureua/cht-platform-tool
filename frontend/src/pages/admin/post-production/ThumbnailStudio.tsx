@@ -3,6 +3,7 @@ import { Download, Shuffle } from 'lucide-react';
 import { useStudioEngine, type StudioImage, type ThumbEngine } from '../../../components/admin/studio/engine';
 import { creditFor, FACULTY, type Faculty } from '../../../components/admin/studio/faculty';
 import { FacultyPicker, ImageChips, Section, Seg, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
+import { AMBER_HINT, AMBERS, BACKDROP_HINT, BACKDROPS, type Amber, type Backdrop } from '../../../components/admin/studio/look';
 import { Stage } from '../../../components/admin/studio/stage';
 
 /**
@@ -23,19 +24,23 @@ export default function ThumbnailStudio() {
   const [layout, setLayout] = useState('auto');
   const [hero, setHero] = useState('PFS');
   const [heroMode, setHeroMode] = useState<'fit' | 'stack'>('fit');
+  const [backdrop, setBackdrop] = useState<Backdrop>('studio');
+  const [amber, setAmber] = useState<Amber>('field');
   const [faces, setFaces] = useState<Face[]>(() =>
     START.map((s) => FACULTY.find((f) => f.stem === s)).filter(Boolean).map((f) => ({ url: f!.url, name: f!.name, stem: f!.stem, zoom: 1 })),
   );
   const [ownCredit, setOwnCredit] = useState<string | null>(null);
   const meta = useMemo(() => engine?.meta(), [engine]);
 
+  // Auto is Side for one or two faces and Row from three, so say which it is rather than show a twin
+  const layouts = ((meta?.layouts ?? [['auto', 'Auto']]) as [string, string][]).map(([v, name]): [string, string] => (v === 'auto' ? [v, `Auto · ${faces.length <= 2 ? 'Side' : 'Row'}`] : [v, name]));
   const autoCredit = creditFor(faces.filter((f) => f.stem).map((f) => f.name));
   const credit = ownCredit ?? autoCredit;
 
   useEffect(() => {
     if (!engine) return;
-    void engine.set({ title, credit, palette, area, layout, hero, heroMode, faces: faces.map(({ url, name, zoom }) => ({ url, name, zoom })) });
-  }, [engine, title, credit, palette, area, layout, hero, heroMode, faces]);
+    void engine.set({ title, credit, palette, area, layout, hero, heroMode, backdrop, amber, faces: faces.map(({ url, name, zoom }) => ({ url, name, zoom })) });
+  }, [engine, title, credit, palette, area, layout, hero, heroMode, backdrop, amber, faces]);
 
   const toggleFaculty = (f: Faculty) =>
     setFaces((fs) => (fs.some((x) => x.url === f.url) ? fs.filter((x) => x.url !== f.url) : [...fs, { url: f.url, name: f.name, stem: f.stem, zoom: 1 }].slice(0, MAX_FACES)));
@@ -95,21 +100,26 @@ export default function ThumbnailStudio() {
 
       {/* the look: colour, layout and hero, under the preview so the content panel stays short */}
       <section aria-label="Look" className="card order-3 grid gap-5 p-4 md:grid-cols-2 lg:col-span-2 xl:grid-cols-[minmax(0,17rem)_minmax(0,1fr)_minmax(0,1.3fr)]">
-        <Section label="Colourway">
-          <Seg label="Colourway" value={palette} options={[['disease', 'Disease states'], ['v2', 'Brand v2']]} onChange={setPalette} />
-        </Section>
+        <div className="space-y-5">
+          <Section label="Colourway">
+            <Seg label="Colourway" value={palette} options={[['disease', 'Disease states'], ['v2', 'Brand v2']]} onChange={setPalette} />
+          </Section>
+          <Section label="Backdrop" hint={BACKDROP_HINT}>
+            <Seg label="Backdrop" value={backdrop} options={BACKDROPS} onChange={setBackdrop} />
+          </Section>
+        </div>
         {palette === 'disease' && meta ? (
           <Section label="Disease state">
             <Swatches areas={meta.areas} value={area} onChange={setArea} />
           </Section>
         ) : (
-          <Section label="Disease state" hint="Brand v2 uses Knowledge Blue and Deep Expertise, so there's no disease colour to pick.">
-            <span />
+          <Section label="Amber" hint={AMBER_HINT[amber]}>
+            <Seg label="Amber" value={amber} options={AMBERS} onChange={setAmber} />
           </Section>
         )}
         <div className="space-y-5 md:col-span-2 xl:col-span-1">
           <Section label="Layout">
-            <Seg label="Layout" wrap value={layout} options={(meta?.layouts ?? [['auto', 'Auto']]) as [string, string][]} onChange={setLayout} />
+            <Seg label="Layout" wrap value={layout} options={layouts} onChange={setLayout} />
           </Section>
           {layout === 'bigword' ? (
             <Section label="Hero term">

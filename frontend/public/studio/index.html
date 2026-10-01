@@ -109,7 +109,7 @@ const AREAS = [
 ];
 const LAYOUT_NAME = { auto: 'Auto', side: 'Side', row: 'Row', split: 'Split', stack: 'Stack', bigword: 'Big word', chevron: 'Chevron', duotone: 'Duotone' };
 
-const state = { title: '', credit: '', hero: 'PFS', heroMode: 'fit', palette: 'disease', area: 0, layout: 'auto', faces: [], seed: 20260902 };
+const state = { title: '', credit: '', hero: 'PFS', heroMode: 'fit', palette: 'disease', area: 0, layout: 'auto', backdrop: 'studio', amber: 'accents', faces: [], seed: 20260902 };
 
 /* ── controls ──────────────────────────────────────────────────── */
 const $ = (s) => document.querySelector(s);
@@ -157,7 +157,7 @@ function addFiles(list) {
   for (const file of [...list].slice(0, 5 - state.faces.length)) {
     const url = URL.createObjectURL(file);
     const img = new Image();
-    img.onload = () => { state.faces.push({ img, url, name: file.name.replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0 }); renderFaces(); render(); };
+    img.onload = () => { state.faces.push({ img, url, name: file.name.replace(/\.[^.]+$/, ''), zoom: 1, dx: 0, dy: 0, cut: CHM.isCutout(img) }); renderFaces(); render(); };
     img.src = url;
   }
 }
@@ -250,15 +250,19 @@ const canvas = $('#c'), ctx = canvas.getContext('2d');
 function rnd(seedRef) { seedRef.s = (seedRef.s * 1664525 + 1013904223) % 4294967296; return seedRef.s / 4294967296; }
 function gauss(r) { return (rnd(r) + rnd(r) + rnd(r) + rnd(r) - 2) / 2; }
 function burst(cx, cy, radius, hex, seed) {
-  const r = { s: seed };
-  const [R, G, B] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  /* Brand v2 can fleck the field with amber; the flecks run off their own
+     sequence so turning them on never moves a particle */
+  const r = { s: seed }, fr = { s: (seed ^ 0x5bd1e995) >>> 0 }, F = ACTIVE && ACTIVE.fleck;
+  const rgb = (h) => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const [R, G, B] = rgb(hex), FL = F && F !== hex ? rgb(F) : null;
   for (let i = 0; i < 1500; i++) {
     const spread = Math.pow(rnd(r), 0.42);
     const x = cx + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
     const y = cy + gauss(r) * radius * 0.28 * (1 + spread * 4.0);
     const s = rnd(r) < 0.12 ? 9 : rnd(r) < 0.45 ? 6.5 : 4.5;
     const a = Math.max(0.08, Math.min(1, 1.10 - spread * 1.18));
-    ctx.fillStyle = `rgba(${R},${G},${B},${a})`;
+    const [cr, cg, cb] = FL && rnd(fr) < 0.22 ? FL : [R, G, B];
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},${a})`;
     ctx.fillRect(x, y, s, s);
   }
 }
@@ -272,6 +276,7 @@ function face(slot, f) {
   const { cx, cy, d } = slot;
   ctx.save(); ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.clip();
   if (f) {
+    if (f.cut) CHM.backfill(ctx, { x: cx - d / 2, y: cy - d / 2, w: d, h: d });
     const cover = Math.max(d / f.img.width, d / f.img.height) * f.zoom;
     const w = f.img.width * cover, h = f.img.height * cover;
     ctx.drawImage(f.img, cx - w / 2 + f.dx, cy - h / 2 + f.dy, w, h);
@@ -313,6 +318,7 @@ function mosaic(L, layout, n, hue, P) {
       const ax = (x0 + x1) / 2, iw = f.img.width, ih = f.img.height;
       const s = Math.max((ax - c.x) / (FX * iw), (c.x + c.w - ax) / ((1 - FX) * iw), (ay - c.y) / (FY * ih), (c.y + c.h - ay) / ((1 - FY) * ih)) * f.zoom;
       if (clip === 'duotone') ctx.filter = 'grayscale(1) contrast(1.15)';
+      if (f.cut) CHM.backfill(ctx, c);
       ctx.drawImage(f.img, ax - FX * iw * s + f.dx, ay - FY * ih * s + f.dy, iw * s, ih * s);
       ctx.filter = 'none';
     } else placeholder(c.x, c.y, c.w, c.h, Math.max(14, Math.min(c.w, c.h) * 0.07));
@@ -346,7 +352,10 @@ function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.a
 
 function render() {
   const layout = resolveLayout(), n = Math.max(1, state.faces.length);
-  const P = CHM.palette(state.palette, state.area), hue = P.bright;
+  /* hue leads (field, panel, mark); P.second carries the labels: the chip, the
+     credit and the hero term, which is where Brand v2 puts its amber */
+  const P = CHM.palette(state.palette, state.area, state.amber), hue = P.bright, accent = P.second;
+  CHM.backdrop(state.backdrop, P);
   ACTIVE = P;
   const L = plan(layout, n);
   render.slots = L.slots; render.hits = [];
@@ -363,7 +372,7 @@ function render() {
     const H = L.hero, word = (state.hero || 'PFS').slice(0, 10);
     let hs = H.max; ctx.textBaseline = 'top'; ctx.textAlign = 'left';
     for (;;) { ctx.font = `900 ${hs}px Geist`; ctx.letterSpacing = `${-hs * 0.06}px`; if (ctx.measureText(word).width <= H.maxW || hs <= 120) break; hs -= 8; }
-    ctx.fillStyle = hue; ctx.fillText(word, 28, H.top + (H.max - hs) * 0.35); ctx.letterSpacing = '0px';
+    ctx.fillStyle = accent; ctx.fillText(word, 28, H.top + (H.max - hs) * 0.35); ctx.letterSpacing = '0px';
   }
 
   /* faces: halos behind every circle, core offset up-right so it reads as a rim */
@@ -377,7 +386,7 @@ function render() {
   }
 
   /* chip */
-  const chipFg = L.panel ? hue : P.onBright, chipBg = L.panel ? P.dark : hue;
+  const chipFg = L.panel ? accent : P.onBright, chipBg = L.panel ? P.dark : accent;
   ctx.font = '700 18px "Geist Mono"'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   const label = AREAS[state.area][0].toUpperCase(); const lw = ctx.measureText(label).width + 6 * label.length * 0.08;
   const chipX = layout === 'stack' ? 420 : 48;
@@ -396,7 +405,8 @@ function render() {
   for (;;) {
     ctx.font = `900 ${size}px Geist`; ctx.letterSpacing = `${-size * 0.034}px`;
     lines = wrap(state.title, T.w);
-    if (lines.length <= T.lines || size <= 34) break; size -= 2;
+    const widest = Math.max(0, ...lines.map(l => ctx.measureText(l).width));
+    if ((lines.length <= T.lines && widest <= T.w) || size <= 34) break; size -= 2;
   }
   const lead = size * 0.94, top = T.bottom - lines.length * lead;
   ctx.fillStyle = T.ink ? P.dark : '#fff';
@@ -404,7 +414,7 @@ function render() {
   ctx.letterSpacing = '0px';
 
   /* credit */
-  ctx.font = `700 ${L.credit.small ? 15 : 20}px "Geist Mono"`; ctx.fillStyle = L.credit.ink ? (P.isV2 ? 'rgba(34,48,60,.82)' : 'rgba(15,14,13,.8)') : hue; ctx.letterSpacing = '1px';
+  ctx.font = `700 ${L.credit.small ? 15 : 20}px "Geist Mono"`; ctx.fillStyle = L.credit.ink ? (P.isV2 ? 'rgba(34,48,60,.82)' : 'rgba(15,14,13,.8)') : accent; ctx.letterSpacing = '1px';
   wrap(state.credit.toUpperCase(), L.credit.w).forEach((l, i) => ctx.fillText(l, L.credit.x, L.credit.y + 16 + i * 22));
   ctx.letterSpacing = '0px';
 
@@ -455,18 +465,24 @@ window.__studio = {
 };
 
 
+/* set() awaits new images, so a slow call could land after a newer one and
+   put an old layout or old faces back. Only the latest call gets to draw. */
+let setSeq = 0;
 window.__engine = {
   ready: true,
   meta: () => ({ size: [canvas.width, canvas.height], areas: AREAS.map(([name, hex]) => ({ name, hex })), layouts: Object.entries(LAYOUT_NAME) }),
   async set(s) {
-    for (const k of ['title', 'credit', 'hero', 'heroMode', 'palette', 'area', 'layout', 'seed']) if (s[k] !== undefined) state[k] = s[k];
+    const seq = ++setSeq;
+    for (const k of ['title', 'credit', 'hero', 'heroMode', 'palette', 'area', 'layout', 'seed', 'backdrop', 'amber']) if (s[k] !== undefined) state[k] = s[k];
     if (s.faces) {
       const prev = state.faces;
-      state.faces = (await Promise.all(s.faces.map((f) => {
+      const faces = (await Promise.all(s.faces.map((f) => {
         const hit = prev.find((p) => p.url === f.url);
         if (hit) { hit.zoom = f.zoom ?? hit.zoom; hit.name = f.name ?? hit.name; return hit; }
-        return new Promise((res) => { const img = new Image(); img.onload = () => res({ img, url: f.url, name: f.name || '', zoom: f.zoom ?? 1, dx: 0, dy: 0 }); img.onerror = () => res(null); img.src = f.url; });
+        return new Promise((res) => { const img = new Image(); img.onload = () => res({ img, url: f.url, name: f.name || '', zoom: f.zoom ?? 1, dx: 0, dy: 0, cut: CHM.isCutout(img) }); img.onerror = () => res(null); img.src = f.url; });
       }))).filter(Boolean);
+      if (seq !== setSeq) return;
+      state.faces = faces;
     }
     render();
   },
