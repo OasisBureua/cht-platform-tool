@@ -8,6 +8,9 @@ import {
   parseCaptions,
   parseTime,
   searchTranscript,
+  findQuestions,
+  splitEvenly,
+  tightenToSpeech,
 } from '../../components/admin/clipper/clipperCore';
 
 const ZOOM_VTT = `WEBVTT
@@ -113,5 +116,65 @@ describe('search and export', () => {
     const edl = clipsToEdl(clips, 'Session', 'session.mp4', 30);
     expect(edl).toContain('001  AX       AA/V  C        00:12:30:00 00:14:05:00 00:00:00:00 00:01:35:00');
     expect(edl).toContain('* COMMENT: ILD, monitoring');
+  });
+});
+
+describe('directing the cut', () => {
+  const QA = parseCaptions(`WEBVTT
+
+1
+00:01:00.000 --> 00:01:06.000
+Audience: How often do you repeat the CT when patients are stable?
+
+2
+00:01:06.000 --> 00:01:20.000
+Ruta Rao: Every six to twelve weeks, and sooner with any new cough.
+
+3
+00:02:30.000 --> 00:02:34.000
+Jason Mouabbi: Okay.
+
+4
+00:03:00.000 --> 00:03:05.000
+Audience: Would you rechallenge after a grade one event?
+
+5
+00:03:05.000 --> 00:03:18.000
+Mark Pegram: After it resolves, yes, with close monitoring.
+`);
+
+  it('applies explicit times straight away', () => {
+    const r = interpretRequest('12:30 to 14:05 ILD monitoring', { duration: 3600, cues: [], clipCount: 0 });
+    expect(r.kind).toBe('times');
+    expect(r.reply).toMatch(/^Done\./);
+  });
+
+  it('finds audience questions with the answer that follows', () => {
+    const qs = findQuestions(QA);
+    expect(qs).toHaveLength(2);
+    expect(qs[0].start).toBe(59);
+    expect(qs[0].end).toBe(81);
+    expect(qs[1].title).toMatch(/rechallenge/);
+    const r = interpretRequest('every audience question', { duration: 600, cues: QA, clipCount: 0 });
+    expect(r.kind).toBe('questions');
+    expect(r.proposals).toHaveLength(2);
+  });
+
+  it('splits the recording into even parts', () => {
+    expect(splitEvenly(400, 180).map((c) => [c.start, c.end])).toEqual([
+      [0, 180],
+      [180, 360],
+      [360, 400],
+    ]);
+    const r = interpretRequest('Split into 3-minute clips', { duration: 400, cues: [], clipCount: 0 });
+    expect(r.kind).toBe('split');
+    expect(r.proposals).toHaveLength(3);
+  });
+
+  it('tightens a clip to the speech inside it', () => {
+    expect(tightenToSpeech({ start: 50, end: 100 }, QA)).toEqual({ start: 59.75, end: 80.25 });
+    expect(tightenToSpeech({ start: 400, end: 420 }, QA)).toEqual({ start: 400, end: 420 });
+    expect(interpretRequest('tighten to speech', { duration: 600, cues: QA, clipCount: 2 }).tighten).toBe(true);
+    expect(interpretRequest('tighten to speech', { duration: 600, cues: [], clipCount: 2 }).tighten).toBeUndefined();
   });
 });

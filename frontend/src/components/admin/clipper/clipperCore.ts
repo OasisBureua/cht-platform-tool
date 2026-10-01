@@ -173,40 +173,110 @@ export function searchTranscript(cues: Cue[], query: string, limit = 5): Propose
     }));
 }
 
+/**
+ * Audience questions: cues that ask something, each taken with the answer
+ * that follows it, up to the next question or `maxLen` seconds.
+ */
+export function findQuestions(cues: Cue[], maxLen = 120, limit = 12): ProposedClip[] {
+  const asks = cues.map((c, i) => ({ c, i })).filter(({ c }) => /\?\s*$|\?["”']?\s/.test(c.text) && c.text.trim().split(/\s+/).length >= 4);
+  return asks.slice(0, limit).map(({ c, i }, k) => {
+    const nextAsk = asks[k + 1]?.c.start ?? Infinity;
+    let end = c.end;
+    // the answer runs until the next question, a pause of more than 8s, or maxLen
+    for (let j = i + 1; j < cues.length && cues[j].start < nextAsk && cues[j].start - end <= 8 && cues[j].end - c.start <= maxLen; j++) end = cues[j].end;
+    const words = c.text.replace(/\?.*$/s, '?');
+    return {
+      title: titleFrom(words.length > 70 ? words.slice(0, 68) + '…' : words, 'Audience question'),
+      start: Math.max(0, c.start - 1),
+      end: end + 1,
+      reason: `${c.speaker ? `${c.speaker}: ` : ''}“${c.text.slice(0, 120)}${c.text.length > 120 ? '…' : ''}”`,
+    };
+  });
+}
+
+/** Back-to-back clips of `len` seconds across the recording. */
+export function splitEvenly(duration: number, len: number, startIndex = 0): ProposedClip[] {
+  if (!(duration > 0) || !(len > 0)) return [];
+  const out: ProposedClip[] = [];
+  for (let s = 0, i = 0; s < duration - 0.5 && i < 200; s += len, i++) {
+    out.push({ title: `Part ${startIndex + i + 1}`, start: s, end: Math.min(duration, s + len) });
+  }
+  return out;
+}
+
+/**
+ * Pulls a clip's edges in to the speech inside it, so it doesn't open or
+ * close on dead air. Leaves the clip alone if no one speaks inside it.
+ */
+export function tightenToSpeech<T extends { start: number; end: number }>(clip: T, cues: Cue[], pad = 0.25): T {
+  const inside = cues.filter((c) => c.end > clip.start && c.start < clip.end);
+  if (!inside.length) return clip;
+  const start = Math.max(clip.start, inside[0].start - pad);
+  const end = Math.min(clip.end, inside[inside.length - 1].end + pad);
+  return end - start > 0.5 ? { ...clip, start, end } : clip;
+}
+
+export type AssistantKind = 'help' | 'clear' | 'remove' | 'times' | 'split' | 'search' | 'questions' | 'tighten' | 'none';
+
 export type AssistantResult = {
   reply: string;
   proposals: ProposedClip[];
+  /** What the request was. Times and splits are applied straight away; finds come back to accept. */
+  kind?: AssistantKind;
   removeIndexes?: number[];
   clearAll?: boolean;
+  tighten?: boolean;
 };
 
 export const ASSISTANT_HELP =
-  'Give me times, like “12:30 to 14:05 ILD monitoring” or “at 3:10 for 45s”, one clip per line. ' +
-  'With a transcript loaded I can also find moments: “find olanzapine” or “where do they discuss dose reductions”. ' +
-  '“Remove clip 2” and “clear all” work too.';
+  'Give me times and I’ll cut them: “12:30 to 14:05 ILD monitoring”, “at 3:10 for 45s”, “first 90 seconds” or “split into 3-minute clips”. ' +
+  'With a transcript I can find moments for you to check: “find olanzapine”, “every audience question”. ' +
+  '“Tighten to speech”, “remove clip 2” and “clear all” work too.';
 
 /**
  * Reads a request typed into the assistant. Deterministic on purpose:
- * explicit times become clips exactly as written, and anything else is
- * treated as a transcript search whose matches come back as suggestions
- * to accept, so nothing lands on the timeline without a person saying so.
+ * explicit times and splits become clips exactly as written, and anything
+ * found in the transcript (a search, the audience questions) comes back
+ * as suggestions to accept, so nothing it guessed lands on the timeline
+ * without a person saying so.
  */
 export function interpretRequest(
   message: string,
   ctx: { duration: number; cues: Cue[]; clipCount: number },
 ): AssistantResult {
   const msg = message.trim();
-  if (!msg) return { reply: ASSISTANT_HELP, proposals: [] };
-  if (/^(help|\?|what can you do)/i.test(msg)) return { reply: ASSISTANT_HELP, proposals: [] };
+  if (!msg) return { reply: ASSISTANT_HELP, proposals: [], kind: 'help' };
+  if (/^(help|\?|what can you do)/i.test(msg)) return { reply: ASSISTANT_HELP, proposals: [], kind: 'help' };
   if (/^(clear|remove|delete)\s+(all|every|everything)/i.test(msg)) {
-    return { reply: 'Cleared every clip.', proposals: [], clearAll: true };
+    return { reply: 'Cleared every clip.', proposals: [], clearAll: true, kind: 'clear' };
+  }
+  if (/\b(tighten|trim (?:them |clips |it )?to (?:the )?speech|cut (?:the )?(?:dead air|silences?))\b/i.test(msg)) {
+    if (!ctx.cues.length) return { reply: 'I need the transcript to see where people speak. Add one in the Transcript tab.', proposals: [], kind: 'none' };
+    if (!ctx.clipCount) return { reply: 'There are no clips to tighten yet.', proposals: [], kind: 'none' };
+    return { reply: `Done. Pulled ${ctx.clipCount === 1 ? 'the clip' : `all ${ctx.clipCount} clips`} in to the speech.`, proposals: [], tighten: true, kind: 'tighten' };
+  }
+  const split = /\b(?:split|chop|cut)\b.*?\b(?:into|in)\s+(\d+(?:\.\d+)?)\s*-?\s*(min(?:ute)?s?|sec(?:ond)?s?|s|m)\b/i.exec(msg) ??
+    /\bevery\s+(\d+(?:\.\d+)?)\s*-?\s*(min(?:ute)?s?|sec(?:ond)?s?|s|m)\b/i.exec(msg);
+  if (split) {
+    const len = Number(split[1]) * (/^m/i.test(split[2]) ? 60 : 1);
+    const parts = splitEvenly(ctx.duration, len, ctx.clipCount);
+    return parts.length
+      ? { reply: `Done. Split the recording into ${parts.length} clips of ${formatTime(len, 0)}.`, proposals: parts, kind: 'split' }
+      : { reply: 'The recording is still loading. Try that again in a moment.', proposals: [], kind: 'none' };
+  }
+  if (/\b(questions?|q\s?&\s?a|asked)\b/i.test(msg) && !/\bfind\b.*\bquestion\b.*\babout\b/i.test(msg)) {
+    if (!ctx.cues.length) return { reply: 'I need the transcript to find questions. Add one in the Transcript tab.', proposals: [], kind: 'none' };
+    const qs = findQuestions(ctx.cues);
+    return qs.length
+      ? { reply: `Found ${qs.length === 1 ? '1 question' : `${qs.length} questions`}, each with the answer after it. Add the ones you want.`, proposals: qs, kind: 'questions' }
+      : { reply: 'No one asks a question in this transcript.', proposals: [], kind: 'questions' };
   }
   const rm = /^(?:remove|delete|drop)\s+clips?\s+([\d,\sand]+)/i.exec(msg);
   if (rm) {
     const idx = [...rm[1].matchAll(/\d+/g)].map((m) => Number(m[0]) - 1).filter((n) => n >= 0 && n < ctx.clipCount);
     return idx.length
-      ? { reply: `Removed clip ${idx.map((n) => n + 1).join(', ')}.`, proposals: [], removeIndexes: idx }
-      : { reply: `There's no clip with that number. You have ${ctx.clipCount}.`, proposals: [] };
+      ? { reply: `Removed clip ${idx.map((n) => n + 1).join(', ')}.`, proposals: [], removeIndexes: idx, kind: 'remove' }
+      : { reply: `There's no clip with that number. You have ${ctx.clipCount}.`, proposals: [], kind: 'none' };
   }
 
   const proposals: ProposedClip[] = [];
@@ -259,10 +329,8 @@ export function interpretRequest(
   }
 
   if (proposals.length || problems.length) {
-    const said = proposals.length
-      ? `${proposals.length === 1 ? 'Here is 1 clip' : `Here are ${proposals.length} clips`} from your times. Add ${proposals.length === 1 ? 'it' : 'them'} to the timeline when they look right.`
-      : '';
-    return { reply: [said, ...problems].filter(Boolean).join(' '), proposals };
+    const said = proposals.length ? `Done. Added ${proposals.length === 1 ? '1 clip' : `${proposals.length} clips`} from your times.` : '';
+    return { reply: [said, ...problems].filter(Boolean).join(' '), proposals, kind: proposals.length ? 'times' : 'none' };
   }
 
   if (!ctx.cues.length) {
@@ -270,6 +338,7 @@ export function interpretRequest(
       reply:
         'I need times for that, like “12:30 to 14:05”. To find moments by what was said, load the transcript first.',
       proposals: [],
+      kind: 'none',
     };
   }
   const found = searchTranscript(ctx.cues, msg);
@@ -280,8 +349,9 @@ export function interpretRequest(
             ? 'Found 1 moment in the transcript. Check it, then add it if it’s the right one.'
             : `Found ${found.length} moments in the transcript. Check them and add the ones you want.`,
         proposals: found,
+        kind: 'search',
       }
-    : { reply: `Nothing in the transcript matches “${msg}”. Try a different word, or give me times.`, proposals: [] };
+    : { reply: `Nothing in the transcript matches “${msg}”. Try a different word, or give me times.`, proposals: [], kind: 'search' };
 }
 
 /* ── exporters ─────────────────────────────────────────────────── */

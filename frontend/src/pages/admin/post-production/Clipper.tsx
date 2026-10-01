@@ -1,27 +1,26 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import {
+  ArrowUp,
+  Check,
   ChevronLeft,
   ChevronRight,
   Download,
-  FileVideo,
-  Film,
+  FileText,
   Loader2,
   MessageSquare,
+  Minimize2,
   Pause,
   Play,
   Plus,
   Repeat,
   Scissors,
   Search,
-  Send,
   SkipBack,
   SkipForward,
   Trash2,
-  Upload,
-  Video,
+  Undo2,
 } from 'lucide-react';
-import { adminApi, type ProgramZoomRecordingRow, type ZoomRecordingCatalogSession } from '../../../api/admin';
+import { adminApi } from '../../../api/admin';
 import {
   ASSISTANT_HELP,
   clipsToCsv,
@@ -31,35 +30,40 @@ import {
   interpretRequest,
   parseCaptions,
   slugify,
+  tightenToSpeech,
   type Clip,
   type Cue,
   type ProposedClip,
 } from '../../../components/admin/clipper/clipperCore';
 import type { RenderMode } from '../../../components/admin/clipper/renderClip';
+import { ClipComposer } from '../../../components/admin/clipper/ClipComposer';
+import { ClipTimeline } from '../../../components/admin/clipper/ClipTimeline';
+import { pickTranscript, type Source } from '../../../components/admin/clipper/sources';
+import { useFilmstrip, useWaveform, type Thumb } from '../../../components/admin/clipper/useMediaPreview';
 
 /**
- * Post-production › Clipper. A review-and-clip view in the spirit of
- * Frame.io: the recording large, a timeline carrying every clip, and a
- * side panel for the clip list, the transcript and the clip assistant.
+ * Post-production › Clipper. Describe the clips, add a recording, then
+ * direct the cut: ask for changes in the Direct panel, trim on the
+ * timeline, or select lines of the transcript.
  *
- * Two sources. A Zoom recording from the admin catalog plays from its
- * signed link and exports a cut list (CSV, EDL, JSON) for the editor; the
- * bucket doesn't let the browser read its bytes, so it can't be cut here.
- * A file from the computer does everything, including rendering clips.
- * Work is saved in this browser per source, so a reload loses nothing.
+ * Explicit requests (times, splits, tightening) apply straight away with
+ * an undo; anything found in the transcript comes back as suggestions.
+ *
+ * Two sources. A Zoom recording plays from its signed link and exports a
+ * cut list (CSV, EDL, JSON); the bucket doesn't let the browser read its
+ * bytes, so it can't be cut here and the timeline shows speech instead of
+ * frames and sound. A file from the computer does everything, including
+ * rendering clips. Work is saved in this browser per source.
  */
 
-type Source =
-  | { kind: 'zoom'; key: string; title: string; fileName: string; url: string; session: ZoomRecordingCatalogSession; files: ProgramZoomRecordingRow[] }
-  | { kind: 'local'; key: string; title: string; fileName: string; url: string; file: File };
-
 type TranscriptState = 'none' | 'loading' | 'ready' | 'blocked' | 'error';
-type Panel = 'clips' | 'transcript' | 'assistant';
-type ChatMessage = { id: string; role: 'you' | 'assistant'; text: string; proposals?: ProposedClip[] };
+type Panel = 'direct' | 'clips' | 'transcript';
+type ChatMessage = { id: string; role: 'you' | 'assistant'; text: string; proposals?: ProposedClip[]; before?: Clip[]; undone?: boolean };
 
 const FRAME = 1 / 30;
 const CLIP_COLORS = ['#2eaacc', '#e2704a', '#8b6ad8', '#2f9e6b', '#d9a13b', '#d0548f'];
 const uid = () => Math.random().toString(36).slice(2, 10);
+const byStart = (a: Clip, b: Clip) => a.start - b.start;
 
 function storageKey(sourceKey: string) {
   return `chm-clipper:${sourceKey}`;
@@ -75,10 +79,6 @@ function loadSaved(sourceKey: string): Clip[] {
   }
 }
 
-function downloadText(name: string, text: string, type: string) {
-  downloadBlob(name, new Blob([text], { type }));
-}
-
 function downloadBlob(name: string, blob: Blob) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -89,304 +89,10 @@ function downloadBlob(name: string, blob: Blob) {
   a.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
+const downloadText = (name: string, text: string, type: string) => downloadBlob(name, new Blob([text], { type }));
 
-/** The recording to clip: the largest MP4 in S3, which is Zoom's main view. */
-function pickVideo(files: ProgramZoomRecordingRow[]): ProgramZoomRecordingRow | undefined {
-  return files
-    .filter((f) => f.storedInS3 && /mp4/i.test(`${f.fileType} ${f.fileExtension ?? ''}`))
-    .sort((a, b) => (b.fileSizeBytes ?? 0) - (a.fileSizeBytes ?? 0))[0];
-}
-
-function pickTranscript(files: ProgramZoomRecordingRow[]): ProgramZoomRecordingRow | undefined {
-  const inS3 = files.filter((f) => f.storedInS3);
-  return inS3.find((f) => /transcript/i.test(f.fileType)) ?? inS3.find((f) => /^cc$/i.test(f.fileType) || /vtt/i.test(f.fileExtension ?? ''));
-}
-
-/* ── source picker ─────────────────────────────────────────────── */
-
-function SourcePicker({ onPick }: { onPick: (s: Source, transcript?: File) => void }) {
-  const [q, setQ] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [opening, setOpening] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [video, setVideo] = useState<File | null>(null);
-  const [captions, setCaptions] = useState<File | null>(null);
-
-  useEffect(() => {
-    const t = window.setTimeout(() => setDebounced(q.trim()), 300);
-    return () => window.clearTimeout(t);
-  }, [q]);
-
-  const sessions = useQuery({
-    queryKey: ['admin', 'clipper', 'sessions', debounced],
-    queryFn: () => adminApi.listZoomRecordingSessions({ page: 1, pageSize: 25, q: debounced || undefined }),
-    staleTime: 60_000,
-  });
-  const withFiles = (sessions.data?.sessions ?? []).filter((s) => s.filesInS3Count > 0);
-
-  const openSession = async (s: ZoomRecordingCatalogSession) => {
-    setError(null);
-    setOpening(s.id);
-    try {
-      const detail = await adminApi.getZoomRecordingSession(s.id);
-      const file = pickVideo(detail.files);
-      if (!file) {
-        setError('That session has no MP4 in storage yet. Pull its files on the Zoom recordings page first.');
-        return;
-      }
-      const link = await adminApi.getZoomRecordingCatalogDownloadUrl(s.id, file.id, 'inline');
-      onPick({
-        kind: 'zoom',
-        key: `zoom:${s.id}:${file.id}`,
-        title: s.topic || s.programTitle || 'Zoom recording',
-        fileName: `${slugify(s.topic || 'recording')}.mp4`,
-        url: link.url,
-        session: s,
-        files: detail.files,
-      });
-    } catch {
-      setError("That recording didn't open. Try again, or check it on the Zoom recordings page.");
-    } finally {
-      setOpening(null);
-    }
-  };
-
-  const openLocal = () => {
-    if (!video) return;
-    onPick(
-      {
-        kind: 'local',
-        key: `local:${video.name}:${video.size}`,
-        title: video.name.replace(/\.[^.]+$/, ''),
-        fileName: video.name,
-        url: URL.createObjectURL(video),
-        file: video,
-      },
-      captions ?? undefined,
-    );
-  };
-
-  return (
-    <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr]">
-      <section className="card flex min-h-[26rem] flex-col p-5">
-        <div className="flex items-center gap-2">
-          <Video className="size-4 text-anchor" aria-hidden />
-          <h2 className="display text-body-l text-text">Zoom recordings</h2>
-        </div>
-        <p className="mt-1 text-body-s text-muted2">Sessions with files in storage. Clips export as a cut list for the editor.</p>
-        <label className="relative mt-4 block">
-          <span className="sr-only">Search sessions</span>
-          <Search className="pointer-events-none absolute start-3 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search by topic or host"
-            className="h-10 w-full rounded-[8px] bg-surface-2 ps-9 pe-3 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
-          />
-        </label>
-        {error ? <p className="mt-3 rounded-[8px] bg-amber-500/10 px-3 py-2 text-body-s text-dim">{error}</p> : null}
-        <ul className="mt-3 flex-1 space-y-1 overflow-y-auto">
-          {sessions.isLoading ? (
-            <li className="flex items-center gap-2 py-6 text-body-s text-muted2">
-              <Loader2 className="size-4 animate-spin" aria-hidden /> Loading sessions
-            </li>
-          ) : sessions.isError ? (
-            <li className="py-6 text-body-s text-muted2">Sessions didn't load. Refresh to try again.</li>
-          ) : withFiles.length === 0 ? (
-            <li className="py-6 text-body-s text-muted2">
-              {debounced ? `No sessions with stored files match “${debounced}”.` : 'No sessions have files in storage yet.'}
-            </li>
-          ) : (
-            withFiles.map((s) => (
-              <li key={s.id}>
-                <button
-                  type="button"
-                  onClick={() => openSession(s)}
-                  disabled={opening !== null}
-                  className="flex w-full items-center gap-3 rounded-[8px] px-3 py-2.5 text-left transition-colors hover:bg-surface-2 disabled:opacity-60"
-                >
-                  <FileVideo className="size-4 shrink-0 text-faint" aria-hidden />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-body-s font-medium text-text">{s.topic || 'Untitled session'}</span>
-                    <span className="meta block truncate text-faint">
-                      {s.startTime ? new Date(s.startTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No date'}
-                      {s.programTitle ? ` · ${s.programTitle}` : ''}
-                    </span>
-                  </span>
-                  {opening === s.id ? <Loader2 className="size-4 animate-spin text-anchor" aria-hidden /> : <ChevronRight className="size-4 text-faint" aria-hidden />}
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
-
-      <section className="card flex flex-col p-5">
-        <div className="flex items-center gap-2">
-          <Upload className="size-4 text-anchor" aria-hidden />
-          <h2 className="display text-body-l text-text">From your computer</h2>
-        </div>
-        <p className="mt-1 text-body-s text-muted2">Clip it here and render MP4s in the browser. Nothing is uploaded.</p>
-        <label className="mt-4 flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[10px] border border-dashed border-hairline-strong px-4 py-8 text-center transition-colors hover:bg-surface-2">
-          <Film className="size-6 text-faint" aria-hidden />
-          <span className="text-body-s font-medium text-text">{video ? video.name : 'Choose a video'}</span>
-          <span className="meta text-faint">MP4, MOV or WebM</span>
-          <input type="file" accept="video/*" className="sr-only" onChange={(e) => setVideo(e.target.files?.[0] ?? null)} />
-        </label>
-        <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-[8px] bg-surface-2 px-3 py-2.5 text-body-s">
-          <span className="min-w-0 truncate text-dim">{captions ? captions.name : 'Transcript (optional): .vtt or .srt'}</span>
-          <span className="shrink-0 font-medium text-anchor">Choose</span>
-          <input type="file" accept=".vtt,.srt,text/vtt" className="sr-only" onChange={(e) => setCaptions(e.target.files?.[0] ?? null)} />
-        </label>
-        <button
-          type="button"
-          onClick={openLocal}
-          disabled={!video}
-          className="press mt-auto inline-flex h-10 items-center justify-center gap-2 rounded-[8px] bg-anchor px-4 text-body-s font-medium text-ground disabled:opacity-40"
-        >
-          <Scissors className="size-4" aria-hidden />
-          Open in the clipper
-        </button>
-      </section>
-    </div>
-  );
-}
-
-/* ── timeline ──────────────────────────────────────────────────── */
-
-function Timeline({
-  duration,
-  time,
-  clips,
-  selectedId,
-  markIn,
-  markOut,
-  cues,
-  onSeek,
-  onSelect,
-}: {
-  duration: number;
-  time: number;
-  clips: Clip[];
-  selectedId: string | null;
-  markIn: number | null;
-  markOut: number | null;
-  cues: Cue[];
-  onSeek: (t: number) => void;
-  onSelect: (id: string) => void;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const pct = (t: number) => (duration > 0 ? `${(Math.min(Math.max(t, 0), duration) / duration) * 100}%` : '0%');
-  const seekFrom = (clientX: number) => {
-    const el = ref.current;
-    if (!el || duration <= 0) return;
-    const r = el.getBoundingClientRect();
-    onSeek(((clientX - r.left) / r.width) * duration);
-  };
-  /* Overlapping clips take separate lanes, first fit, so none hides another. */
-  const lanes = useMemo(() => {
-    const ends: number[] = [];
-    const lane = new Map<string, number>();
-    [...clips].sort((a, b) => a.start - b.start).forEach((c) => {
-      let i = ends.findIndex((e) => e <= c.start);
-      if (i < 0) {
-        i = ends.length;
-        ends.push(0);
-      }
-      ends[i] = c.end;
-      lane.set(c.id, i);
-    });
-    return { lane, count: Math.max(1, ends.length) };
-  }, [clips]);
-  const laneH = lanes.count > 1 ? 22 : 36;
-  const trackH = Math.max(80, 12 + lanes.count * (laneH + 4) + 12);
-  const ticks = useMemo(() => {
-    if (duration <= 0) return [];
-    const step = duration > 3600 ? 600 : duration > 900 ? 300 : duration > 240 ? 60 : 15;
-    return Array.from({ length: Math.floor(duration / step) + 1 }, (_, i) => i * step);
-  }, [duration]);
-
-  return (
-    <div className="select-none">
-      <div
-        ref={ref}
-        role="slider"
-        tabIndex={0}
-        aria-label="Timeline"
-        aria-valuemin={0}
-        aria-valuemax={Math.round(duration)}
-        aria-valuenow={Math.round(time)}
-        aria-valuetext={formatTime(time)}
-        onPointerDown={(e) => {
-          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
-          seekFrom(e.clientX);
-        }}
-        onPointerMove={(e) => {
-          if (e.buttons === 1) seekFrom(e.clientX);
-        }}
-        className="relative cursor-pointer overflow-hidden rounded-[10px] bg-surface-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        style={{ height: trackH }}
-      >
-        {/* Where people spoke: a faint strip of cue marks along the foot. */}
-        {cues.length ? (
-          <div className="absolute inset-x-0 bottom-0 h-2">
-            {cues.map((c, i) => (
-              <span key={i} className="absolute bottom-0 h-full bg-text/10" style={{ left: pct(c.start), width: pct(c.end - c.start) }} />
-            ))}
-          </div>
-        ) : null}
-        {markIn != null ? (
-          <span
-            className="absolute inset-y-0 bg-anchor/15 ring-1 ring-inset ring-anchor/50"
-            style={{ left: pct(markIn), width: pct((markOut ?? time) - markIn) }}
-          />
-        ) : null}
-        {clips.map((c, i) => (
-          <button
-            key={c.id}
-            type="button"
-            title={`${i + 1}. ${c.title} (${formatTime(c.start)}–${formatTime(c.end)})`}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={() => onSelect(c.id)}
-            className={[
-              'absolute min-w-[3px] overflow-hidden rounded-[6px] px-1.5 text-left text-[10px] font-medium text-white',
-              c.id === selectedId ? 'ring-2 ring-text ring-offset-1 ring-offset-surface-2' : 'opacity-90 hover:opacity-100',
-            ].join(' ')}
-            style={{
-              left: pct(c.start),
-              width: pct(c.end - c.start),
-              top: 10 + (lanes.lane.get(c.id) ?? 0) * (laneH + 4),
-              height: laneH,
-              lineHeight: `${laneH}px`,
-              background: CLIP_COLORS[i % CLIP_COLORS.length],
-            }}
-          >
-            <span className="truncate">{i + 1}</span>
-          </button>
-        ))}
-        <span className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-text" style={{ left: pct(time) }} />
-      </div>
-      <div className="relative mt-1 h-4">
-        {ticks.map((t, i) => (
-          <span
-            key={t}
-            className={[
-              'meta absolute tabular-nums text-faint',
-              // the first label sits right of its tick and the last one left, so neither runs off the edge
-              i === 0 ? '' : t >= duration - 1 ? '-translate-x-full' : '-translate-x-1/2',
-            ].join(' ')}
-            style={{ left: pct(t) }}
-          >
-            {formatTime(t, 0)}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/* ── the clipper ───────────────────────────────────────────────── */
+const nearestThumb = (thumbs: Thumb[], t: number) =>
+  thumbs.length ? thumbs.reduce((best, th) => (Math.abs(th.t - t) < Math.abs(best.t - t) ? th : best)) : null;
 
 export default function Clipper() {
   const [source, setSource] = useState<Source | null>(null);
@@ -401,15 +107,26 @@ export default function Clipper() {
   const [duration, setDuration] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [rate, setRate] = useState(1);
-  const [panel, setPanel] = useState<Panel>('assistant');
+  const [panel, setPanel] = useState<Panel>('direct');
   const [chat, setChat] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [transcriptQuery, setTranscriptQuery] = useState('');
+  const [lineSel, setLineSel] = useState<{ from: number; to: number } | null>(null);
   const [renderMode, setRenderMode] = useState<RenderMode>('fast');
   const [rendering, setRendering] = useState<Record<string, number | 'error'>>({});
   const videoRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<Clip | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const live = useRef({ duration: 0, cues: [] as Cue[], clips: [] as Clip[] });
+  const pending = useRef<{ prompt: string | null; transcriptDone: boolean }>({ prompt: null, transcriptDone: true });
+
+  const localFile = source?.kind === 'local' ? source.file : null;
+  const thumbs = useFilmstrip(source?.kind === 'local' ? source.url : null, duration);
+  const peaks = useWaveform(localFile);
+
+  useEffect(() => {
+    live.current = { duration, cues, clips };
+  }, [duration, cues, clips]);
 
   /* keep clips saved per source */
   useEffect(() => {
@@ -429,22 +146,84 @@ export default function Clipper() {
     chatEndRef.current?.scrollIntoView({ block: 'end' });
   }, [chat]);
 
-  const loadTranscriptText = useCallback((text: string) => {
-    const parsed = parseCaptions(text);
-    setCues(parsed);
-    setTranscript(parsed.length ? 'ready' : 'error');
+  /* the assistant */
+  const runRequest = useCallback((text: string, override?: { duration?: number; cues?: Cue[] }) => {
+    const ctx = { ...live.current, ...override };
+    const result = interpretRequest(text, { duration: ctx.duration, cues: ctx.cues, clipCount: ctx.clips.length });
+    let before: Clip[] | undefined;
+    let proposals: ProposedClip[] = result.proposals;
+    if (result.clearAll) {
+      before = ctx.clips;
+      setClips([]);
+    }
+    if (result.removeIndexes?.length) {
+      before = ctx.clips;
+      const drop = new Set(result.removeIndexes);
+      setClips((cs) => cs.filter((_, i) => !drop.has(i)));
+    }
+    if (result.tighten) {
+      before = ctx.clips;
+      setClips((cs) => cs.map((c) => tightenToSpeech(c, ctx.cues)));
+    }
+    if ((result.kind === 'times' || result.kind === 'split') && proposals.length) {
+      before = ctx.clips;
+      const added = proposals.map((p) => ({ id: uid(), title: p.title, start: p.start, end: p.end, note: p.reason }));
+      setClips((cs) => [...cs, ...added].sort(byStart));
+      setSelectedId(added[0].id);
+      proposals = [];
+    }
+    setChat((m) => [
+      ...m,
+      { id: uid(), role: 'you', text },
+      { id: uid(), role: 'assistant', text: result.reply, proposals: proposals.length ? proposals : undefined, before },
+    ]);
   }, []);
 
+  const tryPending = useCallback(
+    (override?: { duration?: number; cues?: Cue[] }) => {
+      const p = pending.current;
+      const dur = override?.duration ?? live.current.duration;
+      if (!p.prompt || !p.transcriptDone || !(dur > 0)) return;
+      const prompt = p.prompt;
+      p.prompt = null;
+      runRequest(prompt, override);
+    },
+    [runRequest],
+  );
+
+  const finishTranscript = useCallback(
+    (parsed: Cue[], state: TranscriptState) => {
+      setCues(parsed);
+      setTranscript(state);
+      pending.current.transcriptDone = true;
+      tryPending({ cues: parsed });
+    },
+    [tryPending],
+  );
+
+  const loadTranscriptText = useCallback(
+    (text: string) => {
+      const parsed = parseCaptions(text);
+      finishTranscript(parsed, parsed.length ? 'ready' : 'error');
+    },
+    [finishTranscript],
+  );
+
   const openSource = useCallback(
-    async (s: Source, captions?: File) => {
+    async (s: Source, captions: File | undefined, prompt: string) => {
       setSource(s);
       setClips(loadSaved(s.key));
       setSelectedId(null);
       setMarkIn(null);
       setMarkOut(null);
       setCues([]);
+      setDuration(0);
+      setTime(0);
+      setLineSel(null);
       setTranscriptLink(null);
+      setPanel('direct');
       setChat([{ id: uid(), role: 'assistant', text: ASSISTANT_HELP }]);
+      pending.current = { prompt: prompt || null, transcriptDone: false };
       if (captions) {
         setTranscript('loading');
         loadTranscriptText(await captions.text());
@@ -453,7 +232,7 @@ export default function Clipper() {
       if (s.kind === 'zoom') {
         const t = pickTranscript(s.files);
         if (!t) {
-          setTranscript('none');
+          finishTranscript([], 'none');
           return;
         }
         setTranscript('loading');
@@ -466,17 +245,16 @@ export default function Clipper() {
         } catch {
           // The bucket's CORS rule has no GET for the app origin, so the
           // text can't be read here; offer it as a download to drop back in.
-          setTranscript('blocked');
+          finishTranscript([], 'blocked');
         }
       } else {
-        setTranscript('none');
+        finishTranscript([], 'none');
       }
     },
-    [loadTranscriptText],
+    [loadTranscriptText, finishTranscript],
   );
 
   /* playback */
-  const v = () => videoRef.current;
   const seek = useCallback((t: number) => {
     const el = videoRef.current;
     if (!el) return;
@@ -508,7 +286,7 @@ export default function Clipper() {
   }, [playing]);
 
   const previewClip = (c: Clip) => {
-    const el = v();
+    const el = videoRef.current;
     if (!el) return;
     setSelectedId(c.id);
     loopRef.current = c;
@@ -517,15 +295,12 @@ export default function Clipper() {
   };
 
   /* clips */
-  const addClip = useCallback(
-    (p: Omit<Clip, 'id'>) => {
-      const clip: Clip = { ...p, id: uid(), start: Math.max(0, p.start), end: Math.max(p.start + 0.1, p.end) };
-      setClips((cs) => [...cs, clip].sort((a, b) => a.start - b.start));
-      setSelectedId(clip.id);
-      return clip;
-    },
-    [],
-  );
+  const addClip = useCallback((p: Omit<Clip, 'id'>) => {
+    const clip: Clip = { ...p, id: uid(), start: Math.max(0, p.start), end: Math.max(p.start + 0.1, p.end) };
+    setClips((cs) => [...cs, clip].sort(byStart));
+    setSelectedId(clip.id);
+    return clip;
+  }, []);
   const addFromMarks = useCallback(() => {
     if (markIn == null) return;
     const end = markOut ?? videoRef.current?.currentTime ?? markIn;
@@ -533,11 +308,18 @@ export default function Clipper() {
     addClip({ title: `Clip ${clips.length + 1}`, start: markIn, end });
     setMarkIn(null);
     setMarkOut(null);
-    setPanel('clips');
   }, [markIn, markOut, clips.length, addClip]);
   const updateClip = (id: string, patch: Partial<Clip>) =>
-    setClips((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)).sort((a, b) => a.start - b.start));
+    setClips((cs) => cs.map((c) => (c.id === id ? { ...c, ...patch } : c)).sort(byStart));
   const removeClip = (id: string) => setClips((cs) => cs.filter((c) => c.id !== id));
+  const trimClip = useCallback((id: string, edge: 'start' | 'end', t: number) => {
+    setClips((cs) =>
+      cs.map((c) => {
+        if (c.id !== id) return c;
+        return edge === 'start' ? { ...c, start: Math.max(0, Math.min(t, c.end - 0.2)) } : { ...c, end: Math.max(t, c.start + 0.2) };
+      }),
+    );
+  }, []);
 
   /* keyboard: space, I, O, enter, arrows, comma and full stop */
   useEffect(() => {
@@ -565,29 +347,26 @@ export default function Clipper() {
     return () => window.removeEventListener('keydown', onKey);
   }, [source, togglePlay, addFromMarks, seek]);
 
-  /* assistant */
   const send = (e: FormEvent) => {
     e.preventDefault();
     const text = draft.trim();
     if (!text) return;
-    const result = interpretRequest(text, { duration, cues, clipCount: clips.length });
-    if (result.clearAll) setClips([]);
-    if (result.removeIndexes?.length) {
-      const drop = new Set(result.removeIndexes.map((i) => clips[i]?.id));
-      setClips((cs) => cs.filter((c) => !drop.has(c.id)));
-    }
-    setChat((m) => [
-      ...m,
-      { id: uid(), role: 'you', text },
-      { id: uid(), role: 'assistant', text: result.reply, proposals: result.proposals },
-    ]);
+    runRequest(text);
     setDraft('');
   };
   const acceptProposal = (msgId: string, p: ProposedClip) => {
     addClip({ title: p.title, start: p.start, end: p.end, note: p.reason });
-    setChat((m) =>
-      m.map((x) => (x.id === msgId ? { ...x, proposals: x.proposals?.filter((q) => q !== p) } : x)),
-    );
+    setChat((m) => m.map((x) => (x.id === msgId ? { ...x, proposals: x.proposals?.filter((q) => q !== p) } : x)));
+  };
+  const acceptAll = (msgId: string, ps: ProposedClip[]) => {
+    const added = ps.map((p) => ({ id: uid(), title: p.title, start: p.start, end: p.end, note: p.reason }));
+    setClips((cs) => [...cs, ...added].sort(byStart));
+    setChat((m) => m.map((x) => (x.id === msgId ? { ...x, proposals: [] } : x)));
+  };
+  const undo = (msg: ChatMessage) => {
+    if (!msg.before) return;
+    setClips(msg.before);
+    setChat((m) => m.map((x) => (x.id === msg.id ? { ...x, undone: true } : x)));
   };
 
   /* exports */
@@ -622,25 +401,40 @@ export default function Clipper() {
     }
   };
 
+  /* transcript */
   const activeCue = useMemo(() => cues.findIndex((c) => time >= c.start && time < c.end), [cues, time]);
   const shownCues = useMemo(() => {
     const q = transcriptQuery.trim().toLowerCase();
     return cues.map((c, i) => ({ c, i })).filter(({ c }) => !q || c.text.toLowerCase().includes(q) || c.speaker?.toLowerCase().includes(q));
   }, [cues, transcriptQuery]);
+  const selRange = lineSel ? { from: Math.min(lineSel.from, lineSel.to), to: Math.max(lineSel.from, lineSel.to) } : null;
+  const pickLine = (i: number, extend: boolean) =>
+    setLineSel((s) => (extend && s ? { from: s.from, to: i } : s && s.from === i && s.to === i ? null : { from: i, to: i }));
+  const clipLines = () => {
+    if (!selRange) return;
+    const first = cues[selRange.from];
+    const last = cues[selRange.to];
+    const words = first.text.split(/\s+/).slice(0, 8).join(' ');
+    addClip({
+      title: words.length < first.text.length ? `${words}…` : words,
+      start: Math.max(0, first.start - 0.3),
+      end: last.end + 0.3,
+      note: cues.slice(selRange.from, selRange.to + 1).map((c) => c.text).join(' ').slice(0, 280),
+    });
+    setLineSel(null);
+    setPanel('clips');
+  };
 
   if (!source) {
-    return (
-      <div className="space-y-4">
-        <p className="max-w-2xl text-body-s text-muted2">
-          Open a recording, then clip it three ways: tell the assistant what you want, mark in and out on the timeline,
-          or pick lines from the transcript.
-        </p>
-        <SourcePicker onPick={openSource} />
-      </div>
-    );
+    return <ClipComposer onStart={(s, captions, prompt) => void openSource(s, captions, prompt)} />;
   }
 
   const pendingOut = markOut ?? (markIn != null ? time : null);
+  const quick = [
+    cues.length ? 'Every audience question' : null,
+    cues.length && clips.length ? 'Tighten to speech' : null,
+    'Split into 3-minute clips',
+  ].filter(Boolean) as string[];
 
   return (
     <div className="space-y-4">
@@ -651,9 +445,9 @@ export default function Clipper() {
             videoRef.current?.pause();
             setSource(null);
           }}
-          className="inline-flex items-center gap-1 text-body-s text-muted2 hover:text-text"
+          className="inline-flex h-9 items-center gap-1 rounded-[8px] px-2 text-body-s text-muted2 hover:bg-surface-2 hover:text-text"
         >
-          <ChevronLeft className="size-4" aria-hidden /> Sources
+          <ChevronLeft className="size-4" aria-hidden /> New clip job
         </button>
         <h2 className="display min-w-0 flex-1 truncate text-body-l text-text" title={source.title}>
           {source.title}
@@ -663,16 +457,350 @@ export default function Clipper() {
         </span>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="min-w-0 space-y-3">
+      <div className="grid gap-4 xl:grid-cols-[23rem_minmax(0,1fr)]">
+        {/* left: direct, clips, transcript */}
+        <aside className="card order-2 flex min-h-[30rem] flex-col overflow-hidden p-0 xl:sticky xl:top-4 xl:order-1 xl:h-[calc(100dvh-9.5rem)]">
+          <div role="tablist" aria-label="Clipper panels" className="flex border-b border-hairline">
+            {(
+              [
+                ['direct', 'Direct', MessageSquare],
+                ['clips', `Clips${clips.length ? ` (${clips.length})` : ''}`, Scissors],
+                ['transcript', 'Transcript', FileText],
+              ] as const
+            ).map(([id, label, Icon]) => (
+              <button
+                key={id}
+                type="button"
+                role="tab"
+                aria-selected={panel === id}
+                onClick={() => setPanel(id)}
+                className={[
+                  'relative flex flex-1 items-center justify-center gap-1.5 px-2 py-3 text-body-s transition-colors',
+                  panel === id ? 'font-medium text-text' : 'text-muted2 hover:text-text',
+                ].join(' ')}
+              >
+                <Icon className="size-4" aria-hidden />
+                {label}
+                {panel === id ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-anchor" /> : null}
+              </button>
+            ))}
+          </div>
+
+          {panel === 'direct' ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
+                {chat.map((m) =>
+                  m.role === 'you' ? (
+                    <div key={m.id} className="flex justify-end">
+                      <p className="max-w-[88%] rounded-[12px] bg-surface-2 px-3 py-2 text-body-s text-text">{m.text}</p>
+                    </div>
+                  ) : (
+                    <div key={m.id} className="space-y-2">
+                      <p className="flex gap-2 text-body-s text-dim">
+                        {m.before ? <Check className="mt-0.5 size-4 shrink-0 text-anchor" aria-hidden /> : null}
+                        <span className="whitespace-pre-line">{m.text}</span>
+                      </p>
+                      {m.before ? (
+                        m.undone ? (
+                          <p className="meta ps-6 text-faint">Undone</p>
+                        ) : (
+                          <button type="button" onClick={() => undo(m)} className="meta ms-6 inline-flex items-center gap-1 text-anchor hover:underline">
+                            <Undo2 className="size-3.5" aria-hidden /> Undo
+                          </button>
+                        )
+                      ) : null}
+                      {m.proposals?.length ? (
+                        <div className="space-y-1.5">
+                          <ul className="space-y-1.5">
+                            {m.proposals.map((p, i) => {
+                              const th = nearestThumb(thumbs, p.start);
+                              return (
+                                <li key={i} className="flex items-start gap-2.5 rounded-[10px] bg-surface-2 p-2">
+                                  {th ? <img src={th.url} alt="" className="aspect-video w-16 shrink-0 rounded-[6px] object-cover" /> : null}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-body-s font-medium text-text">{p.title}</p>
+                                    <button type="button" onClick={() => seek(p.start)} className="meta tabular-nums text-anchor hover:underline">
+                                      {formatTime(p.start)} – {formatTime(p.end)}
+                                    </button>
+                                    {p.reason ? <p className="mt-0.5 line-clamp-2 text-xs text-muted2">{p.reason}</p> : null}
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => acceptProposal(m.id, p)}
+                                    aria-label={`Add ${p.title}`}
+                                    className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[6px] bg-anchor px-2.5 text-xs font-medium text-ground"
+                                  >
+                                    <Plus className="size-3.5" aria-hidden /> Add
+                                  </button>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                          {m.proposals.length > 1 ? (
+                            <button type="button" onClick={() => acceptAll(m.id, m.proposals ?? [])} className="meta inline-flex items-center gap-1 text-anchor hover:underline">
+                              <Plus className="size-3.5" aria-hidden /> Add all {m.proposals.length}
+                            </button>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  ),
+                )}
+                <div ref={chatEndRef} />
+              </div>
+              <div className="border-t border-hairline p-3">
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {quick.map((text) => (
+                    <button key={text} type="button" onClick={() => runRequest(text)} className="h-7 rounded-full bg-surface-2 px-2.5 text-xs text-dim hover:text-text">
+                      {text}
+                    </button>
+                  ))}
+                </div>
+                <form onSubmit={send} className="flex items-end gap-2 rounded-[12px] bg-surface-2 p-1.5 ps-3 focus-within:ring-2 focus-within:ring-anchor/40">
+                  <label className="min-w-0 flex-1">
+                    <span className="sr-only">Tell the clipper what to change</span>
+                    <textarea
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          e.currentTarget.form?.requestSubmit();
+                        }
+                      }}
+                      rows={2}
+                      placeholder={cues.length ? 'Find olanzapine, or 12:30 to 14:05 ILD monitoring' : '12:30 to 14:05 ILD monitoring'}
+                      className="block w-full resize-none bg-transparent py-1.5 text-body-s text-text outline-none placeholder:text-faint"
+                    />
+                  </label>
+                  <button type="submit" aria-label="Send" disabled={!draft.trim()} className="grid size-9 shrink-0 place-items-center rounded-[8px] bg-anchor text-ground disabled:opacity-40">
+                    <ArrowUp className="size-4" aria-hidden />
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : null}
+
+          {panel === 'clips' ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {clips.length === 0 ? (
+                  <p className="p-4 text-body-s text-muted2">No clips yet. Ask in Direct, select transcript lines, or mark in (I) and out (O) and press Enter.</p>
+                ) : (
+                  <ol className="divide-y divide-hairline">
+                    {clips.map((c, i) => {
+                      const r = rendering[c.id];
+                      const open = c.id === selectedId;
+                      const th = nearestThumb(thumbs, c.start);
+                      return (
+                        <li key={c.id} className={open ? 'bg-anchor/[0.05]' : ''}>
+                          <div className="flex items-center gap-2.5 px-3 py-2.5">
+                            {th ? (
+                              <span className="relative shrink-0">
+                                <img src={th.url} alt="" className="aspect-video w-14 rounded-[6px] object-cover" />
+                                <span className="absolute inset-x-0 bottom-0 h-1 rounded-b-[6px]" style={{ background: CLIP_COLORS[i % CLIP_COLORS.length] }} />
+                              </span>
+                            ) : (
+                              <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: CLIP_COLORS[i % CLIP_COLORS.length] }} />
+                            )}
+                            <button type="button" onClick={() => setSelectedId(open ? null : c.id)} className="min-w-0 flex-1 text-left">
+                              <span className="block truncate text-body-s font-medium text-text">
+                                {i + 1}. {c.title}
+                              </span>
+                              <span className="meta block tabular-nums text-faint">
+                                {formatTime(c.start)} – {formatTime(c.end)} · {formatTime(c.end - c.start)}
+                              </span>
+                            </button>
+                            <button type="button" onClick={() => previewClip(c)} aria-label={`Loop clip ${i + 1}`} title="Loop this clip" className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2">
+                              <Repeat className="size-4" aria-hidden />
+                            </button>
+                            {source.kind === 'local' ? (
+                              <button type="button" onClick={() => render(c)} disabled={typeof r === 'number'} aria-label={`Render clip ${i + 1}`} title="Render MP4" className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2 disabled:opacity-50">
+                                {typeof r === 'number' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Download className="size-4" aria-hidden />}
+                              </button>
+                            ) : null}
+                            <button type="button" onClick={() => removeClip(c.id)} aria-label={`Delete clip ${i + 1}`} className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2 hover:text-text">
+                              <Trash2 className="size-4" aria-hidden />
+                            </button>
+                          </div>
+                          {typeof r === 'number' ? (
+                            <p className="meta px-5 pb-2 tabular-nums text-anchor">Rendering {Math.round(r * 100)}%</p>
+                          ) : r === 'error' ? (
+                            <p className="px-5 pb-2 text-xs text-dim">That render failed. Try Precise, or a shorter clip.</p>
+                          ) : null}
+                          {open ? (
+                            <div className="space-y-2 px-5 pb-3">
+                              <label className="block">
+                                <span className="meta text-faint">Title</span>
+                                <input value={c.title} onChange={(e) => updateClip(c.id, { title: e.target.value })} className="mt-1 h-9 w-full rounded-[6px] bg-surface-2 px-2.5 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40" />
+                              </label>
+                              <div className="grid grid-cols-2 gap-2">
+                                {(['start', 'end'] as const).map((edge) => (
+                                  <div key={edge} className="rounded-[6px] bg-surface-2 p-2">
+                                    <p className="meta text-faint">{edge === 'start' ? 'In' : 'Out'}</p>
+                                    <p className="meta tabular-nums text-text">{formatTime(c[edge], 2)}</p>
+                                    <div className="mt-1.5 flex gap-1">
+                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: Math.max(0, c[edge] - FRAME) })} className="h-7 flex-1 rounded-[5px] bg-surface text-xs text-dim" aria-label={`${edge === 'start' ? 'In' : 'Out'} back one frame`}>
+                                        −1f
+                                      </button>
+                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: time })} className="h-7 flex-[2] rounded-[5px] bg-surface text-xs text-anchor">
+                                        Playhead
+                                      </button>
+                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: c[edge] + FRAME })} className="h-7 flex-1 rounded-[5px] bg-surface text-xs text-dim" aria-label={`${edge === 'start' ? 'In' : 'Out'} forward one frame`}>
+                                        +1f
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                              {cues.length ? (
+                                <button type="button" onClick={() => setClips((cs) => cs.map((x) => (x.id === c.id ? tightenToSpeech(x, cues) : x)))} className="inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-surface-2 px-2.5 text-xs text-dim hover:text-text">
+                                  <Minimize2 className="size-3.5" aria-hidden /> Tighten to speech
+                                </button>
+                              ) : null}
+                              <label className="block">
+                                <span className="meta text-faint">Note for the editor</span>
+                                <textarea value={c.note ?? ''} onChange={(e) => updateClip(c.id, { note: e.target.value })} rows={2} className="mt-1 w-full resize-none rounded-[6px] bg-surface-2 px-2.5 py-1.5 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40" />
+                              </label>
+                            </div>
+                          ) : null}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                )}
+              </div>
+              <div className="space-y-2 border-t border-hairline p-3">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="meta me-1 text-faint">Cut list</span>
+                  {(['csv', 'edl', 'json'] as const).map((k) => (
+                    <button key={k} type="button" disabled={!clips.length} onClick={() => exportList(k)} className="h-8 rounded-[6px] bg-surface-2 px-2.5 text-xs font-medium uppercase text-dim hover:text-text disabled:opacity-40">
+                      {k}
+                    </button>
+                  ))}
+                </div>
+                {source.kind === 'local' ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="flex items-center gap-1.5 text-xs text-dim">
+                      <span className="sr-only">Render mode</span>
+                      <select value={renderMode} onChange={(e) => setRenderMode(e.target.value as RenderMode)} className="h-8 rounded-[6px] bg-surface-2 px-2 text-xs">
+                        <option value="fast">Fast (keyframe start)</option>
+                        <option value="precise">Precise (re-encode)</option>
+                      </select>
+                    </label>
+                    <button
+                      type="button"
+                      onClick={renderAll}
+                      disabled={!clips.length || Object.values(rendering).some((r) => typeof r === 'number')}
+                      className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-anchor px-3 text-xs font-medium text-ground disabled:opacity-40"
+                    >
+                      <Download className="size-3.5" aria-hidden /> Render all
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs leading-snug text-muted2">Zoom recordings export a cut list. To render clip files here, download the recording and open it from your computer.</p>
+                )}
+              </div>
+            </div>
+          ) : null}
+
+          {panel === 'transcript' ? (
+            <div className="flex min-h-0 flex-1 flex-col">
+              {transcript === 'ready' ? (
+                <>
+                  <label className="relative block border-b border-hairline p-3">
+                    <span className="sr-only">Search the transcript</span>
+                    <Search className="pointer-events-none absolute start-6 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
+                    <input type="search" value={transcriptQuery} onChange={(e) => setTranscriptQuery(e.target.value)} placeholder="Search what was said" className="h-9 w-full rounded-[8px] bg-surface-2 ps-9 pe-3 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40" />
+                  </label>
+                  <p className="meta px-4 pt-2 text-faint">Select a line to clip it; shift-click to take a run of lines.</p>
+                  <ol className="min-h-0 flex-1 overflow-y-auto p-2">
+                    {shownCues.map(({ c, i }) => {
+                      const picked = selRange != null && i >= selRange.from && i <= selRange.to;
+                      return (
+                        <li key={i}>
+                          <div className={['flex gap-2 rounded-[8px] px-2 py-1.5', picked ? 'bg-anchor/15 ring-1 ring-inset ring-anchor/40' : i === activeCue ? 'bg-surface-2' : 'hover:bg-surface-2'].join(' ')}>
+                            <button type="button" onClick={() => seek(c.start)} className="meta w-12 shrink-0 pt-0.5 text-left tabular-nums text-anchor" aria-label={`Play from ${formatTime(c.start, 0)}`}>
+                              {formatTime(c.start, 0)}
+                            </button>
+                            <button type="button" aria-pressed={picked} onClick={(e) => pickLine(i, e.shiftKey)} className="min-w-0 flex-1 text-left text-body-s text-dim">
+                              {c.speaker ? <span className="font-medium text-text">{c.speaker}: </span> : null}
+                              {c.text}
+                            </button>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                  {selRange ? (
+                    <div className="flex items-center gap-2 border-t border-hairline p-3">
+                      <span className="meta min-w-0 flex-1 tabular-nums text-dim">
+                        {selRange.to - selRange.from + 1} {selRange.to === selRange.from ? 'line' : 'lines'} · {formatTime(cues[selRange.to].end - cues[selRange.from].start, 0)}
+                      </span>
+                      <button type="button" onClick={() => setLineSel(null)} className="h-8 rounded-[6px] px-2.5 text-xs text-dim hover:bg-surface-2">
+                        Clear
+                      </button>
+                      <button type="button" onClick={clipLines} className="inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-anchor px-3 text-xs font-medium text-ground">
+                        <Scissors className="size-3.5" aria-hidden /> Make clip
+                      </button>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="space-y-3 p-4 text-body-s text-muted2">
+                  {transcript === 'loading' ? (
+                    <p className="flex items-center gap-2">
+                      <Loader2 className="size-4 animate-spin" aria-hidden /> Loading the transcript
+                    </p>
+                  ) : transcript === 'blocked' ? (
+                    <p>This recording has a transcript, but storage won't hand it to the browser directly. Download it, then add it below.</p>
+                  ) : transcript === 'error' ? (
+                    <p>That file had no captions I could read. Try the .vtt from Zoom.</p>
+                  ) : (
+                    <p>No transcript for this recording. Add a .vtt or .srt to search what was said and clip from it.</p>
+                  )}
+                  {transcript === 'blocked' && transcriptLink ? (
+                    <a href={transcriptLink} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 font-medium text-anchor">
+                      <Download className="size-4" aria-hidden /> Download transcript
+                    </a>
+                  ) : null}
+                  {transcript !== 'loading' ? (
+                    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[8px] bg-surface-2 px-3 py-2.5">
+                      <span className="text-dim">Add a transcript (.vtt or .srt)</span>
+                      <span className="font-medium text-anchor">Choose</span>
+                      <input
+                        type="file"
+                        accept=".vtt,.srt,text/vtt"
+                        className="sr-only"
+                        onChange={async (e) => {
+                          const f = e.target.files?.[0];
+                          if (!f) return;
+                          setTranscript('loading');
+                          loadTranscriptText(await f.text());
+                        }}
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </aside>
+
+        {/* right: the picture, transport and timeline */}
+        <div className="order-1 min-w-0 space-y-3 xl:order-2">
           <div className="overflow-hidden rounded-card bg-black shadow-card">
             <video
               ref={videoRef}
               src={source.url}
-              className="aspect-video w-full bg-black"
+              className="aspect-video max-h-[54vh] w-full bg-black object-contain"
               preload="metadata"
               playsInline
-              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+              onLoadedMetadata={(e) => {
+                const dur = e.currentTarget.duration || 0;
+                setDuration(dur);
+                tryPending({ duration: dur });
+              }}
               onPlay={() => setPlaying(true)}
               onPause={() => {
                 setPlaying(false);
@@ -699,9 +827,6 @@ export default function Clipper() {
             <button type="button" onClick={() => seek(time + 5)} aria-label="Forward 5 seconds" title="Forward 5s (Shift+→)" className="grid size-9 place-items-center rounded-[8px] text-dim hover:bg-surface-2">
               <SkipForward className="size-4" aria-hidden />
             </button>
-            <span className="meta ms-1 tabular-nums text-dim">
-              {formatTime(time)} <span className="text-faint">/ {formatTime(duration)}</span>
-            </span>
             <label className="ms-1">
               <span className="sr-only">Playback speed</span>
               <select
@@ -739,337 +864,27 @@ export default function Clipper() {
             </span>
           </div>
 
-          <Timeline
+          <ClipTimeline
             duration={duration}
             time={time}
             clips={clips}
+            colors={CLIP_COLORS}
             selectedId={selectedId}
             markIn={markIn}
             markOut={markOut}
             cues={cues}
+            thumbs={thumbs}
+            peaks={peaks}
             onSeek={seek}
             onSelect={(id) => {
               setSelectedId(id);
-              setPanel('clips');
               const c = clips.find((x) => x.id === id);
               if (c) seek(c.start);
             }}
+            onTrim={trimClip}
           />
-          <p className="meta text-faint">
-            Space play · I in · O out · Enter add clip · ← → 1s · Shift 5s · , . one frame
-          </p>
+          <p className="meta text-faint">Space play · I in · O out · Enter add clip · ← → 1s · Shift 5s · , . one frame · drag a selected clip's edges to trim</p>
         </div>
-
-        <aside className="card flex min-h-[32rem] flex-col overflow-hidden p-0 xl:max-h-[calc(100vh-12rem)]">
-          <div role="tablist" aria-label="Clipper panels" className="flex border-b border-hairline">
-            {(
-              [
-                ['assistant', 'Assistant', MessageSquare],
-                ['clips', `Clips${clips.length ? ` (${clips.length})` : ''}`, Scissors],
-                ['transcript', 'Transcript', FileVideo],
-              ] as const
-            ).map(([id, label, Icon]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={panel === id}
-                onClick={() => setPanel(id)}
-                className={[
-                  'relative flex flex-1 items-center justify-center gap-1.5 px-2 py-3 text-body-s transition-colors',
-                  panel === id ? 'font-medium text-text' : 'text-muted2 hover:text-text',
-                ].join(' ')}
-              >
-                <Icon className="size-4" aria-hidden />
-                {label}
-                {panel === id ? <span className="absolute inset-x-3 bottom-0 h-0.5 rounded-full bg-anchor" /> : null}
-              </button>
-            ))}
-          </div>
-
-          {panel === 'assistant' ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4" aria-live="polite">
-                {chat.map((m) => (
-                  <div key={m.id} className={m.role === 'you' ? 'flex justify-end' : ''}>
-                    <div
-                      className={[
-                        'max-w-[92%] rounded-[12px] px-3 py-2 text-body-s',
-                        m.role === 'you' ? 'bg-anchor text-ground' : 'bg-surface-2 text-dim',
-                      ].join(' ')}
-                    >
-                      <p className="whitespace-pre-line">{m.text}</p>
-                      {m.proposals?.length ? (
-                        <ul className="mt-2 space-y-1.5">
-                          {m.proposals.map((p, i) => (
-                            <li key={i} className="rounded-[8px] bg-surface p-2">
-                              <div className="flex items-start gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <p className="truncate font-medium text-text">{p.title}</p>
-                                  <button type="button" onClick={() => seek(p.start)} className="meta tabular-nums text-anchor hover:underline">
-                                    {formatTime(p.start)} – {formatTime(p.end)}
-                                  </button>
-                                  {p.reason ? <p className="mt-1 line-clamp-2 text-xs text-muted2">{p.reason}</p> : null}
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => acceptProposal(m.id, p)}
-                                  className="inline-flex h-8 shrink-0 items-center gap-1 rounded-[6px] bg-anchor px-2.5 text-xs font-medium text-ground"
-                                >
-                                  <Plus className="size-3.5" aria-hidden /> Add
-                                </button>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
-                <div ref={chatEndRef} />
-              </div>
-              <form onSubmit={send} className="flex items-end gap-2 border-t border-hairline p-3">
-                <label className="min-w-0 flex-1">
-                  <span className="sr-only">Tell the assistant what to clip</span>
-                  <textarea
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        e.currentTarget.form?.requestSubmit();
-                      }
-                    }}
-                    rows={2}
-                    placeholder={cues.length ? '12:30 to 14:05 ILD monitoring, or: find olanzapine' : '12:30 to 14:05 ILD monitoring'}
-                    className="w-full resize-none rounded-[8px] bg-surface-2 px-3 py-2 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
-                  />
-                </label>
-                <button type="submit" aria-label="Send" className="grid size-10 shrink-0 place-items-center rounded-[8px] bg-anchor text-ground">
-                  <Send className="size-4" aria-hidden />
-                </button>
-              </form>
-            </div>
-          ) : null}
-
-          {panel === 'clips' ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {clips.length === 0 ? (
-                  <p className="p-4 text-body-s text-muted2">
-                    No clips yet. Ask the assistant, or mark in (I) and out (O) and press Enter.
-                  </p>
-                ) : (
-                  <ol className="divide-y divide-hairline">
-                    {clips.map((c, i) => {
-                      const r = rendering[c.id];
-                      const open = c.id === selectedId;
-                      return (
-                        <li key={c.id} className={open ? 'bg-anchor/[0.05]' : ''}>
-                          <div className="flex items-center gap-2 px-3 py-2.5">
-                            <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: CLIP_COLORS[i % CLIP_COLORS.length] }} />
-                            <button type="button" onClick={() => setSelectedId(open ? null : c.id)} className="min-w-0 flex-1 text-left">
-                              <span className="block truncate text-body-s font-medium text-text">
-                                {i + 1}. {c.title}
-                              </span>
-                              <span className="meta block tabular-nums text-faint">
-                                {formatTime(c.start)} – {formatTime(c.end)} · {formatTime(c.end - c.start)}
-                              </span>
-                            </button>
-                            <button type="button" onClick={() => previewClip(c)} aria-label={`Loop clip ${i + 1}`} title="Loop this clip" className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2">
-                              <Repeat className="size-4" aria-hidden />
-                            </button>
-                            {source.kind === 'local' ? (
-                              <button
-                                type="button"
-                                onClick={() => render(c)}
-                                disabled={typeof r === 'number'}
-                                aria-label={`Render clip ${i + 1}`}
-                                title="Render MP4"
-                                className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2 disabled:opacity-50"
-                              >
-                                {typeof r === 'number' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : <Download className="size-4" aria-hidden />}
-                              </button>
-                            ) : null}
-                            <button type="button" onClick={() => removeClip(c.id)} aria-label={`Delete clip ${i + 1}`} className="grid size-8 place-items-center rounded-[6px] text-dim hover:bg-surface-2 hover:text-text">
-                              <Trash2 className="size-4" aria-hidden />
-                            </button>
-                          </div>
-                          {typeof r === 'number' ? (
-                            <p className="meta px-5 pb-2 tabular-nums text-anchor">Rendering {Math.round(r * 100)}%</p>
-                          ) : r === 'error' ? (
-                            <p className="px-5 pb-2 text-xs text-dim">That render failed. Try Precise, or a shorter clip.</p>
-                          ) : null}
-                          {open ? (
-                            <div className="space-y-2 px-5 pb-3">
-                              <label className="block">
-                                <span className="meta text-faint">Title</span>
-                                <input
-                                  value={c.title}
-                                  onChange={(e) => updateClip(c.id, { title: e.target.value })}
-                                  className="mt-1 h-9 w-full rounded-[6px] bg-surface-2 px-2.5 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
-                                />
-                              </label>
-                              <div className="grid grid-cols-2 gap-2">
-                                {(['start', 'end'] as const).map((edge) => (
-                                  <div key={edge} className="rounded-[6px] bg-surface-2 p-2">
-                                    <p className="meta text-faint">{edge === 'start' ? 'In' : 'Out'}</p>
-                                    <p className="meta tabular-nums text-text">{formatTime(c[edge], 2)}</p>
-                                    <div className="mt-1.5 flex gap-1">
-                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: Math.max(0, c[edge] - FRAME) })} className="h-7 flex-1 rounded-[5px] bg-surface text-xs text-dim" aria-label={`${edge === 'start' ? 'In' : 'Out'} back one frame`}>
-                                        −1f
-                                      </button>
-                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: time })} className="h-7 flex-[2] rounded-[5px] bg-surface text-xs text-anchor">
-                                        Playhead
-                                      </button>
-                                      <button type="button" onClick={() => updateClip(c.id, { [edge]: c[edge] + FRAME })} className="h-7 flex-1 rounded-[5px] bg-surface text-xs text-dim" aria-label={`${edge === 'start' ? 'In' : 'Out'} forward one frame`}>
-                                        +1f
-                                      </button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                              <label className="block">
-                                <span className="meta text-faint">Note for the editor</span>
-                                <textarea
-                                  value={c.note ?? ''}
-                                  onChange={(e) => updateClip(c.id, { note: e.target.value })}
-                                  rows={2}
-                                  className="mt-1 w-full resize-none rounded-[6px] bg-surface-2 px-2.5 py-1.5 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
-                                />
-                              </label>
-                            </div>
-                          ) : null}
-                        </li>
-                      );
-                    })}
-                  </ol>
-                )}
-              </div>
-              <div className="space-y-2 border-t border-hairline p-3">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="meta me-1 text-faint">Cut list</span>
-                  {(['csv', 'edl', 'json'] as const).map((k) => (
-                    <button
-                      key={k}
-                      type="button"
-                      disabled={!clips.length}
-                      onClick={() => exportList(k)}
-                      className="h-8 rounded-[6px] bg-surface-2 px-2.5 text-xs font-medium uppercase text-dim hover:text-text disabled:opacity-40"
-                    >
-                      {k}
-                    </button>
-                  ))}
-                </div>
-                {source.kind === 'local' ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="flex items-center gap-1.5 text-xs text-dim">
-                      <span className="sr-only">Render mode</span>
-                      <select value={renderMode} onChange={(e) => setRenderMode(e.target.value as RenderMode)} className="h-8 rounded-[6px] bg-surface-2 px-2 text-xs">
-                        <option value="fast">Fast (keyframe start)</option>
-                        <option value="precise">Precise (re-encode)</option>
-                      </select>
-                    </label>
-                    <button
-                      type="button"
-                      onClick={renderAll}
-                      disabled={!clips.length || Object.values(rendering).some((r) => typeof r === 'number')}
-                      className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-anchor px-3 text-xs font-medium text-ground disabled:opacity-40"
-                    >
-                      <Download className="size-3.5" aria-hidden /> Render all
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs leading-snug text-muted2">
-                    Zoom recordings export a cut list. To render clip files here, download the recording and open it from your computer.
-                  </p>
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {panel === 'transcript' ? (
-            <div className="flex min-h-0 flex-1 flex-col">
-              {transcript === 'ready' ? (
-                <>
-                  <label className="relative block border-b border-hairline p-3">
-                    <span className="sr-only">Search the transcript</span>
-                    <Search className="pointer-events-none absolute start-6 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
-                    <input
-                      type="search"
-                      value={transcriptQuery}
-                      onChange={(e) => setTranscriptQuery(e.target.value)}
-                      placeholder="Search what was said"
-                      className="h-9 w-full rounded-[8px] bg-surface-2 ps-9 pe-3 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
-                    />
-                  </label>
-                  <ol className="min-h-0 flex-1 overflow-y-auto p-2">
-                    {shownCues.map(({ c, i }) => (
-                      <li key={i}>
-                        <div className={['group flex gap-2 rounded-[8px] px-2 py-1.5', i === activeCue ? 'bg-anchor/10' : 'hover:bg-surface-2'].join(' ')}>
-                          <button type="button" onClick={() => seek(c.start)} className="meta w-14 shrink-0 pt-0.5 text-left tabular-nums text-anchor">
-                            {formatTime(c.start, 0)}
-                          </button>
-                          <p className="min-w-0 flex-1 text-body-s text-dim">
-                            {c.speaker ? <span className="font-medium text-text">{c.speaker}: </span> : null}
-                            {c.text}
-                          </p>
-                          <span className="flex shrink-0 flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                            <button type="button" onClick={() => setMarkIn(c.start)} className="rounded-[5px] bg-surface px-1.5 text-[10px] text-dim" title="Mark in here">
-                              In
-                            </button>
-                            <button type="button" onClick={() => setMarkOut(c.end)} className="rounded-[5px] bg-surface px-1.5 text-[10px] text-dim" title="Mark out here">
-                              Out
-                            </button>
-                          </span>
-                        </div>
-                      </li>
-                    ))}
-                  </ol>
-                </>
-              ) : (
-                <div className="space-y-3 p-4 text-body-s text-muted2">
-                  {transcript === 'loading' ? (
-                    <p className="flex items-center gap-2">
-                      <Loader2 className="size-4 animate-spin" aria-hidden /> Loading the transcript
-                    </p>
-                  ) : transcript === 'blocked' ? (
-                    <p>
-                      This recording has a transcript, but storage won't hand it to the browser directly. Download it, then add it
-                      below.
-                    </p>
-                  ) : transcript === 'error' ? (
-                    <p>That file had no captions I could read. Try the .vtt from Zoom.</p>
-                  ) : (
-                    <p>No transcript for this recording. Add a .vtt or .srt to search what was said and clip from it.</p>
-                  )}
-                  {transcript === 'blocked' && transcriptLink ? (
-                    <a href={transcriptLink} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 font-medium text-anchor">
-                      <Download className="size-4" aria-hidden /> Download transcript
-                    </a>
-                  ) : null}
-                  {transcript !== 'loading' ? (
-                    <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[8px] bg-surface-2 px-3 py-2.5">
-                      <span className="text-dim">Add a transcript (.vtt or .srt)</span>
-                      <span className="font-medium text-anchor">Choose</span>
-                      <input
-                        type="file"
-                        accept=".vtt,.srt,text/vtt"
-                        className="sr-only"
-                        onChange={async (e) => {
-                          const f = e.target.files?.[0];
-                          if (!f) return;
-                          setTranscript('loading');
-                          loadTranscriptText(await f.text());
-                        }}
-                      />
-                    </label>
-                  ) : null}
-                </div>
-              )}
-            </div>
-          ) : null}
-        </aside>
       </div>
     </div>
   );
