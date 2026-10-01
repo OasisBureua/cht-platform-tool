@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { kolNetworkApi } from '../api/kol-network';
 import { type DolEntry } from '../data/dol-network';
-import { US_STATES, usStateLabel } from '../data/us-states';
+import { usStateLabel } from '../data/us-states';
 import { mergePublicKolToEntry } from '../utils/kol-directory-merge';
 import type { DolRegion } from './useKolDirectory';
 

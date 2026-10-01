@@ -22,7 +22,13 @@ describe('InvitesService', () => {
     const rows: InviteRow[] = [...seed];
     const prisma = {
       registrationInvite: {
-        create: ({ data }: { data: Omit<InviteRow, 'id' | 'createdAt' | 'usedAt'> & { usedAt?: null } }) => {
+        create: ({
+          data,
+        }: {
+          data: Omit<InviteRow, 'id' | 'createdAt' | 'usedAt'> & {
+            usedAt?: null;
+          };
+        }) => {
           const row: InviteRow = {
             id: `cuid-${rows.length + 1}`,
             createdAt: new Date(),

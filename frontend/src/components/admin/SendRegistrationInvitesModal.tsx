@@ -113,17 +113,18 @@ export default function SendRegistrationInvitesModal({ webinars, open, onClose }
   const hasLocationFilters =
     cityFilters.length > 0 || stateFilters.length > 0 || institutionFilters.length > 0;
 
+  const [openedAt] = useState(() => Date.now());
   const upcoming = useMemo(
     () =>
       webinars
         .filter((w) => w.status === 'PUBLISHED')
-        .filter((w) => !w.startDate || new Date(w.startDate).getTime() > Date.now() - 60 * 60 * 1000)
+        .filter((w) => !w.startDate || new Date(w.startDate).getTime() > openedAt - 60 * 60 * 1000)
         .sort((a, b) => {
           const ta = a.startDate ? new Date(a.startDate).getTime() : 0;
           const tb = b.startDate ? new Date(b.startDate).getTime() : 0;
           return ta - tb;
         }),
-    [webinars],
+    [webinars, openedAt],
   );
 
   const { data: filterOptions, isLoading: filterOptionsLoading } = useQuery({

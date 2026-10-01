@@ -5,6 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import type { Request } from 'express';
+import type { AuthUser } from './auth.service';
 
 /**
  * Ensures the :userId param matches the authenticated user (or user is ADMIN).
@@ -13,7 +15,10 @@ import { UserRole } from '@prisma/client';
 @Injectable()
 export class CheckUserGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    // JwtAuthGuard runs first and always sets request.user.
+    const request = context
+      .switchToHttp()
+      .getRequest<Request<{ userId?: string }> & { user: AuthUser }>();
     const user = request.user;
     const paramUserId = request.params?.userId;
 

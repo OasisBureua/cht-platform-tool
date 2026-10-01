@@ -44,7 +44,7 @@ export default function Surveys() {
     staleTime: 5 * 60 * 1000,
   });
 
-  const activeSurveys = surveyList?.active ?? [];
+  const activeSurveys = useMemo(() => surveyList?.active ?? [], [surveyList]);
   const completedSurveys = surveyList?.completed ?? [];
   const activeCount = activeSurveys.length;
   const completedCount = completedSurveys.length;

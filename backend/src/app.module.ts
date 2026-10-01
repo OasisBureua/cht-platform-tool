@@ -87,7 +87,9 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
             return incoming.trim();
           }
           if (Array.isArray(incoming)) {
-            const first = incoming.find((v) => typeof v === 'string' && v.trim());
+            const first = incoming.find(
+              (v) => typeof v === 'string' && v.trim(),
+            );
             if (first?.trim()) return first.trim();
           }
           return randomUUID();
@@ -96,8 +98,13 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
           ? { target: 'pino-pretty', options: { colorize: true } }
           : undefined,
         serializers: {
-          req: (req) => ({ method: req.method, url: req.url }),
-          res: (res) => ({ statusCode: res.statusCode }),
+          req: (req: { method?: string; url?: string }) => ({
+            method: req.method,
+            url: req.url,
+          }),
+          res: (res: { statusCode?: number }) => ({
+            statusCode: res.statusCode,
+          }),
         },
       },
     }),

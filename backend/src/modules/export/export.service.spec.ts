@@ -6,14 +6,15 @@ describe('ExportService.getCampaignInputPacket', () => {
   const requestId = 'req-test-1';
 
   function buildService(programs: unknown[]) {
+    const findMany = jest.fn().mockResolvedValue(programs);
     const prisma = {
       program: {
-        findMany: jest.fn().mockResolvedValue(programs),
+        findMany,
       },
     } as unknown as PrismaService;
     return {
       service: new ExportService(prisma),
-      findMany: prisma.program.findMany as jest.Mock,
+      findMany,
     };
   }
 

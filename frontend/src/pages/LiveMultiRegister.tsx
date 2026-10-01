@@ -158,7 +158,7 @@ export default function LiveMultiRegister() {
         selectedIds: [...selected],
         intakeByProgramId,
         maxIntakeIndexCompleted,
-        phase: phase === 'result' ? 'review' : phase,
+        phase,
         intakeIndex,
         ...overrides,
       });
@@ -173,12 +173,12 @@ export default function LiveMultiRegister() {
     const intakeProgramId = readMultiRegisterIntakeProgramId(location.search);
     const preselectedPrograms = readMultiRegisterProgramIds(location.search);
 
-    let nextSelected = new Set(stored?.selectedIds ?? []);
+    const nextSelected = new Set(stored?.selectedIds ?? []);
     for (const id of preselectedPrograms) nextSelected.add(id);
-    let nextIntake = { ...(stored?.intakeByProgramId ?? {}) };
+    const nextIntake = { ...(stored?.intakeByProgramId ?? {}) };
     let nextPhase: WizardPhase = stored?.phase ?? 'select';
     let nextIntakeIndex = stored?.intakeIndex ?? 0;
-    let nextMaxCompleted = stored?.maxIntakeIndexCompleted ?? -1;
+    const nextMaxCompleted = stored?.maxIntakeIndexCompleted ?? -1;
 
     if (submissionId && intakeProgramId) {
       nextIntake[intakeProgramId] = submissionId;
@@ -192,6 +192,7 @@ export default function LiveMultiRegister() {
       nextIntakeIndex = idx >= 0 ? idx : 0;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate the wizard from storage and URL once programs load
     setSelected(nextSelected);
     setIntakeByProgramId(nextIntake);
     setPhase(nextPhase);

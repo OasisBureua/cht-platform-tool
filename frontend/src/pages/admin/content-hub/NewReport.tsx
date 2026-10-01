@@ -1,8 +1,27 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Check, Presentation, Upload } from 'lucide-react';
+import { useState, type ChangeEvent, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  Check,
+  CheckCircle2,
+  FileText,
+  Link2,
+  Upload,
+  XCircle,
+} from 'lucide-react';
 import { getApiErrorMessage } from '../../../api/client';
-import ChromeContainer from './components/ChromeContainer';
+import {
+  Button,
+  ZoomAlert,
+  ZoomBackLink,
+  ZoomSectionCard,
+  ZoomStatusBadge,
+} from '../../../components/admin/zoom-recordings/ZoomRecordingsUi';
+import { Field } from '../../../components/ui';
+import { cn } from '../../../lib/cn';
+import { ToggleChip } from './components/ToggleChip';
 import { useToast } from './components/Toaster';
 import {
   useCreateCampaign,
@@ -13,22 +32,15 @@ import {
   useUpdateCampaign,
   useUploadCsv,
 } from './lib/hooks';
-import { cn } from './lib/utils';
 import { PLATFORM_LABELS } from './lib/types';
 import type { Platform, ReportType } from './lib/types';
 
-const INPUT_CLS =
-  'flex h-9 w-full rounded-lg border border-border bg-background px-3 py-1 text-sm text-foreground shadow-card transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary';
+const SELECT_CLS =
+  'h-12 w-full min-w-0 rounded-[6px] bg-card px-4 text-base text-foreground shadow-card outline-none sm:text-sm ' +
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ' +
+  'disabled:cursor-not-allowed disabled:opacity-50';
 
-const LABEL_CLS = 'mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground';
-
-const BTN_PRIMARY =
-  'inline-flex min-h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary-hover disabled:pointer-events-none disabled:opacity-50';
-
-const BTN_OUTLINE =
-  'inline-flex min-h-9 items-center justify-center gap-2 whitespace-nowrap rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50';
-
-const STEPS = ['Report Type', 'Campaign Details', 'Data Connection', 'Validation'];
+const STEPS = ['Report type', 'Campaign details', 'Data connection', 'Validation'];
 const PLATFORMS: Platform[] = ['linkedin', 'meta', 'youtube', 'livestream', 'survey'];
 
 const PLATFORM_UPLOAD_DESCRIPTIONS: Record<Platform, string> = {
@@ -65,102 +77,78 @@ const EMPTY_FORM: FormState = {
   eventDate: '', livestreamUrl: '',
 };
 
-/* lucide chart-no-axes-column: transcribed verbatim (not in the installed lucide version). */
-function ChartNoAxesColumnIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      className={className} aria-hidden="true">
-      <path d="M5 21v-6" /><path d="M12 21V3" /><path d="M19 21V9" />
-    </svg>
-  );
-}
+const REPORT_TYPES: Array<{
+  value: ReportType;
+  title: string;
+  body: string;
+  icon: typeof BarChart3;
+}> = [
+  {
+    value: 'analytics',
+    title: 'Analytics report',
+    body:
+      'Metric-heavy report with platform breakdowns, KPI tiles, a cross-channel snapshot, validation status and a glossary. Best for internal review and data-rich client deliverables.',
+    icon: BarChart3,
+  },
+  {
+    value: 'executive',
+    title: 'Executive report (PDF)',
+    body:
+      'Client-ready executive summary printed as a PDF. Pick sources and a 30, 60 or 90-day window, follow progress, then download. Best for executive presentations.',
+    icon: FileText,
+  },
+];
 
-function CircleXIcon({ className }: { className?: string }) {
+function Stepper({ step }: { step: number }) {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="10" /><path d="m15 9-6 6" /><path d="m9 9 6 6" />
-    </svg>
-  );
-}
-
-function CircleCheckIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-      className={className} aria-hidden="true">
-      <circle cx="12" cy="12" r="10" /><path d="m9 12 2 2 4-4" />
-    </svg>
-  );
-}
-
-function StepIndicator({ step }: { step: number }) {
-  return (
-    <div className="flex items-center gap-0">
+    <ol className="flex items-center" aria-label="Progress">
       {STEPS.map((label, i) => {
         const n = i + 1;
         const done = n < step;
         const current = n === step;
         return (
-          <div key={label} className="flex flex-1 items-center">
-            <div className="flex items-center gap-2">
-              <div
+          <li key={label} className="flex flex-1 items-center last:flex-none">
+            <div className="flex items-center gap-2" aria-current={current ? 'step' : undefined}>
+              <span
                 className={cn(
-                  'flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold transition-all',
+                  'grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold transition-colors',
                   done
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-brand-600 text-white'
                     : current
                       ? 'bg-foreground text-background'
                       : 'bg-muted text-muted-foreground',
                 )}
               >
-                {done ? <Check className="h-3.5 w-3.5" /> : n}
-              </div>
-              <span className={cn('hidden text-xs font-medium sm:block', current ? 'text-foreground' : 'text-muted-foreground')}>
+                {done ? <Check className="h-3.5 w-3.5" aria-hidden /> : n}
+              </span>
+              <span
+                className={cn(
+                  'hidden text-sm sm:block',
+                  current ? 'font-medium text-foreground' : 'text-muted-foreground',
+                )}
+              >
                 {label}
               </span>
             </div>
-            {n < STEPS.length && <div className={cn('mx-3 h-0.5 flex-1', done ? 'bg-primary' : 'bg-border')} />}
-          </div>
+            {n < STEPS.length ? (
+              <span
+                aria-hidden
+                className={cn('mx-3 h-0.5 flex-1 rounded-full', done ? 'bg-brand-600' : 'bg-border')}
+              />
+            ) : null}
+          </li>
         );
       })}
-    </div>
+    </ol>
   );
 }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <div className="border-b border-border bg-muted px-6 py-3">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground">{title}</h2>
-      </div>
-      {children}
-    </div>
-  );
+function FieldGrid({ children }: { children: ReactNode }) {
+  return <div className="grid grid-cols-1 gap-5 md:grid-cols-2">{children}</div>;
 }
 
-function Field({
-  label,
-  required,
-  full,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  full?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className={full ? 'md:col-span-2' : ''}>
-      <label className={LABEL_CLS}>
-        {label}
-        {required && <span className="ml-0.5 text-accent">*</span>}
-      </label>
-      {children}
-    </div>
-  );
+function StepActions({ children }: { children: ReactNode }) {
+  return <div className="flex flex-wrap justify-end gap-2">{children}</div>;
 }
 
 export default function NewReport() {
@@ -175,7 +163,7 @@ export default function NewReport() {
   const [uploads, setUploads] = useState<Partial<Record<Platform, string>>>({});
   const [selectedSurveyId, setSelectedSurveyId] = useState('');
 
-  const set = (key: keyof FormState) => (e: React.ChangeEvent<HTMLInputElement>) =>
+  const set = (key: keyof FormState) => (e: ChangeEvent<HTMLInputElement>) =>
     setForm((prev) => ({ ...prev, [key]: e.target.value }));
 
   const togglePlatform = (p: Platform) =>
@@ -211,7 +199,7 @@ export default function NewReport() {
     }
   };
 
-  const handleFileChange = (platform: Platform) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (platform: Platform) => (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && campaignId != null) {
       void file.text().then((content) => {
@@ -251,360 +239,336 @@ export default function NewReport() {
     });
   };
 
-  const generateReport = () => {
+  const finish = () => {
     if (campaignId == null) return;
     navigate(
       reportType === 'analytics'
-        ? `/admin/content-hub/campaigns/${campaignId}/report`
-        : `/admin/content-hub/campaigns/${campaignId}/executive-report`,
+        ? `/admin/reports/campaigns/${campaignId}/report`
+        : `/admin/reports/campaigns/${campaignId}?tab=reports`,
     );
   };
 
   const saving = createCampaign.isPending || updateCampaign.isPending;
 
   return (
-    <ChromeContainer>
-      <div className="mx-auto w-full max-w-4xl">
-        {step === 1 ? (
-          <Link
-            to="/admin/content-hub"
-            className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">All Reports</span>
-          </Link>
-        ) : (
-          <button
-            onClick={() => setStep(step - 1)}
-            className="mb-6 flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            <span className="text-sm">Back</span>
-          </button>
-        )}
+    <div className="mx-auto w-full max-w-4xl space-y-6 p-4 md:p-6">
+      {step === 1 ? (
+        <ZoomBackLink to="/admin/reports">
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          All campaigns
+        </ZoomBackLink>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setStep(step - 1)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Back
+        </button>
+      )}
 
-        <div className="mb-8">
-          <h1 className="mb-4 text-2xl font-bold text-foreground">Create Report</h1>
-          <StepIndicator step={step} />
+      <header className="space-y-5 rounded-card bg-card p-5 shadow-card md:p-6">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Create report</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Set up a campaign, connect its data, then generate a report.
+          </p>
         </div>
+        <Stepper step={step} />
+      </header>
 
-        {step === 1 && (
-          <div className="space-y-4">
-            <p className="mb-6 text-sm text-muted-foreground">Choose the type of report you want to create.</p>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <button
-                onClick={() => setReportType('analytics')}
-                className={cn(
-                  'rounded-xl border-2 p-6 text-left transition-all',
-                  reportType === 'analytics' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40',
-                )}
-              >
-                <div className={cn('mb-4 flex h-10 w-10 items-center justify-center rounded-lg', reportType === 'analytics' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
-                  <ChartNoAxesColumnIcon className="h-5 w-5" />
-                </div>
-                <h3 className="mb-1 font-semibold text-foreground">Analytics Report</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Detailed, metric-heavy report with full platform breakdowns, KPI tiles, cross-channel snapshot,
-                  validation status, and glossary. Best for internal review and data-rich client deliverables.
-                </p>
-              </button>
-              <button
-                onClick={() => setReportType('executive')}
-                className={cn(
-                  'rounded-xl border-2 p-6 text-left transition-all',
-                  reportType === 'executive' ? 'border-primary bg-primary/5' : 'border-border bg-card hover:border-primary/40',
-                )}
-              >
-                <div className={cn('mb-4 flex h-10 w-10 items-center justify-center rounded-lg', reportType === 'executive' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
-                  <Presentation className="h-5 w-5" />
-                </div>
-                <h3 className="mb-1 font-semibold text-foreground">Executive Report Deck</h3>
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  Visual, client-facing slide deck with large KPI tiles, campaign story, geo-targeting, platform
-                  highlights, and concise strategic narrative. Best for executive presentations.
-                </p>
-              </button>
-            </div>
-            <div className="flex justify-end pt-4">
-              <button className={BTN_PRIMARY} onClick={() => setStep(2)}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 2 && (
-          <div className="space-y-5">
-            <SectionCard title="Report Identity">
-              <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-                <Field label="Report Title" required full>
-                  <input className={INPUT_CLS} placeholder="e.g., Q3 2026 HCP Oncology Campaign Report" value={form.name} onChange={set('name')} />
-                </Field>
-                <Field label="Program Name">
-                  <input className={INPUT_CLS} placeholder="e.g., OncoPrecision Initiative" value={form.programName} onChange={set('programName')} />
-                </Field>
-                <Field label="Client / Sponsor">
-                  <input className={INPUT_CLS} placeholder="e.g., Pharma Co." autoComplete="off" value={form.clientSponsor} onChange={set('clientSponsor')} />
-                </Field>
-                <Field label="Disease State">
-                  <input className={INPUT_CLS} placeholder="e.g., Non-Small Cell Lung Cancer" value={form.diseaseState} onChange={set('diseaseState')} />
-                </Field>
-                <Field label="Treatment Topic">
-                  <input className={INPUT_CLS} placeholder="e.g., First-line immunotherapy selection" value={form.treatmentTopic} onChange={set('treatmentTopic')} />
-                </Field>
-                <Field label="Created By">
-                  <input className={INPUT_CLS} placeholder="e.g., Jane Smith" value={form.createdBy} onChange={set('createdBy')} />
-                </Field>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Reporting Period">
-              <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-                <Field label="Period Start">
-                  <input className={INPUT_CLS} type="date" value={form.reportingPeriodStart} onChange={set('reportingPeriodStart')} />
-                </Field>
-                <Field label="Period End">
-                  <input className={INPUT_CLS} type="date" value={form.reportingPeriodEnd} onChange={set('reportingPeriodEnd')} />
-                </Field>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Platforms">
-              <div className="p-6">
-                <p className="mb-4 text-xs text-muted-foreground">Select all platforms included in this campaign.</p>
-                <div className="flex flex-wrap gap-3">
-                  {PLATFORMS.map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => togglePlatform(p)}
-                      className={cn(
-                        'rounded-lg border-2 px-4 py-2 text-sm font-medium transition-all',
-                        platforms.includes(p)
-                          ? 'border-primary bg-primary text-primary-foreground'
-                          : 'border-border text-muted-foreground hover:border-muted-foreground',
-                      )}
-                    >
-                      {PLATFORM_LABELS[p]}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Audience">
-              <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-                <Field label="Target Audience">
-                  <input className={INPUT_CLS} placeholder="e.g., Oncologists, PCP, NP/PA" value={form.targetAudience} onChange={set('targetAudience')} />
-                </Field>
-                <Field label="Target Regions">
-                  <input className={INPUT_CLS} placeholder="e.g., Northeast, Midwest US" value={form.targetRegions} onChange={set('targetRegions')} />
-                </Field>
-                <Field label="Target Institutions" full>
-                  <input className={INPUT_CLS} placeholder="e.g., Academic medical centers, community oncology" value={form.targetInstitutions} onChange={set('targetInstitutions')} />
-                </Field>
-                <Field label="Physician Speakers / KOLs" full>
-                  <input className={INPUT_CLS} placeholder="e.g., Dr. Jane Smith (MD, FACP)" value={form.physicianSpeakers} onChange={set('physicianSpeakers')} />
-                </Field>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Technical Configuration">
-              <div className="grid grid-cols-1 gap-5 p-6 md:grid-cols-2">
-                <Field label="Landing Page URL" full>
-                  <input className={INPUT_CLS} placeholder="https://..." type="url" value={form.landingPageUrl} onChange={set('landingPageUrl')} />
-                </Field>
-                <Field label="HubSpot Campaign ID">
-                  <input className={INPUT_CLS} placeholder="From HubSpot campaign URL" value={form.hubspotCampaignId} onChange={set('hubspotCampaignId')} />
-                </Field>
-                <Field label="Event Date">
-                  <input className={INPUT_CLS} type="date" value={form.eventDate} onChange={set('eventDate')} />
-                </Field>
-                <Field label="Livestream URL" full>
-                  <input className={INPUT_CLS} placeholder="https://..." type="url" value={form.livestreamUrl} onChange={set('livestreamUrl')} />
-                </Field>
-              </div>
-            </SectionCard>
-
-            <div className="flex justify-end gap-3">
-              <button className={BTN_OUTLINE} onClick={() => setStep(1)}>Back</button>
-              <button className={BTN_PRIMARY} disabled={!form.name.trim() || saving} onClick={saveCampaign}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 3 && (
-          <div className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Connect a CHT post-event feedback survey for survey reporting. External platform CSVs
-              can still be uploaded below.
-            </p>
-
-            <div className="rounded-xl border border-border bg-card">
-              <div className="flex items-center justify-between px-5 py-4">
-                <div className="flex items-center gap-2">
-                  <div className={cn('h-2 w-2 rounded-full', hubspotStatus?.connected ? 'bg-emerald-500' : 'bg-muted-foreground/30')} />
-                  <span className="text-sm font-semibold text-foreground">HubSpot CRM</span>
-                </div>
-                <span className={cn('rounded-full px-2 py-1 text-xs', hubspotStatus?.connected ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-muted text-muted-foreground')}>
-                  {hubspotStatus?.connected ? 'Connected' : 'Not Connected'}
-                </span>
-              </div>
-              {!hubspotStatus?.connected && (
-                <p className="px-5 pb-4 text-xs text-muted-foreground">
-                  Add HUBSPOT_ACCESS_TOKEN to environment secrets to enable CRM sync. HubSpot is optional.
-                </p>
-              )}
-            </div>
-
-            <div className="overflow-hidden rounded-xl border border-border bg-card">
-              <div className="border-b border-border bg-muted px-5 py-4">
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-foreground">Reporting Data Sources</h2>
-              </div>
-              <div className="divide-y divide-border">
-                {PLATFORMS.map((p) => {
-                  const selected = platforms.includes(p);
-                  const uploadedFile = uploads[p];
-                  return (
-                    <div
-                      key={p}
-                      className={cn(
-                        'flex items-center gap-4 px-5 py-4',
-                        p === 'survey' && 'flex-wrap lg:flex-nowrap',
-                      )}
-                    >
-                      <div className="flex min-w-0 flex-1 items-center gap-3">
-                        <div
-                          className={cn(
-                            'h-4 w-4 flex-shrink-0 rounded-full border-2',
-                            uploadedFile ? 'border-primary bg-primary' : selected ? 'border-primary' : 'border-border',
-                          )}
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium text-foreground">{PLATFORM_LABELS[p]}</span>
-                            {uploadedFile ? (
-                              <span className="truncate text-[10px] text-primary">{uploadedFile}</span>
-                            ) : (
-                              !selected && <span className="text-[10px] text-muted-foreground">(not selected)</span>
-                            )}
-                          </div>
-                          <p className="truncate text-xs text-muted-foreground">{PLATFORM_UPLOAD_DESCRIPTIONS[p]}</p>
-                        </div>
-                      </div>
-                      <div className={p === 'survey' ? 'w-full max-w-md' : 'flex-shrink-0'}>
-                        {p === 'survey' ? (
-                          <div className="flex flex-col gap-2 sm:flex-row">
-                            <select
-                              value={selectedSurveyId}
-                              onChange={(event) => setSelectedSurveyId(event.target.value)}
-                              disabled={!selected || feedbackSurveysLoading}
-                              className={`${INPUT_CLS} min-w-0 flex-1 disabled:cursor-not-allowed disabled:opacity-50`}
-                              aria-label="Feedback survey responses"
-                            >
-                              <option value="">
-                                {feedbackSurveysLoading
-                                  ? 'Loading feedback surveys…'
-                                  : feedbackSurveys.length === 0
-                                    ? 'No feedback surveys available'
-                                    : 'Select program feedback responses'}
-                              </option>
-                              {feedbackSurveys.map((survey) => (
-                                <option key={survey.id} value={survey.id}>
-                                  {survey.program?.title ?? 'Program'}: {survey.title} (
-                                  {survey.responseCount ?? 0} responses)
-                                </option>
-                              ))}
-                            </select>
-                            <button
-                              type="button"
-                              onClick={connectSelectedSurvey}
-                              disabled={
-                                !selectedSurveyId ||
-                                !selected ||
-                                connectFeedbackSurvey.isPending
-                              }
-                              className={BTN_OUTLINE}
-                            >
-                              {connectFeedbackSurvey.isPending ? 'Connecting…' : 'Use responses'}
-                            </button>
-                          </div>
-                        ) : (
-                          <label className="cursor-pointer">
-                            <input accept=".csv" className="sr-only" type="file" onChange={handleFileChange(p)} />
-                            <span className="inline-flex items-center gap-1 rounded-lg border border-primary/40 px-3 py-1.5 text-xs text-primary transition-colors hover:border-primary hover:bg-primary/10">
-                              <Upload className="h-3 w-3" />
-                              Upload CSV
-                            </span>
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <button className={BTN_OUTLINE} onClick={() => setStep(2)}>Back</button>
-              <button className={`${BTN_OUTLINE} text-muted-foreground`} onClick={() => setStep(4)}>Skip</button>
-              <button className={BTN_PRIMARY} onClick={() => setStep(4)}>
-                Continue <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {step === 4 && (
-          <div className="space-y-5">
-            <p className="text-sm text-muted-foreground">
-              Review data availability before generating your report. Missing data sections will show clear warnings
-              in the report.
-            </p>
-
-            <div className="space-y-3">
-              {(validation?.dataSourcesSummary ?? []).map((source) => {
-                const available = source.status === 'available';
+      {step === 1 && (
+        <>
+          <ZoomSectionCard title="Report type" description="Choose the type of report you want to create.">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2" role="radiogroup" aria-label="Report type">
+              {REPORT_TYPES.map(({ value, title, body, icon: Icon }) => {
+                const on = reportType === value;
                 return (
-                  <div key={source.source} className="rounded-xl border border-border bg-card">
-                    <div className={cn('flex items-center gap-3 px-5 py-4', !available && source.metricsMissing.length > 0 && 'border-b border-border')}>
-                      {available ? (
-                        <CircleCheckIcon className="h-4 w-4 text-emerald-500" />
-                      ) : (
-                        <CircleXIcon className="h-4 w-4 text-accent" />
-                      )}
-                      <span className="text-sm font-semibold text-foreground">{source.source}</span>
-                      <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[10px] font-semibold', available ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' : 'bg-accent/15 text-accent')}>
-                        {available ? 'Ready' : 'Missing'}
-                      </span>
-                    </div>
-                    {!available && source.metricsMissing.length > 0 && (
-                      <div className="bg-accent/5 px-5 py-3">
-                        <p className="mb-1 text-xs font-medium text-accent">Missing metrics:</p>
-                        <p className="text-xs text-muted-foreground">
-                          {source.metricsMissing.join(', ')}, {' '}
-                          {source.source === 'Survey'
-                            ? 'select a CHT program feedback survey to include these metrics.'
-                            : `upload ${source.source} CSV export to include these metrics.`}
-                        </p>
-                      </div>
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setReportType(value)}
+                    className={cn(
+                      'rounded-card p-5 text-left shadow-card transition-[background-color,box-shadow] duration-150',
+                      'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                      on ? 'bg-brand-600/5 ring-2 ring-brand-600' : 'bg-card hover:shadow-card-hover',
                     )}
-                  </div>
+                  >
+                    <span
+                      className={cn(
+                        'grid size-10 place-items-center rounded-[6px]',
+                        on ? 'bg-brand-600 text-white' : 'bg-muted text-muted-foreground',
+                      )}
+                    >
+                      <Icon className="h-5 w-5" aria-hidden />
+                    </span>
+                    <span className="mt-4 block font-semibold text-foreground">{title}</span>
+                    <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{body}</span>
+                  </button>
                 );
               })}
             </div>
+          </ZoomSectionCard>
+          <StepActions>
+            <Button size="sm" onClick={() => setStep(2)}>
+              Continue <ArrowRight className="h-4 w-4" />
+            </Button>
+          </StepActions>
+        </>
+      )}
 
-            <div className="flex justify-end gap-3">
-              <button className={BTN_OUTLINE} onClick={() => setStep(3)}>Back</button>
-              <button className={`${BTN_PRIMARY} px-6`} onClick={generateReport}>
-                Generate Report <ArrowRight className="h-4 w-4" />
-              </button>
+      {step === 2 && (
+        <>
+          <ZoomSectionCard title="Report identity">
+            <FieldGrid>
+              <Field
+                className="md:col-span-2"
+                label="Report title (required)"
+                placeholder="e.g., Q3 2026 HCP Oncology Campaign Report"
+                value={form.name}
+                onChange={set('name')}
+                required
+              />
+              <Field label="Program name" placeholder="e.g., OncoPrecision Initiative" value={form.programName} onChange={set('programName')} />
+              <Field label="Client / sponsor" placeholder="e.g., Pharma Co." autoComplete="off" value={form.clientSponsor} onChange={set('clientSponsor')} />
+              <Field label="Disease state" placeholder="e.g., Non-Small Cell Lung Cancer" value={form.diseaseState} onChange={set('diseaseState')} />
+              <Field label="Treatment topic" placeholder="e.g., First-line immunotherapy selection" value={form.treatmentTopic} onChange={set('treatmentTopic')} />
+              <Field label="Created by" placeholder="e.g., Jane Smith" value={form.createdBy} onChange={set('createdBy')} />
+            </FieldGrid>
+          </ZoomSectionCard>
+
+          <ZoomSectionCard title="Reporting period">
+            <FieldGrid>
+              <Field label="Period start" type="date" value={form.reportingPeriodStart} onChange={set('reportingPeriodStart')} />
+              <Field label="Period end" type="date" value={form.reportingPeriodEnd} onChange={set('reportingPeriodEnd')} />
+            </FieldGrid>
+          </ZoomSectionCard>
+
+          <ZoomSectionCard title="Platforms" description="Select all platforms included in this campaign.">
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Platforms">
+              {PLATFORMS.map((p) => (
+                <ToggleChip key={p} on={platforms.includes(p)} onClick={() => togglePlatform(p)}>
+                  {PLATFORM_LABELS[p]}
+                </ToggleChip>
+              ))}
             </div>
-          </div>
-        )}
-      </div>
-    </ChromeContainer>
+          </ZoomSectionCard>
+
+          <ZoomSectionCard title="Audience">
+            <FieldGrid>
+              <Field label="Target audience" placeholder="e.g., Oncologists, PCP, NP/PA" value={form.targetAudience} onChange={set('targetAudience')} />
+              <Field label="Target regions" placeholder="e.g., Northeast, Midwest US" value={form.targetRegions} onChange={set('targetRegions')} />
+              <Field className="md:col-span-2" label="Target institutions" placeholder="e.g., Academic medical centers, community oncology" value={form.targetInstitutions} onChange={set('targetInstitutions')} />
+              <Field className="md:col-span-2" label="Physician speakers / KOLs" placeholder="e.g., Dr. Jane Smith (MD, FACP)" value={form.physicianSpeakers} onChange={set('physicianSpeakers')} />
+            </FieldGrid>
+          </ZoomSectionCard>
+
+          <ZoomSectionCard title="Technical configuration">
+            <FieldGrid>
+              <Field className="md:col-span-2" label="Landing page URL" type="url" placeholder="https://..." value={form.landingPageUrl} onChange={set('landingPageUrl')} />
+              <Field label="HubSpot campaign ID" placeholder="From the HubSpot campaign URL" value={form.hubspotCampaignId} onChange={set('hubspotCampaignId')} />
+              <Field label="Event date" type="date" value={form.eventDate} onChange={set('eventDate')} />
+              <Field className="md:col-span-2" label="Livestream URL" type="url" placeholder="https://..." value={form.livestreamUrl} onChange={set('livestreamUrl')} />
+            </FieldGrid>
+          </ZoomSectionCard>
+
+          <StepActions>
+            <Button size="sm" variant="outline" onClick={() => setStep(1)}>
+              Back
+            </Button>
+            <Button size="sm" disabled={!form.name.trim() || saving} onClick={saveCampaign}>
+              {saving ? 'Saving…' : 'Continue'} <ArrowRight className="h-4 w-4" />
+            </Button>
+          </StepActions>
+        </>
+      )}
+
+      {step === 3 && (
+        <>
+          <ZoomSectionCard
+            title="HubSpot CRM"
+            description="HubSpot is optional."
+            action={
+              hubspotStatus?.connected ? (
+                <ZoomStatusBadge tone="success" icon={CheckCircle2}>Connected</ZoomStatusBadge>
+              ) : (
+                <ZoomStatusBadge tone="neutral">Not connected</ZoomStatusBadge>
+              )
+            }
+          >
+            {!hubspotStatus?.connected ? (
+              <p className="text-sm text-muted-foreground">
+                Add HUBSPOT_ACCESS_TOKEN to environment secrets to enable CRM sync.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">CRM data syncs automatically for this campaign.</p>
+            )}
+          </ZoomSectionCard>
+
+          <ZoomSectionCard
+            title="Reporting data sources"
+            description="Connect a CHT post-event feedback survey. External platform CSVs can be uploaded here or later from the campaign."
+          >
+            <ul className="divide-y divide-border">
+              {PLATFORMS.map((p) => {
+                const selected = platforms.includes(p);
+                const uploadedFile = uploads[p];
+                return (
+                  <li key={p} className="flex flex-col gap-3 py-4 first:pt-0 last:pb-0 sm:flex-row sm:items-center">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm font-medium text-foreground">{PLATFORM_LABELS[p]}</span>
+                        {uploadedFile ? (
+                          <ZoomStatusBadge tone="success" icon={CheckCircle2}>
+                            {uploadedFile}
+                          </ZoomStatusBadge>
+                        ) : !selected ? (
+                          <span className="text-xs text-muted-foreground">Not selected</span>
+                        ) : null}
+                      </div>
+                      <p className="mt-0.5 text-sm text-muted-foreground">{PLATFORM_UPLOAD_DESCRIPTIONS[p]}</p>
+                    </div>
+                    {p === 'survey' ? (
+                      <div className="flex w-full flex-col gap-2 sm:max-w-md sm:flex-row">
+                        <select
+                          value={selectedSurveyId}
+                          onChange={(event) => setSelectedSurveyId(event.target.value)}
+                          disabled={!selected || feedbackSurveysLoading}
+                          className={SELECT_CLS}
+                          aria-label="Feedback survey responses"
+                        >
+                          <option value="">
+                            {feedbackSurveysLoading
+                              ? 'Loading feedback surveys…'
+                              : feedbackSurveys.length === 0
+                                ? 'No feedback surveys available'
+                                : 'Select program feedback responses'}
+                          </option>
+                          {feedbackSurveys.map((survey) => (
+                            <option key={survey.id} value={survey.id}>
+                              {survey.program?.title ?? 'Program'}: {survey.title} ({survey.responseCount ?? 0}{' '}
+                              responses)
+                            </option>
+                          ))}
+                        </select>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-12"
+                          onClick={connectSelectedSurvey}
+                          disabled={!selectedSurveyId || !selected || connectFeedbackSurvey.isPending}
+                        >
+                          {connectFeedbackSurvey.isPending ? 'Connecting…' : 'Use responses'}
+                        </Button>
+                      </div>
+                    ) : (
+                      <label
+                        className={cn(
+                          'inline-flex h-9 shrink-0 cursor-pointer items-center gap-2 rounded-[6px] bg-card px-3.5 text-sm font-medium text-foreground shadow-card',
+                          'transition-[background-color,box-shadow] duration-150 hover:bg-muted hover:shadow-card-hover',
+                          'focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-ring',
+                        )}
+                      >
+                        <input accept=".csv" className="sr-only" type="file" onChange={handleFileChange(p)} />
+                        <Upload className="h-4 w-4" aria-hidden />
+                        {uploadedFile ? 'Replace CSV' : 'Upload CSV'}
+                      </label>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </ZoomSectionCard>
+
+          <StepActions>
+            <Button size="sm" variant="outline" onClick={() => setStep(2)}>
+              Back
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setStep(4)}>
+              Skip
+            </Button>
+            <Button size="sm" onClick={() => setStep(4)}>
+              Continue <ArrowRight className="h-4 w-4" />
+            </Button>
+          </StepActions>
+        </>
+      )}
+
+      {step === 4 && (
+        <>
+          <ZoomSectionCard
+            title="Validation"
+            description="Review data availability before generating. Missing sections show clear warnings in the report."
+          >
+            {(validation?.dataSourcesSummary ?? []).length === 0 ? (
+              <p className="text-sm text-muted-foreground">Checking data sources…</p>
+            ) : (
+              <ul className="space-y-3">
+                {(validation?.dataSourcesSummary ?? []).map((source) => {
+                  const available = source.status === 'available';
+                  return (
+                    <li key={source.source} className="rounded-[6px] bg-muted/40 px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        {available ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" aria-hidden />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-destructive" aria-hidden />
+                        )}
+                        <span className="text-sm font-medium text-foreground">{source.source}</span>
+                        <span className="ml-auto">
+                          {available ? (
+                            <ZoomStatusBadge tone="success">Ready</ZoomStatusBadge>
+                          ) : (
+                            <ZoomStatusBadge tone="error">Missing</ZoomStatusBadge>
+                          )}
+                        </span>
+                      </div>
+                      {!available && source.metricsMissing.length > 0 ? (
+                        <p className="mt-2 pl-7 text-sm text-muted-foreground">
+                          Missing {source.metricsMissing.join(', ')}.{' '}
+                          {source.source === 'Survey'
+                            ? 'Select a CHT program feedback survey to include these metrics.'
+                            : `Upload the ${source.source} CSV export to include these metrics.`}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ZoomSectionCard>
+
+          {reportType === 'executive' ? (
+            <ZoomAlert tone="info" title="Next: generate the PDF">
+              Executive reports are generated from the campaign&apos;s Reports tab. Link the Platform programs
+              first so Zoom sessions, attendance and surveys are included.
+            </ZoomAlert>
+          ) : null}
+
+          <StepActions>
+            <Button size="sm" variant="outline" onClick={() => setStep(3)}>
+              Back
+            </Button>
+            {reportType === 'executive' && campaignId != null ? (
+              <Button
+                size="sm"
+                variant="outline"
+                to={`/admin/reports/campaigns/${campaignId}?tab=programs`}
+              >
+                <Link2 className="h-4 w-4" />
+                Link programs
+              </Button>
+            ) : null}
+            <Button size="sm" onClick={finish}>
+              {reportType === 'executive' ? 'Go to reports' : 'Generate report'}
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </StepActions>
+        </>
+      )}
+    </div>
   );
 }

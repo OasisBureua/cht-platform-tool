@@ -107,8 +107,7 @@ export class ZoomRecordingsStorageService {
     disposition?: RecordingUrlDisposition;
   }): Promise<{ url: string; expiresInSeconds: number }> {
     const ext = opts.fileExtension || 'bin';
-    const disposition =
-      opts.disposition === 'inline' ? 'inline' : 'attachment';
+    const disposition = opts.disposition === 'inline' ? 'inline' : 'attachment';
     const contentType =
       disposition === 'inline'
         ? inlineContentType(opts.fileType, ext)
@@ -141,8 +140,7 @@ export class ZoomRecordingsStorageService {
     filename: string;
     disposition?: RecordingUrlDisposition;
   }): Promise<{ url: string; expiresInSeconds: number }> {
-    const disposition =
-      opts.disposition === 'inline' ? 'inline' : 'attachment';
+    const disposition = opts.disposition === 'inline' ? 'inline' : 'attachment';
     const command = new GetObjectCommand({
       Bucket: opts.bucket,
       Key: opts.key,

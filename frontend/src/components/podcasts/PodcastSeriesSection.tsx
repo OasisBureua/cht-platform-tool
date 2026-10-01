@@ -14,7 +14,7 @@ import { podcastsApi } from '../../api/podcasts';
 import { mapPodcastEpisodesToUi } from '../../utils/podcastYouTube';
 import { podcastEpisodeWatchPath } from '../../utils/podcastRoutes';
 
-export function latestEpisode(show: PodcastShow, episodes?: PodcastEpisode[]): PodcastEpisode | null {
+function latestEpisode(show: PodcastShow, episodes?: PodcastEpisode[]): PodcastEpisode | null {
   const eps = episodes?.length ? episodes : show.episodes;
   if (!eps.length) return null;
   const sorted = [...eps].sort(
@@ -113,9 +113,10 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
     show.remoteEpisodes ? show.id : undefined,
     sort,
   );
-  const episodes = show.remoteEpisodes
-    ? episodesQuery.data?.episodes ?? []
-    : show.episodes;
+  const episodes = useMemo(
+    () => (show.remoteEpisodes ? episodesQuery.data?.episodes ?? [] : show.episodes),
+    [show.remoteEpisodes, show.episodes, episodesQuery.data],
+  );
   const listenPlatforms = show.platformLinks ?? CHM_PODCAST_PLATFORM_LINKS;
   const seriesHubHref =
     listenPlatforms.find((platform) => platform.label === show.title)?.href ?? null;
@@ -253,6 +254,7 @@ export function SeriesSection({ show }: { show: PodcastShow }) {
 }
 
 /** Latest episode for cards: uses YouTube when configured. */
+// eslint-disable-next-line react-refresh/only-export-components -- hook shares the section's episode query
 export function useShowLatestEpisode(show: PodcastShow): PodcastEpisode | null {
   const { data } = useQuery({
     queryKey: ['podcast', 'episodes', show.id, 'latest-card'],

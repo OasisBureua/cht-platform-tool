@@ -36,8 +36,9 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     record: jest.fn(),
   };
 
+  const cookieMock = jest.fn();
   const expressRes = {
-    cookie: jest.fn(),
+    cookie: cookieMock,
     clearCookie: jest.fn(),
   } as unknown as ExpressResponse;
 
@@ -56,7 +57,10 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
       cognitoService as never,
       recaptchaService,
       lockout as never,
-      { lookup: jest.fn(), normalizeNpi: (v: string) => (v || '').replace(/\D/g, '').slice(0, 10) } as never,
+      {
+        lookup: jest.fn(),
+        normalizeNpi: (v: string) => (v || '').replace(/\D/g, '').slice(0, 10),
+      } as never,
       configService as never,
       audit as never,
       featureFlags as never,
@@ -88,7 +92,7 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     });
     expect(authService.findByEmail).not.toHaveBeenCalled();
     expect(authService.createSession).not.toHaveBeenCalled();
-    expect(expressRes.cookie).not.toHaveBeenCalled();
+    expect(cookieMock).not.toHaveBeenCalled();
   });
 
   it('directs clients to Cognito when Cognito is configured', async () => {

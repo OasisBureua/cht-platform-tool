@@ -89,14 +89,16 @@ export function isZoomAccountLockedSettingsError(err: unknown): boolean {
 }
 
 export function fromZoomWebinarSettingsApi(
-  raw: {
-    practice_session?: boolean;
-    hd_video?: boolean;
-    send_1080p_video_to_attendees?: boolean;
-    email_in_attendee_report?: boolean;
-    auto_recording?: string;
-    question_and_answer?: { enable?: boolean };
-  } | undefined,
+  raw:
+    | {
+        practice_session?: boolean;
+        hd_video?: boolean;
+        send_1080p_video_to_attendees?: boolean;
+        email_in_attendee_report?: boolean;
+        auto_recording?: string;
+        question_and_answer?: { enable?: boolean };
+      }
+    | undefined,
 ): ZoomWebinarSettings {
   if (!raw) {
     return { ...DEFAULT_ZOOM_WEBINAR_SETTINGS };
@@ -116,7 +118,7 @@ function readBool(
   key: keyof ZoomWebinarSettings,
   fallback: boolean,
 ): boolean {
-  return typeof raw[key] === 'boolean' ? (raw[key] as boolean) : fallback;
+  return typeof raw[key] === 'boolean' ? raw[key] : fallback;
 }
 
 /** Merge a JSON body with defaults. Unknown keys are ignored. */
@@ -129,9 +131,17 @@ export function parseZoomWebinarSettings(
   }
   const o = raw as Record<string, unknown>;
   return {
-    questionAndAnswer: readBool(o, 'questionAndAnswer', fallback.questionAndAnswer),
+    questionAndAnswer: readBool(
+      o,
+      'questionAndAnswer',
+      fallback.questionAndAnswer,
+    ),
     backstage: readBool(o, 'backstage', fallback.backstage),
-    hdVideoScreenShare: readBool(o, 'hdVideoScreenShare', fallback.hdVideoScreenShare),
+    hdVideoScreenShare: readBool(
+      o,
+      'hdVideoScreenShare',
+      fallback.hdVideoScreenShare,
+    ),
     hdVideo1080p: readBool(o, 'hdVideo1080p', fallback.hdVideo1080p),
     emailInAttendeeReport: readBool(
       o,

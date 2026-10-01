@@ -639,7 +639,9 @@ export class BillService {
     const bank = await this.getVendorBankAccount(vendorId);
     const hasBank = !!bank;
     if (paymentMethod === 'ACH' && !hasBank) {
-      throw new Error(`Vendor ${vendorId} is ACH but has no Bill.com bank account`);
+      throw new Error(
+        `Vendor ${vendorId} is ACH but has no Bill.com bank account`,
+      );
     }
     if (paymentMethod === 'CHECK' && hasBank) {
       throw new Error(

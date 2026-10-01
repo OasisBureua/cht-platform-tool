@@ -114,10 +114,10 @@ export class AdminKolNetworkController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List KOL roster with visibility and intel analytics' })
-  async list(
-    @Query('q') q?: string,
-  ): Promise<AdminKolNetworkList> {
+  @ApiOperation({
+    summary: 'List KOL roster with visibility and intel analytics',
+  })
+  async list(@Query('q') q?: string): Promise<AdminKolNetworkList> {
     const [list, visibilityMap] = await Promise.all([
       this.fetchAllKols(q?.trim() || undefined),
       this.visibility.getVisibilityMap(),
@@ -144,13 +144,18 @@ export class AdminKolNetworkController {
   }
 
   @Patch(':slug/visibility')
-  @ApiOperation({ summary: 'Toggle KOL visibility on public site and/or member app' })
+  @ApiOperation({
+    summary: 'Toggle KOL visibility on public site and/or member app',
+  })
   @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
   async updateVisibility(
     @Param('slug') slug: string,
     @Body() body: UpdateKolVisibilityDto,
     @CurrentUser() user: AuthUser,
-  ): Promise<{ slug: string; visibility: { visibleOnPublic: boolean; visibleOnApp: boolean } }> {
+  ): Promise<{
+    slug: string;
+    visibility: { visibleOnPublic: boolean; visibleOnApp: boolean };
+  }> {
     const next = await this.visibility.updateVisibility(
       slug,
       {
@@ -163,7 +168,9 @@ export class AdminKolNetworkController {
   }
 
   @Get(':slug/engagement')
-  @ApiOperation({ summary: 'KOL engagement signals (webinars, questions, surveys)' })
+  @ApiOperation({
+    summary: 'KOL engagement signals (webinars, questions, surveys)',
+  })
   @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
   async engagement(@Param('slug') slug: string): Promise<EngagementSignals> {
     return this.intel.getEngagement(slug.trim());
@@ -237,7 +244,9 @@ export class AdminKolNetworkController {
   }
 
   @Post(':slug/headshot/presign')
-  @ApiOperation({ summary: 'Get a presigned S3 PUT URL for KOL headshot upload' })
+  @ApiOperation({
+    summary: 'Get a presigned S3 PUT URL for KOL headshot upload',
+  })
   @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
   async presignHeadshot(
     @Param('slug') slug: string,

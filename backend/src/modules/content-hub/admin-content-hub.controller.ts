@@ -101,7 +101,9 @@ export class AdminContentHubController {
   @Get('campaigns')
   @ApiOperation({ summary: 'List campaign reports (proxied from Content Hub)' })
   async listCampaigns(@Query('q') q?: string) {
-    return this.hubCall(() => this.campaigns.listCampaigns(q?.trim() || undefined));
+    return this.hubCall(() =>
+      this.campaigns.listCampaigns(q?.trim() || undefined),
+    );
   }
 
   @Get('campaigns/:id')
@@ -111,7 +113,9 @@ export class AdminContentHubController {
 
   @Post('campaigns')
   async createCampaign(@Body() body: Record<string, unknown>) {
-    const created = await this.hubCall(() => this.campaigns.createCampaign(body));
+    const created = await this.hubCall(() =>
+      this.campaigns.createCampaign(body),
+    );
     await this.afterHubWrite();
     return created;
   }
@@ -143,7 +147,10 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns/:id/platforms/:platform/sync')
-  @ApiParam({ name: 'platform', enum: ['linkedin', 'meta', 'youtube', 'livestream', 'survey'] })
+  @ApiParam({
+    name: 'platform',
+    enum: ['linkedin', 'meta', 'youtube', 'livestream', 'survey'],
+  })
   async syncPlatform(
     @Param('id') id: string,
     @Param('platform') platform: CampaignPlatform,
@@ -203,14 +210,11 @@ export class AdminContentHubController {
     });
   }
 
-  @Get('campaigns/:id/executive-report')
-  async getExecutiveReport(@Param('id') id: string) {
-    return this.hubCall(() => this.campaigns.generateExecutiveReport(id));
-  }
-
   @Post('campaigns/:id/insights')
   async generateInsights(@Param('id') id: string) {
-    const result = await this.hubCall(() => this.campaigns.generateInsights(id));
+    const result = await this.hubCall(() =>
+      this.campaigns.generateInsights(id),
+    );
     await this.afterHubWrite();
     return result;
   }
@@ -224,7 +228,9 @@ export class AdminContentHubController {
 
   @Post('templates')
   async createTemplate(@Body() body: Record<string, unknown>) {
-    const created = await this.hubCall(() => this.campaigns.createTemplate(body));
+    const created = await this.hubCall(() =>
+      this.campaigns.createTemplate(body),
+    );
     await this.afterHubWrite();
     return created;
   }
@@ -298,7 +304,9 @@ export class AdminContentHubController {
   }
 
   @Get('health')
-  @ApiOperation({ summary: 'Content Hub dependency health (reachability only)' })
+  @ApiOperation({
+    summary: 'Content Hub dependency health (reachability only)',
+  })
   async getHealth() {
     return {
       status: 'ok',
@@ -349,7 +357,8 @@ export class AdminContentHubController {
         ),
       );
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Hub integrations unavailable';
+      const message =
+        err instanceof Error ? err.message : 'Hub integrations unavailable';
       this.logger.warn(`Hub integrations fetch failed: ${message}`);
       return {};
     }
@@ -413,8 +422,7 @@ export class AdminContentHubController {
       return {
         configured: false,
         reachable: false,
-        error:
-          'CONTENTHUB_ADMIN_BASE_URL / Cognito M2M not configured.',
+        error: 'CONTENTHUB_ADMIN_BASE_URL / Cognito M2M not configured.',
       };
     }
     try {

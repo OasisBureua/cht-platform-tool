@@ -80,7 +80,7 @@ export default function AnalyticsReport() {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Link to="/admin/content-hub">
+          <Link to="/admin/reports">
             <button
               className="transition-colors hover:bg-white/10"
               aria-label="Back to Content Hub"

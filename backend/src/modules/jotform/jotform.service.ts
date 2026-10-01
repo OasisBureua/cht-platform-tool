@@ -45,8 +45,9 @@ export class JotformService {
   /** Jotform uses responseCode in JSON body; success is any 2xx (same rule as official Node client). */
   private isJotformSuccess(responseCode: unknown): boolean {
     return (
-      responseCode !== undefined &&
-      responseCode !== null &&
+      (typeof responseCode === 'number' ||
+        typeof responseCode === 'string' ||
+        typeof responseCode === 'bigint') &&
       String(responseCode).startsWith('2')
     );
   }
@@ -147,7 +148,9 @@ export class JotformService {
         content?: Record<string, unknown>;
       };
     } catch {
-      throw new Error(`Jotform form lookup returned invalid JSON (HTTP ${res.status})`);
+      throw new Error(
+        `Jotform form lookup returned invalid JSON (HTTP ${res.status})`,
+      );
     }
     if (!this.isJotformSuccess(data?.responseCode) || !data.content) {
       throw new Error(

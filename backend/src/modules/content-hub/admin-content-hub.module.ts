@@ -8,7 +8,13 @@ import { ContentHubCampaignService } from './content-hub-campaign.service';
 import { ContentHubModule } from './content-hub.module';
 
 @Module({
-  imports: [AuthModule, CacheModule, ContentHubModule, HubSpotModule, WebinarsModule],
+  imports: [
+    AuthModule,
+    CacheModule,
+    ContentHubModule,
+    HubSpotModule,
+    WebinarsModule,
+  ],
   controllers: [AdminContentHubController],
   providers: [ContentHubCampaignService],
   exports: [ContentHubCampaignService],

@@ -139,12 +139,14 @@ export class ExportService {
         campaignId: id,
         kind: program.zoomSessionType,
         title: program.title,
-        sessionDate: (
-          program.startDate ??
-          recordingSession?.startTime ??
-          null
-        )?.toISOString() ?? null,
-        zoomMeetingId: program.zoomMeetingId ?? recordingSession?.zoomMeetingId ?? null,
+        sessionDate:
+          (
+            program.startDate ??
+            recordingSession?.startTime ??
+            null
+          )?.toISOString() ?? null,
+        zoomMeetingId:
+          program.zoomMeetingId ?? recordingSession?.zoomMeetingId ?? null,
         zoomMeetingUuid: recordingSession?.zoomUuid ?? null,
         transcriptS3Key: transcript.s3Key,
         transcriptStatus: transcript.status,

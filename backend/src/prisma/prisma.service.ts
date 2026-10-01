@@ -22,7 +22,7 @@ export class PrismaService
     });
   }
 
-  async onModuleInit() {
+  onModuleInit(): void {
     this.logger.log('Connecting to database...');
     // Don't block startup - ECS health check needs /health within ~30s.
     // Prisma connects in background; first DB request may be slow.
@@ -53,7 +53,7 @@ export class PrismaService
       models.map((modelKey) => {
         const model = this[modelKey as keyof this];
         if (model && typeof model === 'object' && 'deleteMany' in model) {
-          return (model as any).deleteMany();
+          return (model as { deleteMany: () => Promise<unknown> }).deleteMany();
         }
         return Promise.resolve();
       }),

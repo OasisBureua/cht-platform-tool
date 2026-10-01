@@ -47,13 +47,20 @@ export class ZoomAttendanceReportExportService {
   }
 
   /** Re-export after Link so the CSV moves to the programId S3 prefix. */
-  async reexportAfterLink(sessionId: string, programId: string): Promise<AttendanceReportExportResult> {
+  async reexportAfterLink(
+    sessionId: string,
+    programId: string,
+  ): Promise<AttendanceReportExportResult> {
     const session = await this.prisma.zoomRecordingSession.findUnique({
       where: { id: sessionId },
       select: { id: true, zoomMeetingId: true, programId: true },
     });
     if (!session) {
-      return { exported: false, participantCount: 0, error: 'Session not found' };
+      return {
+        exported: false,
+        participantCount: 0,
+        error: 'Session not found',
+      };
     }
 
     const events = await this.prisma.webinarParticipantEvent.findMany({

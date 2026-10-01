@@ -29,10 +29,7 @@ export function getPostEventSurveyUnlockAt(
     return null;
   }
   return new Date(
-    scheduledPostEventUnlockMs(
-      program.startDate.getTime(),
-      program.duration,
-    ),
+    scheduledPostEventUnlockMs(program.startDate.getTime(), program.duration),
   );
 }
 
@@ -93,15 +90,22 @@ export async function programHasPostEventSurvey(
   return feedbackCount > 0;
 }
 
+type SurveyMetaProgram = {
+  id: string;
+  jotformSurveyUrl?: string | null;
+  jotformIntakeFormUrl?: string | null;
+  zoomSessionType: ProgramZoomSessionType;
+};
+
+/** `defaultIntakeUrl` is accepted for caller compatibility and ignored (intake is native-only). */
+export function loadProgramSurveyMeta(
+  prisma: { survey: SurveyLookup },
+  program: SurveyMetaProgram,
+  defaultIntakeUrl?: string,
+): Promise<ProgramSurveyMeta>;
 export async function loadProgramSurveyMeta(
   prisma: { survey: SurveyLookup },
-  program: {
-    id: string;
-    jotformSurveyUrl?: string | null;
-    jotformIntakeFormUrl?: string | null;
-    zoomSessionType: ProgramZoomSessionType;
-  },
-  _defaultIntakeUrl?: string,
+  program: SurveyMetaProgram,
 ): Promise<ProgramSurveyMeta> {
   const [feedback, intake] = await Promise.all([
     prisma.survey.findFirst({
@@ -129,9 +133,7 @@ export async function loadProgramSurveyMeta(
     feedbackSurveyId: feedback?.id,
     intakeSurveyId: intake?.id,
     feedbackUsesJotform:
-      hasFeedbackSurvey &&
-      !!feedback?.jotformFormId?.trim() &&
-      !feedbackNative,
+      hasFeedbackSurvey && !!feedback?.jotformFormId?.trim() && !feedbackNative,
     intakeUsesJotform: false,
   };
 }

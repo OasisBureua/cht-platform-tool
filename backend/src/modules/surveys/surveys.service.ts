@@ -11,6 +11,7 @@ import {
   UserRole,
   SurveyType,
   ProgramRegistrationStatus,
+  type SurveyResponse,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
@@ -178,7 +179,9 @@ export class SurveysService {
         required: s.required,
         isCustomized: s.isCustomized,
         schemaVersion: s.schemaVersion,
-        ...(role === UserRole.ADMIN ? { responseCount: s._count.responses } : {}),
+        ...(role === UserRole.ADMIN
+          ? { responseCount: s._count.responses }
+          : {}),
         jotformFormId: s.jotformFormId,
         jotformFormUrl: s.jotformFormId
           ? `https://communityhealthmedia.jotform.com/${s.jotformFormId}`
@@ -1039,9 +1042,7 @@ export class SurveysService {
   > {
     const rows = await this.prisma.survey.findMany({
       where: {
-        type: type
-          ? type
-          : { in: [SurveyType.INTAKE, SurveyType.FEEDBACK] },
+        type: type ? type : { in: [SurveyType.INTAKE, SurveyType.FEEDBACK] },
         // Only native question schemas can be cloned safely.
         jotformFormId: null,
       },
@@ -1103,10 +1104,7 @@ export class SurveysService {
       where: { id: sourceSurveyId },
     });
     if (!source) throw new NotFoundException('Source survey not found');
-    if (
-      opts?.expectedType &&
-      source.type !== opts.expectedType
-    ) {
+    if (opts?.expectedType && source.type !== opts.expectedType) {
       throw new BadRequestException(
         `Source survey type is ${source.type}; expected ${opts.expectedType}.`,
       );
@@ -1131,7 +1129,8 @@ export class SurveysService {
     );
     const titleSuffix =
       source.type === SurveyType.INTAKE ? 'Registration' : 'Post Event Survey';
-    const titleBase = (opts?.programTitle ?? program.title).trim() || program.title;
+    const titleBase =
+      (opts?.programTitle ?? program.title).trim() || program.title;
     const nextTitle = `${titleBase} - ${titleSuffix}`;
 
     const existing = await this.prisma.survey.findFirst({
@@ -1606,7 +1605,7 @@ export class SurveysService {
       };
     }
 
-    let response;
+    let response: SurveyResponse;
     if (existing) {
       response = await this.prisma.surveyResponse.update({
         where: { id: existing.id },
@@ -1759,11 +1758,7 @@ export class SurveysService {
           });
       }
       await this.programRegistrations
-        .markIntakeSurveySubmitted(
-          userId,
-          survey.programId,
-          intakeSubmissionId,
-        )
+        .markIntakeSurveySubmitted(userId, survey.programId, intakeSubmissionId)
         .catch((err: unknown) => {
           this.logger.warn(
             `Could not mark intake survey submitted on registration: ${String(err)}`,

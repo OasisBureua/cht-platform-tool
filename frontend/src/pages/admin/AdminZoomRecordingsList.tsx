@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
@@ -241,9 +241,11 @@ export default function AdminZoomRecordingsList({
   const [importingSessionId, setImportingSessionId] = useState<string | null>(null);
   const [importErrors, setImportErrors] = useState<Record<string, string>>({});
 
-  useEffect(() => {
+  const [prevFilter, setPrevFilter] = useState(filter);
+  if (filter !== prevFilter) {
+    setPrevFilter(filter);
     setPage(1);
-  }, [filter]);
+  }
 
   const linkedParam =
     filter === 'linked' ? true : filter === 'unlinked' ? false : undefined;

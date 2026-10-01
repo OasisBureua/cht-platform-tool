@@ -55,7 +55,9 @@ export function buildRegistrationSubmittedEmail(
 
   const html = emailWrap({
     sponsorName: 'Community Health Media',
-    subtitle: p.requiresApproval ? 'Registration received' : 'You are registered',
+    subtitle: p.requiresApproval
+      ? 'Registration received'
+      : 'You are registered',
     body,
   });
 

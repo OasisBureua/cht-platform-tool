@@ -8,7 +8,9 @@ import {
   Logger,
   Req,
   Res,
+  BadRequestException,
   ForbiddenException,
+  HttpCode,
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { Request, Response as ExpressResponse } from 'express';
@@ -16,9 +18,14 @@ import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
+import { SkipTermsCheck } from './skip-terms-check.decorator';
 import { CurrentUser } from './current-user.decorator';
 import { AuthUser, AuthService } from './auth.service';
-import { CognitoService, CognitoTokens } from './cognito.service';
+import {
+  CognitoService,
+  CognitoTokens,
+  type CognitoIdTokenClaims,
+} from './cognito.service';
 import {
   cognitoErrorLogFields,
   mapCognitoLoginException,
@@ -68,6 +75,10 @@ import {
   NON_HCP_SPECIALTIES,
   type ProfileMissingField,
 } from '../common/profile-payment-eligibility';
+import {
+  CURRENT_TERMS_VERSION,
+  hasAcceptedCurrentTerms,
+} from '../common/terms';
 
 interface LoginSuccess {
   session_token: string;
@@ -87,9 +98,12 @@ interface LoginSuccess {
   mfaEnabled?: boolean;
   mfaEnrollmentRequired?: boolean;
   mfaFeature?: MfaFeatureFlags;
+  termsAccepted?: boolean;
+  termsVersion?: string;
 }
 
 @Controller('auth')
+@SkipTermsCheck()
 export class AuthController {
   private readonly logger = new Logger(AuthController.name);
 
@@ -173,7 +187,9 @@ export class AuthController {
   ): Promise<{ error: string } | null> {
     const check = await this.lockout.assertAllowed(action, email, ip);
     if (!check.locked) return null;
-    return { error: check.message || 'Too many attempts. Please try again later.' };
+    return {
+      error: check.message || 'Too many attempts. Please try again later.',
+    };
   }
 
   private attachSessionCookie(
@@ -193,11 +209,7 @@ export class AuthController {
     action: 'login' | 'signup',
     req: Request,
   ): Promise<string | null> {
-    const result = await this.recaptchaService.verify(
-      token,
-      action,
-      req.ip,
-    );
+    const result = await this.recaptchaService.verify(token, action, req.ip);
     return 'error' in result ? result.error : null;
   }
 
@@ -215,7 +227,7 @@ export class AuthController {
       zipCode?: string | null;
     },
   ): Promise<LoginSuccess | { error: string }> {
-    let claims;
+    let claims: CognitoIdTokenClaims;
     try {
       claims = await this.cognitoService.verifyTokenPair(tokens);
     } catch (err) {
@@ -285,8 +297,10 @@ export class AuthController {
       userId: user.userId,
       email: user.email,
       name: user.name,
-      firstName: dbUser?.firstName ?? profile?.firstName ?? claims.given_name ?? 'User',
-      lastName: dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
+      firstName:
+        dbUser?.firstName ?? profile?.firstName ?? claims.given_name ?? 'User',
+      lastName:
+        dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
       role: user.role,
       profileComplete,
       profileMissingFields,
@@ -296,6 +310,8 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
   }
 
@@ -405,11 +421,16 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito login success: userId=${loginResult.userId} email=${loginResult.email} total=${Date.now() - loginStart}ms`,
       );
-      this.auditAuthEvent(req, 'auth.login', {
-        userId: loginResult.userId,
-        email: loginResult.email,
-        role: loginResult.role,
-      }, { method: 'cognito' });
+      this.auditAuthEvent(
+        req,
+        'auth.login',
+        {
+          userId: loginResult.userId,
+          email: loginResult.email,
+          role: loginResult.role,
+        },
+        { method: 'cognito' },
+      );
       return loginResult;
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
@@ -478,11 +499,16 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito MFA login success: userId=${loginResult.userId} email=${loginResult.email} challenge=${challengeName}`,
       );
-      this.auditAuthEvent(req, 'auth.mfa_login', {
-        userId: loginResult.userId,
-        email: loginResult.email,
-        role: loginResult.role,
-      }, { method: 'cognito', challenge: challengeName });
+      this.auditAuthEvent(
+        req,
+        'auth.mfa_login',
+        {
+          userId: loginResult.userId,
+          email: loginResult.email,
+          role: loginResult.role,
+        },
+        { method: 'cognito', challenge: challengeName },
+      );
       return this.cognitoMfaSatisfied(loginResult);
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
@@ -493,7 +519,9 @@ export class AuthController {
       );
       const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
       if (lock.locked) {
-        return { error: lock.message || 'Too many attempts. Please try again later.' };
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
       }
       return mapCognitoLoginException(err);
     }
@@ -545,11 +573,16 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito MFA_SETUP login success: userId=${loginResult.userId} email=${loginResult.email}`,
       );
-      this.auditAuthEvent(req, 'auth.mfa_setup_login', {
-        userId: loginResult.userId,
-        email: loginResult.email,
-        role: loginResult.role,
-      }, { method: 'cognito' });
+      this.auditAuthEvent(
+        req,
+        'auth.mfa_setup_login',
+        {
+          userId: loginResult.userId,
+          email: loginResult.email,
+          role: loginResult.role,
+        },
+        { method: 'cognito' },
+      );
       return this.cognitoMfaSatisfied(loginResult);
     } catch (err) {
       const fields = cognitoErrorLogFields(err);
@@ -560,7 +593,9 @@ export class AuthController {
       );
       const lock = await this.lockout.recordFailure('mfa', emailStr, ip);
       if (lock.locked) {
-        return { error: lock.message || 'Too many attempts. Please try again later.' };
+        return {
+          error: lock.message || 'Too many attempts. Please try again later.',
+        };
       }
       return mapCognitoLoginException(err);
     }
@@ -600,11 +635,16 @@ export class AuthController {
       this.logger.log(
         `[Auth] Cognito OAuth login success: userId=${loginResult.userId} email=${loginResult.email}`,
       );
-      this.auditAuthEvent(req, 'auth.login', {
-        userId: loginResult.userId,
-        email: loginResult.email,
-        role: loginResult.role,
-      }, { method: 'cognito_oauth' });
+      this.auditAuthEvent(
+        req,
+        'auth.login',
+        {
+          userId: loginResult.userId,
+          email: loginResult.email,
+          role: loginResult.role,
+        },
+        { method: 'cognito_oauth' },
+      );
       return loginResult;
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'OAuth login failed.';
@@ -831,7 +871,9 @@ export class AuthController {
     @Body('code') code: string,
   ): Promise<{ error?: string }> {
     if (!this.cognitoService.isConfigured()) {
-      return { error: 'Email verification is not configured. Contact support.' };
+      return {
+        error: 'Email verification is not configured. Contact support.',
+      };
     }
 
     const emailStr = (email || '').trim();
@@ -848,7 +890,9 @@ export class AuthController {
       this.logger.warn(`[Auth] Cognito confirm failed for ${emailStr}: ${msg}`);
       // Idempotent: account already verified (double-submit, refresh, or prior Join).
       // Let the client continue to login / MFA instead of blocking on a dead code.
-      if (/current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)) {
+      if (
+        /current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)
+      ) {
         this.logger.log(
           `[Auth] Cognito confirm skipped — already CONFIRMED for ${emailStr}`,
         );
@@ -859,7 +903,11 @@ export class AuthController {
         }
         return {};
       }
-      if (/CodeMismatchException|ExpiredCodeException|expired|invalid|mismatch/i.test(msg)) {
+      if (
+        /CodeMismatchException|ExpiredCodeException|expired|invalid|mismatch/i.test(
+          msg,
+        )
+      ) {
         return {
           error:
             'That verification code is invalid or expired. Request a new code and try again.',
@@ -880,7 +928,9 @@ export class AuthController {
     @Body('email') email: string,
   ): Promise<{ error?: string }> {
     if (!this.cognitoService.isConfigured()) {
-      return { error: 'Email verification is not configured. Contact support.' };
+      return {
+        error: 'Email verification is not configured. Contact support.',
+      };
     }
 
     const emailStr = (email || '').trim();
@@ -888,12 +938,16 @@ export class AuthController {
 
     try {
       await this.cognitoService.resendConfirmationCode(emailStr);
-      this.logger.log(`[Auth] Cognito verification code resent for ${emailStr}`);
+      this.logger.log(
+        `[Auth] Cognito verification code resent for ${emailStr}`,
+      );
       return {};
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not resend code.';
       this.logger.warn(`[Auth] Cognito resend failed for ${emailStr}: ${msg}`);
-      if (/current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)) {
+      if (
+        /current status is CONFIRMED|already.*(confirm|verified)/i.test(msg)
+      ) {
         return {
           error:
             'This email is already verified. Continue on the Join page, or log in if you already have an account.',
@@ -913,11 +967,11 @@ export class AuthController {
   @SkipThrottle({ short: true, medium: true, long: true, authMfa: true })
   @Throttle({ auth: { limit: 10, ttl: 900_000 } })
   @Post('signup')
-  async signup(): Promise<{ error?: string }> {
-    return {
+  signup(): Promise<{ error?: string }> {
+    return Promise.resolve({
       error:
         'Legacy signup is unavailable. Use Cognito signup (/auth/cognito/signup).',
-    };
+    });
   }
 
   /**
@@ -925,11 +979,10 @@ export class AuthController {
    * Legacy GoTrue OAuth exchange removed. Use Cognito Hosted UI + /auth/cognito/callback.
    */
   @Post('login-oauth')
-  async loginOAuth(): Promise<{ error: string }> {
-    return {
-      error:
-        'Legacy OAuth login is unavailable. Use Cognito Google sign-in.',
-    };
+  loginOAuth(): Promise<{ error: string }> {
+    return Promise.resolve({
+      error: 'Legacy OAuth login is unavailable. Use Cognito Google sign-in.',
+    });
   }
 
   /**
@@ -991,11 +1044,16 @@ export class AuthController {
     );
     await this.lockout.recordSuccess('login', emailStr, ip);
     this.attachSessionCookie(expressRes, sessionToken);
-    this.auditAuthEvent(req, 'auth.login', {
-      userId: user.userId,
-      email: user.email,
-      role: user.role,
-    }, { method: 'dev_fallback' });
+    this.auditAuthEvent(
+      req,
+      'auth.login',
+      {
+        userId: user.userId,
+        email: user.email,
+        role: user.role,
+      },
+      { method: 'dev_fallback' },
+    );
     return {
       session_token: sessionToken,
       userId: user.userId,
@@ -1003,6 +1061,8 @@ export class AuthController {
       name: user.name,
       role: user.role,
       profileComplete,
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
   }
 
@@ -1030,19 +1090,25 @@ export class AuthController {
         this.logger.log(`[Auth] Cognito recover email sent to ${emailStr}`);
         // Count every recover attempt (success or fail) to limit email bombing.
         await this.lockout.recordFailure('recover', emailStr, ip);
-        this.auditAuthEvent(req, 'auth.recover_requested', {
-          email: emailStr,
-        }, { method: 'cognito' });
+        this.auditAuthEvent(
+          req,
+          'auth.recover_requested',
+          {
+            email: emailStr,
+          },
+          { method: 'cognito' },
+        );
         return {};
       } catch (err) {
         const msg =
           err instanceof Error ? err.message : 'Password reset failed.';
-        this.logger.warn(`[Auth] Cognito recover failed for ${emailStr}: ${msg}`);
+        this.logger.warn(
+          `[Auth] Cognito recover failed for ${emailStr}: ${msg}`,
+        );
         const lock = await this.lockout.recordFailure('recover', emailStr, ip);
         if (lock.locked) {
           return {
-            error:
-              lock.message || 'Too many attempts. Please try again later.',
+            error: lock.message || 'Too many attempts. Please try again later.',
           };
         }
         // Always return success-shaped response so clients cannot probe for accounts.
@@ -1097,14 +1163,20 @@ export class AuthController {
             `[Auth] Cognito password reset confirmed for ${emailStr} in ${Date.now() - confirmStart}ms (no CHT user row yet)`,
           );
         }
-        this.auditAuthEvent(req, 'auth.recover_confirmed', {
-          userId: user?.userId,
-          email: emailStr,
-          role: user?.role,
-        }, { method: 'cognito' });
+        this.auditAuthEvent(
+          req,
+          'auth.recover_confirmed',
+          {
+            userId: user?.userId,
+            email: emailStr,
+            role: user?.role,
+          },
+          { method: 'cognito' },
+        );
         return {};
       } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Password reset failed.';
+        const msg =
+          err instanceof Error ? err.message : 'Password reset failed.';
         this.logger.warn(
           `[Auth] Cognito recover confirm failed for ${emailStr} after ${Date.now() - confirmStart}ms: ${msg}`,
         );
@@ -1113,7 +1185,8 @@ export class AuthController {
         }
         if (/ExpiredCodeException/i.test(msg)) {
           return {
-            error: 'Reset code has expired. Request a new one from Forgot Password.',
+            error:
+              'Reset code has expired. Request a new one from Forgot Password.',
           };
         }
         if (/InvalidPasswordException/i.test(msg)) {
@@ -1171,11 +1244,7 @@ export class AuthController {
     }
 
     try {
-      await this.cognitoService.changePassword(
-        accessToken,
-        previous,
-        proposed,
-      );
+      await this.cognitoService.changePassword(accessToken, previous, proposed);
       const revoked = await this.authService.revokeAllUserSessions(user.userId);
       clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
       this.logger.log(
@@ -1220,10 +1289,7 @@ export class AuthController {
   async mfaSetup(
     @CurrentUser() user: AuthUser,
     @Req() req: Request,
-  ): Promise<
-    | { secretCode: string; otpauthUri: string }
-    | { error: string }
-  > {
+  ): Promise<{ secretCode: string; otpauthUri: string } | { error: string }> {
     if (!this.cognitoService.isConfigured()) {
       return { error: 'MFA is not configured.' };
     }
@@ -1395,7 +1461,9 @@ export class AuthController {
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Could not send verification SMS.';
-      this.logger.warn(`[Auth] MFA phone start failed for ${user.email}: ${msg}`);
+      this.logger.warn(
+        `[Auth] MFA phone start failed for ${user.email}: ${msg}`,
+      );
       const lock = await this.lockout.recordFailure('mfa', user.email, ip);
       if (lock.locked) {
         return {
@@ -1464,7 +1532,9 @@ export class AuthController {
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : 'Phone verification failed.';
-      this.logger.warn(`[Auth] MFA phone verify failed for ${user.email}: ${msg}`);
+      this.logger.warn(
+        `[Auth] MFA phone verify failed for ${user.email}: ${msg}`,
+      );
       const lock = await this.lockout.recordFailure('mfa', user.email, ip);
       if (lock.locked) {
         return {
@@ -1506,9 +1576,7 @@ export class AuthController {
    */
   @Get('me')
   @UseGuards(OptionalJwtAuthGuard)
-  async getMe(
-    @Req() req: Request & { user?: AuthUser },
-  ): Promise<
+  async getMe(@Req() req: Request & { user?: AuthUser }): Promise<
     | {
         userId: string;
         authId: string;
@@ -1525,6 +1593,8 @@ export class AuthController {
         mfaEnabled: boolean;
         mfaEnrollmentRequired: boolean;
         mfaFeature: MfaFeatureFlags;
+        termsAccepted: boolean;
+        termsVersion: string;
       }
     | { authenticated: false }
   > {
@@ -1597,6 +1667,73 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
+      termsAccepted: hasAcceptedCurrentTerms(dbUser),
+      termsVersion: CURRENT_TERMS_VERSION,
     };
+  }
+
+  /**
+   * POST /api/auth/terms/accept
+   * Saves Terms of Service & Privacy Policy acceptance to the user's profile.
+   * The client must echo the version it displayed so stale tabs cannot accept an older text.
+   */
+  @Post('terms/accept')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async acceptTerms(
+    @CurrentUser() user: AuthUser,
+    @Body('version') version: string,
+    @Req() req: Request,
+  ): Promise<{
+    termsAccepted: true;
+    termsVersion: string;
+    termsAcceptedAt: string;
+  }> {
+    if (version !== CURRENT_TERMS_VERSION) {
+      throw new BadRequestException(
+        'The Terms of Service have been updated. Please reload and review the latest version.',
+      );
+    }
+    const saved = await this.authService.acceptTerms(
+      user.userId,
+      CURRENT_TERMS_VERSION,
+    );
+    this.auditAuthEvent(
+      req,
+      'auth.terms_accepted',
+      { userId: user.userId, email: user.email, role: user.role },
+      { termsVersion: saved.termsVersion },
+    );
+    return {
+      termsAccepted: true,
+      termsVersion: saved.termsVersion,
+      termsAcceptedAt: saved.termsAcceptedAt.toISOString(),
+    };
+  }
+
+  /**
+   * POST /api/auth/terms/decline
+   * Audits a decline and ends the session; the client then signs out of Cognito.
+   */
+  @Post('terms/decline')
+  @HttpCode(200)
+  @UseGuards(JwtAuthGuard)
+  async declineTerms(
+    @CurrentUser() user: AuthUser,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ): Promise<{ ok: true }> {
+    this.auditAuthEvent(
+      req,
+      'auth.terms_declined',
+      { userId: user.userId, email: user.email, role: user.role },
+      { termsVersion: CURRENT_TERMS_VERSION },
+    );
+    const sessionToken = getSessionTokenFromRequest(req);
+    if (sessionToken) {
+      await this.authService.revokeSession(sessionToken);
+    }
+    clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+    return { ok: true };
   }
 }

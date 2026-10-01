@@ -8,7 +8,10 @@ import {
 } from '@nestjs/common';
 import { isAxiosError } from 'axios';
 import { ContentHubKolService } from './content-hub-kol.service';
-import { KolVisibilityService, type KolDirectorySurface } from './kol-visibility.service';
+import {
+  KolVisibilityService,
+  type KolDirectorySurface,
+} from './kol-visibility.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import { toPublicKol, toPublicKolList } from './public-kol';
 import type {
@@ -33,7 +36,10 @@ export class KolNetworkController {
     private readonly visibility: KolVisibilityService,
   ) {}
 
-  private logKolError(label: string, err: unknown): { status: number; message: string } {
+  private logKolError(
+    label: string,
+    err: unknown,
+  ): { status: number; message: string } {
     const meta = isAxiosError(err)
       ? axiosContentHubErrorMeta(err)
       : { status: 500, message: 'Unknown error' };
@@ -71,7 +77,9 @@ export class KolNetworkController {
     };
 
     if (!this.contentHub.isConfigured()) {
-      this.logger.warn('Content Hub not configured, /kol-network returning empty');
+      this.logger.warn(
+        'Content Hub not configured, /kol-network returning empty',
+      );
       return empty;
     }
 
@@ -108,7 +116,10 @@ export class KolNetworkController {
     try {
       return await this.contentHub.getKolPublications(slug, params);
     } catch (err: unknown) {
-      this.logKolError(`Content Hub GET /kols/${slug}/publications failed`, err);
+      this.logKolError(
+        `Content Hub GET /kols/${slug}/publications failed`,
+        err,
+      );
       return empty;
     }
   }

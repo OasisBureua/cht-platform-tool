@@ -4,7 +4,7 @@ import {
   Injectable,
   Logger,
 } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, type User } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import {
@@ -13,10 +13,7 @@ import {
 } from './dto/earnings-response.dto';
 import { StatsResponseDto, PeerBenchmark } from './dto/stats-response.dto';
 import { ProfileResponseDto } from './dto/profile-response.dto';
-import {
-  normalizeUsStateCode,
-  normalizeUsZip5,
-} from '../../common/us-address';
+import { normalizeUsStateCode, normalizeUsZip5 } from '../../common/us-address';
 import { normalizeUsPhoneE164 } from '../../common/phone';
 import { NpiRegistryService } from '../../auth/npi-registry.service';
 
@@ -101,7 +98,9 @@ export class DashboardService {
             select: { id: true, creditAmount: true },
           });
     const programById = new Map(programs.map((p) => [p.id, p]));
-    const enrollments = enrollmentRows.filter((e) => programById.has(e.programId));
+    const enrollments = enrollmentRows.filter((e) =>
+      programById.has(e.programId),
+    );
 
     const activitiesCompleted = enrollments.filter(
       (e) => e.completed === true,
@@ -212,7 +211,7 @@ export class DashboardService {
       }
     }
 
-    let updated;
+    let updated: User;
     try {
       updated = await this.prisma.user.update({
         where: { id: userId },

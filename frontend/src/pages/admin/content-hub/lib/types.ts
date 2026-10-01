@@ -171,52 +171,6 @@ export interface AnalyticsReport {
   dataValidation: DataValidation;
 }
 
-export interface ExecutivePlatformBreakdown {
-  platform: string;
-  totalViews: number;
-  totalImpressions: number;
-  hasData: boolean;
-}
-
-export interface ExecutiveKeyLearning {
-  title: string;
-  body: string;
-}
-
-export interface ExecutiveReport {
-  campaign: Campaign;
-  metrics: {
-    totalViews: number | null;
-    totalImpressions: number | null;
-    totalViewsFormatted: string | null;
-    totalImpressionsFormatted: string | null;
-    youtube: unknown | null;
-    linkedin: unknown | null;
-    meta: unknown | null;
-    livestream: unknown | null;
-    survey: unknown | null;
-  };
-  platformBreakdown: ExecutivePlatformBreakdown[];
-  config: {
-    overviewText: string;
-    productionOverview: string;
-    distributionOverview: string;
-    conclusionText: string;
-    targetingNarrative: string;
-    contentThemes: string[];
-    preRecordDate: string;
-    liveStreamDate: string;
-    distributionDate: string;
-    longFormEpisodes: string;
-    shortFormTopics: string;
-    clipVariations: string;
-    longFormPosts: string | null;
-    shortFormPosts: string | null;
-    clipPosts: string | null;
-    keyLearnings: ExecutiveKeyLearning[];
-  };
-}
-
 export const PLATFORM_LABELS: Record<Platform, string> = {
   linkedin: 'LinkedIn',
   meta: 'Meta',

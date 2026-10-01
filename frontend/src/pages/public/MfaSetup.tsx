@@ -38,6 +38,7 @@ export default function MfaSetup() {
   useEffect(() => {
     if (user?.mfaEnabled) return;
     if (method !== 'sms' || autoStarted || phoneSent || !user?.phoneNumber) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-send the SMS code once when the profile already has a phone
     setAutoStarted(true);
     setPhone(user.phoneNumber.replace(/^\+1/, ''));
     void (async () => {
@@ -53,10 +54,12 @@ export default function MfaSetup() {
   }, [method, autoStarted, phoneSent, user?.phoneNumber, user?.mfaEnabled, beginSmsMfaSetup]);
 
   // Keep local phone field in sync if /me loads phone after first paint.
-  useEffect(() => {
-    if (phoneSent || !user?.phoneNumber) return;
-    setPhone((prev) => prev || user.phoneNumber!.replace(/^\+1/, ''));
-  }, [user?.phoneNumber, phoneSent]);
+  const [phonePrefilledFrom, setPhonePrefilledFrom] = useState<string | undefined>(undefined);
+  const profilePhone = user?.phoneNumber;
+  if (!phoneSent && profilePhone && profilePhone !== phonePrefilledFrom) {
+    setPhonePrefilledFrom(profilePhone);
+    setPhone((prev) => prev || profilePhone.replace(/^\+1/, ''));
+  }
 
   // Already enrolled via Cognito challenge or a prior soft setup — do not re-prompt.
   if (!isLoading && isAuthenticated && user?.mfaEnabled) {

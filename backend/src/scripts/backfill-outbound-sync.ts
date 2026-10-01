@@ -205,7 +205,8 @@ async function run(dry: boolean): Promise<Stats> {
   return stats;
 }
 
-const dry = process.argv.includes('--dry-run') || !process.argv.includes('--apply');
+const dry =
+  process.argv.includes('--dry-run') || !process.argv.includes('--apply');
 run(dry)
   .then((stats) => {
     console.log(JSON.stringify({ dry, ...stats }, null, 2));

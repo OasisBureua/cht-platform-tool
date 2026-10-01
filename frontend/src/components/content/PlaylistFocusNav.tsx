@@ -32,7 +32,7 @@ export function PlaylistFocusNav({ isInApp, allowedPlaylistFocusFilters }: Playl
 
   const { data: tagsData } = useQuery({
     queryKey: ['catalog', 'wordpress', 'tags'],
-    queryFn: catalogApi.getWordPressTags,
+    queryFn: () => catalogApi.getWordPressTags(),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
   });
 

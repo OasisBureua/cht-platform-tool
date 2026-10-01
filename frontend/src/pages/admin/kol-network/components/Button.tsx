@@ -6,6 +6,7 @@ import { cn } from './cn';
  * shadcn-pattern Button with cva variants, restyled to CHT platform tokens.
  * Pill radius per the platform's fully-rounded language; teal primary CTA.
  */
+// eslint-disable-next-line react-refresh/only-export-components -- variants reused for link-styled buttons
 export const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-pill font-semibold',

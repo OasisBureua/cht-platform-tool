@@ -12,7 +12,14 @@ export type UserRecipientFilterInput = {
 /** Parse comma-separated query values into a de-duplicated trimmed list. */
 export function parseCsvQueryParam(value?: string): string[] {
   if (!value?.trim()) return [];
-  return [...new Set(value.split(',').map((s) => s.trim()).filter(Boolean))];
+  return [
+    ...new Set(
+      value
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ];
 }
 
 export function buildUserRecipientWhere(

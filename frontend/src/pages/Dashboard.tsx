@@ -145,7 +145,9 @@ type SpotlightSlide = {
 };
 
 export default function Dashboard() {
-  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false);
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(
+    () => typeof window !== 'undefined' && !window.localStorage.getItem(ONBOARDING_STORAGE_KEY),
+  );
   const [brokenCarouselThumbIds, setBrokenCarouselThumbIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
@@ -159,12 +161,6 @@ export default function Dashboard() {
       next.add(key);
       return next;
     });
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const seen = window.localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (!seen) setIsOnboardingOpen(true);
   }, []);
 
   const closeOnboarding = () => {
@@ -201,7 +197,7 @@ export default function Dashboard() {
     queryFn: surveysApi.getAll,
     staleTime: 5 * 60 * 1000,
   });
-  const surveys = surveyList?.active ?? [];
+  const surveys = useMemo(() => surveyList?.active ?? [], [surveyList]);
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
     queryKey: OFFICE_HOURS_QUERY_KEY,
@@ -253,11 +249,11 @@ export default function Dashboard() {
   const nextLiveCoverUrl = nextUpcomingWebinar?.imageUrl?.trim() || undefined;
   const nextOfficeHoursSession = useMemo(() => getNextUpcomingWebinar(officeHours), [officeHours]);
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
-  const recentItems = recentData?.items ?? [];
-  const topicItems = topicData?.items ?? [];
+  const recentItems = useMemo(() => recentData?.items ?? [], [recentData]);
+  const topicItems = useMemo(() => topicData?.items ?? [], [topicData]);
   /** Catalog clips that have a usable thumb URL, omit placeholder-only rows on the dashboard. */
-  const recentCatalogClips = useMemo(() => recentItems.filter(shouldSurfaceCatalogClip), [recentItems]);
-  const topicCatalogClips = useMemo(() => topicItems.filter(shouldSurfaceCatalogClip), [topicItems]);
+  const recentCatalogClips = useMemo(() => recentItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [recentItems]);
+  const topicCatalogClips = useMemo(() => topicItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [topicItems]);
 
   /** After runtime image failures, omit cards so blanks do not stay in strip / spotlight. */
   const recentCatalogForHome = useMemo(
@@ -378,15 +374,16 @@ export default function Dashboard() {
 
   const featuredSlideCount = spotlightSlidesRendered.length;
 
-  useEffect(() => {
+  const [prevSpotlightIdKey, setPrevSpotlightIdKey] = useState(spotlightIdKey);
+  if (spotlightIdKey !== prevSpotlightIdKey) {
+    setPrevSpotlightIdKey(spotlightIdKey);
     setSpotlightIndex(0);
-  }, [spotlightIdKey]);
+  }
 
-  useEffect(() => {
-    setSpotlightIndex((i) =>
-      featuredSlideCount === 0 ? 0 : Math.min(i, Math.max(0, featuredSlideCount - 1)),
-    );
-  }, [featuredSlideCount]);
+  const maxSpotlightIndex = Math.max(0, featuredSlideCount - 1);
+  if (spotlightIndex > maxSpotlightIndex) {
+    setSpotlightIndex(maxSpotlightIndex);
+  }
 
   useEffect(() => {
     if (spotlightSlidesRendered.length <= 1) return undefined;

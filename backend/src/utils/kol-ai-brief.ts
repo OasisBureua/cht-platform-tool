@@ -1,8 +1,7 @@
 import type { PublicKolAiBrief } from '../modules/kol-network/kol-network.types';
 
 /** Mirrors Content Hub `kol_enrichment._parse_brief_sections` section headings. */
-const SECTION_NAMES =
-  'who they are|what they focus on|focus|chm context';
+const SECTION_NAMES = 'who they are|what they focus on|focus|chm context';
 
 function sectionHeaderRegex(flags = 'gi'): RegExp {
   return new RegExp(`#{1,3}\\s*(${SECTION_NAMES})\\s*`, flags);
@@ -47,8 +46,8 @@ export function parseBriefSections(raw: string): PublicKolAiBrief {
     const field = mapHeaderToField(match[1]);
     if (!field) continue;
 
-    const bodyStart = match.index! + match[0].length;
-    const bodyEnd = i + 1 < headers.length ? headers[i + 1].index! : text.length;
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = i + 1 < headers.length ? headers[i + 1].index : text.length;
     const body = cleanBriefText(text.slice(bodyStart, bodyEnd));
     if (body) out[field] = body;
   }

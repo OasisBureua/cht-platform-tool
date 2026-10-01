@@ -23,9 +23,7 @@ export interface AuthFeaturesConfigDocument {
   };
 }
 
-export function parseAuthFeaturesConfig(
-  raw: unknown,
-): AuthFeatureFlags {
+export function parseAuthFeaturesConfig(raw: unknown): AuthFeatureFlags {
   if (!raw || typeof raw !== 'object') {
     return DEFAULT_AUTH_FEATURE_FLAGS;
   }

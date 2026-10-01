@@ -38,9 +38,7 @@ export class CatalogController {
       const status = (err as { response?: { status?: number } })?.response
         ?.status;
       if (status === 401 || this.contentHub.usesContentHubCatalog()) {
-        this.logger.warn(
-          '[Catalog] /tags unavailable: returning empty tags.',
-        );
+        this.logger.warn('[Catalog] /tags unavailable: returning empty tags.');
         return {};
       }
       throw err;
@@ -121,7 +119,10 @@ export class CatalogController {
    */
   @Get('wordpress/categories')
   async getWordPressCategories(@Query('fresh') fresh?: string) {
-    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
+    if (
+      !this.contentHub.isConfigured() ||
+      !this.contentHub.usesContentHubCatalog()
+    ) {
       return { items: [], total: 0 };
     }
     try {
@@ -143,7 +144,10 @@ export class CatalogController {
 
   @Get('wordpress/series')
   async getWordPressSeries(@Query('fresh') fresh?: string) {
-    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
+    if (
+      !this.contentHub.isConfigured() ||
+      !this.contentHub.usesContentHubCatalog()
+    ) {
       return { items: [], total: 0 };
     }
     try {
@@ -168,7 +172,10 @@ export class CatalogController {
     @Param('slug') slug: string,
     @Query('fresh') fresh?: string,
   ) {
-    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
+    if (
+      !this.contentHub.isConfigured() ||
+      !this.contentHub.usesContentHubCatalog()
+    ) {
       return null;
     }
     try {
@@ -185,7 +192,10 @@ export class CatalogController {
 
   @Get('wordpress/tags')
   async getWordPressTags(@Query('fresh') fresh?: string) {
-    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
+    if (
+      !this.contentHub.isConfigured() ||
+      !this.contentHub.usesContentHubCatalog()
+    ) {
       return { items: [], total: 0 };
     }
     try {
@@ -217,7 +227,10 @@ export class CatalogController {
     @Query('category') category?: string,
     @Query('fresh') fresh?: string,
   ) {
-    if (!this.contentHub.isConfigured() || !this.contentHub.usesContentHubCatalog()) {
+    if (
+      !this.contentHub.isConfigured() ||
+      !this.contentHub.usesContentHubCatalog()
+    ) {
       return { items: [], total: 0 };
     }
     try {
@@ -331,8 +344,8 @@ export class CatalogController {
    * Legacy Content Hub transcript endpoint removed; returns null so clients show unavailable.
    */
   @Get('transcripts/:shootId')
-  async getTranscript(@Param('shootId') _shootId: string) {
-    return null;
+  getTranscript(): Promise<null> {
+    return Promise.resolve(null);
   }
 
   /**
@@ -368,7 +381,10 @@ export class CatalogController {
   @Get('playlists/:id')
   async getPlaylist(@Param('id') id: string) {
     const looksLikeYouTubePlaylistId = /^PL[A-Za-z0-9_-]{16,}$/.test(id);
-    if (!looksLikeYouTubePlaylistId && this.contentHub.usesContentHubCatalog()) {
+    if (
+      !looksLikeYouTubePlaylistId &&
+      this.contentHub.usesContentHubCatalog()
+    ) {
       const series = await this.contentHub.getWordPressSeriesDetail(id);
       if (series) {
         const postIdSet = new Set(series.post_ids);

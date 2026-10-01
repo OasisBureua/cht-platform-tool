@@ -9,7 +9,7 @@ export default function ContentHubHeader() {
   return (
     <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
-        <Link to="/admin/content-hub" className="flex items-center gap-2.5">
+        <Link to="/admin/reports" className="flex items-center gap-2.5">
           <LogoMark size={26} color="#007cff" />
           <div className="leading-tight">
             <div className="text-sm font-semibold text-foreground">Reporting</div>

@@ -43,7 +43,8 @@ export function clearSessionCookie(res: Response, nodeEnv?: string): void {
 }
 
 export function getSessionTokenFromRequest(request: Request): string | null {
-  const cookieToken = request.cookies?.[SESSION_COOKIE_NAME];
+  const cookies = request.cookies as Record<string, unknown> | undefined;
+  const cookieToken = cookies?.[SESSION_COOKIE_NAME];
   if (typeof cookieToken === 'string' && UUID_REGEX.test(cookieToken)) {
     return cookieToken;
   }

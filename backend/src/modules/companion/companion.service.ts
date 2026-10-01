@@ -1,8 +1,4 @@
-import {
-  HttpStatus,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { Readable } from 'node:stream';
@@ -55,7 +51,9 @@ export class CompanionService {
         Accept: 'text/event-stream',
         'X-User-Id': user.userId,
         'X-User-Role':
-          String(user.role || '').toUpperCase() === 'ADMIN' ? 'admin' : 'member',
+          String(user.role || '').toUpperCase() === 'ADMIN'
+            ? 'admin'
+            : 'member',
         'X-Request-Id': requestId,
         'X-Client': 'web',
       };
@@ -112,14 +110,11 @@ export class CompanionService {
         upstream.body as import('node:stream/web').ReadableStream,
       );
       await pipeline(nodeReadable, res);
-    } catch (err) {
+    } catch (err: unknown) {
       if (abort.signal.aborted) {
         return;
       }
-      this.logger.warn(
-        { err, requestId },
-        'Companion upstream proxy failed',
-      );
+      this.logger.warn({ err, requestId }, 'Companion upstream proxy failed');
       if (!res.headersSent) {
         res.status(503).json({
           error: {

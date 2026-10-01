@@ -53,7 +53,8 @@ describe('RecaptchaService', () => {
 
   it('accepts valid siteverify response', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+      json: () =>
+        Promise.resolve({ success: true, score: 0.9, action: 'login' }),
     }) as unknown as typeof fetch;
 
     const svc = service();
@@ -62,7 +63,8 @@ describe('RecaptchaService', () => {
 
   it('rejects low score', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.1, action: 'signup' }),
+      json: () =>
+        Promise.resolve({ success: true, score: 0.1, action: 'signup' }),
     }) as unknown as typeof fetch;
 
     const svc = service('secret', 0.5);
@@ -73,34 +75,45 @@ describe('RecaptchaService', () => {
 
   it('omits private remoteip when calling siteverify', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+      json: () =>
+        Promise.resolve({ success: true, score: 0.9, action: 'login' }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const svc = service();
     await svc.verify('token', 'login', '10.0.0.5');
-    const body = (fetchMock.mock.calls[0][1] as { body: URLSearchParams }).body;
+    const [, init] = fetchMock.mock.calls[0] as [
+      string,
+      { body: URLSearchParams },
+    ];
+    const body = init.body;
     expect(body.get('remoteip')).toBeNull();
   });
 
   it('forwards public remoteip when calling siteverify', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+      json: () =>
+        Promise.resolve({ success: true, score: 0.9, action: 'login' }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
     const svc = service();
     await svc.verify('token', 'login', '8.8.8.8');
-    const body = (fetchMock.mock.calls[0][1] as { body: URLSearchParams }).body;
+    const [, init] = fetchMock.mock.calls[0] as [
+      string,
+      { body: URLSearchParams },
+    ];
+    const body = init.body;
     expect(body.get('remoteip')).toBe('8.8.8.8');
   });
 
   it('returns refresh hint on timeout-or-duplicate', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({
-        success: false,
-        'error-codes': ['timeout-or-duplicate'],
-      }),
+      json: () =>
+        Promise.resolve({
+          success: false,
+          'error-codes': ['timeout-or-duplicate'],
+        }),
     }) as unknown as typeof fetch;
 
     const svc = service();
@@ -111,7 +124,7 @@ describe('RecaptchaService', () => {
 
   it('allows success when Google omits action', async () => {
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.9 }),
+      json: () => Promise.resolve({ success: true, score: 0.9 }),
     }) as unknown as typeof fetch;
 
     const svc = service();
@@ -121,7 +134,8 @@ describe('RecaptchaService', () => {
   it('still verifies normally in production when secret is configured', async () => {
     process.env.NODE_ENV = 'production';
     global.fetch = jest.fn().mockResolvedValue({
-      json: async () => ({ success: true, score: 0.9, action: 'login' }),
+      json: () =>
+        Promise.resolve({ success: true, score: 0.9, action: 'login' }),
     }) as unknown as typeof fetch;
 
     const svc = service('prod-secret', 0.5, 'production');

@@ -55,7 +55,10 @@ type SessionImportKey = {
   zoomMeetingId: string;
 };
 
-type PrismaLike = Pick<PrismaClient, 'zoomAttendanceParticipant' | 'webinarParticipantEvent'>;
+type PrismaLike = Pick<
+  PrismaClient,
+  'zoomAttendanceParticipant' | 'webinarParticipantEvent'
+>;
 
 export async function loadSessionAttendeeImportCounts(
   prisma: PrismaLike,
@@ -100,7 +103,10 @@ export async function loadSessionAttendeeImportCounts(
     }
 
     for (const s of linked) {
-      counts.set(s.id, eventCounts.get(`${s.programId}:${s.zoomMeetingId}`) ?? 0);
+      counts.set(
+        s.id,
+        eventCounts.get(`${s.programId}:${s.zoomMeetingId}`) ?? 0,
+      );
     }
   }
 

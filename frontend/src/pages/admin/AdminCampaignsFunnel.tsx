@@ -154,6 +154,7 @@ export default function AdminCampaignsFunnel() {
     if (urlHydrated.current) return;
     urlHydrated.current = true;
     const fromUrl = draftFromSearchParams(searchParams);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydrate of filters from the URL
     setDraft(fromUrl);
     setApplied(draftToQuery(fromUrl));
   }, [searchParams]);

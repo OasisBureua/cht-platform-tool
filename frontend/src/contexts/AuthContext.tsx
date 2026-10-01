@@ -7,7 +7,11 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { setAuthHeaderGetter, setUnauthorizedHandler } from '../api/client';
+import {
+  setAuthHeaderGetter,
+  setTermsRequiredHandler,
+  setUnauthorizedHandler,
+} from '../api/client';
 import { resolveApiBaseUrl } from '../config/app-urls';
 import { cognitoAuthEnabled } from '../lib/auth-config';
 import { buildCognitoLogoutUrl } from '../lib/cognito-oauth';
@@ -38,6 +42,10 @@ export interface AuthUser {
   mfaFeature?: MfaFeatureFlags;
   /** Verified E.164 phone when stored (SMS MFA). */
   phoneNumber?: string | null;
+  /** False until the user accepts the current Terms of Service & Privacy Policy. */
+  termsAccepted?: boolean;
+  /** Terms version the server requires; echoed back on accept. */
+  termsVersion?: string;
 }
 
 function parseMfaFeature(
@@ -76,6 +84,9 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     mfaFeature: parseMfaFeature(data),
     phoneNumber:
       typeof data.phoneNumber === 'string' ? data.phoneNumber : null,
+    // Only an explicit false gates: an older API without the field must not lock users out.
+    termsAccepted: data.termsAccepted !== false,
+    termsVersion: typeof data.termsVersion === 'string' ? data.termsVersion : undefined,
   };
 }
 
@@ -251,10 +262,6 @@ function authFetch(url: string, init?: RequestInit): Promise<Response> {
 }
 
 function BackendAuthProvider({ children }: { children: ReactNode }) {
-  if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
-    return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
-  }
-
   const apiUrl = resolveApiBaseUrl();
   const [authMode, setAuthMode] = useState<'cookie' | 'dev' | null>(null);
   const [devUserId, setDevUserId] = useState<string>(() => {
@@ -292,6 +299,7 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
   // (that used to flip isLoading and show "Signing you in...").
   useEffect(() => {
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- session bootstrap fetch owns the loading flag
     setIsLoading(true);
 
     const loadProfile = async () => {
@@ -850,13 +858,25 @@ function BackendAuthProvider({ children }: { children: ReactNode }) {
     return () => setUnauthorizedHandler(null);
   }, [handleUnauthorized]);
 
+  // A 403 TERMS_NOT_ACCEPTED means the cached profile is stale; reloading it shows the gate.
+  useEffect(() => {
+    setTermsRequiredHandler(() => {
+      void refreshProfile();
+    });
+    return () => setTermsRequiredHandler(null);
+  }, [refreshProfile]);
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  if (import.meta.env.VITE_DISABLE_AUTH === 'true') {
+    return <DisabledAuthProvider>{children}</DisabledAuthProvider>;
+  }
   return <BackendAuthProvider>{children}</BackendAuthProvider>;
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- hook is co-located with its provider
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used within AuthProvider');
