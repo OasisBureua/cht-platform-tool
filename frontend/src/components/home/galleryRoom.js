@@ -1,4 +1,3 @@
-/* eslint-disable */
 /**
  * The homepage gallery room and the particle field behind it.
  *

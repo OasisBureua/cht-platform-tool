@@ -11,10 +11,7 @@ function asRecord(value: unknown): JsonRecord | null {
     : null;
 }
 
-function pickMetric(
-  metrics: unknown,
-  keys: string[],
-): string | number | null {
+function pickMetric(metrics: unknown, keys: string[]): string | number | null {
   const root = asRecord(metrics);
   if (!root) return null;
   for (const key of keys) {
@@ -50,7 +47,12 @@ export type HubspotReportEnrichment = {
     funnelConversion: { available: boolean; note: string };
     emailPerformance: { available: boolean; note: string; summary?: unknown };
   };
-  kpiUpdates: Array<{ label: string; value: string; source: string; note: string }>;
+  kpiUpdates: Array<{
+    label: string;
+    value: string;
+    source: string;
+    note: string;
+  }>;
   dataGapsToRemove: RegExp[];
 };
 
@@ -80,7 +82,12 @@ export function buildHubspotReportEnrichment(
     hubspotSyncedAt ||
     null;
   const portalId =
-    raw.portalId != null ? String(raw.portalId) : null;
+    typeof raw.portalId === 'string' ||
+    typeof raw.portalId === 'number' ||
+    typeof raw.portalId === 'bigint' ||
+    typeof raw.portalId === 'boolean'
+      ? String(raw.portalId)
+      : null;
   const accountName =
     typeof raw.accountName === 'string' ? raw.accountName : null;
   const campaignId =
@@ -92,8 +99,7 @@ export function buildHubspotReportEnrichment(
       'numContacts',
       'contactCount',
       'sessions',
-    ]) ??
-    pickMetric(raw.campaign, ['numIncluded', 'hs_object_id']);
+    ]) ?? pickMetric(raw.campaign, ['numIncluded', 'hs_object_id']);
   const submissions = pickMetric(raw.metrics, [
     'formSubmissions',
     'submissions',
@@ -194,10 +200,7 @@ export function buildHubspotReportEnrichment(
             : 'Requires reporting period dates for email statistics',
       },
     ],
-    dataGapsToRemove: [
-      /HubSpot not connected/i,
-      /Connect HubSpot/i,
-    ],
+    dataGapsToRemove: [/HubSpot not connected/i, /Connect HubSpot/i],
   };
 }
 
@@ -217,8 +220,8 @@ export function enrichAnalyticsReportWithHubspot(
 
   const base = asRecord(report) ?? {};
   const sections = asRecord(base.sections) ?? {};
-  const kpiTiles = Array.isArray(sections.kpiTiles)
-    ? [...sections.kpiTiles]
+  const kpiTiles: unknown[] = Array.isArray(sections.kpiTiles)
+    ? [...(sections.kpiTiles as unknown[])]
     : [];
 
   for (const update of enrichment.kpiUpdates) {

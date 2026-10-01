@@ -44,7 +44,9 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
           return new JwtStrategy(config, auth);
         }
         // No auth configured - guard uses dev bypass; strategy never invoked
-        return { validate: async () => null } as unknown as JwtStrategy;
+        return {
+          validate: () => Promise.resolve(null),
+        } as unknown as JwtStrategy;
       },
       inject: [ConfigService, AuthService],
     },

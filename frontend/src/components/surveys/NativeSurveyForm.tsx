@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import type { SurveyQuestion } from '../api/surveys';
+import type { SurveyQuestion } from '../../api/surveys';
 import {
   isIdentitySurveyQuestion,
   listNativeSurveyQuestions,
@@ -96,6 +96,7 @@ export function NativeSurveyForm({
   // different survey re-applies.
   useEffect(() => {
     if (!profilePrefill) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- merge async profile prefill into untouched answers
     setAnswers((prev) => {
       let changed = false;
       const next = { ...prev };
@@ -110,7 +111,6 @@ export function NativeSurveyForm({
     });
     // Intentionally exclude `answers` from deps: this must only run when the
     // prefill data itself changes, not on every keystroke.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId, profilePrefill]);
 
   useEffect(() => {

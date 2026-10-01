@@ -36,7 +36,7 @@ export default function AdminSurveys() {
     },
   });
 
-  const items = surveyList?.active ?? [];
+  const items = useMemo(() => surveyList?.active ?? [], [surveyList]);
 
   const programOptions = useMemo(() => {
     const seen = new Map<string, string>();

@@ -252,7 +252,8 @@ export class PaymentsController {
     @Query('to') to?: string,
   ) {
     const normalized =
-      status && ['PENDING', 'FAILED', 'PAID', 'ALL'].includes(status.toUpperCase())
+      status &&
+      ['PENDING', 'FAILED', 'PAID', 'ALL'].includes(status.toUpperCase())
         ? (status.toUpperCase() as 'PENDING' | 'FAILED' | 'PAID' | 'ALL')
         : 'ALL';
     const csv = await this.paymentsService.exportPaymentsCsv({

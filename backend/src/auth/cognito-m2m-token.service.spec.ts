@@ -46,10 +46,11 @@ describe('CognitoM2mTokenService', () => {
   it('fetches and caches a token; second call skips network', async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({
-        access_token: 'tok-1',
-        expires_in: 3600,
-      }),
+      json: () =>
+        Promise.resolve({
+          access_token: 'tok-1',
+          expires_in: 3600,
+        }),
     });
     global.fetch = fetchMock as unknown as typeof fetch;
 
@@ -68,7 +69,7 @@ describe('CognitoM2mTokenService', () => {
   it('warms token onModuleInit when configured', async () => {
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ access_token: 'warm', expires_in: 3600 }),
+      json: () => Promise.resolve({ access_token: 'warm', expires_in: 3600 }),
     }) as unknown as typeof fetch;
 
     const service = buildService();

@@ -105,7 +105,7 @@ describe('ZoomWebhookService', () => {
           zoomJoinUrl: 'https://zoom.us/j/attendee',
           zoomStartUrl: 'https://zoom.us/s/host',
           importedViaWebhook: true,
-        }),
+        }) as unknown,
       });
       expect(surveys.attachJotformFormsFromConfig).toHaveBeenCalledWith(
         'prog-webhook-1',

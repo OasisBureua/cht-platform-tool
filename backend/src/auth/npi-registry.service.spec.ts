@@ -28,16 +28,17 @@ describe('NpiRegistryService', () => {
   it('marks exact registry hits as valid', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => [
-        1,
-        ['1760880173'],
-        {
-          'name.full': ['KELLY, JOHN'],
-          provider_type: ['Dentist'],
-          'addr_practice.full': ['BETHESDA, MD'],
-        },
-        [['1760880173', 'KELLY, JOHN', 'Dentist']],
-      ],
+      json: () =>
+        Promise.resolve([
+          1,
+          ['1760880173'],
+          {
+            'name.full': ['KELLY, JOHN'],
+            provider_type: ['Dentist'],
+            'addr_practice.full': ['BETHESDA, MD'],
+          },
+          [['1760880173', 'KELLY, JOHN', 'Dentist']],
+        ]),
     } as Response);
 
     const result = await service.lookup('1760880173');
@@ -53,7 +54,7 @@ describe('NpiRegistryService', () => {
   it('marks empty registry results as not_found', async () => {
     jest.spyOn(global, 'fetch').mockResolvedValue({
       ok: true,
-      json: async () => [0, [], null, []],
+      json: () => Promise.resolve([0, [], null, []]),
     } as Response);
 
     const result = await service.lookup('0000000000');

@@ -9,7 +9,9 @@ import { ContentHubCatalogService } from './contenthub-catalog.service';
 describe('ContentHubCatalogService.resolveDoctorTagFromSlug', () => {
   function buildService(mockKols: Record<string, { name: string } | Error>) {
     // Minimal instance: only stub the getKol dependency.
-    const svc = Object.create(ContentHubCatalogService.prototype) as ContentHubCatalogService;
+    const svc = Object.create(
+      ContentHubCatalogService.prototype,
+    ) as ContentHubCatalogService;
     (
       svc as unknown as { getKol: (slug: string) => Promise<{ name: string }> }
     ).getKol = (slug: string) => {

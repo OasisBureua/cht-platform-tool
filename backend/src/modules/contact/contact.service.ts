@@ -6,7 +6,7 @@ import { SubmitContactDto } from './dto/submit-contact.dto';
 export class ContactService {
   constructor(private readonly outboundSync: OutboundSyncService) {}
 
-  async submit(dto: SubmitContactDto): Promise<{ received: boolean }> {
+  submit(dto: SubmitContactDto): Promise<{ received: boolean }> {
     const email = dto.email.trim().toLowerCase();
     const firstName = dto.firstName.trim();
     const lastName = dto.lastName.trim();
@@ -22,6 +22,6 @@ export class ContactService {
       })
       .catch(() => {});
 
-    return { received: true };
+    return Promise.resolve({ received: true });
   }
 }

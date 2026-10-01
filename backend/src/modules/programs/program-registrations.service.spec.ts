@@ -185,7 +185,7 @@ describe('ProgramRegistrationsService', () => {
           where: expect.objectContaining({
             status: ProgramRegistrationStatus.APPROVED,
             reviewedAt: { not: null },
-          }),
+          }) as unknown,
         }),
       );
       expect(rows.map((r) => r.id)).toEqual(['reg-visible']);
@@ -231,9 +231,9 @@ describe('ProgramRegistrationsService', () => {
                 specialty: true,
                 institution: true,
                 role: true,
-              }),
-            }),
-          }),
+              }) as unknown,
+            }) as unknown,
+          }) as unknown,
         }),
       );
     });

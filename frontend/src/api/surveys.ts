@@ -50,7 +50,7 @@ export interface Survey {
     honorariumAmount?: number | null;
     hasHonorarium?: boolean;
     creditAmount?: number | null;
-    zoomSessionType?: string;
+    zoomSessionType?: 'WEBINAR' | 'MEETING';
     startDate?: string | null;
     duration?: number | null;
     zoomSessionEndedAt?: string | null;

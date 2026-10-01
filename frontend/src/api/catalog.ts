@@ -30,6 +30,7 @@ export interface ContentHubClip {
   doctors: string[];
   thumbnail_url: string;
   youtube_url: string;
+  youtubeUrl?: string;
   duration_seconds: number;
   is_short: boolean;
   posted_at: string;

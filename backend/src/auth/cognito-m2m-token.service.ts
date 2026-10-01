@@ -147,9 +147,7 @@ export class CognitoM2mTokenService implements OnModuleInit {
   }
 
   private clientId(): string {
-    return (
-      this.config.get<string>('cognito.m2mPlatformClientId')?.trim() || ''
-    );
+    return this.config.get<string>('cognito.m2mPlatformClientId')?.trim() || '';
   }
 
   private clientSecret(): string {

@@ -17,7 +17,7 @@ export default function AdminLayout() {
     user?.name ||
     user?.email ||
     'Admin'
-  ).replace(/[\[\]]/g, '');
+  ).replace(/[[\]]/g, '');
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -30,9 +30,11 @@ export default function AdminLayout() {
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setProfileMenuOpen(false);
-  }, [location.pathname]);
+  }
 
   return (
     <div className="flex min-h-screen min-w-0 flex-col bg-app-ground text-text md:flex-row">

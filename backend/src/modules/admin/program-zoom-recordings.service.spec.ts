@@ -1,8 +1,4 @@
-import {
-  BadRequestException,
-  NotFoundException,
-} from '@nestjs/common';
-import { GetObjectCommand } from '@aws-sdk/client-s3';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import {
   contentTypeFor,
   extForFile,
@@ -14,7 +10,7 @@ import { ZoomService } from '../webinars/zoom.service';
 import { ZoomRecordingsPullService } from '../zoom-recordings/zoom-recordings-pull.service';
 import { ZoomRecordingsStorageService } from '../zoom-recordings/zoom-recordings-storage.service';
 
-const mockGetSignedUrl = jest.fn();
+const mockGetSignedUrl = jest.fn<Promise<string>, unknown[]>();
 
 jest.mock('@aws-sdk/s3-request-presigner', () => ({
   getSignedUrl: (...args: unknown[]) => mockGetSignedUrl(...args),
@@ -23,7 +19,9 @@ jest.mock('@aws-sdk/s3-request-presigner', () => ({
 jest.mock('@aws-sdk/client-s3', () => ({
   S3Client: jest.fn().mockImplementation(() => ({ send: jest.fn() })),
   PutObjectCommand: jest.fn(),
-  GetObjectCommand: jest.fn().mockImplementation((input: unknown) => ({ input })),
+  GetObjectCommand: jest
+    .fn()
+    .mockImplementation((input: unknown) => ({ input })),
 }));
 
 describe('extForFile / contentTypeFor', () => {
@@ -102,7 +100,7 @@ describe('ProgramZoomRecordingsService', () => {
     zoom = { isConfigured: jest.fn().mockReturnValue(true) };
     pull = {
       pullForProgram: jest.fn(),
-      toDto: jest.fn((r) => ({
+      toDto: jest.fn((r: typeof recordingRow) => ({
         id: r.id,
         programId: r.programId,
         zoomMeetingId: r.zoomMeetingId,

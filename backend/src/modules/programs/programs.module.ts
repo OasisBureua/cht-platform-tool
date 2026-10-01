@@ -11,7 +11,13 @@ import { ProgramRegistrationsService } from './program-registrations.service';
 import { FormJotformProgressService } from './form-jotform-progress.service';
 
 @Module({
-  imports: [AuthModule, EmailModule, OutboundSyncModule, PaymentsModule, InvitesModule],
+  imports: [
+    AuthModule,
+    EmailModule,
+    OutboundSyncModule,
+    PaymentsModule,
+    InvitesModule,
+  ],
   controllers: [ProgramsController],
   providers: [
     ProgramsService,

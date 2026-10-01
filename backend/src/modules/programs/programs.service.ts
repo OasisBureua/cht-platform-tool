@@ -18,7 +18,7 @@ import {
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { EnrollUserDto, EnrollmentResponseDto } from './dto/enroll-user.dto';
-import { ProgramResponseDto, VideoDto } from './dto/program-response.dto';
+import { ProgramResponseDto } from './dto/program-response.dto';
 import {
   UpdateVideoProgressDto,
   VideoProgressResponseDto,
@@ -334,7 +334,7 @@ export class ProgramsService {
           joinSessionOpensAt: joinWindow.opensAt ?? undefined,
           joinSessionReason: joinWindow.canJoin
             ? undefined
-            : joinWindow.reason ?? undefined,
+            : (joinWindow.reason ?? undefined),
         };
       })(),
       startDate: program.startDate?.toISOString(),
@@ -405,10 +405,7 @@ export class ProgramsService {
     if (!user) throw new NotFoundException('User not found');
     if (!program) throw new NotFoundException('Program not found');
 
-    if (
-      program.startDate &&
-      Date.now() >= program.startDate.getTime()
-    ) {
+    if (program.startDate && Date.now() >= program.startDate.getTime()) {
       throw new BadRequestException(
         'Registration closed when this session started. Join is only available if you were already approved.',
       );
@@ -745,9 +742,7 @@ export class ProgramsService {
 
     const enrolledSet = new Set(enrollments.map((e) => e.programId));
     const approvedRegSet = new Set(
-      liveRegs
-        .filter((r) => r.status === 'APPROVED')
-        .map((r) => r.programId),
+      liveRegs.filter((r) => r.status === 'APPROVED').map((r) => r.programId),
     );
     const attendanceByProgram = new Map(
       liveRegs.map((r) => [r.programId, r.postEventAttendanceStatus]),

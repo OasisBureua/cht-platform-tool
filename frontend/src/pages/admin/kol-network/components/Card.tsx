@@ -7,7 +7,7 @@ import { cn } from './cn';
  * CHT platform tokens: bg-card / border-border / rounded-card / shadow-card,
  * dark-aware via CSS vars. `interactive` adds the shared hover-lift language.
  */
-export const cardVariants = cva(
+const cardVariants = cva(
   'rounded-card border border-border bg-card text-card-foreground shadow-card',
   {
     variants: {

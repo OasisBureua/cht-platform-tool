@@ -46,7 +46,8 @@ export class SendRegistrationInvitesDto {
 
   @ApiPropertyOptional({
     type: [String],
-    description: 'Filter role-based recipients by city (AND with other filters)',
+    description:
+      'Filter role-based recipients by city (AND with other filters)',
   })
   @IsOptional()
   @IsArray()
@@ -55,7 +56,8 @@ export class SendRegistrationInvitesDto {
 
   @ApiPropertyOptional({
     type: [String],
-    description: 'Filter role-based recipients by state (AND with other filters)',
+    description:
+      'Filter role-based recipients by state (AND with other filters)',
   })
   @IsOptional()
   @IsArray()

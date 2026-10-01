@@ -433,8 +433,8 @@ export default function ClipDetail() {
   const youtubeUrl =
     typeof clip.youtube_url === 'string'
       ? clip.youtube_url
-      : typeof (clip as { youtubeUrl?: unknown }).youtubeUrl === 'string'
-        ? (clip as { youtubeUrl: string }).youtubeUrl
+      : typeof clip.youtubeUrl === 'string'
+        ? clip.youtubeUrl
         : '';
 
   if (!extractYoutubeVideoIdFromUrl(youtubeUrl)) {

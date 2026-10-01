@@ -27,7 +27,9 @@ function readFlowStarted(programId: string): boolean {
 function writeFlowStarted(programId: string) {
   try {
     localStorage.setItem(flowStartedKey(programId), '1');
-  } catch {}
+  } catch {
+    // localStorage unavailable (private mode or quota)
+  }
 }
 
 export default function PostEventParticipantFlow(props: {
@@ -94,10 +96,12 @@ export default function PostEventParticipantFlow(props: {
     return () => window.removeEventListener('popstate', onPop);
   }, [flowBackLocked]);
 
-  useEffect(() => {
+  const [prevProgramId, setPrevProgramId] = useState(program.id);
+  if (program.id !== prevProgramId) {
+    setPrevProgramId(program.id);
     setPhase('intro');
     setFlowStarted(readFlowStarted(program.id));
-  }, [program.id]);
+  }
 
   // Resume from server (e.g. refresh) when sitting at intro.
   useEffect(() => {
@@ -110,6 +114,7 @@ export default function PostEventParticipantFlow(props: {
     const jotformSubmitted = surveySubmitted;
 
     if (hasSurvey && !ack) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resume the flow from server registration state
       if (flowStarted || jotformSubmitted) setPhase('survey');
       return;
     }
@@ -123,13 +128,14 @@ export default function PostEventParticipantFlow(props: {
     } else if (ack) {
       setPhase('done');
     }
-  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id, flowStarted]);
+  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id, flowStarted, surveySubmitted]);
 
   /** Refresh mid-flow: survey already saved server-side → advance to payout or done. */
   useEffect(() => {
     if (!myRegistration || !showFlow || phase !== 'survey' || !hasSurvey) return;
     if (!myRegistration.postEventSurveyAcknowledgedAt) return;
     if (hasHonorarium && !myRegistration.honorariumRequestedAt && !myRegistration.honorariumPayment) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- advance when the server reports the survey was saved
       setPhase('payout');
     } else {
       setPhase('done');
@@ -145,6 +151,12 @@ export default function PostEventParticipantFlow(props: {
     myRegistration?.honorariumRequestedAt,
     myRegistration?.honorariumPayment,
   ]);
+
+  const [prevPhase, setPrevPhase] = useState(phase);
+  if (phase !== prevPhase) {
+    setPrevPhase(phase);
+    if (phase !== 'survey') setNativeSurveySubmitting(false);
+  }
 
   if (!showFlow) {
     return null;
@@ -184,7 +196,6 @@ export default function PostEventParticipantFlow(props: {
   const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
   const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
 
-  const jotformSubmitted = surveySubmitted;
   const surveyStepLabel = hasSurvey
     ? surveyAcked
       ? 'Survey complete'
@@ -200,12 +211,6 @@ export default function PostEventParticipantFlow(props: {
     phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
 
   const nativePostEventSurvey = !!program.feedbackSurveyId;
-
-  useEffect(() => {
-    if (phase !== 'survey') {
-      setNativeSurveySubmitting(false);
-    }
-  }, [phase]);
 
   const advanceAfterSurvey = () => {
     if (hasHonorarium) setPhase('payout');

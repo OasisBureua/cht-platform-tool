@@ -6,7 +6,9 @@ export const PODCAST_MIN_EPISODE_SECONDS = 15 * 60;
 
 const SHORTS_MARKER = /#shorts\b|youtube\.com\/shorts\//i;
 
-export function parseYouTubeDurationSeconds(iso: string | undefined | null): number {
+export function parseYouTubeDurationSeconds(
+  iso: string | undefined | null,
+): number {
   if (!iso) return 0;
   const match = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso);
   if (!match) return 0;
@@ -26,7 +28,9 @@ export function isLikelyYouTubeShort(input: {
   const description = input.description ?? '';
   if (SHORTS_MARKER.test(title) || SHORTS_MARKER.test(description)) return true;
   if (
-    input.tags?.some((tag) => SHORTS_MARKER.test(tag) || /^shorts$/i.test(tag.trim()))
+    input.tags?.some(
+      (tag) => SHORTS_MARKER.test(tag) || /^shorts$/i.test(tag.trim()),
+    )
   ) {
     return true;
   }

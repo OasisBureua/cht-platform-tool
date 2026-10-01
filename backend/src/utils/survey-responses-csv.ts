@@ -26,7 +26,15 @@ function formatAnswerValue(value: unknown): string {
   if (typeof value === 'object') {
     return normalizeCsvText(JSON.stringify(value));
   }
-  return normalizeCsvText(String(value));
+  if (typeof value === 'string') return normalizeCsvText(value);
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return normalizeCsvText(String(value));
+  }
+  return '';
 }
 
 function csvEscape(value: string): string {

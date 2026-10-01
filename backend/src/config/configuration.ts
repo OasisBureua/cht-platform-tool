@@ -1,3 +1,6 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
 export default () => ({
   // Application
   nodeEnv: process.env.NODE_ENV || 'development',
@@ -240,8 +243,6 @@ export default () => ({
         .filter(Boolean) || [];
     if (ids.length === 0) {
       try {
-        const fs = require('fs');
-        const path = require('path');
         const dataDir = path.resolve(process.cwd(), '..', 'data');
         const txtPath = path.join(dataDir, 'youtube-playlist-ids.txt');
         if (fs.existsSync(txtPath)) {

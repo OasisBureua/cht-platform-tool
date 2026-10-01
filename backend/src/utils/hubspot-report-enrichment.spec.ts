@@ -25,9 +25,9 @@ describe('hubspot-report-enrichment', () => {
       portalId: '51136698',
       hubspotCampaignId: 'abc',
     });
-    expect(e!.kpiUpdates.find((k) => k.label === 'HubSpot Contacts')?.value).toBe(
-      '120',
-    );
+    expect(
+      e!.kpiUpdates.find((k) => k.label === 'HubSpot Contacts')?.value,
+    ).toBe('120');
   });
 
   it('merges into an existing report payload', () => {
@@ -47,10 +47,7 @@ describe('hubspot-report-enrichment', () => {
         dataGaps: ['HubSpot not connected: contact activity unavailable.'],
       },
     };
-    const enriched = enrichAnalyticsReportWithHubspot(
-      report,
-      snapshot,
-    ) as {
+    const enriched = enrichAnalyticsReportWithHubspot(report, snapshot) as {
       hubspotData: unknown;
       sections: { kpiTiles: Array<{ value: string }>; dataGaps: string[] };
     };

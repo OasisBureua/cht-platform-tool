@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import TermsAcceptanceModal from './TermsAcceptanceModal';
 
 const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 
@@ -37,6 +38,14 @@ export default function ProtectedRoute({ children, requireAdmin, loginPath }: Pr
 
   if (requireAdmin && user.role !== 'ADMIN') {
     return <Navigate to="/app/home" replace />;
+  }
+
+  if (user.termsAccepted === false) {
+    return (
+      <div className="min-h-screen bg-background">
+        <TermsAcceptanceModal />
+      </div>
+    );
   }
 
   return <>{children}</>;

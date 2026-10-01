@@ -175,7 +175,6 @@ export default function Join() {
       void runNpiVerify(npiDigits);
     }, 400);
     return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run when digits/role change
   }, [npiDigits, requiresNpi]);
 
   // SCRUM-175: resolve the invite token from the URL, pre-fill the email field.
@@ -716,11 +715,25 @@ export default function Join() {
       </form>
 
       <p className="mt-6 text-body-s text-faint">
-        By continuing, you agree to our{' '}
-        <Link to="/privacy" className="press rounded-[6px] text-anchor hover:brightness-110">
+        By creating an account, you agree to our{' '}
+        <a
+          href="/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="press rounded-[6px] text-anchor hover:brightness-110"
+        >
+          Terms and Conditions
+        </a>{' '}
+        and{' '}
+        <a
+          href="/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="press rounded-[6px] text-anchor hover:brightness-110"
+        >
           Privacy Policy
-        </Link>
-        .
+        </a>
+        . You&apos;ll be asked to confirm before you enter the platform.
       </p>
 
       <RecaptchaNotice />

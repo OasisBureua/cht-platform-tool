@@ -21,9 +21,7 @@ export class ContentHubSyncService {
 
   constructor(private readonly contentHub: ContentHubClientService) {
     if (!this.contentHub.isConfigured()) {
-      this.logger.warn(
-        'Content Hub M2M not configured, HCP upsert disabled',
-      );
+      this.logger.warn('Content Hub M2M not configured, HCP upsert disabled');
     }
   }
 
@@ -38,9 +36,7 @@ export class ContentHubSyncService {
   async upsertHCP(input: ContentHubHCPUpsertInput): Promise<boolean> {
     const npi = (input.npi || '').replace(/\D/g, '');
     if (npi.length !== 10) {
-      this.logger.debug(
-        `[HCP upsert] skip: invalid NPI '${input.npi ?? ''}'`,
-      );
+      this.logger.debug(`[HCP upsert] skip: invalid NPI '${input.npi ?? ''}'`);
       return false;
     }
 

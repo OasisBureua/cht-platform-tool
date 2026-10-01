@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ListVideo } from 'lucide-react';
 import type { CatalogItem } from '../../api/catalog';
 
@@ -27,9 +27,11 @@ function PlaylistCard({
   const playlistUrl = isInApp ? `/app/catalog/playlist/${item.id}` : `/catalog/playlist/${item.id}`;
   const thumb = item.thumbnailUrl || '/images/placeholder-playlist.svg';
 
-  useEffect(() => {
+  const [prevThumb, setPrevThumb] = useState(thumb);
+  if (thumb !== prevThumb) {
+    setPrevThumb(thumb);
     setHidden(false);
-  }, [thumb]);
+  }
 
   if (hidden) return null;
 

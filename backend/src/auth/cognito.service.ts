@@ -47,7 +47,8 @@ export interface CognitoIdTokenClaims {
   given_name?: string;
   family_name?: string;
   name?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   aud?: string | string[];
   iss?: string;
   exp?: number;
@@ -59,7 +60,8 @@ export interface CognitoIdTokenClaims {
 export interface CognitoAccessTokenClaims {
   sub: string;
   client_id?: string;
-  token_use?: 'id' | 'access' | string;
+  /** Normally `'id'` or `'access'`; kept as `string` since tokens are untrusted input. */
+  token_use?: string;
   iss?: string;
   exp?: number;
   username?: string;
@@ -187,7 +189,9 @@ export class CognitoService {
   }
 
   private get hostedUiBaseUrl(): string {
-    const configured = this.configService.get<string>('cognito.hostedUiBaseUrl');
+    const configured = this.configService.get<string>(
+      'cognito.hostedUiBaseUrl',
+    );
     if (configured) return configured.replace(/\/$/, '');
     const domain = this.configService.get<string>('cognito.domainPrefix');
     const region = this.region;
@@ -643,7 +647,9 @@ export class CognitoService {
   /**
    * Start TOTP enrollment. Returns the shared secret for an authenticator app.
    */
-  async associateSoftwareToken(accessToken: string): Promise<{ secretCode: string }> {
+  async associateSoftwareToken(
+    accessToken: string,
+  ): Promise<{ secretCode: string }> {
     const response = await this.client.send(
       new AssociateSoftwareTokenCommand({ AccessToken: accessToken }),
       { abortSignal: this.cognitoAbortSignal() },
@@ -711,10 +717,7 @@ export class CognitoService {
   }
 
   /** Confirm phone_number with the SMS code Cognito sent. */
-  async verifyPhoneAttribute(
-    accessToken: string,
-    code: string,
-  ): Promise<void> {
+  async verifyPhoneAttribute(accessToken: string, code: string): Promise<void> {
     await this.client.send(
       new VerifyUserAttributeCommand({
         AccessToken: accessToken,
@@ -753,8 +756,7 @@ export class CognitoService {
       );
       const settings = user.UserMFASettingList ?? [];
       return (
-        settings.includes('SOFTWARE_TOKEN_MFA') ||
-        settings.includes('SMS_MFA')
+        settings.includes('SOFTWARE_TOKEN_MFA') || settings.includes('SMS_MFA')
       );
     } catch (err) {
       this.logger.warn(
@@ -1043,9 +1045,7 @@ export class CognitoService {
     };
   }
 
-  private toTokens(
-    result?: AuthenticationResultType,
-  ): CognitoTokens | null {
+  private toTokens(result?: AuthenticationResultType): CognitoTokens | null {
     if (!result?.IdToken || !result.AccessToken) return null;
     return {
       idToken: result.IdToken,

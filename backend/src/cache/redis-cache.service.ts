@@ -84,7 +84,11 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async setJson(key: string, value: unknown, ttlSeconds?: number): Promise<void> {
+  async setJson(
+    key: string,
+    value: unknown,
+    ttlSeconds?: number,
+  ): Promise<void> {
     if (!this.isEnabled() || !this.client) return;
     const ttl =
       typeof ttlSeconds === 'number' && ttlSeconds > 0

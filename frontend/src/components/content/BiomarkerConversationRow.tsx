@@ -84,7 +84,7 @@ export function BiomarkerConversationRow({
   });
 
   const clips: ContentHubClip[] = useMemo(() => {
-    const surfaced = (data?.items ?? []).filter(shouldSurfaceCatalogClip);
+    const surfaced = (data?.items ?? []).filter((clip) => shouldSurfaceCatalogClip(clip));
     if (!hideBrokenCatalogThumbnails || brokenThumbIds.size === 0) return surfaced;
     return surfaced.filter((c) => !brokenThumbIds.has(c.id));
   }, [data?.items, hideBrokenCatalogThumbnails, brokenThumbIds]);
@@ -195,9 +195,3 @@ export function BiomarkerConversationRow({
 export const BIOMARKER_CAROUSEL_IDS: string[] = HCP_CAROUSELS.filter((c) =>
   c.id.startsWith('hcp-home-') && c.id !== 'hcp-home-recently-added',
 ).map((c) => c.id);
-
-/** Public marketing home biomarker strips (catalog clips by tag, not YouTube playlists). */
-export const ANON_HOME_BIOMARKER_CAROUSEL_IDS: string[] = [
-  'anon-home-her2',
-  'anon-home-hr',
-];

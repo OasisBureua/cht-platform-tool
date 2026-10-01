@@ -245,8 +245,8 @@ export default function Dashboard() {
   const recentItems = recentData?.items ?? [];
   const topicItems = topicData?.items ?? [];
   /** Catalog clips that have a usable thumb URL, omit placeholder-only rows on the dashboard. */
-  const recentCatalogClips = useMemo(() => recentItems.filter(shouldSurfaceCatalogClip), [recentItems]);
-  const topicCatalogClips = useMemo(() => topicItems.filter(shouldSurfaceCatalogClip), [topicItems]);
+  const recentCatalogClips = useMemo(() => recentItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [recentItems]);
+  const topicCatalogClips = useMemo(() => topicItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [topicItems]);
 
   /** After runtime image failures, omit cards so blanks do not stay in strip / spotlight. */
   const recentCatalogForHome = useMemo(

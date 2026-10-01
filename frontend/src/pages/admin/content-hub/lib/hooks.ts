@@ -20,7 +20,6 @@ export const qk = {
   csvData: (id: string | number) => [KEY, 'campaign', String(id), 'csv-data'] as const,
   validation: (id: string | number) => [KEY, 'campaign', String(id), 'data-validation'] as const,
   report: (id: string | number) => [KEY, 'campaign', String(id), 'report'] as const,
-  executiveReport: (id: string | number) => [KEY, 'campaign', String(id), 'executive-report'] as const,
   templates: () => [KEY, 'templates'] as const,
   integrations: () => [KEY, 'integrations'] as const,
   integrationsConnection: () => [KEY, 'integrations-connection'] as const,
@@ -158,13 +157,6 @@ export function useGenerateInsights(id: string | number) {
 // ---------- Reports ----------
 export function useAnalyticsReport(id: string | number) {
   return useQuery({ queryKey: qk.report(id), queryFn: () => store.getAnalyticsReport(n(id)) });
-}
-
-export function useExecutiveReport(id: string | number) {
-  return useQuery({
-    queryKey: qk.executiveReport(id),
-    queryFn: () => store.getExecutiveReport(n(id)),
-  });
 }
 
 // ---------- Templates ----------

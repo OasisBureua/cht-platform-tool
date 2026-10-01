@@ -19,7 +19,10 @@ export function normalizeReportParticipantEmail(
  * Report rows need a join time plus at least one identity field (Zoom id, email, or name).
  */
 export function canImportReportParticipant(
-  participant: Pick<ZoomReportParticipant, 'id' | 'joinTime' | 'userEmail' | 'name'>,
+  participant: Pick<
+    ZoomReportParticipant,
+    'id' | 'joinTime' | 'userEmail' | 'name'
+  >,
 ): boolean {
   if (!participant.joinTime?.trim()) return false;
   return !!(

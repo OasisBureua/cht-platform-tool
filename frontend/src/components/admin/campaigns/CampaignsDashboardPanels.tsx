@@ -355,7 +355,7 @@ export function CampaignsDashboardTable({
                   <td className="px-4 py-3">
                     {campaign.contentHubCampaignId ? (
                       <Link
-                        to={`/admin/content-hub/campaigns/${campaign.contentHubCampaignId}`}
+                        to={`/admin/reports/campaigns/${campaign.contentHubCampaignId}`}
                         onClick={(e) => e.stopPropagation()}
                         className="text-sm font-medium text-brand-700 hover:underline dark:text-brand-300"
                       >

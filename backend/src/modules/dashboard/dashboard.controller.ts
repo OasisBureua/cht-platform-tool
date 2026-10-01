@@ -9,6 +9,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
+import { SkipTermsCheck } from '../../auth/skip-terms-check.decorator';
 import { DashboardService } from './dashboard.service';
 import { EarningsResponseDto } from './dto/earnings-response.dto';
 import { StatsResponseDto } from './dto/stats-response.dto';
@@ -49,6 +50,7 @@ export class DashboardController {
    * Get user profile for Settings page (auth required)
    */
   @Get(':userId/profile')
+  @SkipTermsCheck()
   async getProfile(
     @Param('userId') userId: string,
   ): Promise<ProfileResponseDto> {
@@ -61,6 +63,7 @@ export class DashboardController {
    * Update name, profession (specialty), NPI, practice location, etc.
    */
   @Patch(':userId/profile')
+  @SkipTermsCheck()
   async updateProfile(
     @Param('userId') userId: string,
     @Body() dto: UpdateProfileDto,

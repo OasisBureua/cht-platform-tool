@@ -23,7 +23,7 @@ export default function Layout() {
     user?.name ||
     user?.email ||
     'User'
-  ).replace(/[\[\]]/g, '');
+  ).replace(/[[\]]/g, '');
   const greetingName = user?.firstName?.trim().replace(/[[\]]/g, '') || displayName;
 
   useEffect(() => {
@@ -37,9 +37,11 @@ export default function Layout() {
     return () => document.removeEventListener('mousedown', onPointerDown);
   }, []);
 
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(location.pathname);
+  if (location.pathname !== prevPathname) {
+    setPrevPathname(location.pathname);
     setMobileDrawerOpen(false);
-  }, [location.pathname]);
+  }
 
   useEffect(() => {
     if (!mobileDrawerOpen) return;

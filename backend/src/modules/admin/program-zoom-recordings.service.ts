@@ -68,7 +68,9 @@ export class ProgramZoomRecordingsService {
   async createDownloadUrl(
     programId: string,
     recordingId: string,
-    opts?: { disposition?: import('../zoom-recordings/zoom-recordings-media.util').RecordingUrlDisposition },
+    opts?: {
+      disposition?: import('../zoom-recordings/zoom-recordings-media.util').RecordingUrlDisposition;
+    },
   ) {
     const row = await this.prisma.zoomRecordingFile.findFirst({
       where: { id: recordingId, programId },
@@ -84,7 +86,8 @@ export class ProgramZoomRecordingsService {
       bucket: row.s3Bucket,
       key: row.s3Key,
       fileType: row.fileType,
-      fileExtension: row.fileExtension || extForFile(row.fileType, row.fileExtension),
+      fileExtension:
+        row.fileExtension || extForFile(row.fileType, row.fileExtension),
       zoomRecordingFileId: row.zoomRecordingFileId,
       chmAssetFilename: row.chmAssetFilename,
       disposition: opts?.disposition,

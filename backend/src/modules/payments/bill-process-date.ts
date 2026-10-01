@@ -67,7 +67,9 @@ export function summarizeBillError(error: unknown): string {
   const statusMatch = text.match(/Bill\.com API error \((\d+)\):\s*([\s\S]*)/);
   if (!statusMatch) {
     const trimmed = text.trim();
-    return trimmed.length > 280 ? `${trimmed.slice(0, 277)}…` : trimmed || 'Bill.com request failed';
+    return trimmed.length > 280
+      ? `${trimmed.slice(0, 277)}…`
+      : trimmed || 'Bill.com request failed';
   }
   const status = statusMatch[1];
   const body = statusMatch[2].trim();

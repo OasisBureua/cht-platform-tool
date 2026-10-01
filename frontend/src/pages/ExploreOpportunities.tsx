@@ -152,7 +152,7 @@ export default function ExploreOpportunities() {
     enabled: Boolean(userId),
     staleTime: 5 * 60 * 1000,
   });
-  const surveys = surveyList?.active ?? [];
+  const surveys = useMemo(() => surveyList?.active ?? [], [surveyList]);
 
   const items = useMemo((): UnifiedItem[] => {
     const out: UnifiedItem[] = [];

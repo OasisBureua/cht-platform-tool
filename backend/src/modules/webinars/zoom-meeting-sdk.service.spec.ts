@@ -37,7 +37,10 @@ describe('ZoomMeetingSdkService', () => {
     });
     expect(svc.isConfigured()).toBe(true);
     const token = svc.generateSignature('11122233344', 0);
-    const decoded = jwt.verify(token, 'generalAppClientSecret') as jwt.JwtPayload;
+    const decoded = jwt.verify(
+      token,
+      'generalAppClientSecret',
+    ) as jwt.JwtPayload;
     expect(decoded.appKey).toBe('generalAppClientId');
   });
 });

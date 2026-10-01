@@ -39,8 +39,14 @@ export type MappedCognitoLoginError = {
   code: CognitoLoginErrorCode;
 };
 
+/** `String(value ?? '')` for non-Error throws (strings, objects, etc.). */
+function nonErrorText(value: unknown): string {
+  if (value === null || value === undefined) return '';
+  return String(value as { toString(): string });
+}
+
 function combinedText(err: unknown): string {
-  if (!(err instanceof Error)) return String(err ?? '');
+  if (!(err instanceof Error)) return nonErrorText(err);
   return `${err.name} ${err.message}`;
 }
 
@@ -48,7 +54,9 @@ function combinedText(err: unknown): string {
  * Map Cognito / SDK failures to user-actionable copy.
  * Never return raw AWS exception names or internal throw strings to the client.
  */
-export function mapCognitoLoginException(err: unknown): MappedCognitoLoginError {
+export function mapCognitoLoginException(
+  err: unknown,
+): MappedCognitoLoginError {
   const text = combinedText(err);
 
   if (err instanceof CognitoUnhandledChallengeError) {
@@ -114,7 +122,7 @@ export function cognitoErrorLogFields(err: unknown): {
   challenge?: string;
 } {
   const name = err instanceof Error ? err.name : 'Error';
-  const message = err instanceof Error ? err.message : String(err ?? '');
+  const message = err instanceof Error ? err.message : nonErrorText(err);
   const challenge =
     err instanceof CognitoUnhandledChallengeError
       ? err.challengeName

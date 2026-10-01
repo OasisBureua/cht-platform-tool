@@ -6,10 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  ProgramZoomSessionType,
-  ZoomSyncJobStatus,
-} from '@prisma/client';
+import { ProgramZoomSessionType, ZoomSyncJobStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { buildMonthWindows } from './zoom-sync-date.util';
@@ -166,7 +163,8 @@ export class ZoomRecordingsSyncService {
             status: ZoomSyncJobStatus.COMPLETED,
             finishedAt: new Date(),
             progressJson: progress,
-            errorMessage: 'No active Zoom users returned; nothing to inventory.',
+            errorMessage:
+              'No active Zoom users returned; nothing to inventory.',
           },
         });
         return;
@@ -212,7 +210,10 @@ export class ZoomRecordingsSyncService {
                     zoomRecordingFileId: file.id,
                     fileType: file.fileType,
                     recordingType: file.recordingType ?? null,
-                    fileExtension: extForFile(file.fileType, file.fileExtension),
+                    fileExtension: extForFile(
+                      file.fileType,
+                      file.fileExtension,
+                    ),
                     fileSizeBytes: file.fileSize ?? null,
                     recordingStart: file.recordingStart
                       ? new Date(file.recordingStart)

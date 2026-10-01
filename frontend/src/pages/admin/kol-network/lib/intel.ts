@@ -496,18 +496,6 @@ const DEMO_RX_TREND: RxTrendResponse = {
   ],
 };
 
-const DEMO_ENGAGEMENT: EngagementSignals = {
-  webinars_attended: 6,
-  webinars_rsvp_only: 2,
-  questions_asked: 3,
-  surveys_submitted: 1,
-  first_attendance_at: daysAgo(310),
-  last_attendance_at: daysAgo(12),
-  qa_rate: 0.5,
-  survey_rate: 0.17,
-  days_since_last_engagement: 12,
-};
-
 function demoTimeline(slug: string): HCPSignal[] {
   const drug = (d: string, term = d): SignalDrug => ({
     drug_normalized: d,
@@ -571,44 +559,6 @@ function demoTimeline(slug: string): HCPSignal[] {
   ];
 }
 
-function demoTrials(slug: string): HCPSignal[] {
-  return [
-    {
-      id: `${slug}-trial-1`,
-      hcp_npi: slug,
-      signal_type: 'trial',
-      observed_at: daysAgo(30),
-      source: 'clinicaltrials',
-      title:
-        'Phase II Study of Elacestrant Plus Abemaciclib in ESR1-Mutant HR+ Metastatic Breast Cancer',
-      url: 'https://clinicaltrials.gov/',
-      summary: null,
-      entities_json: null,
-      drugs: [
-        {
-          drug_normalized: 'elacestrant',
-          drug_source_term: 'elacestrant',
-          source_field: 'intervention',
-        },
-      ],
-      created_at: daysAgo(30),
-    },
-    {
-      id: `${slug}-trial-2`,
-      hcp_npi: slug,
-      signal_type: 'trial',
-      observed_at: daysAgo(140),
-      source: 'clinicaltrials',
-      title: 'Circulating Tumor DNA-Guided Therapy Escalation in Early HR+ Breast Cancer',
-      url: 'https://clinicaltrials.gov/',
-      summary: null,
-      entities_json: null,
-      drugs: [],
-      created_at: daysAgo(140),
-    },
-  ];
-}
-
 const DEMO_NIH: NIHGrantsResponse = {
   summary: {
     total_grants: 3,
@@ -663,72 +613,6 @@ const DEMO_NIH: NIHGrantsResponse = {
     },
   ],
 };
-
-const DEMO_PAYMENTS: OpenPaymentsResponse = {
-  summary: {
-    total_usd: 148_720,
-    record_count: 94,
-    year_range: [2022, 2024],
-    by_company: [
-      { company: 'Stemline Therapeutics, Inc.', total_usd: 61_240, count: 22 },
-      { company: 'Novartis Pharmaceuticals Corporation', total_usd: 38_410, count: 25 },
-      { company: 'Pfizer Inc.', total_usd: 24_980, count: 19 },
-      { company: 'AstraZeneca Pharmaceuticals LP', total_usd: 15_670, count: 16 },
-      { company: 'Eli Lilly and Company', total_usd: 8_420, count: 12 },
-    ],
-    by_drug: [
-      { drug: 'Orserdu', total_usd: 58_900, count: 20 },
-      { drug: 'Kisqali', total_usd: 33_100, count: 21 },
-      { drug: 'Ibrance', total_usd: 21_400, count: 15 },
-      { drug: 'Verzenio', total_usd: 7_950, count: 9 },
-      { drug: '(not specified)', total_usd: 27_370, count: 29 },
-    ],
-    by_nature: [
-      { nature: 'Consulting Fee', total_usd: 74_500, count: 14 },
-      { nature: 'Compensation for services (speaker)', total_usd: 52_300, count: 11 },
-      { nature: 'Travel and Lodging', total_usd: 12_840, count: 21 },
-      { nature: 'Food and Beverage', total_usd: 9_080, count: 48 },
-    ],
-  },
-  records: [],
-};
-
-function demoNews(name: string): NewsArticle[] {
-  return [
-    {
-      id: 'news-1',
-      observed_at: daysAgo(6),
-      title: `${name} discusses ESR1-mutation testing gaps in community oncology`,
-      url: 'https://news.google.com/',
-      summary: null,
-      source_name: 'OncLive',
-    },
-    {
-      id: 'news-2',
-      observed_at: daysAgo(21),
-      title: 'SABCS 2025: Oral SERD combinations headline late-breaking abstracts',
-      url: 'https://news.google.com/',
-      summary: null,
-      source_name: 'Targeted Oncology',
-    },
-    {
-      id: 'news-3',
-      observed_at: daysAgo(54),
-      title: `Institution spotlight: precision-medicine tumor board expands, ${name} named co-chair`,
-      url: 'https://news.google.com/',
-      summary: null,
-      source_name: 'Healio',
-    },
-    {
-      id: 'news-4',
-      observed_at: daysAgo(97),
-      title: 'CDK4/6 sequencing debate continues after post-MONARCH data readout',
-      url: 'https://news.google.com/',
-      summary: null,
-      source_name: 'Medscape',
-    },
-  ];
-}
 
 function demoBrief(slug: string, name: string): AIBrief {
   return {

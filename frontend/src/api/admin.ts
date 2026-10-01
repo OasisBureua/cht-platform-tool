@@ -870,20 +870,6 @@ export type CampaignsFunnelHcpResponse = {
   warnings: string[];
 };
 
-const EMPTY_CAMPAIGN_METRICS: CampaignMetricTotals = {
-  sessions: 0,
-  influencedContacts: 0,
-  newContactsFirstTouch: 0,
-  newContactsLastTouch: 0,
-  emailSent: 0,
-  emailOpens: 0,
-  emailClicks: 0,
-  landingPageViews: 0,
-  formSubmissions: 0,
-  socialClicks: 0,
-  marketingEventRegistrations: 0,
-};
-
 const DEFAULT_HUBSPOT_MARKETING_SCOPES = [
   'marketing.campaigns.read',
   'marketing-email',

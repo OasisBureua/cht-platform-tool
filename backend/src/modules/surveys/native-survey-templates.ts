@@ -119,23 +119,25 @@ export function defaultPostEventFeedbackQuestions() {
           'Hybrid',
           'Other',
         ]),
-        single(
-          'q3_years_practice',
-          'Years in independent clinical practice',
-          ['0–5', '6–10', '11–20', '>20', 'Prefer not to answer'],
-        ),
-        single(
-          'q4_her2_patients',
-          'HER2+ mBC patients you actively manage',
-          ['≤5', '6–10', '11–20', '21–40', '>40'],
-        ),
-        single('q5_tdxd_patients', 'Patients you have treated with T-DXd to date', [
-          '0',
-          '1–5',
-          '6–15',
-          '>15',
-          'Unsure',
+        single('q3_years_practice', 'Years in independent clinical practice', [
+          '0–5',
+          '6–10',
+          '11–20',
+          '>20',
+          'Prefer not to answer',
         ]),
+        single('q4_her2_patients', 'HER2+ mBC patients you actively manage', [
+          '≤5',
+          '6–10',
+          '11–20',
+          '21–40',
+          '>40',
+        ]),
+        single(
+          'q5_tdxd_patients',
+          'Patients you have treated with T-DXd to date',
+          ['0', '1–5', '6–15', '>15', 'Unsure'],
+        ),
       ]),
       section('clinical', 'Clinical practice', [
         single(
@@ -151,7 +153,9 @@ export function defaultPostEventFeedbackQuestions() {
           {
             followUp: {
               whenOption: 'No single go-to; case-by-case',
-              question: text('q6_other', 'Briefly describe:', { required: false }),
+              question: text('q6_other', 'Briefly describe:', {
+                required: false,
+              }),
             },
           },
         ),
@@ -168,7 +172,9 @@ export function defaultPostEventFeedbackQuestions() {
           {
             followUp: {
               whenOption: 'Varies substantially by patient factors',
-              question: text('q7_other', 'Briefly describe:', { required: false }),
+              question: text('q7_other', 'Briefly describe:', {
+                required: false,
+              }),
             },
           },
         ),
@@ -207,7 +213,9 @@ export function defaultPostEventFeedbackQuestions() {
           {
             followUp: {
               whenOption: 'Depends on site pathways and prior exposure',
-              question: text('q21_other', 'Briefly describe:', { required: false }),
+              question: text('q21_other', 'Briefly describe:', {
+                required: false,
+              }),
             },
           },
         ),

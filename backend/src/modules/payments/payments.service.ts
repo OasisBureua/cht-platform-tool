@@ -11,6 +11,7 @@ import {
   Prisma,
   PostEventAttendanceStatus,
   ProgramZoomSessionType,
+  type Payment,
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -156,7 +157,13 @@ export class PaymentsService {
     vendor: Record<string, unknown>,
   ): string | null {
     const tryFrom = (val: unknown): string | null => {
-      if (val == null) return null;
+      if (
+        typeof val !== 'string' &&
+        typeof val !== 'number' &&
+        typeof val !== 'bigint'
+      ) {
+        return null;
+      }
       const s = String(val).replace(/\s/g, '');
       if (!s) return null;
       const digits = s.replace(/\D/g, '');
@@ -382,9 +389,7 @@ export class PaymentsService {
 
     const paymentMethod = vendorDto.paymentMethod;
     if (paymentMethod !== 'ACH' && paymentMethod !== 'CHECK') {
-      throw new BadRequestException(
-        'Select a payment method: ACH or Check.',
-      );
+      throw new BadRequestException('Select a payment method: ACH or Check.');
     }
 
     if (paymentMethod === 'ACH' && !vendorDto.bankAccount) {
@@ -795,7 +800,9 @@ export class PaymentsService {
 
     const warnings: string[] = [];
     if (!reg) {
-      warnings.push('No registration found for this user on the selected program.');
+      warnings.push(
+        'No registration found for this user on the selected program.',
+      );
     }
 
     const attendanceStatus = reg?.postEventAttendanceStatus ?? null;
@@ -1025,9 +1032,7 @@ export class PaymentsService {
     const rows = await this.prisma.payment.findMany({
       where: {
         ...statusFilter,
-        ...(createdAt && Object.keys(createdAt).length
-          ? { createdAt }
-          : {}),
+        ...(createdAt && Object.keys(createdAt).length ? { createdAt } : {}),
       },
       include: {
         user: {
@@ -1051,7 +1056,7 @@ export class PaymentsService {
       take: 5000,
     });
 
-    const escape = (value: unknown) => {
+    const escape = (value: string | number | null | undefined) => {
       const s = value == null ? '' : String(value);
       if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
       return s;
@@ -1203,7 +1208,7 @@ export class PaymentsService {
       if (
         (await programHasPostEventSurvey(
           this.prisma,
-          payment.programId!,
+          payment.programId,
           reg.program.jotformSurveyUrl,
         )) &&
         !reg.postEventSurveyAcknowledgedAt
@@ -1589,7 +1594,7 @@ export class PaymentsService {
       );
     }
 
-    let payment;
+    let payment: Payment;
     try {
       payment = await this.prisma.payment.create({
         data: {
@@ -1982,9 +1987,7 @@ export class PaymentsService {
       };
     } catch (error) {
       this.logger.error(`Sync failed: ${(error as Error).message}`);
-      throw new BadRequestException(
-        `Sync failed: ${(error as Error).message}`,
-      );
+      throw new BadRequestException(`Sync failed: ${(error as Error).message}`);
     }
   }
 }

@@ -5,6 +5,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { UserRole } from '@prisma/client';
+import type { Request } from 'express';
+import type { AuthUser } from './auth.service';
 import { isProductionEnv } from '../utils/is-production-env';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
@@ -16,7 +18,9 @@ const DEV_USER_HEADER = 'x-dev-user-id';
 @Injectable()
 export class AdminOrDevGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
-    const request = context.switchToHttp().getRequest();
+    const request = context
+      .switchToHttp()
+      .getRequest<Request & { user?: AuthUser }>();
     const user = request.user;
 
     if (user?.role === UserRole.ADMIN) {

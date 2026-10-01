@@ -41,7 +41,7 @@ async function fetchClipsForKol(
         offset,
         sort_by: 'recorded_at',
       });
-      surfaced.push(...items.filter(shouldSurfaceCatalogClip));
+      surfaced.push(...items.filter((clip) => shouldSurfaceCatalogClip(clip)));
       if (items.length < COUNT_PAGE_SIZE) break;
       offset += COUNT_PAGE_SIZE;
     }

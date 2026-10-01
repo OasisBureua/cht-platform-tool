@@ -27,7 +27,7 @@ export default function DiseaseDetail() {
 
   const { data: wpCategories } = useQuery({
     queryKey: ['catalog', 'wordpress', 'categories'],
-    queryFn: catalogApi.getWordPressCategories,
+    queryFn: () => catalogApi.getWordPressCategories(),
     staleTime: WORDPRESS_CATALOG_STALE_MS,
     enabled: wpMode,
   });
@@ -59,7 +59,7 @@ export default function DiseaseDetail() {
     [wpMode, legacyArea],
   );
 
-  const { data: playlists = [], isLoading: playlistsLoading } = useQuery({
+  const { isLoading: playlistsLoading } = useQuery({
     queryKey: ['catalog', 'playlists'],
     queryFn: catalogApi.getPlaylists,
     staleTime: 5 * 60 * 1000,

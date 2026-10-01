@@ -6,7 +6,6 @@ import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
 import { JotformService } from '../jotform/jotform.service';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
-import { defaultPostEventFeedbackQuestions } from './native-survey-templates';
 import { SurveysService } from './surveys.service';
 
 const existingSchema = {
@@ -39,7 +38,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       findMany: jest.Mock;
       findFirst: jest.Mock;
       findUnique: jest.Mock;
-      create: jest.Mock;
+      create: jest.Mock<Promise<unknown>, [{ data: Record<string, unknown> }]>;
       update: jest.Mock;
       delete: jest.Mock;
       deleteMany: jest.Mock;
@@ -59,7 +58,10 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
         findMany: jest.fn(),
         findFirst: jest.fn(),
         findUnique: jest.fn(),
-        create: jest.fn(),
+        create: jest.fn<
+          Promise<unknown>,
+          [{ data: Record<string, unknown> }]
+        >(),
         update: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
@@ -116,7 +118,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
         jotformFormId: null,
         isCustomized: false,
         schemaVersion: 1,
-      }),
+      }) as unknown,
     });
     const createdQuestions = (
       prisma.survey.create.mock.calls[0][0] as {

@@ -56,7 +56,10 @@ export class NpiRegistryService {
     // Exact NPI match — avoid fuzzy name hits when digits collide with other fields.
     url.searchParams.set('sf', 'NPI');
     url.searchParams.set('q', `NPI:${npi}`);
-    url.searchParams.set('df', 'NPI,name.full,provider_type,addr_practice.full');
+    url.searchParams.set(
+      'df',
+      'NPI,name.full,provider_type,addr_practice.full',
+    );
     url.searchParams.set('ef', 'name.full,provider_type,addr_practice.full');
     url.searchParams.set('maxList', '1');
 
@@ -94,7 +97,7 @@ export class NpiRegistryService {
         };
       }
 
-      const codes = payload[1];
+      const codes: unknown = payload[1];
       if (!Array.isArray(codes) || codes.length === 0) {
         return {
           valid: false,

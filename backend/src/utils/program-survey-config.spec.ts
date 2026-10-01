@@ -38,13 +38,11 @@ describe('loadProgramSurveyMeta', () => {
   });
 
   it('detects intake only from native INTAKE survey row', async () => {
-    prisma.survey.findFirst
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce({
-        id: 'intake-1',
-        jotformFormId: null,
-        questions: [{ id: 'q1', type: 'text', label: 'Name' }],
-      });
+    prisma.survey.findFirst.mockResolvedValueOnce(null).mockResolvedValueOnce({
+      id: 'intake-1',
+      jotformFormId: null,
+      questions: [{ id: 'q1', type: 'text', label: 'Name' }],
+    });
 
     const meta = await loadProgramSurveyMeta(
       prisma,

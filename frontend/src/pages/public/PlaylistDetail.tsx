@@ -29,28 +29,29 @@ export default function PlaylistDetail() {
   const searchParams = new URLSearchParams(location.search);
   const videoIdFromUrl = searchParams.get('v');
 
-  useEffect(() => {
+  const [syncedFrom, setSyncedFrom] = useState<{ videos: unknown; v: string | null } | null>(null);
+  if (!syncedFrom || syncedFrom.videos !== data?.videos || syncedFrom.v !== videoIdFromUrl) {
+    setSyncedFrom({ videos: data?.videos, v: videoIdFromUrl });
     if (data?.videos && videoIdFromUrl) {
       const idx = data.videos.findIndex((v) => v.id === videoIdFromUrl);
       if (idx >= 0) setSelectedVideoIndex(idx);
     }
-  }, [data?.videos, videoIdFromUrl]);
+  }
 
   // Derive selected video safely: may be undefined before data loads
   const [hiddenVideoIds, setHiddenVideoIds] = useState<Set<string>>(() => new Set());
+  const [prevPlaylistId, setPrevPlaylistId] = useState(playlistId);
+  if (playlistId !== prevPlaylistId) {
+    setPrevPlaylistId(playlistId);
+    setHiddenVideoIds(new Set());
+  }
   const videos = (data?.videos ?? []).filter((v) => v.id && !hiddenVideoIds.has(v.id));
   const safeIndex = Math.min(selectedVideoIndex, Math.max(0, videos.length - 1));
   const selectedVideo = videos[safeIndex];
 
-  useEffect(() => {
-    setHiddenVideoIds(new Set());
-  }, [playlistId]);
-
-  useEffect(() => {
-    if (selectedVideoIndex > 0 && selectedVideoIndex >= videos.length) {
-      setSelectedVideoIndex(Math.max(0, videos.length - 1));
-    }
-  }, [videos.length, selectedVideoIndex]);
+  if (selectedVideoIndex > 0 && selectedVideoIndex >= videos.length) {
+    setSelectedVideoIndex(Math.max(0, videos.length - 1));
+  }
 
   useEffect(() => {
     if (!selectedVideo?.id || !selectedVideo?.title) return;
@@ -71,8 +72,10 @@ export default function PlaylistDetail() {
     retry: 0, // 404s from MediaHub are expected; don't retry
   });
 
-  const shootId = (clipDetail as Record<string, unknown> | undefined)?.shoot_id as string | undefined;
-  const summary = clipDetail ? clipDisplaySummary(clipDetail as Record<string, unknown>) : '';
+  const shootId = clipDetail?.shoot_id ?? clipDetail?.shootId;
+  const summary = clipDetail
+    ? clipDisplaySummary(clipDetail as unknown as Record<string, unknown>)
+    : '';
 
   const { data: transcript, isLoading: transcriptLoading } = useQuery({
     queryKey: ['catalog', 'transcript', shootId],
@@ -263,9 +266,9 @@ function PlaylistTranscriptDisplay({ data }: { data: unknown }) {
       const paragraphs = obj.transcript.split(/\n+/).filter(Boolean);
       return (
         <div className="rounded-card border border-border bg-muted p-4 space-y-3 max-h-96 overflow-y-auto">
-          {obj.shoot_name && (
-            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{String(obj.shoot_name)}</p>
-          )}
+          {typeof obj.shoot_name === 'string' && obj.shoot_name ? (
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{obj.shoot_name}</p>
+          ) : null}
           {paragraphs.map((para, i) => (
             <p key={i} className="text-muted-foreground text-sm leading-relaxed">{para}</p>
           ))}

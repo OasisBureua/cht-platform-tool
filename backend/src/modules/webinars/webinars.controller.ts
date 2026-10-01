@@ -64,7 +64,12 @@ export class WebinarsController {
     @CurrentUser() user: AuthUser,
     @Body() body: { event?: string },
   ): Promise<{ ok: true }> {
-    const event = body?.event === 'LEFT' ? 'LEFT' : body?.event === 'JOINED' ? 'JOINED' : null;
+    const event =
+      body?.event === 'LEFT'
+        ? 'LEFT'
+        : body?.event === 'JOINED'
+          ? 'JOINED'
+          : null;
     if (!event) {
       throw new BadRequestException('event must be JOINED or LEFT');
     }

@@ -10,11 +10,12 @@ describe('BillService vendor payment method sync', () => {
 
   beforeEach(() => {
     service = Object.create(BillService.prototype) as BillService;
-    (service as unknown as { logger: { log: jest.Mock; warn: jest.Mock } }).logger =
-      {
-        log: jest.fn(),
-        warn: jest.fn(),
-      };
+    (
+      service as unknown as { logger: { log: jest.Mock; warn: jest.Mock } }
+    ).logger = {
+      log: jest.fn(),
+      warn: jest.fn(),
+    };
   });
 
   describe('ensureVendorPaymentMethodMatches', () => {
@@ -57,24 +58,28 @@ describe('BillService vendor payment method sync', () => {
 
   describe('syncVendorPaymentMethod', () => {
     it('deletes bank account for CHECK', async () => {
-      service.deleteVendorBankAccountIfPresent = jest
+      const deleteVendorBankAccountIfPresent = jest
         .fn()
         .mockResolvedValue(true);
-      service.createVendorBankAccount = jest.fn();
+      const createVendorBankAccount = jest.fn();
+      service.deleteVendorBankAccountIfPresent =
+        deleteVendorBankAccountIfPresent;
+      service.createVendorBankAccount = createVendorBankAccount;
 
       await service.syncVendorPaymentMethod('009abc', 'CHECK');
 
-      expect(service.deleteVendorBankAccountIfPresent).toHaveBeenCalledWith(
-        '009abc',
-      );
-      expect(service.createVendorBankAccount).not.toHaveBeenCalled();
+      expect(deleteVendorBankAccountIfPresent).toHaveBeenCalledWith('009abc');
+      expect(createVendorBankAccount).not.toHaveBeenCalled();
     });
 
     it('replaces bank account for ACH', async () => {
-      service.deleteVendorBankAccountIfPresent = jest
+      const deleteVendorBankAccountIfPresent = jest
         .fn()
         .mockResolvedValue(true);
-      service.createVendorBankAccount = jest.fn().mockResolvedValue({});
+      const createVendorBankAccount = jest.fn().mockResolvedValue({});
+      service.deleteVendorBankAccountIfPresent =
+        deleteVendorBankAccountIfPresent;
+      service.createVendorBankAccount = createVendorBankAccount;
 
       const bank = {
         nameOnAccount: 'Jane Doe',
@@ -84,13 +89,8 @@ describe('BillService vendor payment method sync', () => {
 
       await service.syncVendorPaymentMethod('009abc', 'ACH', bank);
 
-      expect(service.deleteVendorBankAccountIfPresent).toHaveBeenCalledWith(
-        '009abc',
-      );
-      expect(service.createVendorBankAccount).toHaveBeenCalledWith(
-        '009abc',
-        bank,
-      );
+      expect(deleteVendorBankAccountIfPresent).toHaveBeenCalledWith('009abc');
+      expect(createVendorBankAccount).toHaveBeenCalledWith('009abc', bank);
     });
 
     it('rejects ACH without bank details', async () => {

@@ -5,7 +5,10 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import { ZoomService } from '../webinars/zoom.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
-import { ProgramZoomSessionType, WebinarParticipantEventSource } from '@prisma/client';
+import {
+  ProgramZoomSessionType,
+  WebinarParticipantEventSource,
+} from '@prisma/client';
 
 describe('ZoomAttendanceImportService', () => {
   let prisma: {
@@ -34,10 +37,18 @@ describe('ZoomAttendanceImportService', () => {
     };
     user: { findUnique: jest.Mock };
     programRegistration: { findMany: jest.Mock };
-    zoomAttendanceImportJob: { create: jest.Mock; findUnique: jest.Mock; update: jest.Mock; findFirst: jest.Mock };
+    zoomAttendanceImportJob: {
+      create: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      findFirst: jest.Mock;
+    };
     $transaction: jest.Mock;
   };
-  let zoom: { isConfigured: jest.Mock; listReportParticipantsForSession: jest.Mock };
+  let zoom: {
+    isConfigured: jest.Mock;
+    listReportParticipantsForSession: jest.Mock;
+  };
   let registrations: { autoVerifyAttendanceFromZoomJoins: jest.Mock };
   let reportExport: {
     exportFromZoomParticipants: jest.Mock;
@@ -114,8 +125,10 @@ describe('ZoomAttendanceImportService', () => {
       prisma as unknown as PrismaService,
       {
         get: jest.fn((key: string) => {
-          if (key === 'zoomRecordings.attendanceImportMonthsBackDefault') return 12;
-          if (key === 'zoomRecordings.attendanceImportAutoVerifyDefault') return false;
+          if (key === 'zoomRecordings.attendanceImportMonthsBackDefault')
+            return 12;
+          if (key === 'zoomRecordings.attendanceImportAutoVerifyDefault')
+            return false;
           return undefined;
         }),
       } as unknown as ConfigService,
@@ -153,8 +166,8 @@ describe('ZoomAttendanceImportService', () => {
       expect.objectContaining({
         where: { id: 'sess-1' },
         data: expect.objectContaining({
-          attendanceLastImportedAt: expect.any(Date),
-        }),
+          attendanceLastImportedAt: expect.any(Date) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -193,7 +206,7 @@ describe('ZoomAttendanceImportService', () => {
         data: expect.objectContaining({
           zoomParticipantId: null,
           participantEmail: 'david.gill@digitaledgepartner.com',
-        }),
+        }) as unknown,
       }),
     );
   });
@@ -225,7 +238,7 @@ describe('ZoomAttendanceImportService', () => {
     expect(prisma.webinarParticipantEvent.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'existing-row' },
-        data: expect.objectContaining({ durationSeconds: 300 }),
+        data: expect.objectContaining({ durationSeconds: 300 }) as unknown,
       }),
     );
     expect(prisma.webinarParticipantEvent.create).not.toHaveBeenCalled();
@@ -254,10 +267,11 @@ describe('ZoomAttendanceImportService', () => {
     expect(prisma.webinarParticipantEvent.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({
-          programId_zoomParticipantId_event_source_joinTime: expect.objectContaining({
-            source: WebinarParticipantEventSource.REPORT_IMPORT,
-          }),
-        }),
+          programId_zoomParticipantId_event_source_joinTime:
+            expect.objectContaining({
+              source: WebinarParticipantEventSource.REPORT_IMPORT,
+            }) as unknown,
+        }) as unknown,
       }),
     );
   });
@@ -282,7 +296,10 @@ describe('ZoomAttendanceImportService', () => {
       },
     ]);
 
-    const result = await service.listSessionAttendees('sess-1', { page: 2, pageSize: 10 });
+    const result = await service.listSessionAttendees('sess-1', {
+      page: 2,
+      pageSize: 10,
+    });
 
     expect(result.page).toBe(2);
     expect(result.pageSize).toBe(10);
@@ -328,13 +345,22 @@ describe('ZoomAttendanceImportService', () => {
           { sessionId: 'sess-1' },
           {
             OR: [
-              { participantName: { contains: '16778240', mode: 'insensitive' } },
-              { participantEmail: { contains: '16778240', mode: 'insensitive' } },
-              { zoomParticipantId: { contains: '16778240', mode: 'insensitive' } },
+              {
+                participantName: { contains: '16778240', mode: 'insensitive' },
+              },
+              {
+                participantEmail: { contains: '16778240', mode: 'insensitive' },
+              },
+              {
+                zoomParticipantId: {
+                  contains: '16778240',
+                  mode: 'insensitive',
+                },
+              },
             ],
           },
         ],
-      }),
+      }) as unknown,
     });
     expect(prisma.zoomAttendanceParticipant.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ skip: 0, take: 10 }),

@@ -1,18 +1,12 @@
 import { ConfigService } from '@nestjs/config';
 import { HttpService } from '@nestjs/axios';
 import { of, throwError } from 'rxjs';
-import {
-  ZoomService,
-  type ZoomAccountRecordingsPage,
-} from './zoom.service';
+import { ZoomService, type ZoomAccountRecordingsPage } from './zoom.service';
 
 describe('ZoomService account recordings', () => {
   const accountId = 'acct_test_123';
 
-  function makeService(
-    getImpl: jest.Mock,
-    postImpl?: jest.Mock,
-  ): ZoomService {
+  function makeService(getImpl: jest.Mock, postImpl?: jest.Mock): ZoomService {
     const http = {
       get: getImpl,
       post:
@@ -38,6 +32,14 @@ describe('ZoomService account recordings', () => {
     } as unknown as ConfigService;
 
     return new ZoomService(config, http);
+  }
+
+  function paramsOfCall(get: jest.Mock, index: number) {
+    const [, config] = get.mock.calls[index] as [
+      string,
+      { params: Record<string, unknown> },
+    ];
+    return config.params;
   }
 
   beforeEach(() => {
@@ -147,7 +149,7 @@ describe('ZoomService account recordings', () => {
 
     expect(sessions).toHaveLength(2);
     expect(get).toHaveBeenCalledTimes(2);
-    expect(get.mock.calls[1][1].params.next_page_token).toBe('tok-2');
+    expect(paramsOfCall(get, 1).next_page_token).toBe('tok-2');
   });
 
   it('listUserRecordingsPage calls per-user recordings API', async () => {
@@ -228,7 +230,7 @@ describe('ZoomService account recordings', () => {
 
     expect(sessions).toHaveLength(2);
     expect(get).toHaveBeenCalledTimes(2);
-    expect(get.mock.calls[1][1].params.next_page_token).toBe('tok-2');
+    expect(paramsOfCall(get, 1).next_page_token).toBe('tok-2');
   });
 
   it('listAllAccountUsers paginates GET /users', async () => {
@@ -261,10 +263,10 @@ describe('ZoomService account recordings', () => {
         params: expect.objectContaining({
           status: 'active',
           page_size: 300,
-        }),
+        }) as unknown,
       }),
     );
-    expect(get.mock.calls[1][1].params.next_page_token).toBe('n2');
+    expect(paramsOfCall(get, 1).next_page_token).toBe('n2');
   });
 
   it('listAllAccountUsers skips blank ids and dedupes overlapping pages', async () => {
@@ -300,9 +302,9 @@ describe('ZoomService account recordings', () => {
   });
 
   it('listUserRecordingsPage encodes user id in the path', async () => {
-    const get = jest.fn().mockReturnValue(
-      of({ data: { meetings: [], next_page_token: '' } }),
-    );
+    const get = jest
+      .fn()
+      .mockReturnValue(of({ data: { meetings: [], next_page_token: '' } }));
     const svc = makeService(get);
     await svc.listUserRecordingsPage({
       userId: 'host@example.com',

@@ -52,6 +52,7 @@ const SITE = new Set(['Ovarian','Bladder','CRC','NSCLC','Gastric','Endometrial',
 const AGENT = new Set(['PARP','T-DXd','HER2','HER2+','HR+','EGFR','KRAS','MSI','MMR','ADC','CAR-T','Bispecifics']);
 
 /** Classifies a raw tag string so callers do not each invent a mapping. */
+// eslint-disable-next-line react-refresh/only-export-components -- helper maps tags to Chip kinds
 export function chipKind(tag: string): ChipKind {
   if (SITE.has(tag)) return 'site';
   if (AGENT.has(tag)) return 'agent';
