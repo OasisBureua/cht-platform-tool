@@ -24,6 +24,13 @@ interface JotformWebhookResponse {
   message?: string;
 }
 
+export interface JotformFormSubmission {
+  submissionId: string;
+  submittedAt: string;
+  userId: string | null;
+  answers: Record<string, unknown>;
+}
+
 @Injectable()
 export class JotformService {
   constructor(private config: ConfigService) {}
@@ -167,6 +174,44 @@ export class JotformService {
   }
 
   /**
+   * Submissions for one form. Used by the export packet for a program that
+   * has a Jotform URL and no Survey row. One page, capped at 1000, so a
+   * form cannot stall the packet.
+   * @see https://api.jotform.com/docs/#form-id-submissions
+   */
+  async listFormSubmissions(formId: string): Promise<JotformFormSubmission[]> {
+    const id = formId.trim();
+    if (!id) return [];
+    const url =
+      `${this.getBaseUrl()}/form/${encodeURIComponent(id)}/submissions` +
+      '?limit=1000';
+    const res = await fetch(url, { headers: this.apiKeyHeaders() });
+    const raw = await res.text();
+    let data: { responseCode?: number; content?: unknown };
+    try {
+      data = JSON.parse(raw) as { responseCode?: number; content?: unknown };
+    } catch {
+      throw new Error(
+        `Jotform submissions returned invalid JSON (HTTP ${res.status})`,
+      );
+    }
+    if (
+      !this.isJotformSuccess(data?.responseCode) ||
+      !Array.isArray(data.content)
+    ) {
+      throw new Error(
+        `Jotform submissions failed: HTTP ${res.status} (responseCode ${String(data?.responseCode)})`,
+      );
+    }
+    const out: JotformFormSubmission[] = [];
+    for (const item of data.content) {
+      const mapped = mapJotformSubmission(item);
+      if (mapped) out.push(mapped);
+    }
+    return out;
+  }
+
+  /**
    * Test Jotform API connectivity using the /user endpoint.
    * Returns user info if the API key is valid.
    * @see https://api.jotform.com/docs/#user
@@ -217,4 +262,68 @@ export class JotformService {
       return { connected: false, error: msg };
     }
   }
+}
+
+const USER_ID_NAMES = new Set([
+  'user_id',
+  'userid',
+  'cht_user_id',
+  'chtuserid',
+]);
+
+function mapJotformSubmission(item: unknown): JotformFormSubmission | null {
+  if (!item || typeof item !== 'object') return null;
+  const row = item as Record<string, unknown>;
+  const submissionId = String(row.id ?? '').trim();
+  if (!submissionId) return null;
+  const { answers, userId } = flattenJotformAnswers(row.answers);
+  return {
+    submissionId,
+    submittedAt: jotformTimestampToIso(row.created_at),
+    userId,
+    answers,
+  };
+}
+
+function flattenJotformAnswers(raw: unknown): {
+  answers: Record<string, unknown>;
+  userId: string | null;
+} {
+  const answers: Record<string, unknown> = {};
+  let userId: string | null = null;
+  if (!raw || typeof raw !== 'object') return { answers, userId };
+  for (const [qid, value] of Object.entries(raw as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') {
+      answers[qid] = value;
+      continue;
+    }
+    const field = value as Record<string, unknown>;
+    const name = String(field.name ?? '')
+      .trim()
+      .toLowerCase();
+    const answer = field.answer ?? field.prettyFormat ?? null;
+    if (USER_ID_NAMES.has(name)) {
+      const id = String(answer ?? '').trim();
+      if (id) userId = id;
+      continue;
+    }
+    const key =
+      String(field.name ?? '').trim() ||
+      String(field.text ?? '').trim() ||
+      qid;
+    answers[key] = answer;
+  }
+  return { answers, userId };
+}
+
+function jotformTimestampToIso(value: unknown): string {
+  const text = String(value ?? '').trim();
+  if (!text) return new Date(0).toISOString();
+  const normalized = text.includes('T') ? text : text.replace(' ', 'T');
+  const withZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
+  const parsed = new Date(withZone);
+  if (Number.isNaN(parsed.getTime())) return new Date(0).toISOString();
+  return parsed.toISOString();
 }

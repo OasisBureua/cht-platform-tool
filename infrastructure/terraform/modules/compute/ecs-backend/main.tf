@@ -115,6 +115,10 @@ resource "aws_ecs_task_definition" "backend" {
             {
               name  = "ZOOM_ATTENDANCE_IMPORT_AUTO_VERIFY"
               value = "false"
+            },
+            {
+              name  = "JOTFORM_BASE_URL"
+              value = "https://communityhealthmedia.jotform.com/API"
             }
           ],
           concat(
