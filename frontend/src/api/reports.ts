@@ -6,6 +6,7 @@ export type ReportStatus =
   | 'generating'
   | 'rendering'
   | 'uploading'
+  | 'waiting_for_transcript'
   | 'complete'
   | 'failed';
 
@@ -15,6 +16,7 @@ export const REPORT_IN_FLIGHT: ReadonlySet<ReportStatus> = new Set([
   'generating',
   'rendering',
   'uploading',
+  'waiting_for_transcript',
 ]);
 
 export type DateRangeDays = 30 | 60 | 90;

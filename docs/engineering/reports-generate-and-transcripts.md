@@ -10,8 +10,10 @@ hits cht-reports or the Hub packet.
   `windowStart` / `windowEnd` (ISO 8601) are an alternative to `dateRangeDays`; sending both is 400.
   With neither, the window is campaign start → now.
 - Platform freezes `window_start` / `window_end` at request time, then in one transaction
-  writes the lock item (sort key `LOCK#{templateType}`, `expires_at`) and the report item
+  writes the lock item (sort key `LOCK#{templateType}`) and the report item
   (`status=queued`, `edit_attempts=0`). Another in-flight report of the same type → 409.
+  The lock has no expiry. It is freed when its report is final, or when the report has made
+  no progress for `REPORTS_STALE_MINUTES` and is marked failed.
 - `SendMessage` `{ reportId, campaignId }` to `cht-{env}-report-requests`. On send failure the
   report is marked `failed` (`enqueue_failed`), the lock is released, and the API returns 503.
 - `GET /api/reports/:id?campaignId=` → poll (consistent read when `campaignId` is given,

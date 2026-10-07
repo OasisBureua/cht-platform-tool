@@ -62,6 +62,7 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   generating: 'Writing report',
   rendering: 'Printing PDF',
   uploading: 'Saving PDF',
+  waiting_for_transcript: "Waiting for Zoom's transcript…",
   complete: 'Ready',
   failed: 'Failed',
 };

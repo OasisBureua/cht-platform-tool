@@ -93,7 +93,6 @@ function build(
       'https://sqs.us-east-1.amazonaws.com/1/cht-dev-report-requests',
     'reports.bucket': 'cht-reports-dev-artifacts',
     'reports.maxEditAttempts': 3,
-    'reports.lockTtlSeconds': 1800,
     ...configOverrides,
   };
   const config = { get: (key: string) => map[key] } as unknown as ConfigService;
@@ -195,6 +194,11 @@ describe('ReportsService', () => {
         'LOCK#executive_summary',
       );
       expect(tx.TransactItems[0].Put.Item.locked_report_id).toBe(view.reportId);
+      expect(
+        (tx.TransactItems[0].Put as { ConditionExpression?: string })
+          .ConditionExpression,
+      ).toBe('attribute_not_exists(report_id)');
+      expect(tx.TransactItems[0].Put.Item).not.toHaveProperty('expires_at');
       expect(tx.TransactItems[1].Put.Item).toMatchObject({
         campaign_id: 'AZ-25-01_LIV001',
         status: 'queued',
@@ -361,6 +365,30 @@ describe('ReportsService', () => {
 
       expect(view.status).toBe('generating');
       expect(calls(send, 'UpdateCommand')).toHaveLength(0);
+    });
+
+    it('keeps the lock while a report waits hours for its transcript', async () => {
+      const waiting = completeReport({
+        report_id: 'waiting-1',
+        status: 'waiting_for_transcript',
+        s3_key_pdf: null,
+        created_at: minutesAgo(120),
+        updated_at: minutesAgo(3),
+      });
+      const { service, send } = build((command, input) => {
+        if (command === 'TransactWriteCommand') throw lockCancelled();
+        if (command === 'GetCommand') {
+          return input.Key?.report_id === 'LOCK#executive_summary'
+            ? { Item: { locked_report_id: 'waiting-1' } }
+            : { Item: waiting };
+        }
+        return {};
+      });
+
+      await expect(
+        service.create({ campaignId: 'AZ-25-01_LIV001' }, 'user-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(calls(send, 'DeleteCommand')).toHaveLength(0);
     });
 
     it('lets Generate through when the lock holder is stuck', async () => {

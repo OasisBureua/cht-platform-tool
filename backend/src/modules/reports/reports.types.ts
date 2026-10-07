@@ -10,6 +10,7 @@ export type ReportStatus =
   | 'generating'
   | 'rendering'
   | 'uploading'
+  | 'waiting_for_transcript'
   | 'complete'
   | 'failed';
 
@@ -51,7 +52,6 @@ export type LockItem = {
   report_id: string;
   locked_report_id: string;
   template_type: string;
-  expires_at: number;
   created_at: string;
 };
 
