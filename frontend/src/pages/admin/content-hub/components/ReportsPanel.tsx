@@ -34,6 +34,7 @@ import {
   useRegenerateReport,
   useReportRecipients,
 } from '../lib/reportHooks';
+import { CampaignKolsCard } from './CampaignKolsCard';
 import { RecipientPicker } from './RecipientPicker';
 import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
@@ -406,6 +407,8 @@ export default function ReportsPanel({
         busy={inFlight.length > 0}
         onGoToPrograms={onGoToPrograms}
       />
+
+      <CampaignKolsCard campaignId={campaignId} />
 
       <ZoomSectionCard
         title="Report history"

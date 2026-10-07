@@ -179,3 +179,29 @@ export const campaignLinksApi = {
     return data;
   },
 };
+
+/** Hub KOL attached to a campaign; the report's KOL section uses these (CPR-45). */
+export interface CampaignKol {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  institution: string | null;
+}
+
+export const campaignKolsApi = {
+  list: async (campaignId: string): Promise<CampaignKol[]> => {
+    const { data } = await apiClient.get<{ items: CampaignKol[] }>(
+      `/admin/content-hub/campaigns/${campaignId}/kols`,
+    );
+    return data?.items ?? [];
+  },
+
+  set: async (campaignId: string, kolIds: string[]): Promise<CampaignKol[]> => {
+    const { data } = await apiClient.put<{ items: CampaignKol[] }>(
+      `/admin/content-hub/campaigns/${campaignId}/kols`,
+      { kolIds },
+    );
+    return data?.items ?? [];
+  },
+};

@@ -8,6 +8,16 @@ export type CampaignPlatform =
   | 'livestream'
   | 'survey';
 
+export type CampaignKol = {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  institution: string | null;
+};
+
+export type CampaignKolList = { items: CampaignKol[] };
+
 export type CampaignListResponse = {
   items: unknown[];
   total: number;
@@ -45,6 +55,23 @@ export class ContentHubCampaignService {
 
   deleteCampaign(id: number | string): Promise<void> {
     return this.client.deleteAdmin(`/campaigns/${id}`);
+  }
+
+  listCampaignKols(id: number | string): Promise<CampaignKolList> {
+    return this.client.getAdmin<CampaignKolList>(
+      `/campaigns/${id}/kols`,
+      undefined,
+      { cache: false },
+    );
+  }
+
+  setCampaignKols(
+    id: number | string,
+    kolIds: string[],
+  ): Promise<CampaignKolList> {
+    return this.client.putAdmin<CampaignKolList>(`/campaigns/${id}/kols`, {
+      kolIds,
+    });
   }
 
   getPlatformData<T = unknown>(id: number | string): Promise<T> {
