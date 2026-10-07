@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CHM Deck Studio</title>
+<link rel="icon" href="favicon.svg" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;900&family=Geist+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="studio.css" />
+<style>
+  section.stage canvas#c { cursor: default; background: #F2F4F8; }
+  .strip { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: flex-start; max-width: 1120px; }
+  .strip button { position: relative; padding: 0; border: 2px solid transparent; border-radius: 8px; background: transparent; }
+  .strip button[aria-pressed=true] { border-color: var(--cta); }
+  .strip button canvas { display: block; width: 128px; height: 72px; border-radius: 5px; }
+  .strip button .n { position: absolute; left: 5px; top: 5px; font-family: "Geist Mono"; font-size: 10px; color: #fff; background: rgba(0,0,0,.55); padding: 2px 5px; border-radius: 4px; }
+  .addrow { display: flex; gap: 6px; }
+  .addrow select { flex: 1; font: inherit; font-size: 13px; padding: 8px 10px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ground); color: var(--text); }
+  .addrow button { height: 36px; padding: 0 14px; border: 0; border-radius: 6px; background: var(--text); color: #fff; font-size: 13px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .chip { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: var(--surface); border-radius: 8px; font-size: 13px; }
+  .chip img { width: 32px; height: 32px; border-radius: 6px; object-fit: cover; }
+  .chip button { border: 0; background: transparent; color: var(--faint); font-size: 16px; padding: 0 2px; }
+  .toolbar { display: flex; gap: 6px; margin-top: 8px; }
+  .toolbar button { flex: 1; height: 32px; border: 1px solid var(--hair); border-radius: 6px; background: var(--ground); font-size: 12px; color: var(--dim); }
+  .toolbar button:disabled { opacity: .4; }
+  .field .sub { font-family: "Geist Mono"; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); margin: 14px 0 8px; }
+  #fields textarea.lines { font-family: "Geist Mono"; font-size: 12.5px; min-height: 110px; }
+</style>
+<script>/* Inside the admin panel (?embed) the platform supplies the logo and tabs. */if(/[?&]embed\b/.test(location.search))document.documentElement.classList.add('embedded');if(/[?&]canvas\b/.test(location.search))document.documentElement.classList.add('canvas-only')</script>
+</head>
+<body>
+<header>
+  <div class="left">
+    <div class="brand"><span class="mk" id="brandMark"></span> chm <span>Studio</span></div>
+    <nav class="tabs" aria-label="Studios">
+      <a href="index.html">Thumbnails</a>
+      <a href="social.html">Social</a>
+      <a href="deck.html" aria-current="page">Deck</a>
+    </nav>
+  </div>
+  <div class="row">
+    <button class="btn ghost" id="exportOne" type="button">Export this slide</button>
+    <button class="btn ghost" id="exportZip" type="button">All slides · ZIP</button>
+    <button class="btn" id="exportPdf" type="button">Export deck · PDF</button>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="field">
+      <label for="deckTitle">Deck</label>
+      <input id="deckTitle" type="text" value="2026 Capabilities" />
+    </div>
+    <div class="field">
+      <label>Add a slide</label>
+      <div class="addrow"><select id="addType"></select><button type="button" id="add">Add</button></div>
+    </div>
+    <div class="field">
+      <label>Slide <span id="slideNo">1</span> · <span id="slideType"></span></label>
+      <div id="fields"></div>
+      <div id="imagesField">
+        <div class="sub">Images · <span id="imgMax"></span></div>
+        <div class="drop" id="drop">Drop images here, or <u>choose files</u><input id="files" type="file" accept="image/*" multiple /></div>
+        <div class="chips" id="chips"></div>
+      </div>
+      <div class="toolbar">
+        <button type="button" id="mvL" title="Move earlier">◀</button>
+        <button type="button" id="dup">Duplicate</button>
+        <button type="button" id="del">Delete</button>
+        <button type="button" id="mvR" title="Move later">▶</button>
+      </div>
+    </div>
+  </aside>
+
+  <section class="stage">
+    <canvas id="c" width="1920" height="1080" aria-label="Slide preview"></canvas>
+    <div class="strip" id="strip"></div>
+    <div class="meta" id="meta">1920 × 1080</div>
+  </section>
+</main>
+
+<script src="shared.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const { V2 } = CHM;
+CHM.svgMark($('#brandMark'), '#0f0e0d');
+const W = 1920, H = 1080, M = 96;
+const T = { ink: V2.ink, dim: '#4a5866', faint: '#7b8794', blue: V2.blue, deep: V2.deep, amber: V2.amber, base: V2.base, paper: '#fff', line: 'rgba(34,48,60,.12)' };
+
+/* ── slide types and their fields ───────────────────────────────── */
+const TYPES = {
+  cover:    { name: 'Cover', images: 1, fields: [['eyebrow', 'Eyebrow', 'text'], ['title', 'Title', 'textarea'], ['subtitle', 'Subtitle', 'textarea'], ['note', 'Footer note', 'text']] },
+  section:  { name: 'Section divider', images: 1, fields: [['eyebrow', 'Label', 'text'], ['title', 'Title', 'textarea']] },
+  about:    { name: 'Title + two columns', images: 0, fields: [['title', 'Title', 'textarea'], ['leftLabel', 'Left label', 'text'], ['left', 'Left copy', 'textarea'], ['rightLabel', 'Right label', 'text'], ['items', 'Right items · Label | text, one per line', 'lines']] },
+  numbered: { name: 'Numbered list', images: 1, fields: [['title', 'Title', 'textarea'], ['subtitle', 'Subtitle', 'textarea'], ['items', 'Items · Label | text, one per line', 'lines']] },
+  stats:    { name: 'Stats + band', images: 0, fields: [['title', 'Title', 'textarea'], ['stats', 'Stats · Value | caption, one per line', 'lines'], ['bandTitle', 'Band title', 'text'], ['bandLeft', 'Band left · one per line', 'lines'], ['bandRight', 'Band right · one per line', 'lines']] },
+  team:     { name: 'Team', images: 5, fields: [['title', 'Title', 'text'], ['intro', 'Intro', 'textarea'], ['people', 'People · Name | Role | Contact, one per line', 'lines']] },
+  program:  { name: 'Program card', images: 1, fields: [['eyebrow', 'Eyebrow', 'text'], ['title', 'Title', 'textarea'], ['subtitle', 'Subtitle', 'text'], ['summary', 'Summary · one point per line', 'lines'], ['budget', 'Budget · Value | caption, one per line', 'lines'], ['timeline', 'Timeline', 'text'], ['designed', 'Designed for', 'textarea']] },
+  table:    { name: 'Table', images: 0, fields: [['title', 'Title', 'text'], ['subtitle', 'Subtitle', 'textarea'], ['rows', 'Rows · Program | detail | value, one per line', 'lines'], ['total', 'Total · label | value', 'text'], ['note', 'Footnote', 'text']] },
+  case:     { name: 'Case study', images: 1, fields: [['eyebrow', 'Eyebrow', 'text'], ['title', 'Title', 'textarea'], ['body', 'Body', 'textarea'], ['items', 'Points · Label | text, one per line', 'lines'], ['stat', 'Big stat · Value | caption', 'text']] },
+  faq:      { name: 'FAQ grid', images: 0, fields: [['title', 'Title', 'text'], ['items', 'Questions · Question | answer, one per line', 'lines']] },
+  closing:  { name: 'Closing', images: 1, fields: [['lines', 'Lines · one per line', 'lines'], ['cta', 'Call to action', 'textarea'], ['url', 'URL', 'text']] },
+};
+const SAMPLE = [
+  { type: 'cover', eyebrow: '2026', title: 'Capabilities', subtitle: 'Expert-led content, clinical insight, and strategic partnership', note: 'Confidential. Not for distribution.' },
+  { type: 'about', title: 'Where expertise meets impact', leftLabel: 'About us', left: 'Community Health Media is the platform where clinically credible expertise reaches the physicians who shape practice, and where every interaction becomes measurable insight.\n\nWe connect pharmaceutical, biotech, medical device, and imaging organizations with the medical community through KOL educational programs, targeted multichannel distribution, and longitudinal engagement analytics.', rightLabel: 'CHM capabilities', items: 'Peer to peer education | Expert-led live, virtual, and onsite programs that bring clinically credible knowledge into meaningful dialogue with the physicians who shape practice.\nClinical community | A network of academic and community KOLs and verified healthcare professionals, connected through channels where medicine evolves.\nMeasurable insight | Programs generate data on who you reached and what resonated, delivered as content analytics and longitudinal reporting.\nContent distribution | Programs are transformed into enduring content and distributed across CHM’s digital channels, extending impact beyond the live event.' },
+  { type: 'numbered', title: 'The CHM difference', subtitle: 'Expert network. End-to-end execution. Results you can measure.', items: 'Curated KOL & HCP network | A national network of academic KOLs, community KOLs and HCPs, selected for expertise, real-world experience and engagement.\nEnd-to-end production | KOL outreach, concept development, production, distribution and post-event reporting. You bring the goals; we build the program.\nSpeed without compromise | Most programs are delivered within seven weeks, aligned to your data and launch timelines.\nPrograms built to perform | The right KOLs, the right audience, the right content, strong discussions and measurable post-event outputs.\nKnowledge that compounds | With CHM Plus, every event becomes a multimedia campaign building long-tail visibility.' },
+  { type: 'stats', title: 'A physician network built to capture what happens between evidence and practice', stats: '10,000+ | Oncology KOL and community physician network\n1,100+ | Community physicians who joined a stream in the last 24 months\n150+ | Virtual streams over the past 24 months\n1000s | Hours of video Q&A between KOLs and community physicians', bandTitle: 'What we deliver', bandLeft: 'Concept development, KOL outreach & verified HCP targeting\nFull production, editing, distribution & live stream management', bandRight: 'Compliant, consent-clean data capture\nStructured, tagged reasoning data, not raw transcripts' },
+  { type: 'section', eyebrow: 'Virtual programs', title: 'A partnership built around your goals' },
+  { type: 'program', eyebrow: 'Featured conversation', title: 'CHM Virtual Premier', subtitle: 'Pre-recorded and edited conversations with live stream', summary: 'Virtual or in-person pre-recorded panels featuring 2 to 3 KOLs with 12 to 15+ HCPs in attendance.\nPeer-to-peer conversations delivering regional or national clinical insight from HCPs and KOLs.\nDiscussion themes shaped around your clinical and data priorities, with silent observer access included.', budget: '$55K | Pre-recorded virtual conversation, then live stream\n$65K | Pre-recorded in-person conversation, then live stream', timeline: 'Completed within 7 weeks of commencement', designed: 'Organizations that want highly produced KOL-led conversations shared as a live moment, pairing clinician conversation with interactive access and premium enduring content.' },
+  { type: 'team', title: 'Our team', intro: 'Partner with us to explore media strategies that will meaningfully reach oncologists while advancing your community initiatives.', people: 'Seth Laderman | Partner & CEO | seth@communityhealth.media\nHugo Cubias | Partner, Head of Production | hugo@communityhealth.media\nMarcus Allen | Partner, Head of Marketing & Growth | marcus@communityhealth.media\nKristie Traverso | VP of Business Development & Sales | kristie@communityhealth.media\nAmber Potter | Medical Lead · DNP, MSN, APRN, FNP-C, CBCN | amber@communityhealth.media' },
+  { type: 'table', title: '2026 investment summary', subtitle: 'Greater value across multiple programs', rows: 'CHM Virtual Roundtable Plus | 2 × $30K CHM Plus, plus 6 × $45K roundtables | $330K\nCHM Roundtable Live | 2 × $110K in-person, plus 2 × $20K CHM Plus | $260K\nThis Moment in Medicine | 4 locations × $50K | $200K\nCHM Spotlight | 6 spotlights × $25K | $150K', total: 'Total after 10% multi-program discount | $846K', note: 'Multi-program discount: 5% up to $500K, 7.5% up to $750K, 10% over $750K' },
+  { type: 'case', eyebrow: 'Case study · CHM Conversations', title: 'T-DXd and the future of breast cancer care', body: 'Dr. Jason Mouabbi and Dr. Paolo Tarantino examine how trastuzumab deruxtecan is reshaping treatment across the HER2 spectrum, from HER2-positive to HER2-low and ultra-low disease, drawing on the DESTINY-Breast trials.', items: 'Two expert voices | Dr. Jason Mouabbi and Dr. Paolo Tarantino in peer-to-peer discussion.\nStudio-produced conversation | Filmed and produced in the CHM Conversations format.\nTargeted distribution | National outreach delivered across the channels physicians use.\nMeasured engagement | Engagement captured as insight for the partner.', stat: '5,000+ | Campaign impressions' },
+  { type: 'faq', title: 'Frequently asked questions', items: 'How do we ensure quality and compliance? | Moderated discussions are unscripted but structured. Medical and production teams pre-review every program with brand teams for accuracy, fair balance, and regulatory alignment.\nHow many HCPs typically attend? | Programs consistently bring 10 to 12+ HCPs to virtual sessions, with regional targeting customized to brand goals.\nHow are KOLs and HCPs recruited? | Recruiting draws on an established national network of academic and community KOLs and verified regional outreach lists.\nCan topics and focus areas be customized? | Every program is fully customizable to the desired outcome while preserving KOL authenticity and compliance.\nWhat deliverables follow the event? | Every program includes an Executive Insight Report with KOL list, HCP breakdown, takeaways, and survey results.\nHow fast is the process? | Most programs turn around in about seven weeks, and potentially faster depending on KOL availability.' },
+  { type: 'closing', lines: 'Knowledge.\nCommunity.\nIntelligence.', cta: 'The next step is a single conversation to define the first engagement.', url: 'communityhealth.media' },
+];
+const state = { title: '2026 Capabilities', backdrop: 'studio', current: 0, slides: SAMPLE.map(s => ({ ...s, images: [] })) };
+const canvas = $('#c'), ctx = canvas.getContext('2d');
+const lines = (t) => String(t ?? '').split('\n').map(l => l.trim()).filter(Boolean);
+const cols = (l) => l.split('|').map(x => x.trim());
+
+/* ── primitives ─────────────────────────────────────────────────── */
+function text(c, t, x, y, o) { return CHM.block(c, t, x, y, { w: o.w, lines: o.lines ?? 12, max: o.size, min: o.min ?? Math.max(12, o.size - 8), weight: o.weight ?? 400, track: o.track ?? -0.01, leading: o.leading ?? 1.28, color: o.color ?? T.ink, align: o.align }); }
+function label(c, t, x, y, color = T.blue, size = 14) { CHM.mono(c, t, x, y, size, color, { track: size * 0.1 }); }
+function pill(c, t, x, y, fill, color, o = {}) {
+  const size = o.size ?? 15; c.font = `700 ${size}px "Geist Mono"`; c.letterSpacing = `${size * 0.08}px`;
+  const w = c.measureText(String(t).toUpperCase()).width + 36, h = o.h ?? 40;
+  c.fillStyle = fill; CHM.roundRect(c, x, y, w, h, o.r ?? 8); c.fill();
+  CHM.mono(c, t, x + 18, y + h / 2 + size * 0.36, size, color, { track: size * 0.08 });
+  return w;
+}
+function chevron(c, x0, x1, notch, point, y0 = 0, y1 = H) {
+  const mid = (y0 + y1) / 2; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x1 - point, y0); c.lineTo(x1, mid); c.lineTo(x1 - point, y1); c.lineTo(x0, y1); c.lineTo(x0 + notch, mid); c.closePath();
+}
+function photo(c, f, r, o = {}) {
+  c.save(); if (r.r) { CHM.roundRect(c, r.x, r.y, r.w, r.h, r.r); c.clip(); }
+  if (f) CHM.cover(c, f, r, { ay: r.y + r.h * (o.fy ?? 0.42) });
+  else { c.fillStyle = o.empty ?? T.deep; c.fillRect(r.x, r.y, r.w, r.h); CHM.mono(c, o.label ?? 'ADD IMAGE', r.x + r.w / 2, r.y + r.h / 2 + 6, 16, 'rgba(255,255,255,.55)', { align: 'center', weight: 500 }); }
+  c.restore();
+}
+function play(c, cx, cy, r = 44) { c.fillStyle = 'rgba(255,255,255,.92)'; c.beginPath(); c.arc(cx, cy, r, 0, Math.PI * 2); c.fill(); c.fillStyle = T.blue; c.beginPath(); c.moveTo(cx - r * 0.28, cy - r * 0.4); c.lineTo(cx + r * 0.46, cy); c.lineTo(cx - r * 0.28, cy + r * 0.4); c.closePath(); c.fill(); }
+function footer(c, i, n) {
+  CHM.mark(c, M, H - 74, 34, T.blue);
+  CHM.mono(c, 'Confidential · Not for distribution', W / 2, H - 46, 12, T.faint, { align: 'center', track: 1.2, weight: 500 });
+  CHM.mono(c, String(i + 1), W - M, H - 46, 12, T.faint, { align: 'right', track: 1, weight: 500 });
+}
+function ground(c) { c.fillStyle = T.base; c.fillRect(0, 0, W, H); }
+function heading(c, t, x, y, w, size = 60) { return text(c, t, x, y, { w, size, weight: 500, track: -0.03, leading: 1.06, lines: 3, color: T.ink }); }
+function card(c, x, y, w, h, fill = T.paper, r = 20) { c.fillStyle = fill; CHM.roundRect(c, x, y, w, h, r); c.fill(); }
+
+/* ── slide renderers ────────────────────────────────────────────── */
+const R = {
+  cover(c, s) {
+    ground(c);
+    c.save(); chevron(c, 1000, W, 240, 0); c.clip(); photo(c, s.images[0], { x: 1000, y: 0, w: 920, h: H }, { fy: 0.45 }); c.restore();
+    if (s.eyebrow) label(c, s.eyebrow, M, 300, T.blue, 18);
+    let y = heading(c, s.title, M, 330, 760, 88);
+    if (s.subtitle) y = text(c, s.subtitle, M, y + 24, { w: 700, size: 28, color: T.dim, leading: 1.3, lines: 3 });
+    label(c, 'Prepared by', M, 760, T.faint, 13);
+    CHM.lockup(c, M, 782, 46, T.blue, T.ink);
+    if (s.note) CHM.mono(c, s.note, M, H - 46, 12, T.faint, { track: 1.2, weight: 500 });
+  },
+  section(c, s) {
+    ground(c);
+    c.save(); chevron(c, 300, W, 260, 380); c.clip(); photo(c, s.images[0], { x: 300, y: 0, w: 1620, h: H }, { fy: 0.4 }); c.restore();
+    card(c, 60, 300, 660, 480, T.ink, 32);
+    if (s.eyebrow) pill(c, s.eyebrow, 108, 352, T.amber, T.ink, { size: 13, h: 34 });
+    text(c, s.title, 108, 420, { w: 560, size: 60, weight: 500, track: -0.03, leading: 1.08, lines: 4, color: '#fff' });
+    card(c, 1400, 880, 520, 200, T.paper, 24); CHM.lockup(c, 1470, 950, 60, T.blue, T.ink);
+  },
+  about(c, s, i, n) {
+    ground(c); heading(c, s.title, M, 110, 1200, 60);
+    label(c, s.leftLabel, M, 300); card(c, M, 320, 780, 520);
+    text(c, s.left, M + 44, 360, { w: 690, size: 23, color: T.ink, leading: 1.4, lines: 12 });
+    label(c, s.rightLabel, 1000, 300);
+    let y = 340; lines(s.items).forEach(l => { const [k, v] = cols(l); text(c, k, 1000, y, { w: 220, size: 21, weight: 600, color: T.blue, leading: 1.25, lines: 3 }); y = text(c, v ?? '', 1250, y, { w: 574, size: 19, color: T.dim, leading: 1.35, lines: 4 }) + 30; });
+    footer(c, i, n);
+  },
+  numbered(c, s, i, n) {
+    ground(c); const img = s.images[0], tw = img ? 1020 : 1400;
+    if (img) { c.save(); chevron(c, 1230, W, 220, 0); c.clip(); photo(c, img, { x: 1230, y: 0, w: 690, h: H }, { fy: 0.45 }); c.restore(); }
+    let y = heading(c, s.title, M, 110, tw, 60);
+    if (s.subtitle) y = text(c, s.subtitle, M, y + 14, { w: tw, size: 24, color: T.dim, leading: 1.3, lines: 2 });
+    const items = lines(s.items).slice(0, 6), step = Math.min(130, (H - 150 - y - 40) / Math.max(1, items.length));
+    items.forEach((l, k) => { const [kk, v] = cols(l), yy = y + 40 + k * step;
+      c.fillStyle = k % 2 ? T.blue : T.ink; c.font = '500 72px Geist'; c.letterSpacing = '-3px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(String(k + 1), M, yy + 62); c.letterSpacing = '0px';
+      text(c, kk, M + 110, yy + 4, { w: tw - 110, size: 24, weight: 600, color: T.ink, leading: 1.2, lines: 1 });
+      text(c, v ?? '', M + 110, yy + 40, { w: tw - 110, size: 18, color: T.dim, leading: 1.35, lines: 2 });
+    });
+    footer(c, i, n);
+  },
+  stats(c, s, i, n) {
+    ground(c); heading(c, s.title, M, 100, 1300, 48);
+    const st = lines(s.stats).slice(0, 4).map(cols), pos = [[M, 330], [M, 530], [1380, 330], [1380, 530]];
+    st.forEach(([v, cap], k) => { const [x, y] = pos[k]; c.fillStyle = T.amber; c.fillRect(x + 2, y - 12, 56, 6); c.fillStyle = T.blue; c.font = '600 72px Geist'; c.letterSpacing = '-3px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, x, y + 60); c.letterSpacing = '0px'; text(c, cap ?? '', x, y + 84, { w: 430, size: 17, color: T.dim, leading: 1.35, lines: 3 }); });
+    card(c, 660, 340, 600, 220, T.paper, 24); CHM.lockup(c, 760, 420, 74, T.blue, T.ink);
+    card(c, M, 720, W - 2 * M, 280, T.deep, 24);
+    if (s.bandTitle) CHM.mono(c, s.bandTitle, W / 2, 770, 14, T.amber, { align: 'center', track: 2 });
+    CHM.wordmark(c, W / 2 - 74, 920, 84, '#fff');
+    let y = 810; lines(s.bandLeft).slice(0, 3).forEach(l => { y = text(c, l, M + 44, y, { w: 560, size: 19, color: '#fff', leading: 1.3, lines: 2 }) + 16; });
+    y = 810; lines(s.bandRight).slice(0, 3).forEach(l => { y = text(c, l, W - M - 44, y, { w: 560, size: 19, color: '#fff', leading: 1.3, lines: 2, align: 'right' }) + 16; });
+    footer(c, i, n);
+  },
+  team(c, s, i, n) {
+    ground(c); heading(c, s.title, M, 100, 600, 56);
+    if (s.intro) text(c, s.intro, 760, 108, { w: 1060, size: 21, color: T.dim, leading: 1.4, lines: 3 });
+    c.fillStyle = T.blue; c.fillRect(0, 420, W, H - 420);
+    const people = lines(s.people).slice(0, 5).map(cols), cw = (W - 2 * M) / Math.max(1, people.length);
+    people.forEach(([name, role, contact], k) => {
+      const cx = M + cw * (k + 0.5); CHM.circle(c, s.images[k], cx, 440, 260, { ring: T.paper, ringW: 10, empty: T.deep });
+      c.font = '600 22px Geist'; const nw = c.measureText(name).width + 44; card(c, cx - nw / 2, 600, nw, 46, T.ink, 23);
+      c.fillStyle = '#fff'; c.textAlign = 'center'; c.textBaseline = 'alphabetic'; c.fillText(name, cx, 631); c.textAlign = 'left';
+      text(c, role ?? '', cx, 668, { w: cw - 40, size: 18, weight: 600, color: '#fff', leading: 1.3, lines: 2, align: 'center' });
+      if (contact) CHM.mono(c, contact, cx, 770, 13, 'rgba(255,255,255,.85)', { align: 'center', track: 0.6, weight: 500, upper: false });
+    });
+    CHM.mark(c, M, H - 74, 34, '#fff'); CHM.mono(c, String(i + 1), W - M, H - 46, 12, 'rgba(255,255,255,.7)', { align: 'right', weight: 500 });
+  },
+  program(c, s, i, n) {
+    ground(c); if (s.eyebrow) label(c, s.eyebrow, M, 110, T.blue, 14);
+    let y = heading(c, s.title, M, 130, 700, 60);
+    if (s.subtitle) y = text(c, s.subtitle, M, y + 10, { w: 700, size: 24, color: T.dim, leading: 1.3, lines: 2 });
+    y += 30; pill(c, 'Program summary', M, y, T.blue, '#fff', { size: 13, h: 36 }); y += 60;
+    lines(s.summary).slice(0, 4).forEach(l => { y = text(c, l, M, y, { w: 640, size: 18, color: T.ink, leading: 1.35, lines: 3 }) + 12; c.fillStyle = T.line; c.fillRect(M, y, 640, 1); y += 18; });
+    card(c, M, 860, 700, 140, T.deep, 18); CHM.mono(c, 'Designed for', M + 28, 900, 13, T.amber, { track: 1.6 });
+    text(c, s.designed, M + 28, 912, { w: 640, size: 17, color: '#fff', leading: 1.35, lines: 3 });
+    card(c, 880, 300, 260, 440); pill(c, 'Budget', 904, 324, T.blue, '#fff', { size: 12, h: 32 });
+    let by = 400; lines(s.budget).slice(0, 3).forEach(l => { const [v, cap] = cols(l); c.fillStyle = T.blue; c.font = '600 40px Geist'; c.letterSpacing = '-1.5px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, 904, by); c.letterSpacing = '0px'; by = text(c, cap ?? '', 904, by + 8, { w: 212, size: 14, color: T.dim, leading: 1.3, lines: 3 }) + 34; });
+    card(c, 880, 780, 260, 220); pill(c, 'Timeline', 904, 804, T.blue, '#fff', { size: 12, h: 32 }); text(c, s.timeline, 904, 856, { w: 212, size: 17, color: T.ink, leading: 1.35, lines: 4 });
+    photo(c, s.images[0], { x: 1200, y: 110, w: 624, h: 880, r: 28 }, { fy: 0.4, label: 'FEATURED CONVERSATION' }); play(c, 1512, 550);
+    footer(c, i, n);
+  },
+  table(c, s, i, n) {
+    ground(c); let y = heading(c, s.title, M, 100, 1200, 56);
+    if (s.subtitle) y = text(c, s.subtitle, M, y + 8, { w: 1200, size: 22, color: T.dim, leading: 1.3, lines: 2 });
+    const rows = lines(s.rows).slice(0, 8).map(cols), x1 = M, x2 = 700, x3 = W - M; y += 44;
+    label(c, 'Program', x1, y, T.faint, 12); label(c, 'Detail', x2, y, T.faint, 12); CHM.mono(c, 'Investment', x3, y, 12, T.faint, { align: 'right', track: 1.2 }); y += 22;
+    rows.forEach(([a, b, v]) => { c.fillStyle = T.line; c.fillRect(x1, y, W - 2 * M, 1); text(c, a, x1, y + 22, { w: 560, size: 22, weight: 600, color: T.ink, leading: 1.2, lines: 1 }); text(c, b ?? '', x2, y + 24, { w: 800, size: 19, color: T.dim, leading: 1.3, lines: 2 }); c.fillStyle = T.blue; c.font = '600 26px Geist'; c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillText(v ?? '', x3, y + 50); c.textAlign = 'left'; y += 78; });
+    if (s.total) { const [tl, tv] = cols(s.total); card(c, x1, y + 10, W - 2 * M, 72, T.deep, 14); text(c, tl, x1 + 28, y + 30, { w: 1100, size: 22, weight: 600, color: '#fff', leading: 1.2, lines: 1 }); c.fillStyle = T.amber; c.font = '600 30px Geist'; c.textAlign = 'right'; c.fillText(tv ?? '', x3 - 28, y + 58); c.textAlign = 'left'; y += 100; }
+    if (s.note) CHM.mono(c, s.note, x1, y + 24, 12, T.faint, { track: 1, weight: 500, upper: false });
+    footer(c, i, n);
+  },
+  case(c, s, i, n) {
+    ground(c); if (s.eyebrow) label(c, s.eyebrow, M, 110, T.blue, 14);
+    let y = heading(c, s.title, M, 130, 960, 54);
+    y = text(c, s.body, M, y + 20, { w: 960, size: 19, color: T.dim, leading: 1.4, lines: 5 });
+    const items = lines(s.items).slice(0, 4).map(cols), top = y + 40;
+    items.forEach(([k, v], j) => { const x = M + (j % 2) * 500, yy = top + Math.floor(j / 2) * 150; c.fillStyle = T.blue; c.beginPath(); c.arc(x + 20, yy + 20, 20, 0, Math.PI * 2); c.fill(); CHM.mono(c, String(j + 1), x + 20, yy + 26, 14, '#fff', { align: 'center' }); text(c, k, x + 56, yy, { w: 400, size: 20, weight: 600, color: T.ink, leading: 1.25, lines: 2 }); text(c, v ?? '', x + 56, yy + 34, { w: 400, size: 16, color: T.dim, leading: 1.35, lines: 3 }); });
+    if (s.stat) { const [v, cap] = cols(s.stat); c.fillStyle = T.blue; c.font = '600 64px Geist'; c.letterSpacing = '-2px'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText(v, M, 950); c.letterSpacing = '0px'; text(c, cap ?? '', M + 20 + c.measureText(v).width, 922, { w: 500, size: 16, color: T.dim, leading: 1.3, lines: 2 }); }
+    photo(c, s.images[0], { x: 1200, y: 110, w: 624, h: 880, r: 28 }, { fy: 0.4, label: 'PROGRAM STILL' }); play(c, 1512, 550);
+    footer(c, i, n);
+  },
+  faq(c, s, i, n) {
+    ground(c); heading(c, s.title, M, 100, 1200, 56);
+    const items = lines(s.items).slice(0, 6).map(cols), cw = (W - 2 * M - 48) / 3, ch = 340;
+    items.forEach(([q, a], j) => { const x = M + (j % 3) * (cw + 24), y = 250 + Math.floor(j / 3) * (ch + 24); card(c, x, y, cw, ch); c.fillStyle = T.blue; c.beginPath(); c.arc(x + 48, y + 48, 22, 0, Math.PI * 2); c.fill(); CHM.mono(c, String(j + 1), x + 48, y + 54, 14, '#fff', { align: 'center' }); const yy = text(c, q, x + 88, y + 30, { w: cw - 120, size: 20, weight: 600, color: T.ink, leading: 1.25, lines: 2 }); text(c, a ?? '', x + 32, Math.max(yy, y + 100) + 14, { w: cw - 64, size: 16, color: T.dim, leading: 1.4, lines: 7 }); });
+    footer(c, i, n);
+  },
+  closing(c, s) {
+    ground(c);
+    c.save(); chevron(c, 1180, W, 220, 0); c.clip(); if (s.images[0]) photo(c, s.images[0], { x: 1180, y: 0, w: 740, h: H }, { fy: 0.45 }); else { c.fillStyle = T.blue; c.fillRect(1180, 0, 740, H); CHM.burst(c, 1620, 540, 900, '#ffffff', 20260909, 900, 1.1); } c.restore();
+    const ls = lines(s.lines).slice(0, 3); c.font = '500 56px Geist';
+    ls.forEach((l, k) => { const w = c.measureText(l).width + 120, y = 150 + k * 170; c.fillStyle = T.paper; c.beginPath(); c.moveTo(M, y); c.lineTo(M + w, y); c.lineTo(M + w + 40, y + 60); c.lineTo(M + w, y + 120); c.lineTo(M, y + 120); c.closePath(); c.fill(); text(c, l, M + 44, y + 22, { w: w, size: 56, weight: 500, color: T.blue, track: -0.03, leading: 1.1, lines: 1 }); });
+    if (s.cta) { c.fillStyle = T.blue; c.beginPath(); c.moveTo(M, 700); c.lineTo(760, 700); c.lineTo(830, 790); c.lineTo(760, 880); c.lineTo(M, 880); c.closePath(); c.fill(); text(c, s.cta, M + 40, 728, { w: 620, size: 24, weight: 500, color: '#fff', leading: 1.3, lines: 3 }); }
+    card(c, 1400, 900, 460, 130, T.paper, 18); CHM.mono(c, 'Watch now', 1440, 946, 13, T.deep, { track: 1.6 }); text(c, s.url, 1440, 962, { w: 400, size: 22, weight: 500, color: T.ink, leading: 1.2, lines: 1 });
+    CHM.mark(c, 1760, 918, 60, T.blue);
+  },
+};
+function draw(c, s, i, n) { c.clearRect(0, 0, W, H); CHM.backdrop(state.backdrop, CHM.palette('v2')); (R[s.type] || R.about)(c, s, i, n); }
+
+/* ── main render + strip ────────────────────────────────────────── */
+const off = document.createElement('canvas'); off.width = W; off.height = H; const oc = off.getContext('2d');
+function render() {
+  const s = state.slides[state.current];
+  draw(ctx, s, state.current, state.slides.length);
+  $('#meta').textContent = `1920 × 1080 · ${TYPES[s.type].name} · slide ${state.current + 1} of ${state.slides.length}`;
+  const el = $('#strip'); el.innerHTML = '';
+  state.slides.forEach((sl, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.setAttribute('aria-pressed', i === state.current); b.setAttribute('aria-label', `Slide ${i + 1}`);
+    const t = document.createElement('canvas'); t.width = 256; t.height = 144; draw(oc, sl, i, state.slides.length); t.getContext('2d').drawImage(off, 0, 0, 256, 144);
+    b.appendChild(t); const num = document.createElement('span'); num.className = 'n'; num.textContent = i + 1; b.appendChild(num);
+    b.onclick = () => { state.current = i; syncForm(); render(); }; el.appendChild(b);
+  });
+}
+
+/* ── controls ───────────────────────────────────────────────────── */
+const cur = () => state.slides[state.current];
+Object.entries(TYPES).forEach(([k, t]) => { const o = document.createElement('option'); o.value = k; o.textContent = t.name; $('#addType').appendChild(o); });
+$('#add').onclick = () => { const type = $('#addType').value, blank = { type, images: [] }; TYPES[type].fields.forEach(([k]) => blank[k] = ''); state.slides.splice(state.current + 1, 0, blank); state.current++; syncForm(); render(); };
+$('#deckTitle').addEventListener('input', (e) => state.title = e.target.value);
+function syncForm() {
+  const s = cur(), t = TYPES[s.type]; $('#slideNo').textContent = state.current + 1; $('#slideType').textContent = t.name;
+  const f = $('#fields'); f.innerHTML = '';
+  t.fields.forEach(([k, lab, kind]) => {
+    const sub = document.createElement('div'); sub.className = 'sub'; sub.textContent = lab; f.appendChild(sub);
+    const el = document.createElement(kind === 'text' ? 'input' : 'textarea'); if (kind === 'text') el.type = 'text'; if (kind === 'lines') el.className = 'lines';
+    el.value = s[k] ?? ''; el.addEventListener('input', (e) => { s[k] = e.target.value; render(); }); f.appendChild(el);
+  });
+  $('#imagesField').hidden = t.images === 0; $('#imgMax').textContent = t.images === 1 ? 'one' : `up to ${t.images}`;
+  const chips = $('#chips'); chips.innerHTML = '';
+  s.images.filter(Boolean).forEach((im, i) => { const d = document.createElement('div'); d.className = 'chip'; d.innerHTML = `<img src="${im.url}" alt=""><span>${im.name}</span><button type="button" aria-label="Remove ${im.name}">×</button>`; d.querySelector('button').onclick = () => { s.images.splice(i, 1); syncForm(); render(); }; chips.appendChild(d); });
+  $('#mvL').disabled = state.current === 0; $('#mvR').disabled = state.current === state.slides.length - 1; $('#del').disabled = state.slides.length === 1;
+}
+const drop = $('#drop');
+drop.onclick = () => $('#files').click();
+$('#files').onchange = (e) => addFiles(e.target.files);
+['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, (e) => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', (e) => addFiles(e.dataTransfer.files));
+async function addFiles(list) { const s = cur(), max = TYPES[s.type].images; const got = await CHM.loadFiles(list, Math.max(0, max - s.images.length)); s.images.push(...got); syncForm(); render(); }
+$('#dup').onclick = () => { const s = cur(); state.slides.splice(state.current + 1, 0, { ...s, images: [...s.images] }); state.current++; syncForm(); render(); };
+$('#del').onclick = () => { if (state.slides.length === 1) return; state.slides.splice(state.current, 1); state.current = Math.min(state.current, state.slides.length - 1); syncForm(); render(); };
+$('#mvL').onclick = () => { const i = state.current; if (!i) return; [state.slides[i - 1], state.slides[i]] = [state.slides[i], state.slides[i - 1]]; state.current--; syncForm(); render(); };
+$('#mvR').onclick = () => { const i = state.current; if (i >= state.slides.length - 1) return; [state.slides[i + 1], state.slides[i]] = [state.slides[i], state.slides[i + 1]]; state.current++; syncForm(); render(); };
+
+/* ── export ─────────────────────────────────────────────────────── */
+const name = () => CHM.slug(state.title);
+$('#exportOne').onclick = () => canvas.toBlob(b => CHM.download(b, `${name()}-${String(state.current + 1).padStart(2, '0')}.png`), 'image/png');
+$('#exportZip').onclick = async () => { const entries = []; for (let i = 0; i < state.slides.length; i++) { draw(oc, state.slides[i], i, state.slides.length); entries.push({ name: `${String(i + 1).padStart(2, '0')}-${state.slides[i].type}.png`, data: await CHM.bytes(off) }); } CHM.download(CHM.zip(entries), `${name()}.zip`); };
+$('#exportPdf').onclick = async () => { const pages = []; for (let i = 0; i < state.slides.length; i++) { draw(oc, state.slides[i], i, state.slides.length); pages.push({ jpeg: await CHM.bytes(off, 'image/jpeg', 0.92), w: W, h: H }); } CHM.download(CHM.pdf(pages), `${name()}.pdf`); };
+
+/* automation hook for the render harness */
+window.__studio = {
+  canvas: () => canvas,
+  async apply(spec) {
+    if (spec.title) state.title = spec.title;
+    if (spec.slides) state.slides = await Promise.all(spec.slides.map(async s => ({ ...(SAMPLE.find(x => x.type === s.type) || {}), ...s, images: (await Promise.all((s.images || []).map(n => CHM.loadUrl(n.includes('/') ? n : `samples/${n}.jpg`, n)))).filter(Boolean) })));
+    state.current = spec.current ?? 0; syncForm(); render();
+  },
+};
+
+/* engine API for the platform's native studio pages */
+async function engineImages(list, prev) {
+  const old = prev || [];
+  return (await Promise.all((list || []).map(async (im) => {
+    const hit = old.find((o) => o && o.url === im.url);
+    if (hit) { if (im.zoom != null) hit.zoom = im.zoom; if (im.name) hit.name = im.name; return hit; }
+    const got = await CHM.loadUrl(im.url, im.name);
+    if (got && im.zoom != null) got.zoom = im.zoom;
+    return got;
+  }))).filter(Boolean);
+}
+async function engineThumbs(n, drawOne, w, h, width) {
+  const out = []; const t = document.createElement('canvas'); t.width = width; t.height = Math.round(width * h / w);
+  for (let i = 0; i < n; i++) { const c = drawOne(i); t.getContext('2d').clearRect(0, 0, t.width, t.height); t.getContext('2d').drawImage(c, 0, 0, t.width, t.height); out.push(t.toDataURL('image/jpeg', 0.72)); }
+  return out;
+}
+
+/* set() awaits new images, so a slow call could land after a newer one and
+   put old slides back. Only the latest call gets to draw. */
+let setSeq = 0;
+window.__engine = {
+  ready: true,
+  meta: () => ({ size: [W, H], types: TYPES, sample: SAMPLE, title: state.title }),
+  async set(s) {
+    const seq = ++setSeq;
+    if (s.title !== undefined) state.title = s.title;
+    if (s.backdrop !== undefined) state.backdrop = s.backdrop;
+    if (s.slides) {
+      const slides = await Promise.all(s.slides.map(async (sl, i) => ({ ...sl, images: await engineImages(sl.images, state.slides[i] && state.slides[i].images) })));
+      if (seq !== setSeq) return;
+      state.slides = slides;
+    }
+    if (s.current !== undefined) state.current = Math.min(s.current, state.slides.length - 1);
+    syncForm(); render();
+  },
+  thumbs: (width = 240) => engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, H, width),
+  exportSlide() { $('#exportOne').click(); },
+  exportZip() { $('#exportZip').click(); },
+  exportPdf() { $('#exportPdf').click(); },
+};
+
+CHM.fontsReady().then(() => { syncForm(); render(); });
+</script>
+</body>
+</html>

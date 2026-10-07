@@ -517,7 +517,7 @@ export default function VideosPage() {
 
   /* The public shell lets the page carry its own rail; inside the app
      shell the layout already pays the gutter, so the rail only caps width. */
-  const RAIL = isInApp ? 'mx-auto w-full max-w-[90rem]' : 'rail';
+  const RAIL = isInApp ? 'w-full' : 'rail';
 
   const clipHref = useCallback(
     (clip: ContentHubClip) =>

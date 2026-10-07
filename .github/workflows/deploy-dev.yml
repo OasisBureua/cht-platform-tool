@@ -469,11 +469,23 @@ jobs:
             --exclude "logo.svg" \
             --exclude "vite.svg" \
             --exclude "robots.txt" \
-            --exclude "images/*"
+            --exclude "images/*" \
+            --exclude "studio/*"
 
           if [ -d dist/images ]; then
             aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
               --cache-control "public, max-age=300, must-revalidate"
+          fi
+          # CHM Studio (admin > Post-production) keeps stable file names, so it
+          # takes the short cache like images, and its pages are never cached.
+          if [ -d dist/studio ]; then
+            aws s3 sync dist/studio/ "s3://${BUCKET}/studio/" \
+              --exclude "*.html" \
+              --cache-control "public, max-age=300, must-revalidate"
+            aws s3 cp dist/studio/ "s3://${BUCKET}/studio/" --recursive \
+              --exclude "*" --include "*.html" \
+              --cache-control "no-cache, no-store, must-revalidate" \
+              --content-type "text/html"
           fi
           for f in logo.svg vite.svg robots.txt; do
             [ -f "dist/$f" ] && aws s3 cp "dist/$f" "s3://${BUCKET}/$f" \
@@ -510,10 +522,17 @@ jobs:
             --exclude "logo.svg" \
             --exclude "vite.svg" \
             --exclude "robots.txt" \
-            --exclude "images/*"
+            --exclude "images/*" \
+            --exclude "studio/*"
           if [ -d dist/images ]; then
             aws s3 sync dist/images/ "s3://${BUCKET}/images/" \
               --delete \
+              --cache-control "public, max-age=300, must-revalidate"
+          fi
+          if [ -d dist/studio ]; then
+            aws s3 sync dist/studio/ "s3://${BUCKET}/studio/" \
+              --delete \
+              --exclude "*.html" \
               --cache-control "public, max-age=300, must-revalidate"
           fi
           aws s3 cp dist/index.html "s3://${BUCKET}/index.html" \
