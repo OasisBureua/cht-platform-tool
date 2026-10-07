@@ -1,6 +1,6 @@
 import { Children, useEffect, useRef, useState, type ReactNode, type SyntheticEvent } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, List } from 'lucide-react';
+import { ChevronLeft, ChevronRight, List, ListVideo, Play } from 'lucide-react';
 import {
   catalogConversationBrowseFingerFromHref,
   catalogConversationBrowseFingerFromLocation,
@@ -164,6 +164,13 @@ export type StripCardProps = {
   hideThumbnailOnError?: boolean;
   /** Runs after hiding when `hideThumbnailOnError`; optional side effects (analytics, tracking failed ids upstream). */
   onThumbnailError?: () => void;
+  /** A play badge centred on the poster, for rows of watchable clips. */
+  playOverlay?: boolean;
+  /**
+   * Playlist look: two cards peek above the poster so it reads as a
+   * collection, and `videoLabel` moves onto the poster as a count.
+   */
+  stacked?: boolean;
 };
 
 /**
@@ -202,9 +209,20 @@ function StripCardInner({
   meta,
   videoLabel,
   onThumbnailError,
+  playOverlay,
+  stacked,
 }: Pick<
   StripCardProps,
-  'variant' | 'homepage' | 'title' | 'imageUrl' | 'description' | 'meta' | 'videoLabel' | 'onThumbnailError'
+  | 'variant'
+  | 'homepage'
+  | 'title'
+  | 'imageUrl'
+  | 'description'
+  | 'meta'
+  | 'videoLabel'
+  | 'onThumbnailError'
+  | 'playOverlay'
+  | 'stacked'
 >) {
   const line1 = description ?? meta;
   const v = variant ?? 'compact';
@@ -237,12 +255,44 @@ function StripCardInner({
     <>
       {/* The poster is the shared `Thumb`: rounded, ringed, with the mark
           and its own scrim burned into the foot. */}
-      <Thumb
-        src={imageUrl}
-        className={home ? 'aspect-[16/15] w-full shrink-0' : 'aspect-[16/10] w-full shrink-0'}
-        onError={onThumbnailError}
-        onLoad={onLoadCheck}
-      />
+      {stacked ? (
+        /* Two cards peeking above the poster mark a collection. Hairline
+           alphas, so they follow the appearance. */
+        <div className="relative w-full shrink-0 pt-2.5">
+          <span aria-hidden className="absolute inset-x-[14%] top-0 h-3 rounded-t-[6px] bg-hairline" />
+          <span aria-hidden className="absolute inset-x-[7%] top-[5px] h-3 rounded-t-[6px] bg-hairline-strong" />
+          <Thumb
+            src={imageUrl}
+            className={home ? 'aspect-[16/15] w-full' : 'aspect-[16/10] w-full'}
+            onError={onThumbnailError}
+            onLoad={onLoadCheck}
+          >
+            {videoLabel ? (
+              /* On the poster's dark foot, so fixed white on a fixed scrim. */
+              <span className="meta absolute bottom-2.5 end-2.5 inline-flex items-center gap-1 rounded-[6px] bg-black/70 px-1.5 py-0.5 tabular-nums text-white">
+                <ListVideo className="h-3 w-3" aria-hidden />
+                {videoLabel}
+              </span>
+            ) : null}
+          </Thumb>
+        </div>
+      ) : (
+        <Thumb
+          src={imageUrl}
+          className={home ? 'aspect-[16/15] w-full shrink-0' : 'aspect-[16/10] w-full shrink-0'}
+          onError={onThumbnailError}
+          onLoad={onLoadCheck}
+        >
+          {playOverlay ? (
+            <span
+              aria-hidden
+              className="absolute inset-0 m-auto grid size-10 place-items-center rounded-full bg-anchor text-ground shadow-card transition-[scale] duration-150 group-hover:scale-105"
+            >
+              <Play className="ms-0.5 h-4 w-4 fill-current" aria-hidden />
+            </span>
+          ) : null}
+        </Thumb>
+      )}
       <div className={home ? 'flex min-w-0 flex-col px-0.5 pt-3' : 'flex min-w-0 flex-col px-0.5 pt-2.5'}>
         <p
           className={
@@ -259,7 +309,7 @@ function StripCardInner({
             {line1}
           </p>
         ) : null}
-        {videoLabel ? (
+        {videoLabel && !stacked ? (
           <span
             className={
               home
@@ -286,6 +336,8 @@ export function StripCard({
   homepage,
   hideThumbnailOnError,
   onThumbnailError,
+  playOverlay,
+  stacked,
 }: StripCardProps) {
   const [thumbSrc, setThumbSrc] = useState(imageUrl);
   const [thumbFailed, setThumbFailed] = useState(false);
@@ -365,6 +417,8 @@ export function StripCard({
             meta={meta}
             videoLabel={videoLabel}
             onThumbnailError={handleThumbError}
+            playOverlay={playOverlay}
+            stacked={stacked}
           />
         </a>
       ) : (
@@ -378,6 +432,8 @@ export function StripCard({
             meta={meta}
             videoLabel={videoLabel}
             onThumbnailError={handleThumbError}
+            playOverlay={playOverlay}
+            stacked={stacked}
           />
         </Link>
       )}

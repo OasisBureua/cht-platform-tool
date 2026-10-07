@@ -95,6 +95,28 @@ describe('deriveKolUsState', () => {
     ).toBe('GA');
   });
 
+  it('ignores training places in the bio and uses the region instead', () => {
+    expect(
+      deriveKolUsState(
+        kol({
+          institution: 'Some Cancer Institute',
+          region: 'california',
+          region_label: 'California',
+          bio: 'He completed his residency at UT Southwestern Medical Center in Dallas.',
+        }),
+      ),
+    ).toBe('CA');
+  });
+
+  it.each([
+    ['Stanford University School of Medicine', 'CA'],
+    ['UC San Diego Moores Cancer Center', 'CA'],
+    ['Fred Hutch Cancer Center', 'WA'],
+    ['Allina Health Cancer Institute', 'MN'],
+  ])('maps %s to %s', (institution, state) => {
+    expect(deriveKolUsState(kol({ institution }))).toBe(state);
+  });
+
   it('uses intel.location from static enrichment', () => {
     expect(
       deriveKolUsState(kol({ slug: 'traina' }), {
