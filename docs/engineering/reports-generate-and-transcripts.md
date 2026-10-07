@@ -19,7 +19,8 @@ hits cht-reports or the Hub packet.
 - `GET /api/reports?campaignId=` → list for a campaign, newest first.
 - `POST /api/reports/:id/regenerate` `{ editInstructions? }` → 202. 409 if not complete or
   `edit_attempts >= 3`. Sets `status=queued`, `attempt_count=0`, `edit_instructions`,
-  `edit_attempts + 1`, then sends the same `{ reportId, campaignId }`.
+  `edit_attempts + 1`, then sends the same `{ reportId, campaignId }`. cht-reports writes the
+  regenerated report as the next version (`v{edit_attempts + 1}.pdf`); earlier versions stay in S3.
 - `GET /api/reports/:id/download` → Platform streams the PDF from S3 (`s3_key_pdf`). No S3 or
   presigned URL is ever returned. The key must be under `reports/` and end in `.pdf`, the object
   content type must be PDF (or unset/octet-stream), and the file must start with `%PDF-`;
@@ -30,7 +31,19 @@ hits cht-reports or the Hub packet.
 Report item fields Platform writes: `campaign_id`, `report_id`, `template_type`, `sources`,
 `date_range_days`, `window_start`, `window_end`, `notify_emails`, `status`, `attempt_count`,
 `edit_attempts`, `last_error`, `requested_by`, `created_at`, `updated_at` (+ `edit_instructions`
-on regenerate). The worker writes `s3_key_pdf` (and optionally `version`) on complete.
+on regenerate). The worker writes `s3_key_pdf` and `version` (1 = first report) on complete.
+Platform writes `notified_version` / `notified_at` when it sends the report-ready email.
+
+### Report-ready email (CPR-35)
+
+After marking a version complete, cht-reports calls
+`POST /api/internal/reports/:reportId/ready` `{ campaignId, version }` with a Cognito M2M Bearer
+(client `cht-reports-m2m-{env}`, scope `platform/reports.notify`; ECS `COGNITO_M2M_REPORTS_CLIENT_ID`,
+looked up by name in TF). Platform claims the version on the row (conditional write on
+`notified_version`, so a retry sends nothing), then emails each `notify_emails` address through
+`SesEmailService` (same sender and layout as registration email). The email links to
+`/admin/reports/campaigns/:campaignId?tab=reports`; the PDF is never attached. If no email could be
+sent the claim is released and the call returns 503, so cht-reports retries.
 
 ## Transcripts (already pulled)
 
@@ -68,6 +81,7 @@ Zoom VTT keys use **programId**, not Hub campaign id:
 | `GET` | `/api/reports?campaignId=` | **built** | List for a campaign |
 | `POST` | `/api/reports/:id/regenerate` | **built** | `{ editInstructions? }`. 409 if not complete or `edit_attempts >= 3` |
 | `GET` | `/api/reports/:id/download` | **built** | Streams the PDF through Platform; S3 location never exposed |
+| `POST` | `/api/internal/reports/:id/ready` | **built** (CPR-35) | **S2S Cognito M2M** `platform/reports.notify` (cht-reports). Emails `notify_emails` once per version |
 | `GET` | `/api/export/reports/campaigns/:campaignId/input-packet` | **built** (CPR-11 auth + CPR-28 packet) | **S2S Cognito M2M** `platform/export.read` + `X-Request-Id`. Sessions/attendance/surveys for linked Programs only. |
 
 Download is streamed by Platform from DDB `s3_key_pdf`. Not a cht-reports HTTP route.

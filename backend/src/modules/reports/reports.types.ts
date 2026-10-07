@@ -39,6 +39,9 @@ export type ReportItem = {
   requested_by: string;
   s3_key_pdf?: string | null;
   version?: number | null;
+  /** Last version whose report-ready email went out (CPR-35). */
+  notified_version?: number | null;
+  notified_at?: string | null;
   created_at: string;
   updated_at: string;
 };

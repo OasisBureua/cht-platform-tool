@@ -43,6 +43,11 @@ export default () => ({
     m2mCacheClearScope:
       process.env.COGNITO_M2M_CACHE_CLEAR_SCOPE?.trim() ||
       'platform/cache.clear',
+    /** cht-reports client allowed for POST /api/internal/reports/:id/ready. */
+    m2mReportsClientId: process.env.COGNITO_M2M_REPORTS_CLIENT_ID?.trim() || '',
+    m2mReportsNotifyScope:
+      process.env.COGNITO_M2M_REPORTS_NOTIFY_SCOPE?.trim() ||
+      'platform/reports.notify',
     region: process.env.COGNITO_REGION || process.env.AWS_REGION || 'us-east-1',
     replicaRegion: process.env.COGNITO_REPLICA_REGION?.trim() || 'us-east-2',
     hostedUiBaseUrl: process.env.COGNITO_HOSTED_UI_BASE_URL?.trim() || '',

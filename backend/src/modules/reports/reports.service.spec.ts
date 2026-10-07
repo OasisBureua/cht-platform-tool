@@ -477,6 +477,90 @@ describe('ReportsService', () => {
     });
   });
 
+  describe('claimReadyNotification', () => {
+    const conditionFailed = () =>
+      Object.assign(new Error('failed'), {
+        name: 'ConditionalCheckFailedException',
+      });
+    const reportId = completeReport().report_id;
+
+    it('claims the version with a conditional write and returns the row', async () => {
+      const { service, send } = build((command) =>
+        command === 'UpdateCommand'
+          ? { Attributes: completeReport({ notified_version: 1 }) }
+          : {},
+      );
+
+      const row = await service.claimReadyNotification(
+        'AZ-25-01_LIV001',
+        reportId,
+        1,
+      );
+
+      expect(row?.notified_version).toBe(1);
+      const [update] = calls<
+        ExpressionInput & {
+          ConditionExpression: string;
+          UpdateExpression: string;
+        }
+      >(send, 'UpdateCommand');
+      expect(update.UpdateExpression).toContain('notified_version = :v');
+      expect(update.ConditionExpression).toContain('#status = :complete');
+      expect(update.ConditionExpression).toContain('#version = :v');
+      expect(update.ConditionExpression).toContain('notified_version < :v');
+      expect(update.ExpressionAttributeValues[':v']).toBe(1);
+    });
+
+    it('returns null when that version was already emailed (retry is a no-op)', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return { Item: completeReport({ version: 2, notified_version: 2 }) };
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 2),
+      ).resolves.toBeNull();
+    });
+
+    it('409s when the row is not complete at that version', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return { Item: completeReport({ status: 'generating', version: 1 }) };
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 2),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('404s for an unknown report or a lock row id', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return {};
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 1),
+      ).rejects.toThrow('Report not found');
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', 'LOCK#x', 1),
+      ).rejects.toThrow('Report not found');
+    });
+
+    it('release sets notified_version back one, only if still at this version', async () => {
+      const { service, send } = build(() => ({}));
+
+      await service.releaseReadyNotification('AZ-25-01_LIV001', reportId, 2);
+
+      const [update] = calls<ExpressionInput & { ConditionExpression: string }>(
+        send,
+        'UpdateCommand',
+      );
+      expect(update.ConditionExpression).toBe('notified_version = :v');
+      expect(update.ExpressionAttributeValues).toEqual({ ':v': 2, ':prev': 1 });
+    });
+  });
+
   describe('freezeWindow', () => {
     const now = new Date('2026-09-28T12:00:00.000Z');
 

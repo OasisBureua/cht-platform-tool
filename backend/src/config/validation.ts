@@ -28,6 +28,8 @@ export const validationSchema = Joi.object({
   COGNITO_M2M_EXPORT_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_EXPORT_SCOPE: Joi.string().allow('').optional(),
   COGNITO_M2M_CACHE_CLEAR_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_REPORTS_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_REPORTS_NOTIFY_SCOPE: Joi.string().allow('').optional(),
   COGNITO_M2M_PLATFORM_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_PLATFORM_CLIENT_SECRET: Joi.string().allow('').optional(),
   COGNITO_M2M_TOKEN_URL: Joi.string().allow('').optional(),
