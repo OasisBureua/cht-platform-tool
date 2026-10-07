@@ -154,6 +154,19 @@ Deletes campaign and associated uploads.
 
 ---
 
+### GET / PUT `/campaigns/{id}/kols`
+
+Hub KOLs attached to the campaign. The report packet's `kols` includes them alongside KOLs from linked shoots (CPR-45).
+
+**PUT body:** `{ "kolIds": ["<kol uuid>", ...] }` (max 200). Replaces the attached set.
+
+**Response:** `200` `{ "items": [{ "id", "slug", "name", "title", "institution" }] }` | `404` unknown campaign | `422` unknown KOL id
+
+**UI:** Reports tab → Key opinion leaders card.
+**CHT proxy:** `GET|PUT /api/admin/content-hub/campaigns/:id/kols`
+
+---
+
 ### Campaign object
 
 ```ts

@@ -118,6 +118,8 @@ Thin wrapper: paths relative to admin base:
 | `createCampaign(body)` | `POST /campaigns` |
 | `updateCampaign(id, body)` | `PATCH /campaigns/:id` |
 | `deleteCampaign(id)` | `DELETE /campaigns/:id` |
+| `listCampaignKols(id)` | `GET /campaigns/:id/kols` |
+| `setCampaignKols(id, kolIds)` | `PUT /campaigns/:id/kols` |
 | `getPlatformData(id)` | `GET /campaigns/:id/platform-data` |
 | `syncPlatform(id, platform)` | `POST /campaigns/:id/platforms/:platform/sync` |
 | `syncAll(id)` | `POST /campaigns/:id/sync-all` |

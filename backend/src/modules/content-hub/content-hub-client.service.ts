@@ -165,12 +165,16 @@ export class ContentHubClientService {
     return this.requestOnBase<T>('PATCH', this.adminBaseUrl, path, body);
   }
 
+  async putAdmin<T>(path: string, body: unknown): Promise<T> {
+    return this.requestOnBase<T>('PUT', this.adminBaseUrl, path, body);
+  }
+
   async deleteAdmin(path: string): Promise<void> {
     await this.requestOnBase<void>('DELETE', this.adminBaseUrl, path);
   }
 
   private async requestOnBase<T>(
-    method: 'POST' | 'PATCH' | 'DELETE',
+    method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     base: string,
     path: string,
     body?: unknown,
