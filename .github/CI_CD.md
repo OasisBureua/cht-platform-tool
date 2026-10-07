@@ -34,6 +34,10 @@ Change base:
 
 Manual **Run workflow** has `deploy_all` (default off) to force every lane. Changing `scripts/**` or workflow YAML no longer deploys infra by itself.
 
+## Terraform apply approval
+
+Deploys stop after `terraform plan` and open a GitHub issue. Only the user who triggered the run (usually whoever merged) can approve it: comment **approve** on the issue. The run waits up to 2 hours. The AWS role is re-assumed after approval, so a slow approval no longer fails the apply on expired credentials.
+
 ## Branch flow (main ← release or hotfix)
 
 GitHub **rulesets alone cannot** restrict which source branch merges into `main`. Use **rulesets + required status check**:
