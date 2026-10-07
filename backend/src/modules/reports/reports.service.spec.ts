@@ -309,6 +309,100 @@ describe('ReportsService', () => {
     });
   });
 
+  describe('stuck reports', () => {
+    const minutesAgo = (m: number) =>
+      new Date(Date.now() - m * 60_000).toISOString();
+
+    it('marks an in-flight report with no progress for 20 minutes as failed and frees the lock', async () => {
+      const stuck = completeReport({
+        status: 'generating',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(25),
+      });
+      const { service, send } = build((command) => {
+        if (command === 'QueryCommand') return { Items: [stuck] };
+        if (command === 'UpdateCommand')
+          return {
+            Attributes: {
+              ...stuck,
+              status: 'failed',
+              last_error: 'Timed out: no progress for 20 minutes.',
+            },
+          };
+        return {};
+      });
+
+      const [view] = await service.list('AZ-25-01_LIV001');
+
+      expect(view.status).toBe('failed');
+      expect(view.lastError).toBe('Timed out: no progress for 20 minutes.');
+      const [update] = calls<ExpressionInput & { ConditionExpression: string }>(
+        send,
+        'UpdateCommand',
+      );
+      expect(update.ConditionExpression).toBe(
+        '#status = :seen AND updated_at = :seenAt',
+      );
+      expect(update.ExpressionAttributeValues[':seen']).toBe('generating');
+      expect(calls(send, 'DeleteCommand')).toHaveLength(1);
+    });
+
+    it('leaves a report that is still making progress alone', async () => {
+      const running = completeReport({
+        status: 'generating',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(5),
+      });
+      const { service, send } = build((command) =>
+        command === 'GetCommand' ? { Item: running } : {},
+      );
+
+      const view = await service.get(running.report_id, 'AZ-25-01_LIV001');
+
+      expect(view.status).toBe('generating');
+      expect(calls(send, 'UpdateCommand')).toHaveLength(0);
+    });
+
+    it('lets Generate through when the lock holder is stuck', async () => {
+      const stuck = completeReport({
+        report_id: 'stuck-1',
+        status: 'pulling_data',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(40),
+      });
+      let transactCalls = 0;
+      const { service } = build((command, input) => {
+        if (command === 'TransactWriteCommand') {
+          transactCalls += 1;
+          if (transactCalls === 1) throw lockCancelled();
+          return {};
+        }
+        if (command === 'GetCommand') {
+          return input.Key?.report_id === 'LOCK#executive_summary'
+            ? {
+                Item: {
+                  campaign_id: 'AZ-25-01_LIV001',
+                  report_id: 'LOCK#executive_summary',
+                  locked_report_id: 'stuck-1',
+                },
+              }
+            : { Item: stuck };
+        }
+        if (command === 'UpdateCommand')
+          return { Attributes: { ...stuck, status: 'failed' } };
+        return {};
+      });
+
+      const view = await service.create(
+        { campaignId: 'AZ-25-01_LIV001', notifyEmails: [] },
+        'user-1',
+      );
+
+      expect(view.status).toBe('queued');
+      expect(transactCalls).toBe(2);
+    });
+  });
+
   describe('regenerate', () => {
     it('queues a completed report and increments edit_attempts', async () => {
       let item = completeReport();
@@ -319,6 +413,7 @@ describe('ReportsService', () => {
             ...item,
             status: 'queued',
             edit_attempts: item.edit_attempts + 1,
+            updated_at: new Date().toISOString(),
           };
           return {};
         }

@@ -138,7 +138,8 @@ export class ReportsService {
 
   async get(reportId: string, campaignId?: string): Promise<ReportView> {
     this.requireConfigured();
-    return this.toView(await this.requireReport(reportId, campaignId));
+    const report = await this.requireReport(reportId, campaignId);
+    return this.toView(await this.expireIfStale(report));
   }
 
   async list(campaignId: string): Promise<ReportView[]> {
@@ -164,8 +165,10 @@ export class ReportsService {
       startKey = page.LastEvaluatedKey;
     } while (startKey && items.length < LIST_MAX_ITEMS);
 
-    return items
-      .slice(0, LIST_MAX_ITEMS)
+    const current = await Promise.all(
+      items.slice(0, LIST_MAX_ITEMS).map((item) => this.expireIfStale(item)),
+    );
+    return current
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .map((item) => this.toView(item));
   }
@@ -466,7 +469,8 @@ export class ReportsService {
     );
     const holderItem = holder.Item as ReportItem | undefined;
     if (holderItem && !TERMINAL_STATUSES.has(holderItem.status)) {
-      return false;
+      const current = await this.expireIfStale(holderItem);
+      if (!TERMINAL_STATUSES.has(current.status)) return false;
     }
 
     return this.releaseLock(campaignId, templateType, lock.locked_report_id);
@@ -659,6 +663,73 @@ export class ReportsService {
     }
   }
 
+  /**
+   * An in-flight report with no progress for `staleMinutes` is stuck: the worker
+   * crashed, or its message went to the DLQ. Mark it failed and free the campaign
+   * lock so Generate works again. Conditional on updated_at, so a report that just
+   * moved on is left alone.
+   */
+  private async expireIfStale(
+    item: ReportItem,
+    now: Date = new Date(),
+  ): Promise<ReportItem> {
+    if (TERMINAL_STATUSES.has(item.status)) return item;
+    const minutes = this.staleMinutes();
+    const lastProgress = Date.parse(item.updated_at);
+    if (
+      Number.isNaN(lastProgress) ||
+      now.getTime() - lastProgress < minutes * 60_000
+    ) {
+      return item;
+    }
+
+    const lastError = `Timed out: no progress for ${minutes} minutes.`;
+    try {
+      const res = await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: item.campaign_id, report_id: item.report_id },
+          UpdateExpression:
+            'SET #status = :failed, last_error = :err, updated_at = :now',
+          ConditionExpression: '#status = :seen AND updated_at = :seenAt',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: {
+            ':failed': 'failed',
+            ':err': lastError,
+            ':now': now.toISOString(),
+            ':seen': item.status,
+            ':seenAt': item.updated_at,
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      );
+      this.logger.warn(
+        `[reports] timed out reportId=${item.report_id} campaignId=${item.campaign_id} status=${item.status}`,
+      );
+      await this.releaseLock(
+        item.campaign_id,
+        item.template_type || DEFAULT_TEMPLATE_TYPE,
+        item.report_id,
+      );
+      return (
+        (res.Attributes as ReportItem | undefined) ?? {
+          ...item,
+          status: 'failed',
+          last_error: lastError,
+          updated_at: now.toISOString(),
+        }
+      );
+    } catch (err) {
+      if ((err as AwsError)?.name === 'ConditionalCheckFailedException') {
+        return item;
+      }
+      this.logger.warn(
+        `[reports] could not time out reportId=${item.report_id}: ${errMessage(err)}`,
+      );
+      return item;
+    }
+  }
+
   private requireConfigured(): void {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException('Reports are not configured');
@@ -685,6 +756,10 @@ export class ReportsService {
 
   private maxEditAttempts(): number {
     return this.config.get<number>('reports.maxEditAttempts') ?? 3;
+  }
+
+  private staleMinutes(): number {
+    return this.config.get<number>('reports.staleMinutes') ?? 20;
   }
 
   private lockTtlSeconds(): number {

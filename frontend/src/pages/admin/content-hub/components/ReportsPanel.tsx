@@ -81,6 +81,12 @@ function windowLabel(r: Report): string {
   return r.windowStart ? `${fmtDate(r.windowStart)} – ${end}` : `Campaign to ${end}`;
 }
 
+/** First line of the worker's error, capped, so admins see why without a stack dump. */
+function failureReason(lastError: string): string {
+  const line = lastError.split('\n')[0].trim();
+  return line.length > 200 ? `${line.slice(0, 200)}…` : line;
+}
+
 function StatusBadge({ status }: { status: ReportStatus }) {
   if (status === 'complete') {
     return (
@@ -337,7 +343,7 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
                 : ''}
             </p>
             {report.status === 'failed' && report.lastError ? (
-              <p className="text-xs text-destructive">Generation failed. Try generating a new report.</p>
+              <p className="text-xs text-destructive">Generation failed: {failureReason(report.lastError)}</p>
             ) : null}
           </div>
         </div>

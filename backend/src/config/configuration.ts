@@ -211,6 +211,11 @@ export default () => ({
       const parsed = parseInt(process.env.REPORTS_LOCK_TTL_SECONDS || '', 10);
       return Number.isNaN(parsed) || parsed < 60 ? 1800 : parsed;
     })(),
+    /** An in-flight report with no progress for this long is marked failed. */
+    staleMinutes: (() => {
+      const parsed = parseInt(process.env.REPORTS_STALE_MINUTES || '', 10);
+      return Number.isNaN(parsed) || parsed < 5 ? 20 : parsed;
+    })(),
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
