@@ -35,6 +35,16 @@ output "m2m_cache_clear_scope" {
   value       = local.m2m_cache_clear_scope
 }
 
+output "m2m_reports_client_id" {
+  description = "cht-reports-m2m-{env} client ID (cht-reports → platform reports.notify); empty if not created yet"
+  value       = local.reports_m2m_client_id
+}
+
+output "m2m_reports_notify_scope" {
+  description = "platform/reports.notify"
+  value       = local.m2m_reports_notify_scope
+}
+
 output "m2m_hub_scopes" {
   description = "Space-delimited scopes on Content Hub's outbound-to-platform client"
   value       = local.m2m_hub_client_scopes

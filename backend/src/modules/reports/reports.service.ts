@@ -587,6 +587,78 @@ export class ReportsService {
     };
   }
 
+  /**
+   * Claim the report-ready email for `version` (CPR-35). The conditional
+   * write records notified_version, so it succeeds once per version: a
+   * retried call from cht-reports gets null and sends nothing. Throws
+   * NotFound for an unknown report, Conflict if the row is not complete at
+   * that version.
+   */
+  async claimReadyNotification(
+    campaignId: string,
+    reportId: string,
+    version: number,
+  ): Promise<ReportItem | null> {
+    this.requireConfigured();
+    if (reportId.startsWith(LOCK_PREFIX)) {
+      throw new NotFoundException('Report not found');
+    }
+    try {
+      const res = await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: campaignId, report_id: reportId },
+          UpdateExpression: 'SET notified_version = :v, notified_at = :now',
+          ConditionExpression:
+            'attribute_exists(report_id) AND #status = :complete AND #version = :v AND (attribute_not_exists(notified_version) OR notified_version < :v)',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+            '#version': 'version',
+          },
+          ExpressionAttributeValues: {
+            ':v': version,
+            ':complete': 'complete',
+            ':now': new Date().toISOString(),
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      );
+      return res.Attributes as ReportItem;
+    } catch (err) {
+      if ((err as AwsError)?.name !== 'ConditionalCheckFailedException') {
+        throw err;
+      }
+      const report = await this.requireReport(reportId, campaignId);
+      if ((report.notified_version ?? 0) >= version) return null;
+      throw new ConflictException(
+        `Report is not complete at version ${version}`,
+      );
+    }
+  }
+
+  /** Undo a claim when no email could be sent, so the caller's retry can send. */
+  async releaseReadyNotification(
+    campaignId: string,
+    reportId: string,
+    version: number,
+  ): Promise<void> {
+    try {
+      await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: campaignId, report_id: reportId },
+          UpdateExpression: 'SET notified_version = :prev',
+          ConditionExpression: 'notified_version = :v',
+          ExpressionAttributeValues: { ':v': version, ':prev': version - 1 },
+        }),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[reports] could not release ready notification reportId=${reportId} v${version}: ${errMessage(err)}`,
+      );
+    }
+  }
+
   private requireConfigured(): void {
     if (!this.isConfigured()) {
       throw new ServiceUnavailableException('Reports are not configured');

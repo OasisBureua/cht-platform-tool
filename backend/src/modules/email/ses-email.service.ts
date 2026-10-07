@@ -20,6 +20,7 @@ import { buildRegistrationInviteEmail } from './templates/registration-invite-em
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
 import { buildRegistrationRevokedEmail } from './templates/registration-revoked-email';
 import { buildOperationalEmail } from './templates/operational-email';
+import { buildReportReadyEmail } from './templates/report-ready-email';
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -610,6 +611,35 @@ export class SesEmailService {
     );
     await this.sendSimpleEmail(to, subject, text, html);
     this.logger.log(`Sent operational email to ${to}: ${subject.slice(0, 80)}`);
+  }
+
+  /**
+   * Executive Summary ready (CPR-35). One recipient per call; the caller
+   * loops over the report's notify list. Links to the admin Reports page.
+   */
+  async sendReportReadyEmail(opts: {
+    to: string;
+    campaignId: string;
+    version: number;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip report-ready email');
+      return;
+    }
+    const to = opts.to.trim().toLowerCase();
+    if (!to) throw new Error('to is required');
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const reportsUrl = `${base}/admin/reports/campaigns/${encodeURIComponent(opts.campaignId)}?tab=reports`;
+    const { subject, text, html } = buildReportReadyEmail(
+      { version: opts.version, reportsUrl, supportEmail: this.from },
+      escapeHtml,
+    );
+    await this.sendSimpleEmail(to, subject, text, html);
+    this.logger.log(
+      `Sent report-ready email to ${to} campaignId=${opts.campaignId} v${opts.version}`,
+    );
   }
 
   private async sendSimpleEmail(

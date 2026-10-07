@@ -23,8 +23,16 @@ locals {
   # Pool / other Cognito resources still use name_prefix (cht-platform-*).
   env_label = var.environment == "platform" ? "prod" : var.environment
 
-  m2m_export_scope      = "${aws_cognito_resource_server.platform.identifier}/export.read"
-  m2m_cache_clear_scope = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
+  m2m_export_scope         = "${aws_cognito_resource_server.platform.identifier}/export.read"
+  m2m_cache_clear_scope    = "${aws_cognito_resource_server.platform.identifier}/cache.clear"
+  m2m_reports_notify_scope = "${aws_cognito_resource_server.platform.identifier}/reports.notify"
+
+  reports_m2m_client_name = "cht-reports-m2m-${local.env_label}"
+  reports_m2m_client_id = lookup(
+    zipmap(data.aws_cognito_user_pool_clients.all.client_names, data.aws_cognito_user_pool_clients.all.client_ids),
+    local.reports_m2m_client_name,
+    "",
+  )
   m2m_hub_client_scopes = "${local.m2m_export_scope} ${local.m2m_cache_clear_scope}"
 
   # Caller-based names (who holds the secret).
@@ -221,6 +229,19 @@ resource "aws_cognito_resource_server" "platform" {
     scope_name        = "cache.clear"
     scope_description = "Clear platform Redis upstream cache (Hub / ops)"
   }
+
+  scope {
+    scope_name        = "reports.notify"
+    scope_description = "Tell platform a report version is ready to email (cht-reports)"
+  }
+}
+
+# cht-reports → platform (report-ready email, CPR-35). The client is
+# cht-reports-m2m-{env_label}, created in cht-content-hub's TF (hub_m2m.tf)
+# alongside its hub/reports.read scope. Looked up by name so platform never
+# hardcodes its ID. Empty until that client exists (e.g. prod today).
+data "aws_cognito_user_pool_clients" "all" {
+  user_pool_id = aws_cognito_user_pool.main.id
 }
 
 # Hub → platform (export + cache.clear). One Hub identity per env.
