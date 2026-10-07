@@ -207,10 +207,6 @@ export default () => ({
       const parsed = parseInt(process.env.REPORTS_MAX_EDIT_ATTEMPTS || '', 10);
       return Number.isNaN(parsed) || parsed < 0 ? 3 : parsed;
     })(),
-    lockTtlSeconds: (() => {
-      const parsed = parseInt(process.env.REPORTS_LOCK_TTL_SECONDS || '', 10);
-      return Number.isNaN(parsed) || parsed < 60 ? 1800 : parsed;
-    })(),
     /** An in-flight report with no progress for this long is marked failed. */
     staleMinutes: (() => {
       const parsed = parseInt(process.env.REPORTS_STALE_MINUTES || '', 10);

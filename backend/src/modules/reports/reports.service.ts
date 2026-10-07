@@ -389,22 +389,20 @@ export class ReportsService {
     reportId: string,
     now: Date,
   ) {
-    const nowSec = Math.floor(now.getTime() / 1000);
     const lock: LockItem = {
       campaign_id: campaignId,
       report_id: `${LOCK_PREFIX}${templateType}`,
       locked_report_id: reportId,
       template_type: templateType,
-      expires_at: nowSec + this.lockTtlSeconds(),
       created_at: now.toISOString(),
     };
     return {
       Put: {
         TableName: this.tableName(),
         Item: lock,
-        ConditionExpression:
-          'attribute_not_exists(report_id) OR expires_at < :nowSec',
-        ExpressionAttributeValues: { ':nowSec': nowSec },
+        // No time-based takeover: a report waiting hours for its transcript
+        // keeps the lock. withLockRetry frees it once the holder is final or stale.
+        ConditionExpression: 'attribute_not_exists(report_id)',
       },
     };
   }
@@ -760,10 +758,6 @@ export class ReportsService {
 
   private staleMinutes(): number {
     return this.config.get<number>('reports.staleMinutes') ?? 20;
-  }
-
-  private lockTtlSeconds(): number {
-    return this.config.get<number>('reports.lockTtlSeconds') ?? 1800;
   }
 }
 
