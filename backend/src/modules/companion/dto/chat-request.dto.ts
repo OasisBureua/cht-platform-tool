@@ -47,6 +47,7 @@ export class ChatRequestDto {
   @IsString()
   conversation_id?: string | null;
 
+  /** Ignored: history is loaded from the stored conversation. Kept so older clients still validate. */
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(20)

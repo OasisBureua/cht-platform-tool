@@ -1,4 +1,16 @@
-import { Body, Controller, Post, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  Post,
+  Req,
+  Res,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
@@ -45,5 +57,33 @@ export class CompanionController {
       randomUUID();
 
     await this.companionService.proxyChat(body, user, requestId, req, res);
+  }
+
+  @Get('chat/conversations')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'List the current user’s Companion conversations' })
+  listConversations(@CurrentUser() user: AuthUser) {
+    return this.companionService.listConversations(user.userId);
+  }
+
+  @Get('chat/conversations/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Get a Companion conversation with its messages' })
+  getConversation(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.companionService.getConversation(user.userId, id);
+  }
+
+  @Delete('chat/conversations/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('session-token')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a Companion conversation' })
+  async deleteConversation(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+  ): Promise<void> {
+    await this.companionService.deleteConversation(user.userId, id);
   }
 }
