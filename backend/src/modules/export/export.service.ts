@@ -231,7 +231,8 @@ export class ExportService {
     surveys: ExportSurveyPacket[],
   ): Promise<void> {
     const types = new Set(program.surveys.map((survey) => survey.type));
-    const slots: Array<{ type: 'INTAKE' | 'FEEDBACK'; url: string | null }> = [];
+    const slots: Array<{ type: 'INTAKE' | 'FEEDBACK'; url: string | null }> =
+      [];
     if (!types.has('INTAKE')) {
       slots.push({
         type: 'INTAKE',
@@ -249,7 +250,9 @@ export class ExportService {
       if (!slot.url) continue;
       const formId = extractJotformFormIdFromUrl(slot.url);
       if (!formId) continue;
-      let submissions: Awaited<ReturnType<JotformService['listFormSubmissions']>>;
+      let submissions: Awaited<
+        ReturnType<JotformService['listFormSubmissions']>
+      >;
       try {
         submissions = await this.jotform.listFormSubmissions(formId);
       } catch (err) {
