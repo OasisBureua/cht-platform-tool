@@ -91,6 +91,7 @@ export const validationSchema = Joi.object({
   REPORTS_BUCKET: Joi.string().allow('').optional(),
   REPORTS_MAX_EDIT_ATTEMPTS: Joi.number().integer().min(0).optional(),
   REPORTS_LOCK_TTL_SECONDS: Joi.number().integer().min(60).optional(),
+  REPORTS_STALE_MINUTES: Joi.number().integer().min(5).optional(),
 
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),
