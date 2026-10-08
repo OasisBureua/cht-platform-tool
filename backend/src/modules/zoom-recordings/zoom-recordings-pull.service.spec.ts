@@ -44,10 +44,12 @@ describe('ZoomRecordingsPullService', () => {
     program: { findUnique: jest.Mock };
     zoomRecordingSession: { upsert: jest.Mock };
     zoomRecordingFile: {
+      findUnique: jest.Mock;
       upsert: jest.Mock;
       updateMany: jest.Mock;
     };
   };
+  let exportIngest: { triggerForProgramZoom: jest.Mock };
   let zoom: {
     isConfigured: jest.Mock;
     getMeetingRecordings: jest.Mock;
@@ -71,6 +73,7 @@ describe('ZoomRecordingsPullService', () => {
         }),
       },
       zoomRecordingFile: {
+        findUnique: jest.fn().mockResolvedValue(null),
         upsert: jest
           .fn()
           .mockImplementation(
@@ -82,6 +85,9 @@ describe('ZoomRecordingsPullService', () => {
           ),
         updateMany: jest.fn().mockResolvedValue({ count: 0 }),
       },
+    };
+    exportIngest = {
+      triggerForProgramZoom: jest.fn().mockResolvedValue(undefined),
     };
     zoom = {
       isConfigured: jest.fn().mockReturnValue(true),
@@ -123,6 +129,7 @@ describe('ZoomRecordingsPullService', () => {
       chmContentId as unknown as ChmContentIdService,
       sessions,
       storage,
+      exportIngest as never,
     );
   });
 
@@ -207,6 +214,36 @@ describe('ZoomRecordingsPullService', () => {
       }),
     );
     expect(result.upserted).toHaveLength(2);
+    expect(exportIngest.triggerForProgramZoom).toHaveBeenCalledWith(program.id);
+  });
+
+  it('skips Hub ingest when transcript was already COMPLETED', async () => {
+    prisma.program.findUnique.mockResolvedValue(program);
+    prisma.zoomRecordingFile.findUnique.mockResolvedValue({
+      pullStatus: 'COMPLETED',
+    });
+    zoom.getMeetingRecordings.mockResolvedValue({
+      topic: 'Webinar Test',
+      downloadAccessToken: 'dl-token',
+      recordingFiles: [
+        {
+          id: 'tr-1',
+          fileType: 'TRANSCRIPT',
+          fileExtension: 'VTT',
+          downloadUrl: 'https://zoom.example/audio.vtt',
+          status: 'completed',
+          recordingType: 'audio_transcript',
+          fileSize: 100,
+        },
+      ],
+    });
+    zoom.downloadRecordingFile.mockResolvedValue({
+      buffer: Buffer.from('WEBVTT\n'),
+      contentType: 'text/vtt',
+    });
+
+    await service.pullForProgram(program.id, {});
+    expect(exportIngest.triggerForProgramZoom).not.toHaveBeenCalled();
   });
 
   it('uses body zoomMeetingId override instead of the program id', async () => {

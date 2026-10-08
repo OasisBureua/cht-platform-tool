@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../auth/auth.module';
+import { ContentHubModule } from '../content-hub/content-hub.module';
 import { EmailModule } from '../email/email.module';
 import { CampaignLinksController } from './campaign-links.controller';
 import {
@@ -13,7 +14,7 @@ import { ReportsController } from './reports.controller';
 import { ReportsService } from './reports.service';
 
 @Module({
-  imports: [AuthModule, EmailModule],
+  imports: [AuthModule, EmailModule, ContentHubModule],
   controllers: [
     ReportsController,
     CampaignLinksController,

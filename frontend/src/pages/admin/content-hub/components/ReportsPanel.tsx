@@ -31,6 +31,7 @@ import {
   useCampaignReports,
   useCreateReport,
   useDownloadReport,
+  useRefreshCampaignData,
   useRegenerateReport,
   useReportRecipients,
 } from '../lib/reportHooks';
@@ -130,6 +131,7 @@ function GenerateCard({
 
   const recipients = useReportRecipients();
   const create = useCreateReport(campaignId);
+  const refreshData = useRefreshCampaignData(campaignId);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -152,6 +154,22 @@ function GenerateCard({
           setError(await reportErrorMessage(err, 'Could not queue the report. Try again shortly.')),
       },
     );
+  };
+
+  const onRefreshData = () => {
+    setError(null);
+    refreshData.mutate(undefined, {
+      onSuccess: (run) =>
+        toast({
+          title: 'Campaign data refreshed',
+          description:
+            run.status === 'success'
+              ? `Hub warehouse updated${typeof run.sessionsUpserted === 'number' ? ` (${run.sessionsUpserted} sessions)` : ''}.`
+              : 'Hub ingest finished.',
+        }),
+      onError: async (err) =>
+        setError(await reportErrorMessage(err, 'Could not refresh campaign data.')),
+    });
   };
 
   return (
@@ -223,13 +241,26 @@ function GenerateCard({
         {error ? <ZoomAlert tone="error">{error}</ZoomAlert> : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={submit} disabled={busy || create.isPending || sources.length === 0}>
+          <Button onClick={submit} disabled={busy || create.isPending || refreshData.isPending || sources.length === 0}>
             {create.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
               <Sparkles className="h-4 w-4" aria-hidden />
             )}
-            {create.isPending ? 'Queuing…' : 'Generate report'}
+            {create.isPending ? 'Syncing & queuing…' : 'Generate report'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRefreshData}
+            disabled={refreshData.isPending || create.isPending}
+          >
+            {refreshData.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-4 w-4" aria-hidden />
+            )}
+            {refreshData.isPending ? 'Refreshing…' : 'Refresh data'}
           </Button>
           {busy ? (
             <p className="text-sm text-muted-foreground">

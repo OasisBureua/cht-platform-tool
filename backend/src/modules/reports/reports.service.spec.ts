@@ -10,6 +10,7 @@ import type { ReportsAwsClients } from './reports-aws.clients';
 import type { ReportItem } from './reports.types';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { CampaignExportIngestService } from '../content-hub/campaign-export-ingest.service';
 
 async function readAll(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
@@ -85,6 +86,7 @@ function completeReport(overrides: Partial<ReportItem> = {}): ReportItem {
 function build(
   handler: Handler,
   configOverrides: Record<string, unknown> = {},
+  exportIngestOverrides: Partial<CampaignExportIngestService> = {},
 ) {
   const map: Record<string, unknown> = {
     'reports.tableName': 'cht-dev-report-state',
@@ -116,7 +118,18 @@ function build(
     },
   } as unknown as PrismaService;
   const recipients = new ReportRecipientsService(prisma);
-  return { service: new ReportsService(config, aws, recipients), send };
+  const ingestCampaign = jest
+    .fn()
+    .mockResolvedValue({ status: 'success', campaignId: 42 });
+  const exportIngest = {
+    ingestCampaign,
+    ...exportIngestOverrides,
+  } as unknown as CampaignExportIngestService;
+  return {
+    service: new ReportsService(config, aws, recipients, exportIngest),
+    send,
+    ingestCampaign,
+  };
 }
 
 const ADMIN_EMAILS = ['a@cht.com', 'b@cht.com'];
@@ -273,6 +286,25 @@ describe('ReportsService', () => {
       const [update] = calls<ExpressionInput>(send, 'UpdateCommand');
       expect(update.ExpressionAttributeValues[':failed']).toBe('failed');
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
+    });
+
+    it('syncs Hub before enqueue and does not enqueue when ingest fails', async () => {
+      const ingestCampaign = jest
+        .fn()
+        .mockRejectedValue(new ServiceUnavailableException('Hub down'));
+      const { service, send } = build(
+        () => ({}),
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
+
+      await expect(
+        service.create({ campaignId: '42' }, 'user-1'),
+      ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
+      expect(calls(send, 'SendMessageCommand')).toHaveLength(0);
+      expect(calls(send, 'TransactWriteCommand')).toHaveLength(0);
     });
 
     it('returns 503 when reports are not configured', async () => {

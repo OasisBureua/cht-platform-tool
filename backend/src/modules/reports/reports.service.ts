@@ -18,6 +18,10 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
+import {
+  CampaignExportIngestService,
+  type ExportIngestRunView,
+} from '../content-hub/campaign-export-ingest.service';
 import { ReportsAwsClients } from './reports-aws.clients';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { CreateReportDto } from './dto/create-report.dto';
@@ -58,16 +62,28 @@ export class ReportsService {
     private readonly config: ConfigService,
     private readonly aws: ReportsAwsClients,
     private readonly recipients: ReportRecipientsService,
+    private readonly exportIngest: CampaignExportIngestService,
   ) {}
 
   isConfigured(): boolean {
     return !!(this.tableName() && this.queueUrl());
   }
 
+  /** CPR-41 — pull fresh warehouse data before Generate / on Refresh data. */
+  async refreshCampaignData(
+    campaignId: string,
+  ): Promise<ExportIngestRunView> {
+    const id = campaignId.trim();
+    if (!id) throw new BadRequestException('campaignId is required');
+    return this.exportIngest.ingestCampaign(id, 'platform_refresh');
+  }
+
   async create(dto: CreateReportDto, requestedBy: string): Promise<ReportView> {
     this.requireConfigured();
 
     const campaignId = dto.campaignId.trim();
+    // CPR-41 — sync Hub warehouse before enqueue so reports never use stale data.
+    await this.exportIngest.ingestCampaign(campaignId, 'platform_generate');
     const templateType = dto.templateType || DEFAULT_TEMPLATE_TYPE;
     const now = new Date();
     const nowIso = now.toISOString();
@@ -182,6 +198,11 @@ export class ReportsService {
 
     const current = await this.requireReport(reportId, campaignId);
     this.assertRegenerable(current);
+    // CPR-41 — sync before re-queue so regenerations also use fresh data.
+    await this.exportIngest.ingestCampaign(
+      current.campaign_id,
+      'platform_generate',
+    );
 
     const now = new Date();
     const nowIso = now.toISOString();

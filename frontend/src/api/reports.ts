@@ -158,6 +158,17 @@ export const reportsApi = {
     );
     return data;
   },
+
+  /** CPR-41 — sync platform export into Hub for this campaign (no report generate). */
+  refreshData: async (
+    campaignId: string,
+  ): Promise<{ status?: string; sessionsUpserted?: number }> => {
+    const { data } = await apiClient.post<{
+      status?: string;
+      sessionsUpserted?: number;
+    }>(`/reports/campaigns/${encodeURIComponent(campaignId)}/refresh-data`);
+    return data;
+  },
 };
 
 export const campaignLinksApi = {
