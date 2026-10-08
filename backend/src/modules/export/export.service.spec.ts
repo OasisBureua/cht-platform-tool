@@ -364,7 +364,8 @@ describe('ExportService.getCampaignInputPacket', () => {
           zoomMeetingId: null,
           chmProgramId: null,
           campaignId,
-          jotformSurveyUrl: 'https://communityhealthmedia.jotform.com/111111111',
+          jotformSurveyUrl:
+            'https://communityhealthmedia.jotform.com/111111111',
           zoomRecordingSessions: [],
           webinarParticipantEvents: [],
           surveys: [
@@ -401,7 +402,8 @@ describe('ExportService.getCampaignInputPacket', () => {
           zoomMeetingId: null,
           chmProgramId: null,
           campaignId,
-          jotformSurveyUrl: 'https://communityhealthmedia.jotform.com/222222222',
+          jotformSurveyUrl:
+            'https://communityhealthmedia.jotform.com/222222222',
           zoomRecordingSessions: [],
           webinarParticipantEvents: [],
           surveys: [],
