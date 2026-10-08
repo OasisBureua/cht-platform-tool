@@ -18,15 +18,29 @@ export interface ExportSessionPacket {
   chmProgramId: string | null;
 }
 
+/** CPR-42 — rolled attendance (summed watch time, no names). */
 export interface ExportAttendanceRow {
   platformToolProgramId: string;
   participantEmail: string | null;
-  participantName: string | null;
   userId: string | null;
   joinTime: string | null;
   leaveTime: string | null;
   durationSeconds: number | null;
   source: string;
+  specialty: string | null;
+  institution: string | null;
+  /** Stable Hub upsert key for the rolled row. */
+  platformEventId: string;
+}
+
+/** CPR-42 — program registrations (no names). */
+export interface ExportRegistrationRow {
+  platformToolProgramId: string;
+  userId: string;
+  registeredAt: string;
+  status: string;
+  specialty: string | null;
+  institution: string | null;
 }
 
 export interface ExportSurveyPacket {
@@ -53,10 +67,24 @@ export interface CampaignInputPacket {
   requestId: string;
   sessions: ExportSessionPacket[];
   attendance: ExportAttendanceRow[];
+  registrations: ExportRegistrationRow[];
   surveys: ExportSurveyPacket[];
 }
 
 const TRANSCRIPT_FILE_TYPES = new Set(['TRANSCRIPT', 'CC']);
+
+type Profile = { specialty: string | null; institution: string | null };
+
+type JoinedEvent = {
+  participantEmail: string | null;
+  userId: string | null;
+  joinTime: Date | null;
+  leaveTime: Date | null;
+  durationSeconds: number | null;
+  source: string;
+  occurredAt: Date;
+  isHost: boolean;
+};
 
 @Injectable()
 export class ExportService {
@@ -96,13 +124,30 @@ export class ExportService {
           orderBy: { occurredAt: 'asc' },
           select: {
             participantEmail: true,
-            participantName: true,
             userId: true,
             joinTime: true,
             leaveTime: true,
             durationSeconds: true,
             source: true,
             occurredAt: true,
+            isHost: true,
+          },
+        },
+        programRegistrations: {
+          where: { status: { not: 'REJECTED' } },
+          orderBy: { createdAt: 'asc' },
+          select: {
+            userId: true,
+            status: true,
+            createdAt: true,
+            user: {
+              select: {
+                id: true,
+                email: true,
+                specialty: true,
+                institution: true,
+              },
+            },
           },
         },
         surveys: {
@@ -126,7 +171,46 @@ export class ExportService {
 
     const sessions: ExportSessionPacket[] = [];
     const attendance: ExportAttendanceRow[] = [];
+    const registrations: ExportRegistrationRow[] = [];
     const surveys: ExportSurveyPacket[] = [];
+
+    const profileByUserId = new Map<string, Profile>();
+    const profileByEmail = new Map<string, Profile>();
+    for (const program of programs) {
+      for (const reg of program.programRegistrations) {
+        const profile: Profile = {
+          specialty: reg.user.specialty?.trim() || null,
+          institution: reg.user.institution?.trim() || null,
+        };
+        profileByUserId.set(reg.userId, profile);
+        const email = (reg.user.email || '').trim().toLowerCase();
+        if (email) profileByEmail.set(email, profile);
+      }
+    }
+
+    const missingUserIds = new Set<string>();
+    for (const program of programs) {
+      for (const ev of program.webinarParticipantEvents) {
+        if (ev.userId && !profileByUserId.has(ev.userId)) {
+          missingUserIds.add(ev.userId);
+        }
+      }
+    }
+    if (missingUserIds.size > 0) {
+      const users = await this.prisma.user.findMany({
+        where: { id: { in: [...missingUserIds] } },
+        select: { id: true, email: true, specialty: true, institution: true },
+      });
+      for (const user of users) {
+        const profile: Profile = {
+          specialty: user.specialty?.trim() || null,
+          institution: user.institution?.trim() || null,
+        };
+        profileByUserId.set(user.id, profile);
+        const email = (user.email || '').trim().toLowerCase();
+        if (email) profileByEmail.set(email, profile);
+      }
+    }
 
     for (const program of programs) {
       const recordingSession =
@@ -158,24 +242,26 @@ export class ExportService {
         chmProgramId: program.chmProgramId ?? null,
       });
 
-      const seenEmails = new Set<string>();
-      for (const ev of program.webinarParticipantEvents) {
-        const emailKey = (ev.participantEmail || '').trim().toLowerCase();
-        if (emailKey) {
-          if (seenEmails.has(emailKey)) continue;
-          seenEmails.add(emailKey);
-        }
-        attendance.push({
+      for (const reg of program.programRegistrations) {
+        registrations.push({
           platformToolProgramId: program.id,
-          participantEmail: ev.participantEmail ?? null,
-          participantName: ev.participantName ?? null,
-          userId: ev.userId ?? null,
-          joinTime: (ev.joinTime ?? ev.occurredAt)?.toISOString() ?? null,
-          leaveTime: ev.leaveTime?.toISOString() ?? null,
-          durationSeconds: ev.durationSeconds ?? null,
-          source: String(ev.source),
+          userId: reg.userId,
+          registeredAt: reg.createdAt.toISOString(),
+          status: String(reg.status),
+          specialty: reg.user.specialty?.trim() || null,
+          institution: reg.user.institution?.trim() || null,
         });
       }
+
+      attendance.push(
+        ...rollupAttendance({
+          platformToolProgramId: program.id,
+          events: program.webinarParticipantEvents,
+          panelistEmails: panelistEmailSet(program.zoomPanelistLinks),
+          profileByUserId,
+          profileByEmail,
+        }),
+      );
 
       for (const survey of program.surveys) {
         const jotformFormId = survey.jotformFormId?.trim() || null;
@@ -202,7 +288,7 @@ export class ExportService {
     }
 
     this.logger.log(
-      `[export] input-packet campaignId=${id} programs=${programs.length} sessions=${sessions.length} attendance=${attendance.length} surveys=${surveys.length} requestId=${requestId}`,
+      `[export] input-packet campaignId=${id} programs=${programs.length} sessions=${sessions.length} attendance=${attendance.length} registrations=${registrations.length} surveys=${surveys.length} requestId=${requestId}`,
     );
 
     return {
@@ -211,6 +297,7 @@ export class ExportService {
       requestId,
       sessions,
       attendance,
+      registrations,
       surveys,
     };
   }
@@ -307,4 +394,119 @@ function pickTranscript(
     return { s3Key: hit.s3Key, status: 'ok' };
   }
   return { s3Key: null, status: 'missing' };
+}
+
+function panelistEmailSet(raw: unknown): Set<string> {
+  const out = new Set<string>();
+  if (!Array.isArray(raw)) return out;
+  for (const row of raw) {
+    if (!row || typeof row !== 'object') continue;
+    const email = String(
+      (row as { email?: unknown }).email ?? '',
+    )
+      .trim()
+      .toLowerCase();
+    if (email) out.add(email);
+  }
+  return out;
+}
+
+function segmentSeconds(ev: JoinedEvent): number {
+  if (ev.durationSeconds != null && Number.isFinite(ev.durationSeconds)) {
+    return Math.max(0, Math.floor(ev.durationSeconds));
+  }
+  const join = ev.joinTime ?? ev.occurredAt;
+  const leave = ev.leaveTime;
+  if (join && leave) {
+    const ms = leave.getTime() - join.getTime();
+    if (Number.isFinite(ms) && ms > 0) return Math.floor(ms / 1000);
+  }
+  return 0;
+}
+
+function attendeeKey(ev: JoinedEvent): string | null {
+  const email = (ev.participantEmail || '').trim().toLowerCase();
+  if (email) return `e:${email}`;
+  const userId = (ev.userId || '').trim();
+  if (userId) return `u:${userId}`;
+  return null;
+}
+
+/** CPR-42 — sum rejoin segments; prefer REPORT_IMPORT; drop hosts/panelists. */
+export function rollupAttendance(opts: {
+  platformToolProgramId: string;
+  events: JoinedEvent[];
+  panelistEmails: Set<string>;
+  profileByUserId: Map<string, Profile>;
+  profileByEmail: Map<string, Profile>;
+}): ExportAttendanceRow[] {
+  const hasReportImport = opts.events.some(
+    (ev) => String(ev.source) === 'REPORT_IMPORT',
+  );
+  const pool = hasReportImport
+    ? opts.events.filter((ev) => String(ev.source) === 'REPORT_IMPORT')
+    : opts.events;
+
+  type Acc = {
+    email: string | null;
+    userId: string | null;
+    seconds: number;
+    joinTime: Date | null;
+    leaveTime: Date | null;
+    source: string;
+  };
+  const byKey = new Map<string, Acc>();
+
+  for (const ev of pool) {
+    if (ev.isHost) continue;
+    const email = (ev.participantEmail || '').trim().toLowerCase() || null;
+    if (email && opts.panelistEmails.has(email)) continue;
+    const key = attendeeKey(ev);
+    if (!key) continue;
+
+    const seconds = segmentSeconds(ev);
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, {
+        email,
+        userId: ev.userId?.trim() || null,
+        seconds,
+        joinTime: ev.joinTime ?? ev.occurredAt,
+        leaveTime: ev.leaveTime,
+        source: String(ev.source),
+      });
+      continue;
+    }
+    prev.seconds += seconds;
+    if (!prev.userId && ev.userId?.trim()) prev.userId = ev.userId.trim();
+    const join = ev.joinTime ?? ev.occurredAt;
+    if (join && (!prev.joinTime || join < prev.joinTime)) prev.joinTime = join;
+    if (
+      ev.leaveTime &&
+      (!prev.leaveTime || ev.leaveTime > prev.leaveTime)
+    ) {
+      prev.leaveTime = ev.leaveTime;
+    }
+    if (String(ev.source) === 'REPORT_IMPORT') prev.source = 'REPORT_IMPORT';
+  }
+
+  const rows: ExportAttendanceRow[] = [];
+  for (const [key, acc] of byKey.entries()) {
+    const profile =
+      (acc.userId ? opts.profileByUserId.get(acc.userId) : undefined) ??
+      (acc.email ? opts.profileByEmail.get(acc.email) : undefined);
+    rows.push({
+      platformToolProgramId: opts.platformToolProgramId,
+      participantEmail: acc.email,
+      userId: acc.userId,
+      joinTime: acc.joinTime?.toISOString() ?? null,
+      leaveTime: acc.leaveTime?.toISOString() ?? null,
+      durationSeconds: acc.seconds > 0 ? acc.seconds : null,
+      source: acc.source,
+      specialty: profile?.specialty ?? null,
+      institution: profile?.institution ?? null,
+      platformEventId: `rollup:${opts.platformToolProgramId}:${key}`,
+    });
+  }
+  return rows;
 }
