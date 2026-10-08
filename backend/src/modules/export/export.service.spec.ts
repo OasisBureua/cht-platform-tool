@@ -1,6 +1,40 @@
-import { ExportService, rollupAttendance } from './export.service';
+import {
+  ExportService,
+  exportNativeSurveyQuestions,
+  rollupAttendance,
+} from './export.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { JotformService } from '../jotform/jotform.service';
+
+const NATIVE_FEEDBACK_QUESTIONS = {
+  version: 1,
+  sections: [
+    {
+      id: 'sec-feedback',
+      title: 'Feedback',
+      questions: [
+        {
+          id: 'q2_setting',
+          type: 'single_choice',
+          prompt: 'What is your practice setting?',
+          options: ['Academic', 'Community', 'Other'],
+        },
+        {
+          id: 'q_nps',
+          type: 'rating',
+          prompt: 'How likely are you to recommend?',
+          scaleMin: 0,
+          scaleMax: 10,
+        },
+        {
+          id: 'q_info',
+          type: 'info',
+          prompt: 'Thanks for your time.',
+        },
+      ],
+    },
+  ],
+};
 
 describe('ExportService.getCampaignInputPacket', () => {
   const campaignId = 'AZ-25-01_LIV001';
@@ -237,13 +271,15 @@ describe('ExportService.getCampaignInputPacket', () => {
             type: 'FEEDBACK',
             title: 'Feedback',
             jotformFormId: null,
+            schemaVersion: 3,
+            questions: NATIVE_FEEDBACK_QUESTIONS,
             responses: [
               {
                 userId: 'u1',
                 submittedAt,
                 score: 4,
-                schemaVersion: 1,
-                answers: { q1: 'yes' },
+                schemaVersion: 3,
+                answers: { q2_setting: 'Academic' },
                 submissionId: 'native-sub-1',
               },
             ],
@@ -282,8 +318,22 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'FEEDBACK',
       jotformFormId: null,
       source: 'native',
+      schemaVersion: 3,
       responseCount: 1,
     });
+    expect(packet.surveys[0].questions).toEqual([
+      {
+        id: 'q2_setting',
+        prompt: 'What is your practice setting?',
+        type: 'single_choice',
+        options: ['Academic', 'Community', 'Other'],
+      },
+      {
+        id: 'q_nps',
+        prompt: 'How likely are you to recommend?',
+        type: 'rating',
+      },
+    ]);
   });
 
   it('excludes hosts and panelists from attendance', async () => {
@@ -433,6 +483,8 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'POST_TEST',
       jotformFormId: 'jf-99',
       source: 'jotform',
+      schemaVersion: null,
+      questions: null,
     });
     expect(packet.surveys[0].responses[0].submissionId).toBe('jf-sub-1');
     expect(packet.surveys[1]).toMatchObject({
@@ -440,6 +492,7 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'INTAKE',
       jotformFormId: null,
       source: 'native',
+      questions: null,
     });
     expect(packet.surveys[1].responses[0].submissionId).toBeNull();
   });
@@ -484,6 +537,8 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'FEEDBACK',
       jotformFormId: '260624911991966',
       source: 'jotform',
+      schemaVersion: null,
+      questions: null,
       responseCount: 1,
     });
   });
@@ -575,5 +630,31 @@ describe('rollupAttendance', () => {
       ],
     });
     expect(rows[0].durationSeconds).toBe(120);
+  });
+});
+
+describe('exportNativeSurveyQuestions', () => {
+  it('flattens prompt/type/options and skips info/link', () => {
+    expect(exportNativeSurveyQuestions(NATIVE_FEEDBACK_QUESTIONS)).toEqual([
+      {
+        id: 'q2_setting',
+        prompt: 'What is your practice setting?',
+        type: 'single_choice',
+        options: ['Academic', 'Community', 'Other'],
+      },
+      {
+        id: 'q_nps',
+        prompt: 'How likely are you to recommend?',
+        type: 'rating',
+      },
+    ]);
+  });
+
+  it('returns null for jotform or empty schemas', () => {
+    expect(
+      exportNativeSurveyQuestions({ source: 'jotform', formId: '123' }),
+    ).toBeNull();
+    expect(exportNativeSurveyQuestions(null)).toBeNull();
+    expect(exportNativeSurveyQuestions({})).toBeNull();
   });
 });

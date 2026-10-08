@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { JotformService } from '../jotform/jotform.service';
 import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
+import {
+  hasNativeSurveySchema,
+  listNativeSurveyQuestions,
+} from '../../utils/survey-schema';
 
 export type TranscriptStatus = 'ok' | 'missing';
 
@@ -43,6 +47,14 @@ export interface ExportRegistrationRow {
   institution: string | null;
 }
 
+/** CPR-43 — flat native question schema for Hub / report charts. */
+export interface ExportSurveyQuestion {
+  id: string;
+  prompt: string;
+  type: string;
+  options?: string[];
+}
+
 export interface ExportSurveyPacket {
   platformToolProgramId: string;
   surveyId: string;
@@ -50,6 +62,13 @@ export interface ExportSurveyPacket {
   title: string;
   jotformFormId: string | null;
   source: 'native' | 'jotform';
+  /** Survey.schemaVersion for native surveys; null for jotform. */
+  schemaVersion: number | null;
+  /**
+   * CPR-43 — native question schema (prompt/type/options in order).
+   * Jotform / legacy: null.
+   */
+  questions: ExportSurveyQuestion[] | null;
   responseCount: number;
   responses: Array<{
     userId: string;
@@ -265,13 +284,20 @@ export class ExportService {
 
       for (const survey of program.surveys) {
         const jotformFormId = survey.jotformFormId?.trim() || null;
+        const source = jotformFormId ? 'jotform' : 'native';
         surveys.push({
           platformToolProgramId: program.id,
           surveyId: survey.id,
           type: survey.type,
           title: survey.title,
           jotformFormId,
-          source: jotformFormId ? 'jotform' : 'native',
+          source,
+          schemaVersion:
+            source === 'native' ? (survey.schemaVersion ?? null) : null,
+          questions:
+            source === 'native'
+              ? exportNativeSurveyQuestions(survey.questions)
+              : null,
           responseCount: survey.responses.length,
           responses: survey.responses.map((r) => ({
             userId: r.userId,
@@ -358,6 +384,8 @@ export class ExportService {
             : 'Legacy Jotform post-event',
         jotformFormId: formId,
         source: 'jotform',
+        schemaVersion: null,
+        questions: null,
         responseCount: submissions.length,
         responses: submissions.map((row) => ({
           userId: row.userId ?? '',
@@ -370,6 +398,32 @@ export class ExportService {
       });
     }
   }
+}
+
+/** CPR-43 — flat { id, prompt, type, options? } for Hub report charts. */
+export function exportNativeSurveyQuestions(
+  questions: unknown,
+): ExportSurveyQuestion[] | null {
+  if (!hasNativeSurveySchema(questions)) return null;
+  const out: ExportSurveyQuestion[] = [];
+  for (const q of listNativeSurveyQuestions(questions)) {
+    const id = typeof q.id === 'string' ? q.id.trim() : '';
+    const prompt = typeof q.prompt === 'string' ? q.prompt.trim() : '';
+    const type = typeof q.type === 'string' ? q.type.trim() : '';
+    if (!id || !prompt || !type) continue;
+    // Skip non-answerable chrome; charts need closed + text prompts.
+    if (type === 'info' || type === 'link') continue;
+    const row: ExportSurveyQuestion = { id, prompt, type };
+    if (
+      (type === 'single_choice' || type === 'multi_choice') &&
+      Array.isArray(q.options) &&
+      q.options.length > 0
+    ) {
+      row.options = q.options.map((o) => String(o));
+    }
+    out.push(row);
+  }
+  return out.length > 0 ? out : null;
 }
 
 function pickTranscript(
