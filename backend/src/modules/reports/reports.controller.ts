@@ -52,13 +52,23 @@ export class ReportsController {
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary:
-      'Queue a report: freezes the window, takes the campaign/template lock, enqueues for cht-reports',
+      'Queue a report: syncs Hub warehouse, freezes the window, takes the campaign/template lock, enqueues for cht-reports',
   })
   create(
     @Body() dto: CreateReportDto,
     @CurrentUser() user: AuthUser,
   ): Promise<ReportView> {
     return this.reports.create(dto, user.userId);
+  }
+
+  @Post('campaigns/:campaignId/refresh-data')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary:
+      'CPR-41 — pull platform export into Hub for this campaign (Refresh data)',
+  })
+  refreshData(@Param('campaignId') campaignId: string) {
+    return this.reports.refreshCampaignData(campaignId);
   }
 
   @Get()

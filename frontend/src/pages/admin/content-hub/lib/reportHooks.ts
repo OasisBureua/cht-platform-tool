@@ -75,6 +75,13 @@ export function useDownloadReport() {
   return useMutation({ mutationFn: (report: Report) => reportsApi.download(report) });
 }
 
+/** CPR-41 — pull platform data into Hub without generating a report. */
+export function useRefreshCampaignData(campaignId: string) {
+  return useMutation({
+    mutationFn: () => reportsApi.refreshData(campaignId),
+  });
+}
+
 export function useReportRecipients(enabled = true) {
   return useQuery({
     queryKey: reportKeys.recipients(),

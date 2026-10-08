@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../../auth/auth.module';
 import { PrismaModule } from '../../prisma/prisma.module';
+import { ContentHubModule } from '../content-hub/content-hub.module';
 import { ProgramsModule } from '../programs/programs.module';
 import { WebinarsModule } from '../webinars/webinars.module';
 import { AdminZoomRecordingsController } from './admin-zoom-recordings.controller';
@@ -14,7 +15,13 @@ import { ZoomAttendanceImportService } from './zoom-attendance-import.service';
 import { ZoomAttendanceReportExportService } from './zoom-attendance-report-export.service';
 
 @Module({
-  imports: [AuthModule, PrismaModule, WebinarsModule, ProgramsModule],
+  imports: [
+    AuthModule,
+    PrismaModule,
+    WebinarsModule,
+    ProgramsModule,
+    ContentHubModule,
+  ],
   controllers: [AdminZoomRecordingsController],
   providers: [
     ChmContentIdService,

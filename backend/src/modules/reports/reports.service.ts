@@ -18,6 +18,10 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
+import {
+  CampaignExportIngestService,
+  type ExportIngestRunView,
+} from '../content-hub/campaign-export-ingest.service';
 import { ReportsAwsClients } from './reports-aws.clients';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { CreateReportDto } from './dto/create-report.dto';
@@ -58,10 +62,22 @@ export class ReportsService {
     private readonly config: ConfigService,
     private readonly aws: ReportsAwsClients,
     private readonly recipients: ReportRecipientsService,
+    private readonly exportIngest: CampaignExportIngestService,
   ) {}
 
   isConfigured(): boolean {
     return !!(this.tableName() && this.queueUrl());
+  }
+
+  /** CPR-41 — pull fresh warehouse data (blocked while a report is in flight). */
+  async refreshCampaignData(
+    campaignId: string,
+  ): Promise<ExportIngestRunView> {
+    this.requireConfigured();
+    const id = campaignId.trim();
+    if (!id) throw new BadRequestException('campaignId is required');
+    await this.assertNoInFlightReport(id, DEFAULT_TEMPLATE_TYPE);
+    return this.exportIngest.ingestCampaign(id, 'platform_refresh');
   }
 
   async create(dto: CreateReportDto, requestedBy: string): Promise<ReportView> {
@@ -78,6 +94,7 @@ export class ReportsService {
       now,
       dto.dateRangeDays,
     );
+    // Validate cheap inputs before lock / Hub ingest.
     const notifyEmails = await this.recipients.requireAdminEmails(
       dto.notifyEmails,
     );
@@ -117,6 +134,10 @@ export class ReportsService {
       ),
     );
 
+    // After lock: best-effort Hub sync so a second Generate cannot rewrite mid-report,
+    // and a Hub 503 does not block enqueue (data may be stale).
+    const warehouseSync = await this.syncWarehouseBestEffort(campaignId);
+
     try {
       await this.enqueue(reportId, campaignId);
     } catch (err) {
@@ -131,9 +152,9 @@ export class ReportsService {
     }
 
     this.logger.log(
-      `[reports] queued reportId=${reportId} campaignId=${campaignId} template=${templateType}`,
+      `[reports] queued reportId=${reportId} campaignId=${campaignId} template=${templateType} warehouseSync=${warehouseSync}`,
     );
-    return this.toView(report);
+    return this.toView(report, { warehouseSync });
   }
 
   async get(reportId: string, campaignId?: string): Promise<ReportView> {
@@ -236,6 +257,10 @@ export class ReportsService {
       throw err;
     }
 
+    const warehouseSync = await this.syncWarehouseBestEffort(
+      current.campaign_id,
+    );
+
     try {
       await this.enqueue(reportId, current.campaign_id);
     } catch (err) {
@@ -254,9 +279,10 @@ export class ReportsService {
     }
 
     this.logger.log(
-      `[reports] regenerate queued reportId=${reportId} campaignId=${current.campaign_id} editAttempts=${(current.edit_attempts ?? 0) + 1}/${max}`,
+      `[reports] regenerate queued reportId=${reportId} campaignId=${current.campaign_id} editAttempts=${(current.edit_attempts ?? 0) + 1}/${max} warehouseSync=${warehouseSync}`,
     );
-    return this.get(reportId, current.campaign_id);
+    const view = await this.get(reportId, current.campaign_id);
+    return { ...view, warehouseSync };
   }
 
   /** Streams the PDF through the API so the S3 location is never exposed. */
@@ -566,7 +592,60 @@ export class ReportsService {
     }
   }
 
-  private toView(item: ReportItem): ReportView {
+  /** CPR-41 — Hub sync after lock; never fails Generate/Regenerate. */
+  private async syncWarehouseBestEffort(
+    campaignId: string,
+  ): Promise<'ok' | 'failed'> {
+    try {
+      await this.exportIngest.ingestCampaign(campaignId, 'platform_generate');
+      return 'ok';
+    } catch (err) {
+      this.logger.warn(
+        `[reports] warehouse sync failed campaignId=${campaignId}: ${errMessage(err)}`,
+      );
+      return 'failed';
+    }
+  }
+
+  /** Block Refresh data while this campaign/template already has a live report. */
+  private async assertNoInFlightReport(
+    campaignId: string,
+    templateType: string,
+  ): Promise<void> {
+    const res = await this.aws.dynamodb.send(
+      new GetCommand({
+        TableName: this.tableName(),
+        Key: {
+          campaign_id: campaignId,
+          report_id: `${LOCK_PREFIX}${templateType}`,
+        },
+        ConsistentRead: true,
+      }),
+    );
+    const lock = res.Item as LockItem | undefined;
+    if (!lock) return;
+
+    const holder = await this.aws.dynamodb.send(
+      new GetCommand({
+        TableName: this.tableName(),
+        Key: { campaign_id: campaignId, report_id: lock.locked_report_id },
+        ConsistentRead: true,
+      }),
+    );
+    const holderItem = holder.Item as ReportItem | undefined;
+    if (!holderItem) return;
+    const current = await this.expireIfStale(holderItem);
+    if (!TERMINAL_STATUSES.has(current.status)) {
+      throw new ConflictException(
+        'A report is already being generated for this campaign; try Refresh data after it finishes',
+      );
+    }
+  }
+
+  private toView(
+    item: ReportItem,
+    extras?: { warehouseSync?: 'ok' | 'failed' },
+  ): ReportView {
     return {
       reportId: item.report_id,
       campaignId: item.campaign_id,
@@ -586,6 +665,9 @@ export class ReportsService {
       downloadAvailable: item.status === 'complete' && !!item.s3_key_pdf,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      ...(extras?.warehouseSync
+        ? { warehouseSync: extras.warehouseSync }
+        : {}),
     };
   }
 

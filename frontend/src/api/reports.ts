@@ -40,6 +40,8 @@ export type Report = {
   downloadAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Set on create/regenerate when Hub sync was attempted (CPR-41). */
+  warehouseSync?: 'ok' | 'failed';
 };
 
 export type CreateReportInput = {
@@ -156,6 +158,17 @@ export const reportsApi = {
     const { data } = await apiClient.get<ReportRecipient[]>(
       '/reports/notify-recipients',
     );
+    return data;
+  },
+
+  /** CPR-41 — sync platform export into Hub for this campaign (no report generate). */
+  refreshData: async (
+    campaignId: string,
+  ): Promise<{ status?: string; sessionsUpserted?: number }> => {
+    const { data } = await apiClient.post<{
+      status?: string;
+      sessionsUpserted?: number;
+    }>(`/reports/campaigns/${encodeURIComponent(campaignId)}/refresh-data`);
     return data;
   },
 };

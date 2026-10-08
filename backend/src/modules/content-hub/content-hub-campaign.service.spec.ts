@@ -12,6 +12,7 @@ describe('ContentHubCampaignService campaign KOLs', () => {
   const client = {
     getAdmin: jest.fn().mockResolvedValue({ items: [kol] }),
     putAdmin: jest.fn().mockResolvedValue({ items: [kol] }),
+    postAdmin: jest.fn().mockResolvedValue({ status: 'success' }),
   };
   const service = new ContentHubCampaignService(
     client as unknown as ContentHubClientService,
@@ -35,5 +36,21 @@ describe('ContentHubCampaignService campaign KOLs', () => {
     expect(client.putAdmin).toHaveBeenCalledWith('/campaigns/42/kols', {
       kolIds: [kol.id],
     });
+  });
+
+  it('POSTs export-ingest with exportCampaignId and trigger', async () => {
+    await service.exportIngest(42, { trigger: 'platform_link' });
+    expect(client.postAdmin).toHaveBeenCalledWith(
+      '/campaigns/42/export-ingest',
+      undefined,
+      {
+        timeoutMs: 55_000,
+        params: {
+          source: 'http',
+          exportCampaignId: '42',
+          trigger: 'platform_link',
+        },
+      },
+    );
   });
 });
