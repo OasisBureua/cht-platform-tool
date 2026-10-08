@@ -173,6 +173,47 @@ function footer(c, i, n, markColor, textColor, h) {
   if (i === n - 1) CHM.wordmark(c, 138, h - 55, 52, textColor);
   else { c.fillStyle = textColor; c.font = '500 54px Geist'; c.textAlign = 'right'; c.textBaseline = 'alphabetic'; c.fillText('→', 1008, h - 58); c.textAlign = 'left'; }
 }
+/* Quote and Close are shared layouts each style dresses in its own colours, so
+   picking a kind always changes the slide. L carries the style's ground, ink,
+   accent and label colours. */
+function quoteLayout(c, s, h, L) {
+  const imgs = s.images.filter(Boolean).slice(0, 2), tall = h > 1100;
+  if (s.eyebrow) CHM.mono(c, s.eyebrow, 72, 116, 24, L.label, { track: 2 });
+  const text = s.headline || '';
+  const qO = { w: 900, lines: tall ? 7 : 5, max: tall ? 80 : 68, min: 40, weight: 700, track: -0.025, leading: 1.08, color: L.ink, marks: { a: { text: L.accent }, b: { rect: L.accent, text: L.onAccent } } };
+  const m = CHM.marked(c, text, 0, 0, qO, true), glyph = tall ? 240 : 200, d = 132;
+  const attH = imgs.length ? d : (s.credit ? 36 : 0);
+  let y = Math.max(160, (h - 120 - (glyph * 0.6 + m.height + (attH ? 56 + attH : 0))) / 2);
+  c.fillStyle = L.accent; c.font = `900 ${glyph}px Geist`; c.textAlign = 'left'; c.textBaseline = 'alphabetic';
+  c.fillText('“', 58, y + glyph * 0.8);
+  y += glyph * 0.6;
+  CHM.marked(c, text, 72, y, qO);
+  y += m.height + 56;
+  if (imgs.length) {
+    const ring = { ring: L.accent, ringW: 8, empty: L.ground };
+    imgs.forEach((im, k) => CHM.circle(c, im, 72 + d / 2 + k * d * 0.72, y + d / 2, d, ring));
+    const tx = 72 + d + (imgs.length - 1) * d * 0.72 + 32;
+    if (s.credit) CHM.block(c, s.credit, tx, y + d / 2 - 30, { w: W - tx - 72, lines: 2, max: 32, min: 20, weight: 700, track: -0.01, leading: 1.15, color: L.ink });
+  } else if (s.credit) CHM.mono(c, s.credit, 72, y + 26, 24, L.label, { track: 1.6 });
+}
+function closeLayout(c, s, h, L) {
+  if (s.eyebrow) CHM.mono(c, s.eyebrow, 72, 116, 24, L.label, { track: 2 });
+  const headO = { w: 936, lines: 4, max: h > 1100 ? 104 : 88, min: 52, track: -0.04, leading: 0.94, color: L.ink, marks: { a: { text: L.accent }, b: { rect: L.accent, text: L.onAccent } } };
+  /* each line of the body becomes a step, led by an arrow in the accent;
+     the headline and steps sit as one block in the middle of the slide */
+  const steps = String(s.body || '').split('\n').map(t => t.trim()).filter(Boolean).slice(0, 4);
+  const stepO = { w: 840, lines: 3, max: 36, min: 24, weight: 600, track: -0.015, leading: 1.25, color: L.ink };
+  const headH = CHM.marked(c, s.headline || '', 0, 0, headO, true).height;
+  const stepsH = steps.reduce((a, t) => a + CHM.measure(c, t, stepO).height + 36, 0);
+  let y = Math.max(170, (h - 120 - headH - (steps.length ? 64 + stepsH : 0)) / 2);
+  y = CHM.marked(c, s.headline || '', 72, y, headO).bottom + 64;
+  steps.forEach((t) => {
+    if (y > h - 260) return;
+    c.fillStyle = L.accent; c.font = '700 44px Geist'; c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.fillText('→', 72, y + 40);
+    y = CHM.block(c, t, 148, y, stepO) + 36;
+  });
+  if (s.credit) CHM.mono(c, s.credit, 72, h - 190, 24, L.label, { track: 1.6 });
+}
 /* bottom-anchored copy stack shared by Photo and Marker: headline, credit, body */
 function copyStack(c, s, h, o) {
   const bottom = h - 154, bodyText = s.body || '', creditText = s.credit || '';
@@ -190,16 +231,27 @@ function copyStack(c, s, h, o) {
 }
 
 function drawA(c, s, i, n, h) {
-  const A = active(), imgs = s.images.filter(Boolean), bright = A.bright;
+  const A = active(), bright = A.bright;
+  /* the full-bleed photo belongs to Cover and Point; Quote and Close keep faces in the attribution */
+  const imgs = s.kind === 'quote' || s.kind === 'cta' ? [] : s.images.filter(Boolean);
   c.fillStyle = A.isV2 ? V2.deep : TONES[state.area]; c.fillRect(0, 0, W, h);
   if (imgs.length) {
     if (imgs.length === 1) CHM.cover(c, imgs[0], { x: 0, y: 0, w: W, h }, { ay: h * 0.34 });
     else { CHM.cover(c, imgs[0], { x: 0, y: 0, w: 540, h }, { ay: h * 0.34 }); CHM.cover(c, imgs[1], { x: 540, y: 0, w: 540, h }, { ay: h * 0.34 }); }
     let g = c.createLinearGradient(0, 0, 0, 300); g.addColorStop(0, 'rgba(0,0,0,.55)'); g.addColorStop(1, 'rgba(0,0,0,0)'); c.fillStyle = g; c.fillRect(0, 0, W, 300);
     g = c.createLinearGradient(0, h * 0.34, 0, h); g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(0.55, 'rgba(0,0,0,.78)'); g.addColorStop(1, 'rgba(0,0,0,.94)'); c.fillStyle = g; c.fillRect(0, h * 0.34, W, h * 0.66);
-  } else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 300, bright);
-  eyebrow(c, s.eyebrow, imgs.length ? '#fff' : A.second);
-  copyStack(c, s, h, { headSize: s.kind === 'cover' ? 96 : 84, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: A.second });
+  } else if (s.kind === 'cover') CHM.mark(c, 560, h * 0.14, 620, bright);
+  else if (s.kind === 'point') CHM.mark(c, 700, 120, 300, bright);
+  const ground = A.isV2 ? V2.deep : TONES[state.area];
+  if (s.kind === 'quote') quoteLayout(c, s, h, { ground, ink: '#fff', accent: bright, onAccent: ground, label: A.second });
+  else if (s.kind === 'cta') closeLayout(c, s, h, { ground, ink: '#fff', accent: bright, onAccent: ground, label: A.second });
+  else if (s.kind === 'cover') {
+    if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, ground);
+    copyStack(c, s, h, { headSize: 124, headLines: 4, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: A.second });
+  } else {
+    eyebrow(c, s.eyebrow, imgs.length ? '#fff' : A.second);
+    copyStack(c, s, h, { headSize: 84, headColor: '#fff', bodyColor: 'rgba(255,255,255,.88)', creditColor: A.second });
+  }
   footer(c, i, n, bright, '#fff', h);
 }
 
@@ -208,12 +260,20 @@ function drawQ(c, s, i, n, h) {
   const fg = dark ? '#fff' : A.dark, accent = dark ? A.bright : A.dark;
   c.fillStyle = dark ? A.dark : A.bright; c.fillRect(0, 0, W, h);
   const ring = { ring: accent, ringW: 10, empty: dark ? rgba(A.dark, 1) : '#fff' };
+  const label = dark ? A.second : accent, ground = dark ? A.dark : A.bright;
+  if (s.kind === 'quote' || s.kind === 'cta') {
+    const L = { ground, ink: fg, accent, onAccent: dark ? A.dark : '#fff', label };
+    if (s.kind === 'quote') quoteLayout(c, s, h, L); else closeLayout(c, s, h, L);
+    footer(c, i, n, accent, fg, h);
+    return;
+  }
   if (imgs.length === 1) CHM.circle(c, imgs[0], 768, h * 0.338, 480, ring);
   else if (imgs.length === 2) { CHM.circle(c, imgs[0], 282, h * 0.387, 420, ring); CHM.circle(c, imgs[1], 754, h * 0.387, 420, ring); }
-  else if (s.kind !== 'cover') CHM.mark(c, 700, 120, 460, accent);
-  const label = dark ? A.second : accent;
-  eyebrow(c, s.eyebrow, label);
-  copyStack(c, s, h, { upper: true, headSize: s.kind === 'cover' ? 84 : 76, headColor: fg, bodyColor: fg, bodyWeight: 600, bodySize: 34, bodyLines: 6, creditColor: label,
+  else if (s.kind === 'cover') CHM.mark(c, W / 2 - 300, h * 0.1, 600, accent);
+  else CHM.mark(c, 700, 120, 460, accent);
+  if (s.kind === 'cover') { if (s.eyebrow) chip(c, s.eyebrow, 72, 96, accent, dark ? A.dark : '#fff'); }
+  else eyebrow(c, s.eyebrow, label);
+  copyStack(c, s, h, { upper: true, headSize: s.kind === 'cover' ? 112 : 76, headLines: s.kind === 'cover' ? 4 : 3, headColor: fg, bodyColor: fg, bodyWeight: 600, bodySize: 34, bodyLines: 6, creditColor: label,
     marks: { a: { rect: accent, text: dark ? A.dark : '#fff' }, b: { rect: accent, text: dark ? A.dark : '#fff' } } });
   footer(c, i, n, accent, fg, h);
 }
@@ -331,8 +391,10 @@ function drawP(c, s, i, n, h) {
     let y = -(hs.reduce((a, b) => a + b, 0) + (paras.length - 1) * 28) / 2;
     paras.forEach((pp, k) => { paperBox(c, x + 40, y, w - 80, pp, T, { size: 34 }); y += hs[k] + 28; });
   } else {
-    const boxText = s.body || s.headline;
-    const textM = CHM.marked(c, boxText, 0, 0, { w: w - 160, lines: 5, max: 32, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: T.boxText }, true);
+    /* a quote puts the line itself in the box, larger, in quotation marks */
+    const isQuote = s.kind === 'quote', boxSize = isQuote ? 44 : 32;
+    const boxText = isQuote ? `“${s.headline || ''}”` : (s.body || s.headline);
+    const textM = CHM.marked(c, boxText, 0, 0, { w: w - 160, lines: isQuote ? 6 : 5, max: boxSize, min: 24, weight: isQuote ? 700 : 600, track: -0.015, leading: 1.2, align: 'center', color: T.boxText }, true);
     const boxH = textM.height + 64 + (s.credit ? 30 : 0);
     const photoTop = -cardH / 2 + 44, photoBot = cardH / 2 - boxH - 60;
     const d = Math.min(photoBot - photoTop, 640), cy = (photoTop + photoBot) / 2;
@@ -344,7 +406,7 @@ function drawP(c, s, i, n, h) {
     c.fillStyle = T.box; CHM.roundRect(c, x + 40, by, w - 80, boxH, 16); c.fill();
     let ty = by + 32;
     if (s.credit) { CHM.mono(c, s.credit, 0, ty + 12, 20, T.credit, { align: 'center', track: 1.6 }); ty += 30; }
-    CHM.marked(c, boxText, 0, ty, { w: w - 160, lines: 5, max: 32, min: 24, weight: 600, track: -0.015, leading: 1.25, align: 'center', color: T.boxText, marks: { a: { text: T.hiA }, b: { text: T.hiB } } });
+    CHM.marked(c, boxText, 0, ty, { w: w - 160, lines: isQuote ? 6 : 5, max: boxSize, min: 24, weight: isQuote ? 700 : 600, track: -0.015, leading: 1.2, align: 'center', color: T.boxText, marks: { a: { text: T.hiA }, b: { text: T.hiB } } });
   }
   c.restore();
 }
@@ -412,8 +474,9 @@ function drawD(c, s, i, n, h) {
   } else {
     flagTag(c, s.eyebrow, 72, 96, A.second, INK, 62);
     CHM.mark(c, 956, 96, 52, photo ? INK : A.bright);
-    const w = 856, x = 112, text = s.body || s.headline;
-    const base = { w: w - 80, lines: 5, max: 34, min: 24, weight: 600, track: -0.015, leading: 1.25, color: INK, align: 'center' };
+    const isQuote = s.kind === 'quote';
+    const w = 856, x = 112, text = isQuote ? `“${s.headline || ''}”` : (s.body || s.headline);
+    const base = { w: w - 80, lines: isQuote ? 6 : 5, max: isQuote ? 46 : 34, min: 24, weight: isQuote ? 700 : 600, track: -0.015, leading: 1.2, color: INK, align: 'center' };
     const creditH = s.credit ? 34 : 0;
     const bh = CHM.marked(c, text, 0, 0, base, true).height + 64 + creditH;
     /* clears the lockup: the card stops above the footer rather than sitting on it */
@@ -431,6 +494,27 @@ function drawD(c, s, i, n, h) {
 function drawB(c, s, i, n, h) {
   const A = active(), INK = A.dark, imgs = s.images.filter(Boolean).slice(0, 2), seed = seedFor(i);
   c.fillStyle = INK; c.fillRect(0, 0, W, h);
+  if (s.kind === 'quote' || s.kind === 'cta') {
+    CHM.burst(c, W * 0.86, h * 0.16, 900, A.bright, seed, 1100, 1);
+    const L = { ground: INK, ink: '#ffffff', accent: A.bright, onAccent: INK, label: A.second };
+    if (s.kind === 'quote') quoteLayout(c, s, h, L); else closeLayout(c, s, h, L);
+    footer(c, i, n, A.bright, '#ffffff', h);
+    return;
+  }
+  if (s.kind === 'cover') {
+    /* the cover centres the headline in the field, faces above it */
+    CHM.burst(c, W / 2, h * 0.46, 1500, A.bright, seed, 2000, 1);
+    if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
+    const headO = { w: 936, lines: 5, max: 150, min: 64, track: -0.04, leading: 0.9, align: 'center', color: '#ffffff', marks: { a: { text: A.bright }, b: { rect: A.bright, text: INK } } };
+    const m = CHM.marked(c, s.headline.toUpperCase(), 0, 0, headO, true);
+    const faceH = imgs.length ? 260 : 0;
+    let y = (h - m.height - faceH) / 2 + faceH;
+    if (imgs.length) { const ring = { ring: A.bright, ringW: 10, empty: INK }, d = 220; imgs.forEach((im, k) => CHM.circle(c, im, W / 2 + (imgs.length === 2 ? (k ? 130 : -130) : 0), y - 160, d, ring)); }
+    CHM.marked(c, s.headline.toUpperCase(), W / 2, y, headO);
+    if (s.body) CHM.mono(c, s.body.split('\n')[0], W / 2, y + m.height + 70, 26, A.second, { align: 'center', track: 2.4 });
+    footer(c, i, n, A.bright, '#ffffff', h);
+    return;
+  }
   CHM.burst(c, W * 0.56, h * (imgs.length ? 0.3 : 0.38), imgs.length ? 1000 : 1320, A.bright, seed, 1700, 1);
   if (s.eyebrow) chip(c, s.eyebrow, 72, 96, A.second, INK);
   if (imgs.length) {
@@ -457,6 +541,23 @@ function drawB(c, s, i, n, h) {
 function drawN(c, s, i, n, h) {
   const A = active();
   c.fillStyle = A.light; c.fillRect(0, 0, W, h);
+  if (s.kind !== 'point') {
+    CHM.burst(c, s.kind === 'cover' ? 900 : 980, s.kind === 'cover' ? h * 0.3 : 250, s.kind === 'cover' ? 1100 : 700, A.bright, seedFor(i), s.kind === 'cover' ? 1300 : 700, 1);
+    const L = { ground: A.light, ink: A.dark, accent: A.ink, onAccent: '#ffffff', label: A.ink };
+    if (s.kind === 'quote') quoteLayout(c, s, h, L);
+    else if (s.kind === 'cta') closeLayout(c, s, h, L);
+    else {
+      /* a title slide: the headline leads and the figure waits for the next slide */
+      if (s.eyebrow) CHM.mono(c, s.eyebrow, 72, 116, 24, A.ink, { track: 2 });
+      const headO = { w: 936, lines: 5, max: 132, min: 60, track: -0.045, leading: 0.92, color: A.dark, marks: { a: { text: A.ink }, b: { rect: A.isV2 ? A.second : A.bright, text: A.dark } } };
+      const m = CHM.marked(c, s.headline || '', 0, 0, headO, true);
+      const top = Math.max(220, h - 360 - m.height);
+      CHM.marked(c, s.headline || '', 72, top, headO);
+      if (s.body) CHM.block(c, s.body, 72, top + m.height + 40, { w: 900, lines: 3, max: 38, min: 26, weight: 500, track: -0.02, leading: 1.3, color: A.dark });
+    }
+    footer(c, i, n, A.ink, A.dark, h);
+    return;
+  }
   CHM.burst(c, 980, 250, 700, A.bright, seedFor(i), 700, 1);
   if (s.eyebrow) CHM.mono(c, s.eyebrow, 72, 116, 24, A.ink, { track: 2 });
   c.fillStyle = rgba(A.dark, .12); c.fillRect(72, 150, W - 144, 2);
