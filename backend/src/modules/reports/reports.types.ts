@@ -75,4 +75,9 @@ export type ReportView = {
   downloadAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * CPR-41 — set on create/regenerate only. Hub sync is best-effort after the
+   * lock so a Hub 503 does not block Generate; `failed` means data may be stale.
+   */
+  warehouseSync?: 'ok' | 'failed';
 };

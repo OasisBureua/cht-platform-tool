@@ -288,23 +288,71 @@ describe('ReportsService', () => {
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
     });
 
-    it('syncs Hub before enqueue and does not enqueue when ingest fails', async () => {
+    it('validates and locks before Hub ingest, then enqueues even if ingest fails', async () => {
+      const order: string[] = [];
+      const ingestCampaign = jest.fn().mockImplementation(async () => {
+        order.push('ingest');
+        throw new ServiceUnavailableException('Hub down');
+      });
+      const { service, send } = build(
+        (command) => {
+          if (command === 'TransactWriteCommand') order.push('lock');
+          if (command === 'SendMessageCommand') order.push('enqueue');
+          return {};
+        },
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
+
+      const view = await service.create({ campaignId: '42' }, 'user-1');
+
+      expect(order).toEqual(['lock', 'ingest', 'enqueue']);
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
+      expect(view.warehouseSync).toBe('failed');
+      expect(view.status).toBe('queued');
+      expect(calls(send, 'SendMessageCommand')).toHaveLength(1);
+    });
+
+    it('refreshCampaignData rejects when a report is in flight', async () => {
+      const { service } = build((command, input) => {
+        if (
+          command === 'GetCommand' &&
+          input.Key?.report_id === 'LOCK#executive_summary'
+        ) {
+          return { Item: { locked_report_id: 'r-live' } };
+        }
+        if (command === 'GetCommand' && input.Key?.report_id === 'r-live') {
+          return {
+            Item: completeReport({
+              report_id: 'r-live',
+              status: 'generating',
+              updated_at: new Date().toISOString(),
+            }),
+          };
+        }
+        return {};
+      });
+
+      await expect(service.refreshCampaignData('42')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('refreshCampaignData ingests when no report is in flight', async () => {
       const ingestCampaign = jest
         .fn()
-        .mockRejectedValue(new ServiceUnavailableException('Hub down'));
-      const { service, send } = build(
+        .mockResolvedValue({ status: 'success', sessionsUpserted: 2 });
+      const { service } = build(
         () => ({}),
         {},
         { ingestCampaign } as Partial<CampaignExportIngestService>,
       );
 
-      await expect(
-        service.create({ campaignId: '42' }, 'user-1'),
-      ).rejects.toBeInstanceOf(ServiceUnavailableException);
-
-      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
-      expect(calls(send, 'SendMessageCommand')).toHaveLength(0);
-      expect(calls(send, 'TransactWriteCommand')).toHaveLength(0);
+      await expect(service.refreshCampaignData('42')).resolves.toEqual({
+        status: 'success',
+        sessionsUpserted: 2,
+      });
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_refresh');
     });
 
     it('returns 503 when reports are not configured', async () => {
@@ -465,20 +513,31 @@ describe('ReportsService', () => {
 
   describe('regenerate', () => {
     it('queues a completed report and increments edit_attempts', async () => {
-      let item = completeReport();
-      const { service, send } = build((command) => {
-        if (command === 'GetCommand') return { Item: item };
-        if (command === 'TransactWriteCommand') {
-          item = {
-            ...item,
-            status: 'queued',
-            edit_attempts: item.edit_attempts + 1,
-            updated_at: new Date().toISOString(),
-          };
-          return {};
-        }
-        return {};
+      let item = completeReport({ campaign_id: '42' });
+      const order: string[] = [];
+      const ingestCampaign = jest.fn().mockImplementation(async () => {
+        order.push('ingest');
+        return { status: 'success' };
       });
+      const { service, send } = build(
+        (command) => {
+          if (command === 'GetCommand') return { Item: item };
+          if (command === 'TransactWriteCommand') {
+            order.push('lock');
+            item = {
+              ...item,
+              status: 'queued',
+              edit_attempts: item.edit_attempts + 1,
+              updated_at: new Date().toISOString(),
+            };
+            return {};
+          }
+          if (command === 'SendMessageCommand') order.push('enqueue');
+          return {};
+        },
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
 
       const view = await service.regenerate(
         item.report_id,
@@ -486,6 +545,9 @@ describe('ReportsService', () => {
         '  Shorten the summary  ',
       );
 
+      expect(order).toEqual(['lock', 'ingest', 'enqueue']);
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
+      expect(view.warehouseSync).toBe('ok');
       expect(view.status).toBe('queued');
       expect(view.editAttempts).toBe(1);
       const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');

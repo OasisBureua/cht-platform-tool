@@ -145,10 +145,13 @@ function GenerateCard({
         notifyEmails: notify,
       },
       {
-        onSuccess: () =>
+        onSuccess: (report) =>
           toast({
             title: 'Report queued',
-            description: 'Generation runs in the background. Its status updates in Report history.',
+            description:
+              report.warehouseSync === 'failed'
+                ? 'Queued, but Hub data sync failed — the report may use stale warehouse data.'
+                : 'Generation runs in the background. Its status updates in Report history.',
           }),
         onError: async (err) =>
           setError(await reportErrorMessage(err, 'Could not queue the report. Try again shortly.')),

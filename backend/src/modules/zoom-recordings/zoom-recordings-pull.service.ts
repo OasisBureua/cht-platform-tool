@@ -333,18 +333,6 @@ export class ZoomRecordingsPullService {
         fileTypeUpper === 'TRANSCRIPT' || fileTypeUpper === 'CC';
 
       try {
-        const prior = await this.prisma.zoomRecordingFile.findUnique({
-          where: {
-            zoomMeetingId_zoomRecordingFileId: {
-              zoomMeetingId: opts.meetingId,
-              zoomRecordingFileId: file.id,
-            },
-          },
-          select: { pullStatus: true },
-        });
-        const alreadyCompleted =
-          prior?.pullStatus === ZoomRecordingPullStatus.COMPLETED;
-
         // Mark in-progress before download so the admin UI can poll live status.
         await this.prisma.zoomRecordingFile.upsert({
           where: {
@@ -491,12 +479,8 @@ export class ZoomRecordingsPullService {
           },
         });
         upserted.push(row.id);
-        if (
-          !alreadyCompleted &&
-          isTranscript &&
-          opts.programId &&
-          !fireZoomIngest
-        ) {
+        // Fire on new completes and re-pulls so Hub gets a fresh packet after transcript land.
+        if (isTranscript && opts.programId && !fireZoomIngest) {
           fireZoomIngest = true;
         }
       } catch (err) {

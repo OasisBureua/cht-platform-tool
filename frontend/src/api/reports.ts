@@ -40,6 +40,8 @@ export type Report = {
   downloadAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Set on create/regenerate when Hub sync was attempted (CPR-41). */
+  warehouseSync?: 'ok' | 'failed';
 };
 
 export type CreateReportInput = {

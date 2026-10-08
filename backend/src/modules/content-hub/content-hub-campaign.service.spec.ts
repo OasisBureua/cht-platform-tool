@@ -44,7 +44,7 @@ describe('ContentHubCampaignService campaign KOLs', () => {
       '/campaigns/42/export-ingest',
       undefined,
       {
-        timeoutMs: 120_000,
+        timeoutMs: 55_000,
         params: {
           source: 'http',
           exportCampaignId: '42',

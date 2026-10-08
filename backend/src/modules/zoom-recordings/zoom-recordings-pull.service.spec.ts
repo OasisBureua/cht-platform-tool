@@ -217,11 +217,8 @@ describe('ZoomRecordingsPullService', () => {
     expect(exportIngest.triggerForProgramZoom).toHaveBeenCalledWith(program.id);
   });
 
-  it('skips Hub ingest when transcript was already COMPLETED', async () => {
+  it('still triggers Hub ingest when re-pulling an already COMPLETED transcript', async () => {
     prisma.program.findUnique.mockResolvedValue(program);
-    prisma.zoomRecordingFile.findUnique.mockResolvedValue({
-      pullStatus: 'COMPLETED',
-    });
     zoom.getMeetingRecordings.mockResolvedValue({
       topic: 'Webinar Test',
       downloadAccessToken: 'dl-token',
@@ -243,7 +240,7 @@ describe('ZoomRecordingsPullService', () => {
     });
 
     await service.pullForProgram(program.id, {});
-    expect(exportIngest.triggerForProgramZoom).not.toHaveBeenCalled();
+    expect(exportIngest.triggerForProgramZoom).toHaveBeenCalledWith(program.id);
   });
 
   it('uses body zoomMeetingId override instead of the program id', async () => {

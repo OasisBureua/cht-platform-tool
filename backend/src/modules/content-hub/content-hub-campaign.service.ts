@@ -115,7 +115,8 @@ export class ContentHubCampaignService {
       `/campaigns/${hubId}/export-ingest`,
       undefined,
       {
-        timeoutMs: opts?.timeoutMs ?? 120_000,
+        // Stay under Hub ALB idle timeout (~60s) and Platform ALB (~90s).
+        timeoutMs: opts?.timeoutMs ?? 55_000,
         params: {
           source: 'http',
           exportCampaignId,

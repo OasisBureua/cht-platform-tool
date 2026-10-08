@@ -1,5 +1,6 @@
 import {
   BadGatewayException,
+  BadRequestException,
   Injectable,
   Logger,
   ServiceUnavailableException,
@@ -62,7 +63,7 @@ export class CampaignExportIngestService {
   ): Promise<ExportIngestRunView> {
     const hubId = parseHubCampaignId(campaignId);
     if (hubId == null) {
-      throw new ServiceUnavailableException(
+      throw new BadRequestException(
         `Invalid Hub campaign id for export ingest: ${campaignId}`,
       );
     }
@@ -87,6 +88,7 @@ export class CampaignExportIngestService {
     } catch (err) {
       if (
         err instanceof BadGatewayException ||
+        err instanceof BadRequestException ||
         err instanceof ServiceUnavailableException
       ) {
         throw err;
@@ -131,16 +133,16 @@ export class CampaignExportIngestService {
     });
   }
 
-  /** After program link/unlink: refresh previous and/or next Hub campaign. */
+  /**
+   * After program link/re-link: refresh the new Hub campaign.
+   * Skip the previous campaign on unlink/re-link — warehouse upsert does not
+   * delete orphaned sessions/attendance for a removed program.
+   */
   triggerForProgramLink(opts: {
     previousCampaignId: string | null | undefined;
     nextCampaignId: string | null | undefined;
   }): void {
-    const prev = (opts.previousCampaignId || '').trim() || null;
     const next = (opts.nextCampaignId || '').trim() || null;
-    if (prev && prev !== next) {
-      this.triggerInBackground(prev, 'platform_link');
-    }
     if (next) {
       this.triggerInBackground(next, 'platform_link');
     }

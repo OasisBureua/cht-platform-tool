@@ -1,3 +1,4 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   CampaignExportIngestService,
   parseHubCampaignId,
@@ -44,23 +45,37 @@ describe('CampaignExportIngestService', () => {
     });
   });
 
-  it('triggerForProgramLink fires previous and next when they differ', () => {
-    const spy = jest.spyOn(service, 'triggerInBackground');
-    service.triggerForProgramLink({
-      previousCampaignId: '10',
-      nextCampaignId: '20',
-    });
-    expect(spy).toHaveBeenCalledWith('10', 'platform_link');
-    expect(spy).toHaveBeenCalledWith('20', 'platform_link');
+  it('returns 400 for a non-numeric campaign id', async () => {
+    await expect(
+      service.ingestCampaign('AZ-25-01_LIV001', 'platform_refresh'),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(exportIngest).not.toHaveBeenCalled();
   });
 
-  it('triggerForProgramLink skips duplicate when unchanged', () => {
+  it('triggerForProgramLink fires only the next campaign', () => {
     const spy = jest.spyOn(service, 'triggerInBackground');
-    service.triggerForProgramLink({
-      previousCampaignId: '10',
-      nextCampaignId: '10',
-    });
-    expect(spy).toHaveBeenCalledTimes(1);
-    expect(spy).toHaveBeenCalledWith('10', 'platform_link');
+    try {
+      service.triggerForProgramLink({
+        previousCampaignId: '10',
+        nextCampaignId: '20',
+      });
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith('20', 'platform_link');
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('triggerForProgramLink skips unlink (no next campaign)', () => {
+    const spy = jest.spyOn(service, 'triggerInBackground');
+    try {
+      service.triggerForProgramLink({
+        previousCampaignId: '10',
+        nextCampaignId: null,
+      });
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
