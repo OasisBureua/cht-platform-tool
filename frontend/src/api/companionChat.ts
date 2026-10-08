@@ -1,4 +1,5 @@
 import { resolveApiBaseUrl } from '../config/app-urls';
+import apiClient from './client';
 
 export type CitationEvent = {
   citation_id: string;
@@ -10,6 +11,10 @@ export type CitationEvent = {
   playlist_url: string | null;
   snippet: string;
   timestamp: number | null;
+};
+
+export type ConversationEvent = {
+  conversation_id: string;
 };
 
 export type TokenEvent = {
@@ -70,6 +75,7 @@ export type CompanionErrorEnvelope = {
 };
 
 export type CompanionStreamHandlers = {
+  onConversation?: (c: ConversationEvent) => void;
   onCitation: (c: CitationEvent) => void;
   onToken: (t: TokenEvent) => void;
   onError: (e: ErrorEvent) => void;
@@ -113,6 +119,10 @@ export async function consumeCompanionSse(
     if (!data) return;
     if (data === '[DONE]') return;
 
+    if (name === 'conversation') {
+      handlers.onConversation?.(JSON.parse(data) as ConversationEvent);
+      return;
+    }
     if (name === 'citation') {
       handlers.onCitation(JSON.parse(data) as CitationEvent);
       return;
@@ -216,3 +226,52 @@ export async function streamCompanionChat(args: {
   await consumeCompanionSse(res.body, args.handlers);
   return { requestId };
 }
+
+/** One chip per source; keeps the first citation seen for each `source_id`. */
+export function dedupeCitationsBySource(citations: CitationEvent[]): CitationEvent[] {
+  const seen = new Set<string>();
+  const out: CitationEvent[] = [];
+  for (const c of citations) {
+    const key = c.source_id || c.citation_id;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(c);
+  }
+  return out;
+}
+
+export type ConversationSummary = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type StoredMessage = {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  citations: CitationEvent[] | null;
+  finishReason: string | null;
+  createdAt: string;
+};
+
+export type ConversationDetail = ConversationSummary & {
+  messages: StoredMessage[];
+};
+
+export const companionConversationsApi = {
+  list: async () => {
+    const { data } = await apiClient.get<ConversationSummary[]>('/chat/conversations');
+    return data;
+  },
+  get: async (id: string) => {
+    const { data } = await apiClient.get<ConversationDetail>(
+      `/chat/conversations/${encodeURIComponent(id)}`,
+    );
+    return data;
+  },
+  remove: async (id: string) => {
+    await apiClient.delete(`/chat/conversations/${encodeURIComponent(id)}`);
+  },
+};

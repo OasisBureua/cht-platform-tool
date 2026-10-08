@@ -191,7 +191,7 @@ export default function Dashboard() {
     queryFn: surveysApi.getAll,
     staleTime: 5 * 60 * 1000,
   });
-  const surveys = surveyList?.active ?? [];
+  const surveys = useMemo(() => surveyList?.active ?? [], [surveyList]);
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
     queryKey: OFFICE_HOURS_QUERY_KEY,
@@ -243,8 +243,8 @@ export default function Dashboard() {
   const nextLiveCoverUrl = nextUpcomingWebinar?.imageUrl?.trim() || undefined;
   const nextOfficeHoursSession = useMemo(() => getNextUpcomingWebinar(officeHours), [officeHours]);
   const requiredSurveysPending = useMemo(() => surveys.filter((s) => s.required), [surveys]);
-  const recentItems = recentData?.items ?? [];
-  const topicItems = topicData?.items ?? [];
+  const recentItems = useMemo(() => recentData?.items ?? [], [recentData]);
+  const topicItems = useMemo(() => topicData?.items ?? [], [topicData]);
   /** Catalog clips that have a usable thumb URL, omit placeholder-only rows on the dashboard. */
   const recentCatalogClips = useMemo(() => recentItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [recentItems]);
   const topicCatalogClips = useMemo(() => topicItems.filter((clip) => shouldSurfaceCatalogClip(clip)), [topicItems]);

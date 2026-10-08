@@ -218,28 +218,41 @@ export class ContentHubCatalogService {
     return env === 'dev' || env === 'development';
   }
 
+  /**
+   * ContentHub /clips returns a bare array (one page) and puts the full
+   * filtered count in `X-Total-Count`; prefer that over the page length.
+   */
   private normalizeClipsResponse(
     result: ContentHubClipsResponse | ContentHubClip[],
+    headerTotal?: number | null,
   ): ContentHubClipsResponse {
     if (Array.isArray(result)) {
-      return { items: result, total: result.length };
+      return { items: result, total: headerTotal ?? result.length };
     }
     return {
       items: result?.items ?? [],
-      total: result?.total ?? result?.items?.length ?? 0,
+      total: result?.total ?? headerTotal ?? result?.items?.length ?? 0,
     };
+  }
+
+  private async getPublicClips(
+    params: Record<string, string | number>,
+  ): Promise<ContentHubClipsResponse> {
+    const { data, totalCount } = await this.getFromWithTotal<
+      ContentHubClipsResponse | ContentHubClip[]
+    >(
+      this.publicBaseUrl,
+      '/clips',
+      Object.keys(params).length > 0 ? params : undefined,
+    );
+    return this.normalizeClipsResponse(data, totalCount);
   }
 
   /** Devhub can expose WP categories before the clip↔WP join returns has_wordpress rows. */
   private async fetchClipsFromUpstream(
     searchParams: Record<string, string | number>,
   ): Promise<ContentHubClipsResponse> {
-    let result = this.normalizeClipsResponse(
-      await this.getPublic<ContentHubClipsResponse | ContentHubClip[]>(
-        '/clips',
-        Object.keys(searchParams).length > 0 ? searchParams : undefined,
-      ),
-    );
+    let result = await this.getPublicClips(searchParams);
 
     if (
       this.useContentHub &&
@@ -252,12 +265,7 @@ export class ContentHubCatalogService {
       );
       const relaxed = { ...searchParams };
       delete relaxed.has_wordpress;
-      result = this.normalizeClipsResponse(
-        await this.getPublic<ContentHubClipsResponse | ContentHubClip[]>(
-          '/clips',
-          Object.keys(relaxed).length > 0 ? relaxed : undefined,
-        ),
-      );
+      result = await this.getPublicClips(relaxed);
     }
 
     return result;
@@ -268,6 +276,15 @@ export class ContentHubCatalogService {
     path: string,
     params?: Record<string, string | number | undefined>,
   ): Promise<T> {
+    const { data } = await this.getFromWithTotal<T>(baseUrl, path, params);
+    return data;
+  }
+
+  private async getFromWithTotal<T>(
+    baseUrl: string,
+    path: string,
+    params?: Record<string, string | number | undefined>,
+  ): Promise<{ data: T; totalCount: number | null }> {
     if (!baseUrl) {
       throw new UnauthorizedException('Content Hub base URL is not configured');
     }
@@ -278,13 +295,21 @@ export class ContentHubCatalogService {
         ) as Record<string, string | number>)
       : undefined;
 
-    const { data } = await firstValueFrom(
+    const { data, headers } = await firstValueFrom(
       this.http.get<T>(url, {
         headers: await this.getHeaders(),
         params: cleanParams,
       }),
     );
-    return data;
+    const rawTotal: unknown = headers?.['x-total-count'];
+    const parsed =
+      typeof rawTotal === 'string' || typeof rawTotal === 'number'
+        ? Number(rawTotal)
+        : NaN;
+    return {
+      data,
+      totalCount: Number.isFinite(parsed) && parsed >= 0 ? parsed : null,
+    };
   }
 
   private async getPublic<T>(
