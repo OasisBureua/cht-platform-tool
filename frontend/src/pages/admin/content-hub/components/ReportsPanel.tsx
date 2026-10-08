@@ -256,7 +256,7 @@ function GenerateCard({
             type="button"
             variant="outline"
             onClick={onRefreshData}
-            disabled={refreshData.isPending || create.isPending}
+            disabled={busy || refreshData.isPending || create.isPending}
           >
             {refreshData.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
@@ -296,8 +296,14 @@ function RegenerateForm({
     regenerate.mutate(
       { reportId: report.reportId, editInstructions: instructions },
       {
-        onSuccess: () => {
-          toast({ title: 'Regenerating report' });
+        onSuccess: (next) => {
+          toast({
+            title: 'Regenerating report',
+            description:
+              next.warehouseSync === 'failed'
+                ? 'Queued, but Hub data sync failed — the report may use stale warehouse data.'
+                : undefined,
+          });
           onDone();
         },
         onError: async (err) =>

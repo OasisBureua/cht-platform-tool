@@ -85,7 +85,8 @@ export class CampaignLinksController {
       select: PROGRAM_LINK_SELECT,
     });
 
-    // CPR-41 — refresh warehouse for previous and/or new campaign (async).
+    // CPR-41 — refresh warehouse for the new campaign only (async).
+    // Unlink skips ingest: upsert does not delete orphaned warehouse rows.
     this.exportIngest.triggerForProgramLink({
       previousCampaignId: exists.campaignId,
       nextCampaignId,

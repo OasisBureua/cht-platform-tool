@@ -1,10 +1,27 @@
-import { BadRequestException } from '@nestjs/common';
+import {
+  BadGatewayException,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { AxiosError } from 'axios';
 import {
   CampaignExportIngestService,
   parseHubCampaignId,
 } from './campaign-export-ingest.service';
 import type { ContentHubCampaignService } from './content-hub-campaign.service';
 import type { PrismaService } from '../../prisma/prisma.service';
+
+function axiosErr(status: number, message: string): AxiosError {
+  const err = new AxiosError(message);
+  err.response = {
+    status,
+    statusText: String(status),
+    data: { detail: message },
+    headers: {},
+    config: {} as never,
+  };
+  return err;
+}
 
 describe('parseHubCampaignId', () => {
   it('accepts positive integer strings', () => {
@@ -77,5 +94,22 @@ describe('CampaignExportIngestService', () => {
     } finally {
       spy.mockRestore();
     }
+  });
+
+  it('maps Hub 503/401/403 to 503 and other errors to 502', async () => {
+    exportIngest.mockRejectedValueOnce(axiosErr(503, 'no base url'));
+    await expect(
+      service.ingestCampaign('42', 'platform_generate'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    exportIngest.mockRejectedValueOnce(axiosErr(401, 'unauthorized'));
+    await expect(
+      service.ingestCampaign('42', 'platform_generate'),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    exportIngest.mockRejectedValueOnce(axiosErr(502, 'bad gateway'));
+    await expect(
+      service.ingestCampaign('42', 'platform_generate'),
+    ).rejects.toBeInstanceOf(BadGatewayException);
   });
 });
