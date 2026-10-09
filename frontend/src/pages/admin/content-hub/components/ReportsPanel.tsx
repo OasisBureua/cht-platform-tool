@@ -40,13 +40,18 @@ import { RecipientPicker } from './RecipientPicker';
 import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
 
+/**
+ * CPR-44 — keep in sync with Hub `schemas/report_sources.py` REPORT_SOURCE_KEYS.
+ * `survey` platform uploads map to `surveys`. Livestream omitted until CPR-33.
+ */
 const REPORT_SOURCES: Array<{ value: string; label: string }> = [
   { value: 'hubspot', label: 'HubSpot' },
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'meta', label: 'Meta' },
   { value: 'youtube', label: 'YouTube' },
-  { value: 'livestream', label: 'Livestream' },
   { value: 'sessions', label: 'Zoom sessions' },
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'kols', label: 'Hub KOLs' },
   { value: 'surveys', label: 'Surveys' },
 ];
 

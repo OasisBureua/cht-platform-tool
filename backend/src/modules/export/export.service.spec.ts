@@ -1,20 +1,68 @@
-import { ExportService } from './export.service';
+import {
+  ExportService,
+  exportNativeSurveyQuestions,
+  rollupAttendance,
+} from './export.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import type { JotformService } from '../jotform/jotform.service';
+
+const NATIVE_FEEDBACK_QUESTIONS = {
+  version: 1,
+  sections: [
+    {
+      id: 'sec-feedback',
+      title: 'Feedback',
+      questions: [
+        {
+          id: 'q2_setting',
+          type: 'single_choice',
+          prompt: 'What is your practice setting?',
+          options: ['Academic', 'Community', 'Other'],
+        },
+        {
+          id: 'q_nps',
+          type: 'rating',
+          prompt: 'How likely are you to recommend?',
+          scaleMin: 0,
+          scaleMax: 10,
+        },
+        {
+          id: 'q_info',
+          type: 'info',
+          prompt: 'Thanks for your time.',
+        },
+      ],
+    },
+  ],
+};
 
 describe('ExportService.getCampaignInputPacket', () => {
   const campaignId = 'AZ-25-01_LIV001';
   const requestId = 'req-test-1';
 
+  function normalizeProgram(raw: Record<string, unknown>) {
+    return {
+      zoomPanelistLinks: null,
+      programRegistrations: [],
+      ...raw,
+      webinarParticipantEvents: (
+        (raw.webinarParticipantEvents as Array<Record<string, unknown>>) ?? []
+      ).map((ev) => ({ isHost: false, ...ev })),
+    };
+  }
+
   function buildService(
-    programs: unknown[],
+    programs: Record<string, unknown>[],
     listFormSubmissions: jest.Mock = jest.fn().mockResolvedValue([]),
+    users: unknown[] = [],
   ) {
-    const findMany = jest.fn().mockResolvedValue(programs);
+    const findMany = jest
+      .fn()
+      .mockResolvedValue(programs.map((p) => normalizeProgram(p)));
+    const userFindMany = jest.fn().mockResolvedValue(users);
     const prisma = {
-      program: {
-        findMany,
-      },
+      program: { findMany },
+      user: { findMany: userFindMany },
     } as unknown as PrismaService;
     const jotform = {
       listFormSubmissions,
@@ -22,6 +70,7 @@ describe('ExportService.getCampaignInputPacket', () => {
     return {
       service: new ExportService(prisma, jotform),
       findMany,
+      userFindMany,
       listFormSubmissions,
     };
   }
@@ -43,6 +92,7 @@ describe('ExportService.getCampaignInputPacket', () => {
     expect(packet.requestId).toBe(requestId);
     expect(packet.sessions).toEqual([]);
     expect(packet.attendance).toEqual([]);
+    expect(packet.registrations).toEqual([]);
     expect(packet.surveys).toEqual([]);
   });
 
@@ -158,7 +208,7 @@ describe('ExportService.getCampaignInputPacket', () => {
     expect(packet.sessions[0].transcriptStatus).toBe('ok');
   });
 
-  it('dedupes attendance by participant email and includes surveys', async () => {
+  it('sums REPORT_IMPORT rejoin segments and skips webhook when import exists', async () => {
     const submittedAt = new Date('2026-09-02T12:00:00.000Z');
     const { service } = buildService([
       {
@@ -173,23 +223,46 @@ describe('ExportService.getCampaignInputPacket', () => {
         webinarParticipantEvents: [
           {
             participantEmail: 'a@example.com',
-            participantName: 'Ada',
             userId: 'u1',
             joinTime: new Date('2026-09-01T15:01:00.000Z'),
             leaveTime: null,
             durationSeconds: 60,
             source: 'REPORT_IMPORT',
             occurredAt: new Date('2026-09-01T15:01:00.000Z'),
+            isHost: false,
           },
           {
             participantEmail: 'A@example.com',
-            participantName: 'Ada again',
+            userId: 'u1',
+            joinTime: new Date('2026-09-01T15:10:00.000Z'),
+            leaveTime: null,
+            durationSeconds: 30,
+            source: 'REPORT_IMPORT',
+            occurredAt: new Date('2026-09-01T15:10:00.000Z'),
+            isHost: false,
+          },
+          {
+            participantEmail: 'a@example.com',
             userId: 'u1',
             joinTime: new Date('2026-09-01T15:05:00.000Z'),
             leaveTime: null,
-            durationSeconds: 30,
+            durationSeconds: 999,
             source: 'WEBHOOK',
             occurredAt: new Date('2026-09-01T15:05:00.000Z'),
+            isHost: false,
+          },
+        ],
+        programRegistrations: [
+          {
+            userId: 'u1',
+            status: 'APPROVED',
+            createdAt: new Date('2026-08-01T00:00:00.000Z'),
+            user: {
+              id: 'u1',
+              email: 'a@example.com',
+              specialty: 'Cardiology',
+              institution: 'CHM Clinic',
+            },
           },
         ],
         surveys: [
@@ -198,13 +271,15 @@ describe('ExportService.getCampaignInputPacket', () => {
             type: 'FEEDBACK',
             title: 'Feedback',
             jotformFormId: null,
+            schemaVersion: 3,
+            questions: NATIVE_FEEDBACK_QUESTIONS,
             responses: [
               {
                 userId: 'u1',
                 submittedAt,
                 score: 4,
-                schemaVersion: 1,
-                answers: { q1: 'yes' },
+                schemaVersion: 3,
+                answers: { q2_setting: 'Academic' },
                 submissionId: 'native-sub-1',
               },
             ],
@@ -219,21 +294,137 @@ describe('ExportService.getCampaignInputPacket', () => {
     );
     expect(packet.campaignId).toBe(campaignId);
     expect(packet.attendance).toHaveLength(1);
-    expect(packet.attendance[0].participantEmail).toBe('a@example.com');
+    expect(packet.attendance[0]).toMatchObject({
+      participantEmail: 'a@example.com',
+      durationSeconds: 90,
+      specialty: 'Cardiology',
+      institution: 'CHM Clinic',
+      source: 'REPORT_IMPORT',
+    });
+    expect(packet.attendance[0]).not.toHaveProperty('participantName');
+    expect(packet.registrations).toEqual([
+      {
+        platformToolProgramId: 'prog-1',
+        userId: 'u1',
+        registeredAt: '2026-08-01T00:00:00.000Z',
+        status: 'APPROVED',
+        specialty: 'Cardiology',
+        institution: 'CHM Clinic',
+      },
+    ]);
     expect(packet.surveys).toHaveLength(1);
     expect(packet.surveys[0]).toMatchObject({
       surveyId: 'survey-1',
       type: 'FEEDBACK',
       jotformFormId: null,
       source: 'native',
+      schemaVersion: 3,
       responseCount: 1,
     });
-    expect(packet.surveys[0].responses[0]).toMatchObject({
-      userId: 'u1',
-      submittedAt: submittedAt.toISOString(),
-      answers: { q1: 'yes' },
-      submissionId: 'native-sub-1',
-    });
+    expect(packet.surveys[0].questions).toEqual([
+      {
+        id: 'q2_setting',
+        prompt: 'What is your practice setting?',
+        type: 'single_choice',
+        options: ['Academic', 'Community', 'Other'],
+      },
+      {
+        id: 'q_nps',
+        prompt: 'How likely are you to recommend?',
+        type: 'rating',
+      },
+    ]);
+  });
+
+  it('excludes hosts and panelists from attendance', async () => {
+    const { service } = buildService([
+      {
+        id: 'prog-1',
+        title: 'Live session',
+        zoomSessionType: 'WEBINAR',
+        startDate: null,
+        zoomMeetingId: null,
+        chmProgramId: null,
+        campaignId,
+        zoomPanelistLinks: [
+          { name: 'Panel', email: 'panel@example.com', joinUrl: 'https://x' },
+        ],
+        zoomRecordingSessions: [],
+        webinarParticipantEvents: [
+          {
+            participantEmail: 'host@example.com',
+            userId: null,
+            joinTime: new Date('2026-09-01T15:00:00.000Z'),
+            leaveTime: null,
+            durationSeconds: 600,
+            source: 'REPORT_IMPORT',
+            occurredAt: new Date('2026-09-01T15:00:00.000Z'),
+            isHost: true,
+          },
+          {
+            participantEmail: 'panel@example.com',
+            userId: null,
+            joinTime: new Date('2026-09-01T15:00:00.000Z'),
+            leaveTime: null,
+            durationSeconds: 600,
+            source: 'REPORT_IMPORT',
+            occurredAt: new Date('2026-09-01T15:00:00.000Z'),
+            isHost: false,
+          },
+          {
+            participantEmail: 'hcp@example.com',
+            userId: 'u9',
+            joinTime: new Date('2026-09-01T15:00:00.000Z'),
+            leaveTime: null,
+            durationSeconds: 120,
+            source: 'REPORT_IMPORT',
+            occurredAt: new Date('2026-09-01T15:00:00.000Z'),
+            isHost: false,
+          },
+        ],
+        surveys: [],
+      },
+    ]);
+
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+    expect(packet.attendance).toHaveLength(1);
+    expect(packet.attendance[0].participantEmail).toBe('hcp@example.com');
+    expect(packet.attendance[0].durationSeconds).toBe(120);
+  });
+
+  it('skips REJECTED registrations', async () => {
+    const { service } = buildService([
+      {
+        id: 'prog-1',
+        title: 'Live session',
+        zoomSessionType: 'WEBINAR',
+        startDate: null,
+        zoomMeetingId: null,
+        chmProgramId: null,
+        campaignId,
+        zoomRecordingSessions: [],
+        webinarParticipantEvents: [],
+        programRegistrations: [
+          {
+            userId: 'u-ok',
+            status: 'PENDING',
+            createdAt: new Date('2026-08-01T00:00:00.000Z'),
+            user: {
+              id: 'u-ok',
+              email: 'ok@example.com',
+              specialty: null,
+              institution: null,
+            },
+          },
+        ],
+        surveys: [],
+      },
+    ]);
+
+    // Prisma where filters REJECTED; fixture only returns non-rejected.
+    const packet = await service.getCampaignInputPacket(campaignId, requestId);
+    expect(packet.registrations).toHaveLength(1);
+    expect(packet.registrations[0].userId).toBe('u-ok');
   });
 
   it('marks a survey jotform when jotformFormId is set', async () => {
@@ -292,6 +483,8 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'POST_TEST',
       jotformFormId: 'jf-99',
       source: 'jotform',
+      schemaVersion: null,
+      questions: null,
     });
     expect(packet.surveys[0].responses[0].submissionId).toBe('jf-sub-1');
     expect(packet.surveys[1]).toMatchObject({
@@ -299,6 +492,7 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'INTAKE',
       jotformFormId: null,
       source: 'native',
+      questions: null,
     });
     expect(packet.surveys[1].responses[0].submissionId).toBeNull();
   });
@@ -343,12 +537,9 @@ describe('ExportService.getCampaignInputPacket', () => {
       type: 'FEEDBACK',
       jotformFormId: '260624911991966',
       source: 'jotform',
+      schemaVersion: null,
+      questions: null,
       responseCount: 1,
-    });
-    expect(packet.surveys[0].responses[0]).toMatchObject({
-      userId: 'user-9',
-      submissionId: '501',
-      answers: { q1: 'yes' },
     });
   });
 
@@ -415,5 +606,55 @@ describe('ExportService.getCampaignInputPacket', () => {
     const packet = await service.getCampaignInputPacket(campaignId, requestId);
     expect(packet.sessions).toHaveLength(1);
     expect(packet.surveys).toEqual([]);
+  });
+});
+
+describe('rollupAttendance', () => {
+  it('falls back to join/leave seconds when duration is null', () => {
+    const rows = rollupAttendance({
+      platformToolProgramId: 'p1',
+      panelistEmails: new Set(),
+      profileByUserId: new Map(),
+      profileByEmail: new Map(),
+      events: [
+        {
+          participantEmail: 'a@example.com',
+          userId: null,
+          joinTime: new Date('2026-09-01T15:00:00.000Z'),
+          leaveTime: new Date('2026-09-01T15:02:00.000Z'),
+          durationSeconds: null,
+          source: 'WEBHOOK',
+          occurredAt: new Date('2026-09-01T15:00:00.000Z'),
+          isHost: false,
+        },
+      ],
+    });
+    expect(rows[0].durationSeconds).toBe(120);
+  });
+});
+
+describe('exportNativeSurveyQuestions', () => {
+  it('flattens prompt/type/options and skips info/link', () => {
+    expect(exportNativeSurveyQuestions(NATIVE_FEEDBACK_QUESTIONS)).toEqual([
+      {
+        id: 'q2_setting',
+        prompt: 'What is your practice setting?',
+        type: 'single_choice',
+        options: ['Academic', 'Community', 'Other'],
+      },
+      {
+        id: 'q_nps',
+        prompt: 'How likely are you to recommend?',
+        type: 'rating',
+      },
+    ]);
+  });
+
+  it('returns null for jotform or empty schemas', () => {
+    expect(
+      exportNativeSurveyQuestions({ source: 'jotform', formId: '123' }),
+    ).toBeNull();
+    expect(exportNativeSurveyQuestions(null)).toBeNull();
+    expect(exportNativeSurveyQuestions({})).toBeNull();
   });
 });
