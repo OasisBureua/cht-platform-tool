@@ -9,7 +9,17 @@ import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, Refre
 import { StripeMark } from '../../components/branding/StripeMark';
 
 function formatMoney(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  const n = Number.isFinite(cents) ? cents : 0;
+  return `$${(n / 100).toFixed(2)}`;
+}
+
+function asArray<T>(value: T[] | null | undefined): T[] {
+  return Array.isArray(value) ? value : [];
+}
+
+function safeAmountCents(amount: unknown): number {
+  const n = typeof amount === 'number' ? amount : Number(amount);
+  return Number.isFinite(n) ? n : 0;
 }
 
 async function downloadPaymentsCsv(status: 'PENDING' | 'FAILED' | 'PAID' | 'ALL' = 'ALL') {
@@ -25,26 +35,168 @@ async function downloadPaymentsCsv(status: 'PENDING' | 'FAILED' | 'PAID' | 'ALL'
 }
 
 function paymentUserLabel(p: {
-  user: { email: string; firstName: string; lastName: string };
+  user?: { email?: string | null; firstName?: string | null; lastName?: string | null } | null;
 }) {
-  return `${p.user.firstName} ${p.user.lastName} ${p.user.email}`.toLowerCase();
+  if (!p.user) return '';
+  return `${p.user.firstName ?? ''} ${p.user.lastName ?? ''} ${p.user.email ?? ''}`.toLowerCase();
 }
 
 function matchesUserQuery(
-  p: { user: { email: string; firstName: string; lastName: string } },
+  p: {
+    user?: { email?: string | null; firstName?: string | null; lastName?: string | null } | null;
+  },
   q: string,
 ) {
   if (!q.trim()) return true;
+  if (!p.user) return false;
   return paymentUserLabel(p).includes(q.trim().toLowerCase());
 }
 
+function resolveProgramId(p: {
+  programId?: string | null;
+  program?: { id?: string | null } | null;
+}): string | null {
+  const id = (p.program?.id || p.programId || '').trim();
+  return id || null;
+}
+
 function matchesProgramFilter(
-  p: { programId?: string | null; program?: { id: string } | null },
+  p: { programId?: string | null; program?: { id?: string | null } | null },
   programFilter: string,
 ) {
   if (programFilter === 'all') return true;
-  if (programFilter === 'none') return !(p.programId ?? p.program?.id);
-  return (p.programId ?? p.program?.id) === programFilter;
+  const id = resolveProgramId(p);
+  if (programFilter === 'none') return id === null;
+  return id === programFilter;
+}
+
+type EligibleNotSubmittedRow = Awaited<
+  ReturnType<typeof adminApi.listPaymentEligibleNotYetRequested>
+>[number];
+
+type ProgramPaymentGroup = {
+  key: string;
+  programId: string | null;
+  title: string;
+  chmProgramId: string | null;
+  sponsorName: string | null;
+  pending: PendingPayment[];
+  paid: PaidPayment[];
+  failed: FailedPayment[];
+  eligible: EligibleNotSubmittedRow[];
+  pendingTotalCents: number;
+  paidTotalCents: number;
+  failedTotalCents: number;
+};
+
+const NO_PROGRAM_KEY = '__none__';
+
+function resolveProgramMeta(p: {
+  programId?: string | null;
+  program?: {
+    id?: string | null;
+    title?: string | null;
+    chmProgramId?: string | null;
+    sponsorName?: string | null;
+  } | null;
+}): {
+  key: string;
+  programId: string | null;
+  title: string;
+  chmProgramId: string | null;
+  sponsorName: string | null;
+} {
+  const programId = resolveProgramId(p);
+  const title =
+    p.program?.title?.trim() || (programId ? 'Untitled program' : 'No program');
+  return {
+    key: programId ?? NO_PROGRAM_KEY,
+    programId,
+    title,
+    chmProgramId: p.program?.chmProgramId?.trim() || null,
+    sponsorName: p.program?.sponsorName?.trim() || null,
+  };
+}
+
+function emptyProgramGroup(
+  key: string,
+  meta: {
+    programId: string | null;
+    title: string;
+    chmProgramId: string | null;
+    sponsorName: string | null;
+  },
+): ProgramPaymentGroup {
+  return {
+    key,
+    programId: meta.programId,
+    title: meta.title,
+    chmProgramId: meta.chmProgramId,
+    sponsorName: meta.sponsorName,
+    pending: [],
+    paid: [],
+    failed: [],
+    eligible: [],
+    pendingTotalCents: 0,
+    paidTotalCents: 0,
+    failedTotalCents: 0,
+  };
+}
+
+function buildProgramPaymentGroups(input: {
+  pending: PendingPayment[];
+  paid: PaidPayment[];
+  failed: FailedPayment[];
+  eligible: EligibleNotSubmittedRow[];
+}): ProgramPaymentGroup[] {
+  const groups = new Map<string, ProgramPaymentGroup>();
+
+  const ensure = (meta: ReturnType<typeof resolveProgramMeta>) => {
+    let group = groups.get(meta.key);
+    if (!group) {
+      group = emptyProgramGroup(meta.key, meta);
+      groups.set(meta.key, group);
+    } else if (group.title === 'Untitled program' && meta.title !== 'Untitled program') {
+      // Prefer a real title if a later row has the joined program.
+      group.title = meta.title;
+      group.chmProgramId = group.chmProgramId ?? meta.chmProgramId;
+      group.sponsorName = group.sponsorName ?? meta.sponsorName;
+    }
+    return group;
+  };
+
+  for (const p of input.pending) {
+    if (!p || typeof p !== 'object') continue;
+    const group = ensure(resolveProgramMeta(p));
+    group.pending.push(p);
+    group.pendingTotalCents += safeAmountCents(p.amount);
+  }
+
+  for (const p of input.paid) {
+    if (!p || typeof p !== 'object') continue;
+    const group = ensure(resolveProgramMeta(p));
+    group.paid.push(p);
+    group.paidTotalCents += safeAmountCents(p.amount);
+  }
+
+  for (const p of input.failed) {
+    if (!p || typeof p !== 'object') continue;
+    const group = ensure(resolveProgramMeta(p));
+    group.failed.push(p);
+    group.failedTotalCents += safeAmountCents(p.amount);
+  }
+
+  for (const r of input.eligible) {
+    if (!r || typeof r !== 'object') continue;
+    const group = ensure(resolveProgramMeta({ program: r.program, programId: r.program?.id }));
+    group.eligible.push(r);
+  }
+
+  return [...groups.values()].sort((a, b) => {
+    if (a.programId === null) return 1;
+    if (b.programId === null) return -1;
+    return a.title.localeCompare(b.title);
+  });
 }
 
 export default function AdminPayments() {
@@ -52,73 +204,92 @@ export default function AdminPayments() {
   const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [userFilter, setUserFilter] = useState('');
+  /** Single program selection: 'all' | 'none' | programId */
   const [programFilter, setProgramFilter] = useState('all');
 
-  const { data: pending, isLoading } = useQuery({
+  const { data: pendingData, isLoading } = useQuery({
     queryKey: ['admin', 'pending-payments'],
     queryFn: () => adminApi.getPendingPayments(),
   });
 
-  const { data: failed = [] } = useQuery({
+  const { data: failedData } = useQuery({
     queryKey: ['admin', 'failed-payments'],
     queryFn: () => adminApi.getFailedPayments(),
   });
 
-  const { data: eligibleNotSubmitted = [] } = useQuery({
+  const { data: eligibleData } = useQuery({
     queryKey: ['admin', 'payment-eligible-not-submitted'],
     queryFn: () => adminApi.listPaymentEligibleNotYetRequested(),
   });
 
-  const { data: paid = [], isPending: paidPending } = useQuery({
+  const { data: paidData, isPending: paidPending } = useQuery({
     queryKey: ['admin', 'paid-payments'],
     queryFn: () => adminApi.getPaidPayments({ limit: 200 }),
   });
 
-  const programOptions = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of [...(pending || []), ...failed, ...paid]) {
-      const id = p.program?.id ?? p.programId;
-      if (!id) continue;
-      map.set(id, p.program?.title ?? id);
+  // Normalize null/non-array API payloads so grouping never throws.
+  const pending = asArray(pendingData);
+  const failed = asArray(failedData);
+  const eligibleNotSubmitted = asArray(eligibleData);
+  const paid = asArray(paidData);
+
+  const userFilteredPending = useMemo(
+    () => pending.filter((p) => matchesUserQuery(p, userFilter)),
+    [pending, userFilter],
+  );
+  const userFilteredPaid = useMemo(
+    () => paid.filter((p) => matchesUserQuery(p, userFilter)),
+    [paid, userFilter],
+  );
+  const userFilteredFailed = useMemo(
+    () => failed.filter((p) => matchesUserQuery(p, userFilter)),
+    [failed, userFilter],
+  );
+  const userFilteredEligible = useMemo(() => {
+    const q = userFilter.trim().toLowerCase();
+    if (!q) return eligibleNotSubmitted;
+    return eligibleNotSubmitted.filter((r) => matchesUserQuery(r, userFilter));
+  }, [eligibleNotSubmitted, userFilter]);
+
+  const programGroups = useMemo(
+    () =>
+      buildProgramPaymentGroups({
+        pending: userFilteredPending,
+        paid: userFilteredPaid,
+        failed: userFilteredFailed,
+        eligible: userFilteredEligible,
+      }),
+    [userFilteredPending, userFilteredPaid, userFilteredFailed, userFilteredEligible],
+  );
+
+  const selectedProgramGroup = useMemo(() => {
+    if (programFilter === 'all') return null;
+    if (programFilter === 'none') {
+      return programGroups.find((g) => g.programId === null) ?? null;
     }
-    return [...map.entries()]
-      .map(([id, label]) => ({ id, label }))
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [pending, failed, paid]);
+    return programGroups.find((g) => g.programId === programFilter) ?? null;
+  }, [programFilter, programGroups]);
 
   const filteredPending = useMemo(
-    () =>
-      (pending || []).filter(
-        (p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter),
-      ),
-    [pending, userFilter, programFilter],
+    () => userFilteredPending.filter((p) => matchesProgramFilter(p, programFilter)),
+    [userFilteredPending, programFilter],
   );
 
   const filteredPaid = useMemo(
-    () =>
-      paid.filter((p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter)),
-    [paid, userFilter, programFilter],
+    () => userFilteredPaid.filter((p) => matchesProgramFilter(p, programFilter)),
+    [userFilteredPaid, programFilter],
   );
 
   const filteredFailed = useMemo(
-    () =>
-      failed.filter((p) => matchesUserQuery(p, userFilter) && matchesProgramFilter(p, programFilter)),
-    [failed, userFilter, programFilter],
+    () => userFilteredFailed.filter((p) => matchesProgramFilter(p, programFilter)),
+    [userFilteredFailed, programFilter],
   );
 
   const filteredEligible = useMemo(() => {
-    const q = userFilter.trim().toLowerCase();
-    return eligibleNotSubmitted.filter((r) => {
-      if (programFilter !== 'all' && programFilter !== 'none' && r.program?.id !== programFilter) {
-        return false;
-      }
-      if (programFilter === 'none' && r.program?.id) return false;
-      if (!q) return true;
-      const hay = `${r.user.firstName} ${r.user.lastName} ${r.user.email}`.toLowerCase();
-      return hay.includes(q);
-    });
-  }, [eligibleNotSubmitted, userFilter, programFilter]);
-
+    return userFilteredEligible.filter((r) =>
+      matchesProgramFilter({ program: r.program, programId: r.program?.id }, programFilter),
+    );
+  }, [userFilteredEligible, programFilter]);
 
   const payNowMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.payNow(paymentId),
@@ -157,43 +328,14 @@ export default function AdminPayments() {
     },
   });
 
-  const pendingCount = (pending || []).length;
+  const pendingCount = pending.length;
   const pendingTotal = useMemo(
-    () => (pending || []).reduce((sum, p) => sum + p.amount, 0),
+    () => pending.reduce((sum, p) => sum + safeAmountCents(p.amount), 0),
     [pending],
   );
 
-  // Group failed payments by program (sorted alphabetically; no-program group last)
-  const failedByProgram = useMemo(() => {
-    const groups = new Map<
-      string,
-      {
-        title: string;
-        programId: string | null;
-        chmProgramId: string | null;
-        sponsorName: string | null;
-        payments: typeof filteredFailed;
-      }
-    >();
-    for (const p of filteredFailed) {
-      const key = p.program?.id ?? '__none__';
-      if (!groups.has(key)) {
-        groups.set(key, {
-          title: p.program?.title ?? 'No program',
-          programId: p.program?.id ?? null,
-          chmProgramId: p.program?.chmProgramId ?? null,
-          sponsorName: p.program?.sponsorName ?? null,
-          payments: [],
-        });
-      }
-      groups.get(key)!.payments.push(p);
-    }
-    return [...groups.values()].sort((a, b) => {
-      if (a.programId === null) return 1;
-      if (b.programId === null) return -1;
-      return a.title.localeCompare(b.title);
-    });
-  }, [filteredFailed]);
+  const isProgramDrillDown = programFilter !== 'all';
+  const showPaymentDetails = isProgramDrillDown;
 
   if (isLoading) return <LoadingSpinner />;
 
@@ -206,8 +348,9 @@ export default function AdminPayments() {
         <div className="space-y-2">
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-            Pending payouts from program completions and survey bonuses. Click <strong>Pay now</strong> on each row to send
-            through <StripeMark size="sm" className="translate-y-px" /> (ACH direct deposit only).
+            Review payouts by program, then drill down to Pending, Paid, Failed, and Eligible rows. Click{' '}
+            <strong>Pay now</strong> on a pending row to send through{' '}
+            <StripeMark size="sm" className="translate-y-px" /> (ACH direct deposit only).
           </p>
         </div>
         <div className="shrink-0 flex flex-wrap gap-2">
@@ -227,13 +370,23 @@ export default function AdminPayments() {
             {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export CSV
           </button>
-          <a
-            href="#pending-table"
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
-          >
-            <DollarSign className="h-4 w-4" />
-            {hasPending ? 'Pay now' : 'View payments'}
-          </a>
+          {showPaymentDetails ? (
+            <a
+              href="#pending-table"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              <DollarSign className="h-4 w-4" />
+              {hasPending ? 'Pay now' : 'View payments'}
+            </a>
+          ) : (
+            <a
+              href="#program-summary"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              <DollarSign className="h-4 w-4" />
+              Select a program
+            </a>
+          )}
         </div>
       </header>
 
@@ -268,25 +421,6 @@ export default function AdminPayments() {
               className="mt-1 h-10 w-full rounded-[6px] border border-border bg-card px-3 text-sm text-foreground"
             />
           </div>
-          <div className="min-w-[12rem] flex-1 sm:max-w-xs">
-            <label htmlFor="admin-payments-program-filter" className="text-xs font-semibold text-muted-foreground">
-              Filter by program
-            </label>
-            <select
-              id="admin-payments-program-filter"
-              value={programFilter}
-              onChange={(e) => setProgramFilter(e.target.value)}
-              className="mt-1 h-10 w-full rounded-[6px] border border-border bg-card px-3 text-sm text-foreground"
-            >
-              <option value="all">All programs</option>
-              {programOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>
-                  {opt.label}
-                </option>
-              ))}
-              <option value="none">No program</option>
-            </select>
-          </div>
           {(userFilter || programFilter !== 'all') && (
             <button
               type="button"
@@ -301,11 +435,161 @@ export default function AdminPayments() {
           )}
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Showing {filteredPending.length} pending · {filteredPaid.length} paid · {filteredFailed.length} failed
-          {(userFilter || programFilter !== 'all') ? ' (filtered)' : ''}
+          {isProgramDrillDown
+            ? `Drill-down: ${filteredPending.length} pending · ${filteredPaid.length} paid · ${filteredFailed.length} failed · ${filteredEligible.length} eligible`
+            : `${programGroups.length} program group${programGroups.length === 1 ? '' : 's'} · select a row to drill down`}
+          {userFilter ? ' (user filtered)' : ''}
         </p>
       </section>
 
+      {/* Program summary — click a row to drill down */}
+      <section
+        id="program-summary"
+        className="rounded-card border border-border bg-card overflow-hidden"
+      >
+        <div className="flex flex-col gap-2 px-6 pt-5 pb-3 border-b border-border sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Programs</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Select a program to view its Pending, Paid, Failed, and Eligible payments. Paid counts use
+              the recent paid list (up to 200).
+            </p>
+          </div>
+          {isProgramDrillDown ? (
+            <button
+              type="button"
+              onClick={() => setProgramFilter('all')}
+              className="shrink-0 h-9 rounded-[6px] border border-border px-3 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              All programs
+            </button>
+          ) : null}
+        </div>
+        {programGroups.length === 0 ? (
+          <p className="px-6 py-10 text-sm text-muted-foreground text-center">
+            No payment activity by program{userFilter ? ' for this user filter' : ''}.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">
+                    Program
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    Pending
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    Paid
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    Failed
+                  </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    Eligible
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {programGroups.map((group) => {
+                  const selectValue = group.programId ?? 'none';
+                  const selected =
+                    programFilter === selectValue ||
+                    (programFilter === 'none' && group.programId === null);
+                  return (
+                    <tr
+                      key={group.key}
+                      className={[
+                        'cursor-pointer transition-colors',
+                        selected ? 'bg-brand-50' : 'hover:bg-muted/60',
+                      ].join(' ')}
+                      onClick={() => setProgramFilter(selectValue)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setProgramFilter(selectValue);
+                        }
+                      }}
+                      tabIndex={0}
+                      aria-selected={selected}
+                      aria-label={`Open payments for ${group.title}`}
+                    >
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-foreground">{group.title}</p>
+                        {group.chmProgramId ? (
+                          <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                            {group.chmProgramId}
+                          </p>
+                        ) : null}
+                        {group.sponsorName ? (
+                          <p className="text-xs text-muted-foreground">{group.sponsorName}</p>
+                        ) : null}
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <p className="font-semibold text-foreground">{group.pending.length}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatMoney(group.pendingTotalCents)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <p className="font-semibold text-foreground">{group.paid.length}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatMoney(group.paidTotalCents)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <p
+                          className={[
+                            'font-semibold',
+                            group.failed.length > 0 ? 'text-destructive' : 'text-foreground',
+                          ].join(' ')}
+                        >
+                          {group.failed.length}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatMoney(group.failedTotalCents)}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground">
+                        {group.eligible.length}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {isProgramDrillDown ? (
+        <div className="rounded-card border border-brand-200 bg-brand-50/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-foreground">
+              {selectedProgramGroup?.title ??
+                (programFilter === 'none' ? 'No program' : 'Selected program')}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Showing this program&apos;s Pending, Paid, Failed, and Eligible rows.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setProgramFilter('all')}
+            className="h-9 rounded-[6px] border border-border bg-card px-3 text-sm font-medium text-foreground hover:bg-muted"
+          >
+            Back to all programs
+          </button>
+        </div>
+      ) : (
+        <p className="text-sm text-muted-foreground text-center py-2">
+          Select a program above to drill down into its payment lists.
+        </p>
+      )}
+
+      {showPaymentDetails ? (
+      <>
       {/* Pending table */}
       <section id="pending-table" className="rounded-card border border-border bg-card overflow-hidden">
         {(payNowMutation.isError || deleteMutation.isError) && (
@@ -360,12 +644,14 @@ export default function AdminPayments() {
           <div className="px-6 py-12 text-center">
             <CheckCircle2 className="mx-auto h-12 w-12 text-green-500" />
             <p className="mt-2 font-medium text-foreground">
-              {(pending || []).length === 0 ? 'No pending payments' : 'No pending payments match filters'}
+              {pending.length === 0
+                ? 'No pending payments'
+                : 'No pending payments for this program'}
             </p>
             <p className="text-sm text-muted-foreground">
-              {(pending || []).length === 0
+              {pending.length === 0
                 ? 'All payouts are up to date.'
-                : 'Clear or adjust user/program filters.'}
+                : 'Try another program or clear the user filter.'}
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
               Pay now buttons appear in each row when there are pending payments.
@@ -430,7 +716,7 @@ export default function AdminPayments() {
                         </>
                         )
                       : (
-                        'No paid payments match filters.'
+                        'No paid payments for this program in the recent paid list.'
                       )}
                   </td>
                 </tr>
@@ -442,8 +728,8 @@ export default function AdminPayments() {
         </div>
       </section>
 
-      {/* Failed payments */}
-      {failed.length > 0 && (
+      {/* Failed payments — only when this program has failures (same idea as pre-drill-down). */}
+      {filteredFailed.length > 0 && (
         <section className="rounded-card border border-destructive/25 bg-destructive/10 overflow-hidden">
           <div className="flex items-start gap-3 px-6 pt-5 pb-3">
             <XCircle className="h-5 w-5 shrink-0 text-red-600 mt-0.5" aria-hidden />
@@ -455,9 +741,6 @@ export default function AdminPayments() {
               </p>
             </div>
           </div>
-          {filteredFailed.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-destructive">No failed payments match filters.</p>
-          ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-red-200 text-sm">
               <thead className="bg-red-100/60">
@@ -470,41 +753,20 @@ export default function AdminPayments() {
                   <th className="px-4 py-3 text-right text-xs font-semibold text-destructive uppercase whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
-              {failedByProgram.map((group) => (
-                  <tbody key={`group-${group.programId ?? 'none'}`} className="divide-y divide-red-100">
-                    <tr className="bg-red-100/40">
-                      <td colSpan={6} className="px-4 py-2 text-xs font-semibold text-red-900 tracking-wide uppercase">
-                        {group.title}
-                        {group.chmProgramId ? (
-                          <span className="ml-2 font-mono font-normal text-destructive normal-case tracking-normal">
-                            {group.chmProgramId}
-                          </span>
-                        ) : null}
-                        {group.sponsorName ? (
-                          <span className="ml-2 font-normal text-destructive normal-case tracking-normal">
-                            · {group.sponsorName}
-                          </span>
-                        ) : null}
-                        <span className="ml-2 font-normal text-destructive normal-case">
-                          ({group.payments.length} failed)
-                        </span>
-                      </td>
-                    </tr>
-                    {group.payments.map((p) => (
-                      <FailedRow
-                        key={p.id}
-                        payment={p}
-                        onRetry={() => retryMutation.mutate(p.id)}
-                        onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
-                        isRetrying={retryMutation.isPending && retryMutation.variables === p.id}
-                        isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
-                      />
-                    ))}
-                  </tbody>
-              ))}
+              <tbody className="divide-y divide-red-100">
+                {filteredFailed.map((p) => (
+                  <FailedRow
+                    key={p.id}
+                    payment={p}
+                    onRetry={() => retryMutation.mutate(p.id)}
+                    onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
+                    isRetrying={retryMutation.isPending && retryMutation.variables === p.id}
+                    isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
+                  />
+                ))}
+              </tbody>
             </table>
           </div>
-          )}
           {retryMutation.isError && (
             <div className="flex items-center gap-2 mx-6 mb-4 rounded-lg border border-red-300 bg-white px-4 py-3 text-sm text-destructive">
               <AlertCircle className="h-4 w-4 shrink-0" />
@@ -515,20 +777,23 @@ export default function AdminPayments() {
       )}
 
       {/* Eligible but not yet submitted for payment */}
-      {eligibleNotSubmitted.length > 0 && (
-        <section className="rounded-card border border-warning/25 bg-warning/10 overflow-hidden">
-          <div className="flex items-start gap-3 px-6 pt-5 pb-3">
-            <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
-            <div>
-              <h2 className="text-base font-semibold text-amber-900">Not yet submitted for payment</h2>
-              <p className="mt-0.5 text-sm text-warning">
-                These users attended their session and completed the post-event survey, but have not submitted a payment request. Follow up or open their program hub to initiate.
-              </p>
-            </div>
+      <section className="rounded-card border border-warning/25 bg-warning/10 overflow-hidden">
+        <div className="flex items-start gap-3 px-6 pt-5 pb-3">
+          <Clock className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" aria-hidden />
+          <div>
+            <h2 className="text-base font-semibold text-amber-900">Not yet submitted for payment</h2>
+            <p className="mt-0.5 text-sm text-warning">
+              These users attended their session and completed the post-event survey, but have not submitted a payment request. Follow up or open their program hub to initiate.
+            </p>
           </div>
-          {filteredEligible.length === 0 ? (
-            <p className="px-6 py-8 text-sm text-amber-900">No eligible rows match filters.</p>
-          ) : (
+        </div>
+        {filteredEligible.length === 0 ? (
+          <p className="px-6 py-8 text-sm text-amber-900">
+            {eligibleNotSubmitted.length === 0
+              ? 'No eligible rows awaiting a payment request.'
+              : 'No eligible rows for this program.'}
+          </p>
+        ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-amber-200 text-sm">
               <thead className="bg-amber-100/60">
@@ -541,25 +806,34 @@ export default function AdminPayments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-amber-100">
-                {filteredEligible.map((r) => (
+                {filteredEligible.map((r) => {
+                  const programId = r.program?.id;
+                  const honorarium = safeAmountCents(r.program?.honorariumAmount);
+                  return (
                   <tr key={r.id} className="bg-white/70 hover:bg-white">
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{r.user.firstName} {r.user.lastName}</p>
-                      <p className="text-xs text-gray-500">{r.user.email}</p>
-                      {r.user.specialty && <p className="text-xs text-gray-400">{r.user.specialty}</p>}
+                      <p className="font-medium text-gray-900">
+                        {r.user?.firstName ?? ''} {r.user?.lastName ?? ''}
+                      </p>
+                      <p className="text-xs text-gray-500">{r.user?.email ?? '—'}</p>
+                      {r.user?.specialty ? (
+                        <p className="text-xs text-gray-400">{r.user.specialty}</p>
+                      ) : null}
                     </td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-900">{r.program.title}</p>
-                      {r.program.chmProgramId ? (
+                      <p className="font-medium text-gray-900">{r.program?.title ?? 'No program'}</p>
+                      {r.program?.chmProgramId ? (
                         <p className="mt-0.5 font-mono text-[11px] text-gray-500">{r.program.chmProgramId}</p>
                       ) : null}
-                      {r.program.sponsorName ? (
+                      {r.program?.sponsorName ? (
                         <p className="text-xs text-gray-500">{r.program.sponsorName}</p>
                       ) : null}
-                      <p className="text-xs text-gray-500">{r.program.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}</p>
+                      <p className="text-xs text-gray-500">
+                        {r.program?.zoomSessionType === 'MEETING' ? 'Office Hours' : 'Live webinar'}
+                      </p>
                     </td>
                     <td className="px-4 py-3 font-semibold text-gray-900">
-                      {r.program.honorariumAmount ? formatMoney(r.program.honorariumAmount) : '-'}
+                      {honorarium > 0 ? formatMoney(honorarium) : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {r.postEventSurveyAcknowledgedAt
@@ -567,21 +841,27 @@ export default function AdminPayments() {
                         : '-'}
                     </td>
                     <td className="px-4 py-3">
-                      <Link
-                        to={`/admin/programs/${r.program.id}/hub`}
-                        className="text-xs font-semibold text-amber-900 underline hover:text-warning"
-                      >
-                        Open program hub
-                      </Link>
+                      {programId ? (
+                        <Link
+                          to={`/admin/programs/${programId}/hub`}
+                          className="text-xs font-semibold text-amber-900 underline hover:text-warning"
+                        >
+                          Open program hub
+                        </Link>
+                      ) : (
+                        <span className="text-xs text-gray-400">—</span>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          )}
-        </section>
-      )}
+        )}
+      </section>
+      </>
+      ) : null}
 
       {deleteConfirmPaymentId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
