@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isTestAccountEmail } from '../../common/test-accounts';
 
 import {
   parseHubSpotCampaignList,
@@ -238,6 +239,10 @@ export class HubSpotService {
       this.logger.warn('[HubSpot] Skipping sync: missing email');
       return;
     }
+    if (isTestAccountEmail(email)) {
+      this.logger.debug(`[HubSpot] Skipping sync for test account ${email}`);
+      return;
+    }
 
     const contactProperties: Record<string, string> = {
       email,
@@ -297,6 +302,12 @@ export class HubSpotService {
 
     const email = input.contact.email?.trim()?.toLowerCase();
     if (!email) return;
+    if (isTestAccountEmail(email)) {
+      this.logger.debug(
+        `[HubSpot] Skipping activity for test account ${email}`,
+      );
+      return;
+    }
 
     const identityProps: Record<string, string> = {
       email,

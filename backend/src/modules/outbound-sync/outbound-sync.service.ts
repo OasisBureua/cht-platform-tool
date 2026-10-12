@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { HubSpotService } from '../hubspot/hubspot.service';
 import { ContentHubSyncService } from './contenthub-sync.service';
+import { isTestAccountEmail } from '../../common/test-accounts';
 
 export interface OutboundSyncInput {
   email: string;
@@ -54,6 +55,7 @@ export class OutboundSyncService {
 
   async syncUser(input: OutboundSyncInput): Promise<OutboundSyncResult> {
     const email = (input.email || '').trim().toLowerCase();
+    if (isTestAccountEmail(email)) return this.skipTestAccount(email);
     const npi = (input.npiNumber || '').replace(/\D/g, '');
     const hasValidNpi = npi.length === 10;
 
@@ -116,6 +118,7 @@ export class OutboundSyncService {
     input: OutboundProgramEventInput,
   ): Promise<OutboundSyncResult> {
     const email = (input.email || '').trim().toLowerCase();
+    if (isTestAccountEmail(email)) return this.skipTestAccount(email);
     const npi = (input.npiNumber || '').replace(/\D/g, '');
     const hasValidNpi = npi.length === 10;
 
@@ -172,5 +175,11 @@ export class OutboundSyncService {
     );
 
     return { hubspot, contenthub };
+  }
+
+  /** Test accounts (see common/test-accounts) never leave the platform. */
+  private skipTestAccount(email: string): OutboundSyncResult {
+    this.logger.log(`[OutboundSync] skipped test account ${email}`);
+    return { hubspot: false, contenthub: false };
   }
 }
