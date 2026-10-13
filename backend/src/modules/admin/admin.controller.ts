@@ -175,25 +175,20 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Get admin config (Jotform webinar template form IDs from env: used when scheduling webinars)',
+      'Get admin config (Zoom / session hero). Jotform template fields are deprecated (CPR-5; native surveys only).',
   })
   getAdminConfig() {
-    const invitation =
-      this.config.get<string>('jotform.invitationTemplateFormId')?.trim() || '';
-    const postEvent =
-      this.config.get<string>('jotform.postEventTemplateFormId')?.trim() || '';
-    const postEventShared =
-      this.config.get<string>('jotform.postEventSharedFormId')?.trim() || '';
     return {
-      jotformInvitationTemplateFormId: invitation,
-      jotformPostEventTemplateFormId: postEvent,
-      jotformPostEventSharedFormId: postEventShared,
-      /** @deprecated use jotformPostEventTemplateFormId */
-      jotformTemplateFormId: postEvent,
-      webinarJotformTemplatesConfigured: !!(
-        invitation &&
-        (postEvent || postEventShared)
-      ),
+      /** @deprecated CPR-5 — Jotform create/attach removed */
+      jotformInvitationTemplateFormId: '',
+      /** @deprecated CPR-5 */
+      jotformPostEventTemplateFormId: '',
+      /** @deprecated CPR-5 */
+      jotformPostEventSharedFormId: '',
+      /** @deprecated CPR-5 */
+      jotformTemplateFormId: '',
+      /** Always false after CPR-5 (native surveys only). */
+      webinarJotformTemplatesConfigured: false,
       zoomConfigured: this.zoom.isConfigured(),
       sessionHeroUploadEnabled: this.sessionHeroPresign.isEnabled(),
     };
@@ -579,7 +574,10 @@ export class AdminController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Clone a Jotform template and create a Survey' })
+  @ApiOperation({
+    summary:
+      'Deprecated (CPR-5): Jotform create/clone removed — always returns 400',
+  })
   createSurveyFromJotformTemplate(@Body() dto: CreateSurveyFromJotformDto) {
     return this.surveysService.createSurveyFromJotformTemplate(dto);
   }
@@ -2708,7 +2706,7 @@ export class AdminController {
       }
     }
 
-    // Webhook-imported programs with no FEEDBACK survey: attach Jotforms when saved as a Live webinar (incl. type correction MEETING→WEBINAR).
+    // Webhook-imported programs with no surveys: attach native intake + feedback when saved as a Live webinar.
     const noFeedbackSurvey = existing.surveys.length === 0;
     if (
       existing.importedViaWebhook &&
@@ -2717,11 +2715,11 @@ export class AdminController {
     ) {
       const programTitle = body.title?.trim() || existing.title;
       this.surveysService
-        .attachJotformFormsFromConfig(id, programTitle)
+        .attachSurveysForNewWebinar(id, programTitle)
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : String(err);
           this.logger.warn(
-            `Jotform form attachment on first save failed for program ${id}: ${msg}`,
+            `Native survey attachment on first save failed for program ${id}: ${msg}`,
           );
         });
     }
