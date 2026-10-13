@@ -155,6 +155,7 @@ resource "aws_ecs_task_definition" "backend" {
             ]
             : [],
             var.companion_base_url != "" ? [{ name = "COMPANION_BASE_URL", value = var.companion_base_url }] : [],
+            var.canva_client_id != "" ? [{ name = "CANVA_CLIENT_ID", value = var.canva_client_id }] : [],
             var.reports.table_name != "" && var.reports.queue_url != ""
             ? [
               { name = "REPORTS_TABLE_NAME", value = var.reports.table_name },
@@ -308,6 +309,10 @@ resource "aws_ecs_task_definition" "backend" {
                 valueFrom = "${var.cognito_m2m_platform_secret_arn}:scope::"
               },
             ]
+          : [],
+          # Only read once the key is in the app secret, so an unset secret never stops the task starting.
+          var.canva_client_secret_enabled
+          ? [{ name = "CANVA_CLIENT_SECRET", valueFrom = "${var.app_secrets_arn}:canva_client_secret::" }]
           : [],
         )
 

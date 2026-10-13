@@ -304,5 +304,111 @@ window.CHM = (() => {
   }
   const strip = (t) => String(t ?? '').replace(/[\[\]{}]/g, '');
 
-  return { PAL, AREAS, V2, palette, fleck, isCutout, backdrop, backfill, tokenize, layoutMarked, marked, strip, MARK_A, MARK_B, mark, lockup, wordmark, svgMark, burst, wrap, fit, block, measure, mono, roundRect, cover, circle, placeholder, loadFiles, loadUrl, fontsReady, download, bytes, slug, zip, pdf };
+  /* ── layers: a slide as artwork plus live text ──────────────────────
+     Draws a slide with fillText caught, so the words come back as text (font,
+     size, colour, tracking and where they sit) and everything else as the
+     artwork underneath. Pieces on one baseline join into a line, keeping the
+     exact gaps between them; lines that share a column and a steady lead join
+     into a paragraph; a line break stays hard only where the next word would
+     have fitted. This is what sends a slide to Canva as editable text. */
+  const keepAsArt = (s, font) => /^\W$/u.test(s) || (s === 'chm' && /\b900\b/.test(font));
+  function fontOf(font) {
+    const f = String(font), w = f.match(/\b([1-9]00)\b/), px = f.match(/([\d.]+)px/);
+    const fam = (f.split(/px\s+/)[1] || 'Geist').split(',')[0].replace(/["']/g, '').trim();
+    return { weight: w ? +w[1] : /\bbold\b/.test(f) ? 700 : 400, size: px ? +px[1] : 16, family: fam };
+  }
+  function colorOf(v) {
+    if (typeof v !== 'string') return null;
+    if (/^#[0-9a-f]{6}$/i.test(v)) return { hex: v.slice(1).toUpperCase(), a: 1 };
+    const m = v.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/);
+    if (!m) return null;
+    return { hex: [m[1], m[2], m[3]].map(n => Math.round(+n).toString(16).padStart(2, '0')).join('').toUpperCase(), a: m[4] === undefined ? 1 : +m[4] };
+  }
+  const baseOf = (b, y, asc, desc) => (b === 'top' || b === 'hanging' ? y + asc : b === 'middle' ? y + (asc - desc) / 2 : b === 'bottom' || b === 'ideographic' ? y - desc : y);
+  function layers(drawFn, w, h) {
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const ctx = cv.getContext('2d'), fill = ctx.fillText, raw = [];
+    /* Chrome reads letterSpacing back as '' after save() although it still
+       applies, so keep our own copy and follow save/restore */
+    let track = '0px'; const stack = [], lsProp = Object.getOwnPropertyDescriptor(CanvasRenderingContext2D.prototype, 'letterSpacing');
+    if (lsProp && lsProp.set) Object.defineProperty(ctx, 'letterSpacing', { configurable: true, get: () => track, set: (v) => { track = String(v); lsProp.set.call(ctx, v); } });
+    const save = ctx.save, restore = ctx.restore;
+    ctx.save = function () { stack.push(track); return save.call(ctx); };
+    ctx.restore = function () { if (stack.length) track = stack.pop(); return restore.call(ctx); };
+    const trackPx = (size) => { const v = parseFloat(track) || 0; return /em$/.test(track) ? v * size : v; };
+    ctx.fillText = function (str, x, y, maxW) {
+      const s = String(str ?? ''), c = colorOf(ctx.fillStyle);
+      if (!s.trim() || keepAsArt(s.trim(), ctx.font) || !c) return fill.call(ctx, str, x, y, maxW);
+      const tm = ctx.measureText(s), f = fontOf(ctx.font), m = ctx.getTransform();
+      const asc = tm.fontBoundingBoxAscent, desc = tm.fontBoundingBoxDescent;
+      const al = ctx.textAlign === 'end' ? 'right' : ctx.textAlign === 'start' ? 'left' : ctx.textAlign;
+      const left = al === 'center' ? x - tm.width / 2 : al === 'right' ? x - tm.width : x;
+      raw.push({
+        s, ...f, left, right: left + tm.width, yb: baseOf(ctx.textBaseline, y, asc, desc), asc, desc, align: al,
+        color: c.hex, alpha: c.a * ctx.globalAlpha, ls: trackPx(f.size),
+        /* an editor can also break after a hyphen, so the first breakable piece is what has to not fit */
+        sp: ctx.measureText(' ').width, fw: ctx.measureText(s.trim().split(/\s+/)[0].match(/^[^-‐–]*[-‐–]?/)[0]).width,
+        m: [m.a, m.b, m.c, m.d, m.e, m.f], key: [m.a, m.b, m.c, m.d, m.e, m.f].map(v => Math.round(v * 1000)).join(','),
+      });
+    };
+    drawFn(ctx);
+    const run = (r, t = r.s, ls = r.ls) => ({ t, family: r.family, weight: r.weight, size: r.size, color: r.color, alpha: r.alpha, ls });
+
+    /* lines: pieces on one baseline, side by side, in one font */
+    const lines = [];
+    raw.forEach(r => {
+      const L = lines.find(l => l.key === r.key && Math.abs(l.yb - r.yb) < 0.6 && l.size === r.size && l.family === r.family && r.left >= l.right - 2 && r.left - l.right < r.size * 1.5);
+      if (!L) { lines.push({ key: r.key, m: r.m, yb: r.yb, size: r.size, family: r.family, weight: r.weight, align: r.align, left: r.left, right: r.right, asc: r.asc, desc: r.desc, fw: r.fw, sp: r.sp, runs: [run(r)] }); return; }
+      const last = L.runs[L.runs.length - 1], gap = r.left - L.right;
+      if (gap > 0.5) L.runs.push({ ...last, t: ' ', ls: last.ls + (gap - L.sp) });
+      L.runs.push(run(r)); L.right = r.right; L.sp = r.sp;
+    });
+
+    /* paragraphs: lines in one column with a steady lead, nearest one above */
+    const near = (a, b) => Math.abs(a - b) < 1.5, mid = (l) => (l.left + l.right) / 2;
+    const paras = [];
+    lines.slice().sort((a, b) => a.yb - b.yb).forEach(L => {
+      let best = null;
+      paras.forEach(P => {
+        const prev = P.lines[P.lines.length - 1], step = L.yb - prev.yb;
+        if (P.key !== L.key || P.size !== L.size || P.family !== L.family || P.weight !== L.weight) return;
+        if (step < L.size * 0.75 || step > L.size * 2.2 || (P.lines.length > 1 && Math.abs(step - P.step) > 1)) return;
+        const al = near(prev.left, L.left) ? 'left' : near(mid(prev), mid(L)) ? 'center' : near(prev.right, L.right) ? 'right' : null;
+        if (!al || (P.lines.length > 1 && al !== P.align)) return;
+        if (!best || prev.yb > best.P.lines[best.P.lines.length - 1].yb) best = { P, step, al };
+      });
+      if (best) { best.P.lines.push(L); best.P.step = best.step; best.P.align = best.al; }
+      else paras.push({ key: L.key, m: L.m, size: L.size, family: L.family, weight: L.weight, align: L.align, step: 0, lines: [L] });
+    });
+
+    const texts = paras.map(P => {
+      const Ls = P.lines, first = Ls[0], multi = Ls.length > 1;
+      const maxW = Math.max(...Ls.map(l => l.right - l.left)), boxW = maxW + 4;
+      let align = P.align;
+      /* a lone line drawn left-anchored but centred on the slide is a centred headline */
+      if (!multi && first.align === 'left' && near(mid(first), w / 2) && first.left > w * 0.1) align = 'center';
+      const lead = multi ? P.step : P.size * 1.2;
+      const top = first.yb - ((lead - (first.asc + first.desc)) / 2 + first.asc);
+      const out = Ls.map((l, k) => {
+        const next = Ls[k + 1];
+        const br = !next ? null : (l.right - l.left) + l.sp + next.fw > boxW ? 'soft' : 'hard';
+        return { runs: l.runs, br };
+      });
+      let bw = multi ? boxW : Math.max(boxW, maxW * 1.12 + 16);
+      const L0 = Math.min(...Ls.map(l => l.left)), R0 = Math.max(...Ls.map(l => l.right));
+      let x = align === 'center' ? (L0 + R0) / 2 - bw / 2 : align === 'right' ? R0 - bw : L0;
+      const hh = Ls.length * lead;
+      /* back to slide space through the transform the words were drawn with */
+      const [a, b, c, d, e, f] = P.m, k = Math.hypot(a, b), rot = Math.atan2(b, a) * 180 / Math.PI;
+      const cx = x + bw / 2, cy = top + hh / 2, CX = a * cx + c * cy + e, CY = b * cx + d * cy + f;
+      const scale = (r) => ({ ...r, size: r.size * k, ls: r.ls * k });
+      return {
+        x: CX - bw * k / 2, y: CY - hh * k / 2, w: bw * k, h: hh * k, rot: Math.abs(rot) < 0.01 ? 0 : rot,
+        align, lead: lead * k, lines: out.map(o => ({ br: o.br, runs: o.runs.map(scale) })),
+      };
+    });
+    return { width: w, height: h, art: cv.toDataURL('image/jpeg', 0.92), texts };
+  }
+
+  return { PAL, AREAS, V2, palette, fleck, isCutout, backdrop, backfill, tokenize, layoutMarked, marked, strip, MARK_A, MARK_B, mark, lockup, wordmark, svgMark, burst, wrap, fit, block, measure, mono, roundRect, cover, circle, placeholder, loadFiles, loadUrl, fontsReady, download, bytes, slug, zip, pdf, layers };
 })();

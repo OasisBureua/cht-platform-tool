@@ -3,6 +3,7 @@ import { Download, FileArchive, FileText, Plus } from 'lucide-react';
 import { useStudioEngine, type DeckEngine, type DeckSlide } from '../../../components/admin/studio/engine';
 import { ImageChips, Section, SlideOps, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
 import { Stage, ViewSwitch } from '../../../components/admin/studio/stage';
+import { SendToCanva } from '../../../components/admin/studio/canvaButton';
 import { useStageView } from '../../../components/admin/studio/stageView';
 
 /**
@@ -135,7 +136,8 @@ export default function DeckStudio() {
             <>
               <ViewSwitch view={view} onView={setView} />
               <span className="meta text-faint">{slides.length} slides · 1920 × 1080</span>
-              <span className="ms-auto flex flex-wrap gap-2">
+              <span className="ms-auto flex flex-wrap justify-end gap-2">
+                <SendToCanva layers={engine ? () => engine.layers() : null} title={title.trim() || 'CHM deck'} />
                 <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
                   <Download className="size-4" aria-hidden /> This slide
                 </button>

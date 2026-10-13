@@ -245,6 +245,13 @@ variable "hubspot_access_token" {
   default     = ""
 }
 
+variable "canva_client_secret" {
+  description = "Canva Connect app client secret (Send to Canva)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "recaptcha_secret_key" {
   description = "Google reCAPTCHA v3 secret key for login/join verification"
   type        = string

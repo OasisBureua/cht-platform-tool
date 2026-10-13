@@ -79,6 +79,7 @@ model User {
   cmeCredits      CMECredit[]
   analyticsEvents AnalyticsEvent[]
   companionConversations CompanionConversation[]
+  canvaConnection CanvaConnection?
 
   @@index([email])
   @@index([authId])
@@ -921,4 +922,28 @@ model CompanionMessage {
 
   @@index([conversationId, createdAt])
   @@map("CompanionMessage")
+}
+
+// ============================================================================
+// CANVA CONNECTION (admin Post-production: Send to Canva)
+// ============================================================================
+
+/// One admin's Canva Connect authorization. Tokens and the PKCE verifier are
+/// stored sealed (AES-256-GCM); the pending fields only live for one sign-in.
+model CanvaConnection {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  accessToken      String?
+  refreshToken     String?
+  expiresAt        DateTime?
+  scope            String?
+  pendingState     String?   @unique
+  pendingVerifier  String?
+  pendingExpiresAt DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("CanvaConnection")
 }

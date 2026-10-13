@@ -353,6 +353,14 @@ export default () => ({
     accessToken: process.env.HUBSPOT_ACCESS_TOKEN,
   },
 
+  // Canva Connect (admin Post-production: Send to Canva). Empty client turns it off.
+  canva: {
+    clientId: process.env.CANVA_CLIENT_ID?.trim() || '',
+    clientSecret: process.env.CANVA_CLIENT_SECRET?.trim() || '',
+    /** Defaults to {FRONTEND_URL}/api/canva/callback; must match the Canva app's redirect URL. */
+    redirectUri: process.env.CANVA_REDIRECT_URI?.trim() || '',
+  },
+
   catalog: {
     useContentHub:
       process.env.CATALOG_USE_CONTENTHUB?.trim().toLowerCase() === 'true' ||

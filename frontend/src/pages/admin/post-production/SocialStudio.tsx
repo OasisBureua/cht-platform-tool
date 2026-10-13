@@ -5,6 +5,7 @@ import { creditFor, type Faculty } from '../../../components/admin/studio/facult
 import { FacultyPicker, ImageChips, Section, Seg, SlideOps, Swatches, TextArea, TextField, UploadButton } from '../../../components/admin/studio/ui';
 import { AMBER_HINT, AMBERS, BACKDROP_HINT, BACKDROPS, type Amber, type Backdrop } from '../../../components/admin/studio/look';
 import { Stage, ViewSwitch } from '../../../components/admin/studio/stage';
+import { SendToCanva } from '../../../components/admin/studio/canvaButton';
 import { useStageView } from '../../../components/admin/studio/stageView';
 
 /**
@@ -21,6 +22,10 @@ const KINDS: [SocialSlide['kind'], string][] = [
   ['cta', 'Close'],
 ];
 const MAX_IMAGES = 2;
+
+/** Names the Canva design after the cover headline, without the highlight marks. */
+const carouselTitle = (slides: SocialSlide[]) =>
+  (slides[0]?.headline ?? '').replace(/[[\]{}]/g, '').replace(/\s+/g, ' ').trim() || 'CHM carousel';
 
 export default function SocialStudio() {
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -136,7 +141,8 @@ export default function SocialStudio() {
               <span className="meta text-faint">
                 {slides.length} slides · {format === '4x5' ? '1080 × 1350' : '1080 × 1080'}
               </span>
-              <span className="ms-auto flex gap-2">
+              <span className="ms-auto flex flex-wrap justify-end gap-2">
+                <SendToCanva layers={engine ? () => engine.layers() : null} title={carouselTitle(slides)} />
                 <button type="button" disabled={!engine} onClick={() => engine?.exportSlide()} className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 text-body-s text-text disabled:opacity-40">
                   <Download className="size-4" aria-hidden /> This slide
                 </button>

@@ -523,6 +523,19 @@ variable "recaptcha_site_key" {
   default     = ""
 }
 
+variable "canva_client_id" {
+  description = "Canva Connect app client ID (Send to Canva). Empty turns the feature off."
+  type        = string
+  default     = ""
+}
+
+variable "canva_client_secret" {
+  description = "Canva Connect app client secret (Send to Canva)"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
 variable "recaptcha_secret_key" {
   description = "Google reCAPTCHA v3 secret key for backend token verification"
   type        = string

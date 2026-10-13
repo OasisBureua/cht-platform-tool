@@ -245,6 +245,18 @@ variable "appconfig_profile" {
   type        = string
   default     = ""
 }
+variable "canva_client_id" {
+  description = "Canva Connect app client ID for Send to Canva in admin Post-production. Empty turns the feature off."
+  type        = string
+  default     = ""
+}
+
+variable "canva_client_secret_enabled" {
+  description = "True once canva_client_secret is set in the app secret, so the task reads CANVA_CLIENT_SECRET from it."
+  type        = bool
+  default     = false
+}
+
 variable "companion_base_url" {
   description = "cht-companion Service Connect base URL (e.g. http://cht-companion:8080). Empty disables chat proxy."
   type        = string

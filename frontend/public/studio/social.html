@@ -741,6 +741,8 @@ window.__engine = {
     syncVisibility(); syncForm(); render();
   },
   thumbs: (width = 216) => { const h = H(); off.width = W; off.height = h; const oc = off.getContext('2d'); return engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, h, width); },
+  /* every slide as artwork plus live text, for Send to Canva */
+  layers: () => { const h = H(); return state.slides.map((s, i) => CHM.layers((c) => draw(c, s, i, state.slides.length), W, h)); },
   exportSlide() { $('#exportOne').click(); },
   exportZip() { $('#exportAll').click(); },
 };
