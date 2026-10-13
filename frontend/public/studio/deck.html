@@ -367,6 +367,8 @@ window.__engine = {
     syncForm(); render();
   },
   thumbs: (width = 240) => engineThumbs(state.slides.length, (i) => { draw(oc, state.slides[i], i, state.slides.length); return off; }, W, H, width),
+  /* every slide as artwork plus live text, for Send to Canva */
+  layers: () => state.slides.map((s, i) => CHM.layers((c) => draw(c, s, i, state.slides.length), W, H)),
   exportSlide() { $('#exportOne').click(); },
   exportZip() { $('#exportZip').click(); },
   exportPdf() { $('#exportPdf').click(); },

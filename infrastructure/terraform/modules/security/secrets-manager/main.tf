@@ -128,6 +128,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     admin_bootstrap_secret                    = var.admin_bootstrap_secret
     hubspot_access_token                      = var.hubspot_access_token
     recaptcha_secret_key                      = var.recaptcha_secret_key
+    canva_client_secret                       = var.canva_client_secret
     internal_cache_secret                     = var.internal_cache_secret
     companion_internal_secret                 = var.companion_internal_secret
   })

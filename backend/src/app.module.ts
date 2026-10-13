@@ -31,6 +31,7 @@ import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { CompanionModule } from './modules/companion/companion.module';
+import { CanvaModule } from './modules/canva/canva.module';
 import { ExportModule } from './modules/export/export.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import configuration from './config/configuration';
@@ -171,6 +172,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     AdminContentHubModule,
     CampaignsModule,
     CompanionModule,
+    CanvaModule,
     ExportModule,
     ReportsModule,
   ],

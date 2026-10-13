@@ -9,6 +9,12 @@ import { useCallback, useRef, useState } from 'react';
 
 export type StudioImage = { url: string; name: string; zoom?: number };
 
+/** One slide from `__engine.layers()`: the artwork with the words lifted off it. */
+export type LayerRun = { t: string; family: string; weight: number; size: number; color: string; alpha: number; ls: number };
+export type LayerLine = { br: 'soft' | 'hard' | null; runs: LayerRun[] };
+export type LayerText = { x: number; y: number; w: number; h: number; rot: number; align: 'left' | 'center' | 'right'; lead: number; lines: LayerLine[] };
+export type StudioLayers = { width: number; height: number; art: string; texts: LayerText[] };
+
 export type ThumbEngine = {
   ready: true;
   meta: () => { size: [number, number]; areas: { name: string; hex: string }[]; layouts: [string, string][] };
@@ -32,6 +38,7 @@ export type SocialEngine = {
   height: () => number;
   set: (s: Record<string, unknown>) => Promise<void>;
   thumbs: (width?: number) => Promise<string[]>;
+  layers: () => StudioLayers[];
   exportSlide: () => void;
   exportZip: () => void;
 };
@@ -43,6 +50,7 @@ export type DeckEngine = {
   meta: () => { size: [number, number]; types: Record<string, { name: string; images: number; fields: DeckField[] }>; sample: DeckSlide[]; title: string };
   set: (s: Record<string, unknown>) => Promise<void>;
   thumbs: (width?: number) => Promise<string[]>;
+  layers: () => StudioLayers[];
   exportSlide: () => void;
   exportZip: () => void;
   exportPdf: () => void;
