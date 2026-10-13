@@ -25,6 +25,12 @@ import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
 import { CreateVendorDto } from './dto/create-vendor.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
+import {
+  PROGRAM_PAYMENT_SCOPE_NONE,
+  ProgramPaymentSummaryItemDto,
+  ProgramPaymentSummaryResponseDto,
+  ProgramPaymentStatusTotalsDto,
+} from './dto/program-payment-summary.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { programHasPostEventSurvey } from '../../utils/program-survey-config';
@@ -720,35 +726,62 @@ export class PaymentsService {
   }
 
   /**
-   * List pending payments (admin only). Used for admin "Pay now" flow.
+   * Optional list scope for admin payment lists (SCRUM-275).
+   * - omitted / empty → no program filter
+   * - `none` → programId IS NULL
+   * - otherwise → that program id
    */
-  async getPendingPayments() {
-    const payments = await this.prisma.payment.findMany({
-      where: { status: 'PENDING' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            billVendorId: true,
-            stripeAccountId: true,
-            stripePayoutsEnabled: true,
-            w9Submitted: true,
-            preferredPaymentMethod: true,
-            bankAccountLast4: true,
-          },
-        },
-        program: {
-          select: {
-            id: true,
-            title: true,
-            chmProgramId: true,
-            sponsorName: true,
-          },
+  private parseProgramIdScope(
+    programId?: string,
+  ): { programId: string | null } | undefined {
+    if (programId == null) return undefined;
+    const trimmed = programId.trim();
+    if (!trimmed) return undefined;
+    if (trimmed === PROGRAM_PAYMENT_SCOPE_NONE) {
+      return { programId: null };
+    }
+    return { programId: trimmed };
+  }
+
+  private adminPaymentListInclude() {
+    return {
+      user: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          lastName: true,
+          billVendorId: true,
+          stripeAccountId: true,
+          stripePayoutsEnabled: true,
+          w9Submitted: true,
+          preferredPaymentMethod: true,
+          bankAccountLast4: true,
         },
       },
+      program: {
+        select: {
+          id: true,
+          title: true,
+          chmProgramId: true,
+          sponsorName: true,
+        },
+      },
+    } as const;
+  }
+
+  /**
+   * List pending payments (admin only). Used for admin "Pay now" flow.
+   * Optional `programId` / `none` scopes to one program (SCRUM-275).
+   */
+  async getPendingPayments(programId?: string) {
+    const scope = this.parseProgramIdScope(programId);
+    const payments = await this.prisma.payment.findMany({
+      where: {
+        status: 'PENDING',
+        ...(scope ? { programId: scope.programId } : {}),
+      },
+      include: this.adminPaymentListInclude(),
       orderBy: { createdAt: 'desc' },
     });
     return payments;
@@ -936,45 +969,40 @@ export class PaymentsService {
     });
   }
 
-  async getFailedPayments() {
+  /**
+   * List failed payments (admin). Optional `programId` / `none` scope (SCRUM-275).
+   */
+  async getFailedPayments(programId?: string) {
+    const scope = this.parseProgramIdScope(programId);
     const payments = await this.prisma.payment.findMany({
-      where: { status: 'FAILED' },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-            billVendorId: true,
-            stripeAccountId: true,
-            stripePayoutsEnabled: true,
-            w9Submitted: true,
-            preferredPaymentMethod: true,
-            bankAccountLast4: true,
-          },
-        },
-        program: {
-          select: {
-            id: true,
-            title: true,
-            chmProgramId: true,
-            sponsorName: true,
-          },
-        },
+      where: {
+        status: 'FAILED',
+        ...(scope ? { programId: scope.programId } : {}),
       },
+      include: this.adminPaymentListInclude(),
       orderBy: { failedAt: 'desc' },
     });
     return payments;
   }
 
   /**
-   * Recent successful payouts (admin payments page). Newest first; capped for performance.
+   * Successful payouts (admin payments page). Newest first.
+   * - No programId: recent window (default 200, max 500) — unchanged.
+   * - With programId / none: scoped to that program (default 1000, max 2000).
    */
-  async getPaidPaymentsForAdmin(limit = 200) {
-    const take = Math.min(Math.max(Number(limit) || 200, 1), 500);
+  async getPaidPaymentsForAdmin(limit?: number, programId?: string) {
+    const scope = this.parseProgramIdScope(programId);
+    const scoped = scope !== undefined;
+    const defaultTake = scoped ? 1000 : 200;
+    const maxTake = scoped ? 2000 : 500;
+    const raw =
+      limit != null && Number.isFinite(limit) ? Number(limit) : defaultTake;
+    const take = Math.min(Math.max(raw, 1), maxTake);
     return this.prisma.payment.findMany({
-      where: { status: 'PAID' },
+      where: {
+        status: 'PAID',
+        ...(scope ? { programId: scope.programId } : {}),
+      },
       include: {
         user: {
           select: {
@@ -1000,6 +1028,110 @@ export class PaymentsService {
       orderBy: [{ paidAt: 'desc' }, { updatedAt: 'desc' }],
       take,
     });
+  }
+
+  /**
+   * SCRUM-275: all-time PENDING / PAID / FAILED totals per program (admin).
+   * Not limited to the recent paid list window — use for program summary Paid $.
+   */
+  async getProgramPaymentSummary(): Promise<ProgramPaymentSummaryResponseDto> {
+    const emptyTotals = (): ProgramPaymentStatusTotalsDto => ({
+      count: 0,
+      totalCents: 0,
+    });
+
+    const grouped = await this.prisma.payment.groupBy({
+      by: ['programId', 'status'],
+      where: {
+        status: { in: ['PENDING', 'PAID', 'FAILED'] },
+      },
+      _count: { _all: true },
+      _sum: { amount: true },
+    });
+
+    type Bucket = {
+      programId: string | null;
+      pending: ProgramPaymentStatusTotalsDto;
+      paid: ProgramPaymentStatusTotalsDto;
+      failed: ProgramPaymentStatusTotalsDto;
+    };
+
+    const byProgram = new Map<string, Bucket>();
+    const mapKey = (programId: string | null) => programId ?? '__none__';
+
+    for (const row of grouped) {
+      const key = mapKey(row.programId);
+      let bucket = byProgram.get(key);
+      if (!bucket) {
+        bucket = {
+          programId: row.programId,
+          pending: emptyTotals(),
+          paid: emptyTotals(),
+          failed: emptyTotals(),
+        };
+        byProgram.set(key, bucket);
+      }
+
+      const totals: ProgramPaymentStatusTotalsDto = {
+        count: row._count._all,
+        totalCents: row._sum.amount ?? 0,
+      };
+      if (row.status === 'PENDING') bucket.pending = totals;
+      else if (row.status === 'PAID') bucket.paid = totals;
+      else if (row.status === 'FAILED') bucket.failed = totals;
+    }
+
+    const programIds = [...byProgram.values()]
+      .map((b) => b.programId)
+      .filter((id): id is string => typeof id === 'string' && id.length > 0);
+
+    const programsMeta =
+      programIds.length === 0
+        ? []
+        : await this.prisma.program.findMany({
+            where: { id: { in: programIds } },
+            select: {
+              id: true,
+              title: true,
+              chmProgramId: true,
+              sponsorName: true,
+            },
+          });
+    const metaById = new Map(programsMeta.map((p) => [p.id, p]));
+
+    const programs: ProgramPaymentSummaryItemDto[] = [...byProgram.values()].map(
+      (bucket) => {
+        if (bucket.programId === null) {
+          return {
+            programId: null,
+            title: 'No program',
+            chmProgramId: null,
+            sponsorName: null,
+            pending: bucket.pending,
+            paid: bucket.paid,
+            failed: bucket.failed,
+          };
+        }
+        const meta = metaById.get(bucket.programId);
+        return {
+          programId: bucket.programId,
+          title: meta?.title?.trim() || 'Untitled program',
+          chmProgramId: meta?.chmProgramId ?? null,
+          sponsorName: meta?.sponsorName ?? null,
+          pending: bucket.pending,
+          paid: bucket.paid,
+          failed: bucket.failed,
+        };
+      },
+    );
+
+    programs.sort((a, b) => {
+      if (a.programId === null) return 1;
+      if (b.programId === null) return -1;
+      return a.title.localeCompare(b.title);
+    });
+
+    return { programs };
   }
 
   /**

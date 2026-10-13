@@ -226,6 +226,36 @@ export interface PaidPayment extends PendingPayment {
   paidAt: string | null;
 }
 
+/**
+ * SCRUM-275 contract (Chunk 0) — mirrors backend
+ * `dto/program-payment-summary.dto.ts`.
+ *
+ * GET /payments/program-summary → all-time PENDING/PAID/FAILED per program.
+ * List endpoints accept optional programId: omit | "none" | program cuid.
+ */
+export const PROGRAM_PAYMENT_SCOPE_NONE = 'none' as const;
+
+export type ProgramPaymentScopeId = string | typeof PROGRAM_PAYMENT_SCOPE_NONE;
+
+export interface ProgramPaymentStatusTotals {
+  count: number;
+  totalCents: number;
+}
+
+export interface ProgramPaymentSummaryItem {
+  programId: string | null;
+  title: string;
+  chmProgramId: string | null;
+  sponsorName: string | null;
+  pending: ProgramPaymentStatusTotals;
+  paid: ProgramPaymentStatusTotals;
+  failed: ProgramPaymentStatusTotals;
+}
+
+export interface ProgramPaymentSummaryResponse {
+  programs: ProgramPaymentSummaryItem[];
+}
+
 export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
@@ -1975,9 +2005,21 @@ export const adminApi = {
     return data;
   },
 
-  getPendingPayments: async () => {
+  /**
+   * SCRUM-275: all-time PENDING / PAID / FAILED totals per program (admin).
+   */
+  getProgramPaymentSummary: async (): Promise<ProgramPaymentSummaryResponse> => {
+    const { data } = await apiClient.get<ProgramPaymentSummaryResponse>(
+      '/payments/program-summary',
+    );
+    return data ?? { programs: [] };
+  },
+
+  getPendingPayments: async (params?: { programId?: ProgramPaymentScopeId }) => {
     try {
-      const { data } = await apiClient.get<PendingPayment[]>('/payments/pending');
+      const { data } = await apiClient.get<PendingPayment[]>('/payments/pending', {
+        params: params?.programId != null ? { programId: params.programId } : undefined,
+      });
       return data;
     } catch (err) {
       if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
@@ -1987,9 +2029,11 @@ export const adminApi = {
     }
   },
 
-  getFailedPayments: async () => {
+  getFailedPayments: async (params?: { programId?: ProgramPaymentScopeId }) => {
     try {
-      const { data } = await apiClient.get<FailedPayment[]>('/payments/failed');
+      const { data } = await apiClient.get<FailedPayment[]>('/payments/failed', {
+        params: params?.programId != null ? { programId: params.programId } : undefined,
+      });
       return data;
     } catch (err) {
       if (import.meta.env.VITE_DISABLE_AUTH === 'true' && (err as { code?: string })?.code === 'ERR_NETWORK') {
@@ -1999,10 +2043,16 @@ export const adminApi = {
     }
   },
 
-  getPaidPayments: async (params?: { limit?: number }) => {
+  getPaidPayments: async (params?: {
+    limit?: number;
+    programId?: ProgramPaymentScopeId;
+  }) => {
     try {
+      const query: { limit?: number; programId?: string } = {};
+      if (params?.limit != null) query.limit = params.limit;
+      if (params?.programId != null) query.programId = params.programId;
       const { data } = await apiClient.get<PaidPayment[]>('/payments/paid', {
-        params: params?.limit != null ? { limit: params.limit } : undefined,
+        params: Object.keys(query).length > 0 ? query : undefined,
       });
       return data;
     } catch (err) {

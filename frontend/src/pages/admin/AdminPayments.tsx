@@ -1,7 +1,21 @@
 import { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { adminApi, type PendingPayment, type FailedPayment, type PaidPayment, type AdminUser } from '../../api/admin';
+import {
+  adminApi,
+  type PendingPayment,
+  type FailedPayment,
+  type PaidPayment,
+  type AdminUser,
+  type ProgramPaymentSummaryItem,
+  type ProgramPaymentScopeId,
+  PROGRAM_PAYMENT_SCOPE_NONE,
+} from '../../api/admin';
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
@@ -74,125 +88,108 @@ type EligibleNotSubmittedRow = Awaited<
   ReturnType<typeof adminApi.listPaymentEligibleNotYetRequested>
 >[number];
 
-type ProgramPaymentGroup = {
-  key: string;
-  programId: string | null;
-  title: string;
-  chmProgramId: string | null;
-  sponsorName: string | null;
-  pending: PendingPayment[];
-  paid: PaidPayment[];
-  failed: FailedPayment[];
-  eligible: EligibleNotSubmittedRow[];
-  pendingTotalCents: number;
-  paidTotalCents: number;
-  failedTotalCents: number;
-};
-
 const NO_PROGRAM_KEY = '__none__';
 
-function resolveProgramMeta(p: {
-  programId?: string | null;
-  program?: {
-    id?: string | null;
-    title?: string | null;
-    chmProgramId?: string | null;
-    sponsorName?: string | null;
-  } | null;
-}): {
+/**
+ * Refresh program-summary and all pending/paid/failed query variants.
+ * Prefix keys match scoped drill-down caches like `['admin','paid-payments', programId]`.
+ */
+function invalidateAdminPaymentQueries(queryClient: QueryClient) {
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'payment-program-summary'] });
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
+  void queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+}
+
+/** Table row: all-time payment totals from summary API + eligible counts. */
+type ProgramTableRow = {
   key: string;
   programId: string | null;
   title: string;
   chmProgramId: string | null;
   sponsorName: string | null;
-} {
-  const programId = resolveProgramId(p);
-  const title =
-    p.program?.title?.trim() || (programId ? 'Untitled program' : 'No program');
-  return {
-    key: programId ?? NO_PROGRAM_KEY,
-    programId,
-    title,
-    chmProgramId: p.program?.chmProgramId?.trim() || null,
-    sponsorName: p.program?.sponsorName?.trim() || null,
-  };
-}
+  pendingCount: number;
+  pendingTotalCents: number;
+  paidCount: number;
+  paidTotalCents: number;
+  failedCount: number;
+  failedTotalCents: number;
+  eligibleCount: number;
+};
 
-function emptyProgramGroup(
-  key: string,
-  meta: {
-    programId: string | null;
-    title: string;
-    chmProgramId: string | null;
-    sponsorName: string | null;
-  },
-): ProgramPaymentGroup {
-  return {
-    key,
-    programId: meta.programId,
-    title: meta.title,
-    chmProgramId: meta.chmProgramId,
-    sponsorName: meta.sponsorName,
-    pending: [],
-    paid: [],
-    failed: [],
-    eligible: [],
-    pendingTotalCents: 0,
-    paidTotalCents: 0,
-    failedTotalCents: 0,
-  };
-}
-
-function buildProgramPaymentGroups(input: {
-  pending: PendingPayment[];
-  paid: PaidPayment[];
-  failed: FailedPayment[];
-  eligible: EligibleNotSubmittedRow[];
-}): ProgramPaymentGroup[] {
-  const groups = new Map<string, ProgramPaymentGroup>();
-
-  const ensure = (meta: ReturnType<typeof resolveProgramMeta>) => {
-    let group = groups.get(meta.key);
-    if (!group) {
-      group = emptyProgramGroup(meta.key, meta);
-      groups.set(meta.key, group);
-    } else if (group.title === 'Untitled program' && meta.title !== 'Untitled program') {
-      // Prefer a real title if a later row has the joined program.
-      group.title = meta.title;
-      group.chmProgramId = group.chmProgramId ?? meta.chmProgramId;
-      group.sponsorName = group.sponsorName ?? meta.sponsorName;
+function buildProgramTableRows(
+  summaryPrograms: ProgramPaymentSummaryItem[],
+  eligible: EligibleNotSubmittedRow[],
+): ProgramTableRow[] {
+  const eligibleMeta = new Map<
+    string,
+    {
+      count: number;
+      programId: string | null;
+      title: string;
+      chmProgramId: string | null;
+      sponsorName: string | null;
     }
-    return group;
-  };
+  >();
 
-  for (const p of input.pending) {
-    if (!p || typeof p !== 'object') continue;
-    const group = ensure(resolveProgramMeta(p));
-    group.pending.push(p);
-    group.pendingTotalCents += safeAmountCents(p.amount);
-  }
-
-  for (const p of input.paid) {
-    if (!p || typeof p !== 'object') continue;
-    const group = ensure(resolveProgramMeta(p));
-    group.paid.push(p);
-    group.paidTotalCents += safeAmountCents(p.amount);
-  }
-
-  for (const p of input.failed) {
-    if (!p || typeof p !== 'object') continue;
-    const group = ensure(resolveProgramMeta(p));
-    group.failed.push(p);
-    group.failedTotalCents += safeAmountCents(p.amount);
-  }
-
-  for (const r of input.eligible) {
+  for (const r of eligible) {
     if (!r || typeof r !== 'object') continue;
-    const group = ensure(resolveProgramMeta({ program: r.program, programId: r.program?.id }));
-    group.eligible.push(r);
+    const programId = r.program?.id?.trim() || null;
+    const key = programId ?? NO_PROGRAM_KEY;
+    const existing = eligibleMeta.get(key);
+    if (existing) {
+      existing.count += 1;
+      continue;
+    }
+    eligibleMeta.set(key, {
+      count: 1,
+      programId,
+      title: r.program?.title?.trim() || (programId ? 'Untitled program' : 'No program'),
+      chmProgramId: r.program?.chmProgramId ?? null,
+      sponsorName: r.program?.sponsorName ?? null,
+    });
   }
 
-  return [...groups.values()].sort((a, b) => {
+  const rowsByKey = new Map<string, ProgramTableRow>();
+
+  for (const item of summaryPrograms) {
+    const key = item.programId ?? NO_PROGRAM_KEY;
+    const eligibleCount = eligibleMeta.get(key)?.count ?? 0;
+    rowsByKey.set(key, {
+      key,
+      programId: item.programId,
+      title: item.title,
+      chmProgramId: item.chmProgramId,
+      sponsorName: item.sponsorName,
+      pendingCount: item.pending.count,
+      pendingTotalCents: item.pending.totalCents,
+      paidCount: item.paid.count,
+      paidTotalCents: item.paid.totalCents,
+      failedCount: item.failed.count,
+      failedTotalCents: item.failed.totalCents,
+      eligibleCount,
+    });
+  }
+
+  for (const [key, meta] of eligibleMeta) {
+    if (rowsByKey.has(key)) continue;
+    rowsByKey.set(key, {
+      key,
+      programId: meta.programId,
+      title: meta.title,
+      chmProgramId: meta.chmProgramId,
+      sponsorName: meta.sponsorName,
+      pendingCount: 0,
+      pendingTotalCents: 0,
+      paidCount: 0,
+      paidTotalCents: 0,
+      failedCount: 0,
+      failedTotalCents: 0,
+      eligibleCount: meta.count,
+    });
+  }
+
+  return [...rowsByKey.values()].sort((a, b) => {
     if (a.programId === null) return 1;
     if (b.programId === null) return -1;
     return a.title.localeCompare(b.title);
@@ -206,15 +203,21 @@ export default function AdminPayments() {
   const [userFilter, setUserFilter] = useState('');
   /** Single program selection: 'all' | 'none' | programId */
   const [programFilter, setProgramFilter] = useState('all');
+  const isProgramDrillDown = programFilter !== 'all';
+  const programScopeId: ProgramPaymentScopeId | undefined = isProgramDrillDown
+    ? programFilter === 'none'
+      ? PROGRAM_PAYMENT_SCOPE_NONE
+      : programFilter
+    : undefined;
 
-  const { data: pendingData, isLoading } = useQuery({
-    queryKey: ['admin', 'pending-payments'],
-    queryFn: () => adminApi.getPendingPayments(),
-  });
-
-  const { data: failedData } = useQuery({
-    queryKey: ['admin', 'failed-payments'],
-    queryFn: () => adminApi.getFailedPayments(),
+  const {
+    data: programSummaryData,
+    isLoading: summaryLoading,
+    isError: summaryError,
+    error: summaryErrorObj,
+  } = useQuery({
+    queryKey: ['admin', 'payment-program-summary'],
+    queryFn: () => adminApi.getProgramPaymentSummary(),
   });
 
   const { data: eligibleData } = useQuery({
@@ -222,9 +225,23 @@ export default function AdminPayments() {
     queryFn: () => adminApi.listPaymentEligibleNotYetRequested(),
   });
 
+  // Drill-down lists: server-scoped by programId (or "none"). Not fetched on overview.
+  const { data: pendingData, isPending: pendingPending } = useQuery({
+    queryKey: ['admin', 'pending-payments', programFilter],
+    queryFn: () => adminApi.getPendingPayments({ programId: programScopeId! }),
+    enabled: isProgramDrillDown,
+  });
+
+  const { data: failedData, isPending: failedPending } = useQuery({
+    queryKey: ['admin', 'failed-payments', programFilter],
+    queryFn: () => adminApi.getFailedPayments({ programId: programScopeId! }),
+    enabled: isProgramDrillDown,
+  });
+
   const { data: paidData, isPending: paidPending } = useQuery({
-    queryKey: ['admin', 'paid-payments'],
-    queryFn: () => adminApi.getPaidPayments({ limit: 200 }),
+    queryKey: ['admin', 'paid-payments', programFilter],
+    queryFn: () => adminApi.getPaidPayments({ programId: programScopeId! }),
+    enabled: isProgramDrillDown,
   });
 
   // Normalize null/non-array API payloads so grouping never throws.
@@ -232,112 +249,90 @@ export default function AdminPayments() {
   const failed = asArray(failedData);
   const eligibleNotSubmitted = asArray(eligibleData);
   const paid = asArray(paidData);
+  const summaryPrograms = asArray(programSummaryData?.programs);
 
-  const userFilteredPending = useMemo(
+  const summaryTotals = useMemo(() => {
+    return summaryPrograms.reduce(
+      (acc, item) => {
+        acc.pendingCount += item.pending.count;
+        acc.pendingTotalCents += item.pending.totalCents;
+        acc.paidCount += item.paid.count;
+        acc.failedCount += item.failed.count;
+        return acc;
+      },
+      { pendingCount: 0, pendingTotalCents: 0, paidCount: 0, failedCount: 0 },
+    );
+  }, [summaryPrograms]);
+
+  // Scoped lists already match program; user filter stays client-side.
+  const filteredPending = useMemo(
     () => pending.filter((p) => matchesUserQuery(p, userFilter)),
     [pending, userFilter],
   );
-  const userFilteredPaid = useMemo(
+  const filteredPaid = useMemo(
     () => paid.filter((p) => matchesUserQuery(p, userFilter)),
     [paid, userFilter],
   );
-  const userFilteredFailed = useMemo(
+  const filteredFailed = useMemo(
     () => failed.filter((p) => matchesUserQuery(p, userFilter)),
     [failed, userFilter],
   );
-  const userFilteredEligible = useMemo(() => {
-    const q = userFilter.trim().toLowerCase();
-    if (!q) return eligibleNotSubmitted;
-    return eligibleNotSubmitted.filter((r) => matchesUserQuery(r, userFilter));
-  }, [eligibleNotSubmitted, userFilter]);
-
-  const programGroups = useMemo(
-    () =>
-      buildProgramPaymentGroups({
-        pending: userFilteredPending,
-        paid: userFilteredPaid,
-        failed: userFilteredFailed,
-        eligible: userFilteredEligible,
-      }),
-    [userFilteredPending, userFilteredPaid, userFilteredFailed, userFilteredEligible],
-  );
-
-  const selectedProgramGroup = useMemo(() => {
-    if (programFilter === 'all') return null;
-    if (programFilter === 'none') {
-      return programGroups.find((g) => g.programId === null) ?? null;
-    }
-    return programGroups.find((g) => g.programId === programFilter) ?? null;
-  }, [programFilter, programGroups]);
-
-  const filteredPending = useMemo(
-    () => userFilteredPending.filter((p) => matchesProgramFilter(p, programFilter)),
-    [userFilteredPending, programFilter],
-  );
-
-  const filteredPaid = useMemo(
-    () => userFilteredPaid.filter((p) => matchesProgramFilter(p, programFilter)),
-    [userFilteredPaid, programFilter],
-  );
-
-  const filteredFailed = useMemo(
-    () => userFilteredFailed.filter((p) => matchesProgramFilter(p, programFilter)),
-    [userFilteredFailed, programFilter],
-  );
-
   const filteredEligible = useMemo(() => {
-    return userFilteredEligible.filter((r) =>
+    const byUser = !userFilter.trim()
+      ? eligibleNotSubmitted
+      : eligibleNotSubmitted.filter((r) => matchesUserQuery(r, userFilter));
+    return byUser.filter((r) =>
       matchesProgramFilter({ program: r.program, programId: r.program?.id }, programFilter),
     );
-  }, [userFilteredEligible, programFilter]);
+  }, [eligibleNotSubmitted, userFilter, programFilter]);
+
+  // Programs table: all-time PENDING/PAID/FAILED from summary API + eligible merge.
+  const programTableRows = useMemo(
+    () => buildProgramTableRows(summaryPrograms, eligibleNotSubmitted),
+    [summaryPrograms, eligibleNotSubmitted],
+  );
+
+  const selectedProgramRow = useMemo(() => {
+    if (programFilter === 'all') return null;
+    if (programFilter === 'none') {
+      return programTableRows.find((r) => r.programId === null) ?? null;
+    }
+    return programTableRows.find((r) => r.programId === programFilter) ?? null;
+  }, [programFilter, programTableRows]);
 
   const payNowMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.payNow(paymentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+      invalidateAdminPaymentQueries(queryClient);
     },
     onError: () => {
-      // Payout failures mark the row FAILED server-side, refresh both lists.
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
+      // Payout failures mark the row FAILED server-side — refresh lists + summary.
+      invalidateAdminPaymentQueries(queryClient);
     },
   });
 
   const retryMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.retryPayment(paymentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
+      invalidateAdminPaymentQueries(queryClient);
     },
     onError: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      invalidateAdminPaymentQueries(queryClient);
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (paymentId: string) => adminApi.deletePayment(paymentId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'failed-payments'] });
-      queryClient.invalidateQueries({ queryKey: ['admin', 'paid-payments'] });
+      invalidateAdminPaymentQueries(queryClient);
       setDeleteConfirmPaymentId(null);
     },
   });
 
-  const pendingCount = pending.length;
-  const pendingTotal = useMemo(
-    () => pending.reduce((sum, p) => sum + safeAmountCents(p.amount), 0),
-    [pending],
-  );
-
-  const isProgramDrillDown = programFilter !== 'all';
   const showPaymentDetails = isProgramDrillDown;
+  const drillDownListsLoading = pendingPending || failedPending || paidPending;
 
-  if (isLoading) return <LoadingSpinner />;
+  if (summaryLoading) return <LoadingSpinner />;
 
   const hasPending = filteredPending.length > 0;
 
@@ -390,18 +385,35 @@ export default function AdminPayments() {
         </div>
       </header>
 
-      {/* Summary cards */}
+      {/* Summary cards — all-time from program-summary (lists load only on drill-down) */}
       <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard label="Pending count" value={String(pendingCount)} sub="Awaiting payout" />
-        <StatCard label="Pending total" value={formatMoney(pendingTotal)} sub="To be paid" />
         <StatCard
-          label="Paid (recent)"
-          value={paidPending ? '…' : String(paid.length)}
-          sub="Latest 200 completed"
+          label="Pending count"
+          value={String(summaryTotals.pendingCount)}
+          sub="Awaiting payout"
+        />
+        <StatCard
+          label="Pending total"
+          value={formatMoney(summaryTotals.pendingTotalCents)}
+          sub="To be paid"
+        />
+        <StatCard
+          label="Paid"
+          value={String(summaryTotals.paidCount)}
+          sub="All-time completed"
           variant="success"
         />
-        <StatCard label="Failed payments" value={String(failed.length)} sub="Need admin retry" variant={failed.length > 0 ? 'danger' : 'default'} />
-        <StatCard label="Eligible, not submitted" value={String(eligibleNotSubmitted.length)} sub="Survey done, no payment request yet" />
+        <StatCard
+          label="Failed payments"
+          value={String(summaryTotals.failedCount)}
+          sub="Need admin retry"
+          variant={summaryTotals.failedCount > 0 ? 'danger' : 'default'}
+        />
+        <StatCard
+          label="Eligible, not submitted"
+          value={String(eligibleNotSubmitted.length)}
+          sub="Survey done, no payment request yet"
+        />
       </section>
 
       <ManualPaymentForm />
@@ -437,7 +449,7 @@ export default function AdminPayments() {
         <p className="mt-2 text-xs text-muted-foreground">
           {isProgramDrillDown
             ? `Drill-down: ${filteredPending.length} pending · ${filteredPaid.length} paid · ${filteredFailed.length} failed · ${filteredEligible.length} eligible`
-            : `${programGroups.length} program group${programGroups.length === 1 ? '' : 's'} · select a row to drill down`}
+            : `${programTableRows.length} program group${programTableRows.length === 1 ? '' : 's'} · select a row to drill down`}
           {userFilter ? ' (user filtered)' : ''}
         </p>
       </section>
@@ -451,8 +463,8 @@ export default function AdminPayments() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Programs</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Select a program to view its Pending, Paid, Failed, and Eligible payments. Paid counts use
-              the recent paid list (up to 200).
+              Select a program to view its Pending, Paid, Failed, and Eligible payments. Pending, Paid,
+              and Failed totals are all-time.
             </p>
           </div>
           {isProgramDrillDown ? (
@@ -465,9 +477,19 @@ export default function AdminPayments() {
             </button>
           ) : null}
         </div>
-        {programGroups.length === 0 ? (
+        {summaryError ? (
+          <div className="flex items-start gap-2 px-6 py-8 text-sm text-destructive">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" aria-hidden />
+            <div>
+              <p className="font-semibold">Could not load program payment totals</p>
+              <p className="mt-0.5 text-destructive/90">
+                {getApiErrorMessage(summaryErrorObj, 'Request failed. Try refreshing the page.')}
+              </p>
+            </div>
+          </div>
+        ) : programTableRows.length === 0 ? (
           <p className="px-6 py-10 text-sm text-muted-foreground text-center">
-            No payment activity by program{userFilter ? ' for this user filter' : ''}.
+            No payment activity by program.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -492,14 +514,14 @@ export default function AdminPayments() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {programGroups.map((group) => {
-                  const selectValue = group.programId ?? 'none';
+                {programTableRows.map((row) => {
+                  const selectValue = row.programId ?? 'none';
                   const selected =
                     programFilter === selectValue ||
-                    (programFilter === 'none' && group.programId === null);
+                    (programFilter === 'none' && row.programId === null);
                   return (
                     <tr
-                      key={group.key}
+                      key={row.key}
                       className={[
                         'cursor-pointer transition-colors',
                         selected ? 'bg-brand-50' : 'hover:bg-muted/60',
@@ -513,46 +535,46 @@ export default function AdminPayments() {
                       }}
                       tabIndex={0}
                       aria-selected={selected}
-                      aria-label={`Open payments for ${group.title}`}
+                      aria-label={`Open payments for ${row.title}`}
                     >
                       <td className="px-4 py-3">
-                        <p className="font-medium text-foreground">{group.title}</p>
-                        {group.chmProgramId ? (
+                        <p className="font-medium text-foreground">{row.title}</p>
+                        {row.chmProgramId ? (
                           <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
-                            {group.chmProgramId}
+                            {row.chmProgramId}
                           </p>
                         ) : null}
-                        {group.sponsorName ? (
-                          <p className="text-xs text-muted-foreground">{group.sponsorName}</p>
+                        {row.sponsorName ? (
+                          <p className="text-xs text-muted-foreground">{row.sponsorName}</p>
                         ) : null}
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <p className="font-semibold text-foreground">{group.pending.length}</p>
+                        <p className="font-semibold text-foreground">{row.pendingCount}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatMoney(group.pendingTotalCents)}
+                          {formatMoney(row.pendingTotalCents)}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
-                        <p className="font-semibold text-foreground">{group.paid.length}</p>
+                        <p className="font-semibold text-foreground">{row.paidCount}</p>
                         <p className="text-xs text-muted-foreground">
-                          {formatMoney(group.paidTotalCents)}
+                          {formatMoney(row.paidTotalCents)}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-right whitespace-nowrap">
                         <p
                           className={[
                             'font-semibold',
-                            group.failed.length > 0 ? 'text-destructive' : 'text-foreground',
+                            row.failedCount > 0 ? 'text-destructive' : 'text-foreground',
                           ].join(' ')}
                         >
-                          {group.failed.length}
+                          {row.failedCount}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {formatMoney(group.failedTotalCents)}
+                          {formatMoney(row.failedTotalCents)}
                         </p>
                       </td>
                       <td className="px-4 py-3 text-right font-semibold text-foreground">
-                        {group.eligible.length}
+                        {row.eligibleCount}
                       </td>
                     </tr>
                   );
@@ -567,7 +589,7 @@ export default function AdminPayments() {
         <div className="rounded-card border border-brand-200 bg-brand-50/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-foreground">
-              {selectedProgramGroup?.title ??
+              {selectedProgramRow?.title ??
                 (programFilter === 'none' ? 'No program' : 'Selected program')}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -589,6 +611,12 @@ export default function AdminPayments() {
       )}
 
       {showPaymentDetails ? (
+      <>
+      {drillDownListsLoading ? (
+        <div className="flex justify-center py-12">
+          <LoadingSpinner />
+        </div>
+      ) : (
       <>
       {/* Pending table */}
       <section id="pending-table" className="rounded-card border border-border bg-card overflow-hidden">
@@ -646,12 +674,12 @@ export default function AdminPayments() {
             <p className="mt-2 font-medium text-foreground">
               {pending.length === 0
                 ? 'No pending payments'
-                : 'No pending payments for this program'}
+                : 'No pending payments match this user filter'}
             </p>
             <p className="text-sm text-muted-foreground">
               {pending.length === 0
-                ? 'All payouts are up to date.'
-                : 'Try another program or clear the user filter.'}
+                ? 'All payouts for this program are up to date.'
+                : 'Try clearing the user filter.'}
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
               Pay now buttons appear in each row when there are pending payments.
@@ -674,14 +702,15 @@ export default function AdminPayments() {
         )}
       </section>
 
-      {/* Successful payouts (recent) */}
+      {/* Successful payouts (program-scoped) */}
       <section className="rounded-card border border-success/25 bg-success/10/40 overflow-hidden">
         <div className="flex items-start gap-3 px-6 pt-5 pb-3 border-b border-green-100 bg-success/10/80">
           <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" aria-hidden />
           <div>
             <h2 className="text-base font-semibold text-green-950">Successful payments</h2>
             <p className="mt-0.5 text-sm text-green-900">
-              Recent payouts completed through <StripeMark size="xs" className="translate-y-px" /> (newest first, up to 200).
+              Completed payouts for this program through <StripeMark size="xs" className="translate-y-px" />{' '}
+              (newest first).
             </p>
           </div>
         </div>
@@ -699,25 +728,17 @@ export default function AdminPayments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {paidPending ? (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
-                    Loading paid payments…
-                  </td>
-                </tr>
-              ) : filteredPaid.length === 0 ? (
+              {filteredPaid.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-10 text-center text-gray-500">
-                    {paid.length === 0
-                      ? (
-                        <>
-                          No completed payouts yet. Successful payments appear here after <strong>Pay now</strong>{' '}
-                          finishes.
-                        </>
-                        )
-                      : (
-                        'No paid payments for this program in the recent paid list.'
-                      )}
+                    {paid.length === 0 ? (
+                      <>
+                        No completed payouts for this program yet. Successful payments appear here after{' '}
+                        <strong>Pay now</strong> finishes.
+                      </>
+                    ) : (
+                      'No paid payments match this user filter.'
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -861,6 +882,8 @@ export default function AdminPayments() {
         )}
       </section>
       </>
+      )}
+      </>
       ) : null}
 
       {deleteConfirmPaymentId && (
@@ -958,7 +981,10 @@ function ManualPaymentForm() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'pending-payments'] });
+      invalidateAdminPaymentQueries(queryClient);
+      void queryClient.invalidateQueries({
+        queryKey: ['admin', 'payment-eligible-not-submitted'],
+      });
       setUserQuery('');
       setSelectedUserId('');
       setProgramId('');
@@ -1024,9 +1050,10 @@ function ManualPaymentForm() {
         <div>
           <h2 className="text-base font-semibold text-foreground">Add manual payment</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Queue a pending payout for a specific user and program. It appears in the table below for{' '}
-            <strong>Pay now</strong> when you are ready. Honorarium + program still requires attendance
-            verified and survey ack before Pay now succeeds.
+            Queue a pending payout for a specific user and program. After it is created, select that
+            program (or <strong>No program</strong>) in the Programs table below to open Pending and use{' '}
+            <strong>Pay now</strong>. Honorarium + program still requires attendance verified and survey
+            ack before Pay now succeeds.
           </p>
         </div>
       </div>
