@@ -12,6 +12,8 @@ environment = "platform"
 
 # Public domain (Route53 / CloudFront)
 domain_name  = "testapp.communityhealth.media"
+# Optional: app URL for email links (backend FRONTEND_URL); defaults to https://<domain_name>
+# app_url = "https://app.communityhealth.media"
 
 # Primary Docker images (ECR)
 backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"

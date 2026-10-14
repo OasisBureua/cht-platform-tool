@@ -46,7 +46,7 @@ jobs:
           if [ "${{ inputs.environment }}" = "platform" ]; then
             echo "cluster=cht-platform-cluster" >> $GITHUB_OUTPUT
             echo "prefix=cht-platform" >> $GITHUB_OUTPUT
-            echo "health_url=https://testapp.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
+            echo "health_url=https://app.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
           else
             echo "cluster=cht-platform-staging-cluster" >> $GITHUB_OUTPUT
             echo "prefix=cht-platform-staging" >> $GITHUB_OUTPUT

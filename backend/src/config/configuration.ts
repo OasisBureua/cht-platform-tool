@@ -319,7 +319,7 @@ export default () => ({
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
         ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/webhooks/jotform`
-        : 'https://testapp.communityhealth.media/api/webhooks/jotform'),
+        : 'https://app.communityhealth.media/api/webhooks/jotform'),
   },
 
   /**

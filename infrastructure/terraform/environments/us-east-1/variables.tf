@@ -19,6 +19,12 @@ variable "domain_name" {
   type        = string
 }
 
+variable "app_url" {
+  description = "Public app URL for links in emails and redirects (backend FRONTEND_URL). Empty: https://<domain_name>."
+  type        = string
+  default     = ""
+}
+
 variable "extra_cloudfront_aliases" {
   description = "Additional CloudFront aliases (e.g. app.communityhealth.media). Must be covered by cloudfront_certificate_arn."
   type        = list(string)
