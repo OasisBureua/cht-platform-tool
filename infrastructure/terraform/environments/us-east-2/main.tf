@@ -303,7 +303,7 @@ module "ecs_backend" {
   desired_count         = local.backend_desired_dr
   min_capacity          = local.backend_min_dr
   max_capacity          = local.backend_max_dr
-  frontend_url          = "https://${var.domain_name}"
+  frontend_url          = var.app_url != "" ? var.app_url : "https://${var.domain_name}"
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
   sqs_cme_queue_url     = module.sqs.cme_queue_url

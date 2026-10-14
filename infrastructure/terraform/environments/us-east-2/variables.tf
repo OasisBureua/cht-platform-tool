@@ -13,6 +13,12 @@ variable "domain_name" {
   type        = string
 }
 
+variable "app_url" {
+  description = "Public app URL for links in emails and redirects (backend FRONTEND_URL). Empty: https://<domain_name>."
+  type        = string
+  default     = ""
+}
+
 variable "backend_image" {
   description = "Backend Docker image."
   type        = string

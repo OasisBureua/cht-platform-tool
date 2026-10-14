@@ -9,6 +9,8 @@ environment = "platform"
 domain_name = "testapp.communityhealth.media"
 # Public brand alias (Login CTA); requires CloudFront cert SANs covering this name.
 extra_cloudfront_aliases = ["app.communityhealth.media"]
+# Links in emails and redirects (backend FRONTEND_URL) use the public brand domain.
+app_url = "https://app.communityhealth.media"
 
 # Images overridden per deploy by workflow (-var backend_image / worker_image)
 backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
