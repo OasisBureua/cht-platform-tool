@@ -312,6 +312,7 @@ function App() {
                 )}
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
+                <Route path="contact" element={<Navigate to="/app/settings?tab=help" replace />} />
 
                 <Route path="*" element={<Navigate to="/app/home" replace />} />
               </Route>

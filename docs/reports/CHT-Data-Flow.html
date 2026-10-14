@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CHT Data Flow Diagram</title>
+<style>
+  @page {
+    size: Letter landscape;
+    margin: 0.55in 0.55in 0.7in;
+    @bottom-left { content: "CHT Data Flow Diagram  |  v1.0  |  Confidential"; font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+  }
+  @page :first { size: Letter landscape; @bottom-left { content: none; } @bottom-right { content: none; } }
+  :root {
+    --ink: #14202e; --muted: #5b6878; --line: #dfe4ea; --soft: #f4f6f9;
+    --brand: #0f6f7a; --brand-soft: #e6f3f4;
+    --warn: #a16207; --warn-soft: #fdf6e3;
+    --bad: #b42318; --bad-soft: #fdecea;
+    --ok: #15803d; --ok-soft: #e8f5ec;
+    --plan: #4338ca; --plan-soft: #eef0fd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); font: 10pt/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif; background: #fff; }
+  main { margin: 0 auto; }
+  @media screen { body { background: #eef1f4; } main { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 56px 64px 96px; margin: 32px auto; max-width: 11in; } }
+
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; margin: 0; }
+  h2 { font-size: 16pt; margin: 24px 0 10px; padding-top: 6px; border-top: 2px solid var(--brand); break-after: avoid; }
+  h2 .num { color: var(--brand); margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 16px 0 6px; break-after: avoid; }
+  h4 { font-size: 10pt; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; break-after: avoid; }
+  p { margin: 6px 0 10px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  code { font: 8.2pt/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; border-bottom: 1px solid #c9d1da; }
+  td.k { font-weight: 600; white-space: nowrap; width: 1%; }
+  table code { overflow-wrap: anywhere; }
+
+  table.flows { font-size: 7.7pt; line-height: 1.38; table-layout: fixed; }
+  table.flows th, table.flows td { padding: 5px 5px; }
+  table.flows col.w-id { width: 3.6%; }
+  table.flows col.w-desc { width: 11%; }
+  table.flows col.w-src { width: 9%; }
+  table.flows col.w-dst { width: 9.5%; }
+  table.flows col.w-data { width: 12.5%; }
+  table.flows col.w-freq { width: 10%; }
+  table.flows col.w-tx { width: 15%; }
+  table.flows col.w-own { width: 7.4%; }
+  table.flows col.w-fail { width: 22%; }
+  table.flows td:first-child { font-weight: 700; color: var(--brand); }
+  table.flows td:nth-child(2) { font-weight: 600; }
+  table.flows tr.grp td { background: var(--brand-soft); color: var(--brand); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 7.6pt; padding: 4px 6px; }
+  table.flows code { font-size: 7pt; padding: 0 2px; }
+  .src { display: block; color: var(--muted); font-size: 6.9pt; margin-top: 2px; overflow-wrap: anywhere; }
+
+  .cover { min-height: 6.9in; display: flex; flex-direction: column; break-after: page; }
+  .cover .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 9pt; }
+  .cover h1 { font-size: 32pt; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 7in; }
+  .cover .bar { height: 6px; width: 72px; background: var(--brand); border-radius: 3px; margin: 20px 0; }
+  .cover .meta { margin-top: auto; }
+  .cover .meta table { font-size: 9.5pt; }
+  .cover .meta td { padding: 4px 8px; }
+  .cover .meta td:first-child { color: var(--muted); width: 1.6in; }
+
+  .callout { border-left: 3px solid var(--brand); background: var(--brand-soft); padding: 10px 14px; margin: 12px 0 16px; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout .t { font-weight: 600; margin-bottom: 2px; }
+
+  .pill { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 6.8pt; font-weight: 600; white-space: nowrap; vertical-align: 1px; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.plan { background: var(--plan-soft); color: var(--plan); }
+
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 10px 0 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .card h4 { margin-top: 0; color: var(--brand); }
+  .card p { margin-bottom: 0; }
+
+  .toc ol { list-style: none; padding: 0; columns: 2; column-gap: 28px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .toc .num { color: var(--brand); font-weight: 600; display: inline-block; width: 24px; }
+
+  pre.diagram { font: 7.5pt/1.45 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 14px; white-space: pre; overflow: hidden; break-inside: avoid; }
+  .legend { font-size: 8.5pt; color: var(--muted); margin: -4px 0 12px; }
+  .pb { break-before: page; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- COVER -->
+<section class="cover">
+  <div class="eyebrow">CHT Platform &middot; Data Governance</div>
+  <h1>Data Flow Diagram</h1>
+  <div class="sub">Every flow that moves data between Zoom, learners, third-party platforms, Platform, Content Hub, Reports and Companion. For each flow: source, destination, data, frequency, transformation, owner and what happens when it fails.</div>
+  <div class="bar"></div>
+
+  <div class="callout">
+    <div class="t">How to read this document</div>
+    Section 2 is the diagram, with each arrow labelled by a flow ID. Section 3 is the flow inventory in the requested columns, using the same IDs. Section 4 shows what is switched on in dev versus prod. Section 5 groups the failure behaviours. Section 6 lists the gaps to fix. Companion document: <em>CHT Data Dictionary &amp; Metric Definitions</em>.
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td>Version</td><td>1.0 (draft for engineering and product review)</td></tr>
+      <tr><td>Scope</td><td><code>develop</code> branch of each repo plus the Terraform variables for dev and prod; read-only static review</td></tr>
+      <tr><td>Repos</td><td><code>cht-platform-tool</code> @ <code>ad32e73</code> &middot; <code>cht-content-hub</code> @ <code>72d245d</code> &middot; <code>cht-reports</code> @ <code>a641074</code> &middot; <code>cht-companion</code> @ <code>b9a0e7e</code></td></tr>
+      <tr><td>Method</td><td>Each failure behaviour was taken from the code path that handles it (file references in grey). Third-party retry policies (Zoom, Stripe, Bill.com, AWS Lambda) are marked <em>inferred</em>.</td></tr>
+      <tr><td>Classification</td><td>Confidential. Internal use only.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="toc">
+  <h2 style="border-top:0;margin-top:0">Contents</h2>
+  <ol>
+    <li><span class="num">1</span>Summary</li>
+    <li><span class="num">2</span>Diagram</li>
+    <li><span class="num">3</span>Flow inventory</li>
+    <li><span class="num">4</span>Dev versus prod</li>
+    <li><span class="num">5</span>Failure-handling patterns</li>
+    <li><span class="num">6</span>Gaps and recommendations</li>
+  </ol>
+</section>
+
+<!-- 1. SUMMARY -->
+<h2><span class="num">1</span>Summary</h2>
+<p>The system has 35 flows in six groups: capture into Platform, Platform outbound, Content Hub ingestion, the report pipeline, Companion, and delivery. The report pipeline is the most robust: it uses SQS with three attempts, a dead-letter queue, a timeout sweeper and idempotent S3 keys. The weakest flows are the ones that feed it. Several of them are fire-and-forget, manual, or switched off in production.</p>
+
+<div class="grid3">
+  <div class="card">
+    <h4>Prod Hub has no scheduled refresh</h4>
+    <p>Content Hub's weekday export ingest (<code>platform_export_ingest</code>) and S3 transcript ingest (<code>vtt_object_ingest</code>) run in dev only. In prod, Hub refreshes Platform data only when Platform triggers it: on campaign link, first transcript pull, Generate, or Refresh data.</p>
+  </div>
+  <div class="card">
+    <h4>Transcripts depend on a manual pull</h4>
+    <p>Zoom recordings and transcripts reach S3 only when an admin clicks Sync or Pull. Reports wait up to 180 minutes for a recent session's transcript, then fail with a "transcript did not arrive" message.</p>
+  </div>
+  <div class="card">
+    <h4>Fire-and-forget flows can lose data silently</h4>
+    <p>HubSpot contact sync, the Hub HCP roster sync and the background export-ingest triggers only log warnings on failure, with no retry. HubSpot sync even reports success when it fails.</p>
+  </div>
+  <div class="card">
+    <h4>Some webhooks acknowledge failures</h4>
+    <p>The Jotform webhook returns 200 when processing fails, so Jotform never retries. The Zoom webhook returns 200 on an invalid signature and skips verification when the signature header is missing.</p>
+  </div>
+  <div class="card">
+    <h4>Queues are protected but not all monitored</h4>
+    <p>Platform's payment, email and scheduled-job queues have dead-letter alarms. The cht-reports request queue has a dead-letter queue but no alarm. Platform's stale-report sweeper is the only signal for a stuck report.</p>
+  </div>
+  <div class="card">
+    <h4>Ownership is clear except at the edges</h4>
+    <p>Each repo owns its own flows. Post statistics (ops-console and MediaHub) and the Zoom, YouTube, LinkedIn and HubSpot APIs are external, so their freshness and retry behaviour are outside our control.</p>
+  </div>
+</div>
+
+<!-- 2. DIAGRAM -->
+<h2 class="pb"><span class="num">2</span>Diagram</h2>
+<p class="legend">Arrows are labelled with the flow ID from Section 3. Labels in brackets mark manual or dev-only flows.</p>
+<pre class="diagram">
+  EXTERNAL SOURCES                PLATFORM  (cht-platform-tool)          CONTENT HUB  (cht-content-hub)       REPORTING  (cht-reports)
+
+  Zoom webhooks ---------A1,A2,A3--> +-----------------------------+
+  Zoom Meeting SDK (browser) --A4--> | Aurora                      |
+  Zoom Report API (admin) -----A5--> |  WebinarParticipantEvent    |         +------------------------------+
+  Jotform webhook -------------A7--> |  ProgramRegistration        | --C1--> | export_sessions              |
+  Native forms (browser) ------A8--> |  Survey, SurveyResponse     |  M2M    | export_attendance_events     |
+  Video player (browser) ------A9--> |  VideoView, Payment, User   |  pull   | export_registrations         |
+                                     +-----------------------------+         | export_survey_responses      |
+  Zoom Cloud Recordings -------A6--> | S3 session assets           | --C2--> |   (transcript_text)          |
+                          (admin)    |  MP4, VTT, attendees.csv    | dev only+------------------------------+
+                                     +-----------------------------+         | campaign_platform_data       |
+  YouTube Data API -------------------------------------------C3 (admin)---> |  1 row / campaign / platform |
+  LinkedIn Ads API -------------------------------------------C4 (admin)---> |  / UTC day                   |
+  Meta, livestream, survey CSV -------------------------------C5 (upload)--> |                              |
+  ops-console / MediaHub -------------------------------------C6 ----------> | posts, clips                 | --C7--> Platform catalog
+  WordPress webhooks -----------------------------------------C8 (SQS) ----> | wordpress_*                  |         (Redis 1 h)
+                                                                             +------------------------------+
+                                                                                  |  D2 report packet (M2M)
+  Platform outbound:                                                              v
+    A10 honorarium --> SQS payments --> worker           Platform "Generate" --D1--> DynamoDB job + SQS --> +----------------------+
+    A11 Pay now   <--> Stripe / Bill.com (+ webhooks)                                                       | cht-reports worker   |
+    A12 EventBridge --> SQS scheduled --> worker --> SES                                                    |  D3 transcript wait  |
+    B1  HubSpot contacts + notes   B2 Hub HCP roster (NPI)                                                  +----------------------+
+    B3  HubSpot campaign metrics  --> dashboard, snapshot to Hub                                              |D4            |D5
+    B4  GA4 events (browser)                                                                                  v              v
+                                                                        +------------------------------+   Companion       S3 PDF
+  COMPANION  (cht-companion)                                            | /generate  Claude via Bedrock| <--/generate    (versioned key)
+    E1 Platform chat proxy --> /chat (SSE) --> pgvector + Bedrock       | /chat      pgvector, Titan   |                 |
+    E2 KB Lambda (daily) --> YouTube captions --> sources, chunks       +------------------------------+                 | D6 ready callback
+    E3 Curated documents (manual) --> sources, chunks                                                                    v
+                                                                                     Platform: email recipients (D6), stale sweep (D7),
+                                                                                     PDF download streamed from S3 (D8)
+</pre>
+
+<!-- 3. FLOW INVENTORY -->
+<h2 class="pb"><span class="num">3</span>Flow inventory</h2>
+<p class="legend"><span class="pill ok">Retries</span> failures are retried automatically; <span class="pill warn">Logged only</span> failure is logged and the data may be stale or missing; <span class="pill bad">Silent loss</span> data can be lost with no retry and no visible error. File references are relative to each repo's backend source root.</p>
+
+<table class="flows">
+  <colgroup><col class="w-id"><col class="w-desc"><col class="w-src"><col class="w-dst"><col class="w-data"><col class="w-freq"><col class="w-tx"><col class="w-own"><col class="w-fail"></colgroup>
+  <thead><tr><th>ID</th><th>Description</th><th>Source</th><th>Destination</th><th>Data</th><th>Frequency</th><th>Transformation</th><th>Owner</th><th>Failure behavior</th></tr></thead>
+  <tbody>
+
+  <tr class="grp"><td colspan="9">A. Capture into Platform</td></tr>
+  <tr>
+    <td>A1</td><td>Zoom participant events</td>
+    <td>Zoom webhook <code>*.participant_joined</code> and <code>*.participant_left</code></td>
+    <td>Platform <code>WebinarParticipantEvent</code></td>
+    <td>Participant email, name, Zoom ID, join or leave time</td>
+    <td>Real time (event)</td>
+    <td>Email lower-cased and matched to a CHT user; one JOINED or LEFT row; no duration stored. Email and name are also pushed to HubSpot (B1).</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> Invalid signature: 200 and dropped. Missing signature header: accepted without verification. Unknown meeting: logged and dropped. Database error: 5xx, and Zoom retries (inferred).<span class="src">platform <code>webinars/zoom-webhook.service.ts:117-123, 333-426</code></span></td>
+  </tr>
+  <tr>
+    <td>A2</td><td>Session ended and auto-verify</td>
+    <td>Zoom webhook <code>meeting.ended</code>, <code>webinar.ended</code></td>
+    <td><code>Program.zoomSessionEndedAt</code>; registration attendance status</td>
+    <td>Actual end time</td>
+    <td>Real time</td>
+    <td>End time only moves later. Registrants whose email appears on a join row become VERIFIED; then enrollment and survey email.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> Auto-verify errors are logged and the end time is kept. Registrants stay PENDING_VERIFICATION until an admin acts or an import re-runs auto-verify.<span class="src">platform <code>zoom-webhook.service.ts:205-226</code></span></td>
+  </tr>
+  <tr>
+    <td>A3</td><td>Webinar auto-import</td>
+    <td>Zoom webhook <code>webinar.created</code></td>
+    <td><code>Program</code> (DRAFT)</td>
+    <td>Topic, start, duration, meeting ID</td>
+    <td>Real time</td>
+    <td>Creates a draft program with credits = 0. <code>meeting.created</code> is ignored.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> No program is created; an admin creates it by hand.</td>
+  </tr>
+  <tr>
+    <td>A4</td><td>In-app join</td>
+    <td>Zoom Meeting SDK in the browser</td>
+    <td><code>WebinarParticipantEvent</code></td>
+    <td>Signed-in user's email; JOINED or LEFT</td>
+    <td>On join or leave</td>
+    <td>Stored as source WEBHOOK (the <code>MEETING_SDK</code> value is never used), tagged in the raw payload.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> A failed client call writes no row; attendance then relies on A1.</td>
+  </tr>
+  <tr>
+    <td>A5</td><td>Attendee report import</td>
+    <td>Zoom Report API <code>/report/webinars|meetings/{id}/participants</code></td>
+    <td><code>WebinarParticipantEvent</code> (REPORT_IMPORT); S3 <code>attendees.csv</code></td>
+    <td>Per-segment join, leave and duration; host flag</td>
+    <td>Manual (admin, single session or bulk up to 12 months)</td>
+    <td>Upsert on (program, participant, event, source, joinTime). Unlinked sessions are staged. Optional auto-verify (off by default).</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> A 404 is retried with the meeting UUID. Job state and errors are kept in <code>ZoomAttendanceImportJob</code>. The lock is held in memory, so two tasks could run the same import (inferred).<span class="src">platform <code>zoom-recordings/zoom-attendance-import.service.ts</code></span></td>
+  </tr>
+  <tr>
+    <td>A6</td><td>Recordings and transcripts</td>
+    <td>Zoom Cloud Recordings API</td>
+    <td>S3 session assets <code>zoom-recordings/&hellip;</code></td>
+    <td>MP4, transcript VTT, closed captions</td>
+    <td>Manual (admin Sync, then Pull)</td>
+    <td>Files copied to S3. The first transcript for a linked program triggers C1 (<code>platform_zoom</code>).</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> Each file is marked FAILED; an admin pulls again. With no automatic pull, reports wait for the transcript (D3) and then fail.</td>
+  </tr>
+  <tr>
+    <td>A7</td><td>Jotform submissions</td>
+    <td>Jotform webhook</td>
+    <td><code>SurveyResponse</code>; registration acknowledgement</td>
+    <td>Answers, submission ID, hidden <code>user_id</code></td>
+    <td>Real time</td>
+    <td>Deduplicated on submission ID. FEEDBACK keeps the first submission; other types keep the latest. May create a survey bonus payment.</td>
+    <td>Platform</td>
+    <td><span class="pill bad">Silent loss</span> A missing <code>user_id</code> means the submission is dropped. Processing errors return 200 with an error field, so Jotform does not retry.<span class="src">platform <code>jotform/jotform-webhook.controller.ts:50-67</code></span></td>
+  </tr>
+  <tr>
+    <td>A8</td><td>Native survey submit</td>
+    <td>Learner browser</td>
+    <td><code>SurveyResponse</code></td>
+    <td>Answers, client score</td>
+    <td>On submit</td>
+    <td>Create or update; side effects: HubSpot contact (B1), survey bonus, FEEDBACK acknowledgement.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> The error is shown to the learner, who resubmits. Side effects are best-effort.</td>
+  </tr>
+  <tr>
+    <td>A9</td><td>Video progress</td>
+    <td>Learner video player</td>
+    <td><code>VideoView</code>, <code>ProgramEnrollment</code></td>
+    <td>Watched seconds, progress, completed</td>
+    <td>Every 15 s, on completion, on tab hide</td>
+    <td>Program progress = mean of video progress. Complete at 95%. Non-live completion queues an honorarium.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> Progress is held in browser localStorage and sent again on the next sync.</td>
+  </tr>
+  <tr>
+    <td>A10</td><td>Honorarium request</td>
+    <td>Platform API</td>
+    <td>SQS payments queue, then worker, then <code>Payment</code></td>
+    <td>User, program, amount, idempotency key</td>
+    <td>On learner request</td>
+    <td>Worker inserts a PENDING row; a duplicate key is ignored.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> Transient errors are retried up to 3 times, then go to the dead-letter queue (alarm configured). Invalid messages are deleted immediately.<span class="src">platform <code>worker/utils/sqs_base.py</code>; <code>tf/modules/messaging/sqs</code></span></td>
+  </tr>
+  <tr>
+    <td>A11</td><td>Payouts</td>
+    <td>Admin "Pay now"; Stripe and Bill.com webhooks</td>
+    <td>Stripe or Bill.com; <code>Payment</code> status; <code>User.totalEarnings</code></td>
+    <td>Amount, rail references, status</td>
+    <td>On demand, plus provider webhooks</td>
+    <td>PENDING, then PROCESSING, then PAID or FAILED. Earnings counter incremented on PAID.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> A provider error marks the payment FAILED with a reason, and an admin retries. Webhook ordering can double count or drift the earnings counter.</td>
+  </tr>
+  <tr>
+    <td>A12</td><td>Session reminders</td>
+    <td>EventBridge rule</td>
+    <td>SQS scheduled-jobs queue, then worker, then SES email</td>
+    <td>Approved registrations starting in 18 to 30 hours</td>
+    <td>Every 6 h in prod, 12 h in dev</td>
+    <td>One email per registration; <code>reminder24hSentAt</code> is stamped.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> 3 attempts, then the dead-letter queue (alarm configured). The stamp prevents duplicate emails.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="9">B. Platform outbound</td></tr>
+  <tr>
+    <td>B1</td><td>HubSpot contact sync</td>
+    <td>Platform</td>
+    <td>HubSpot CRM (contacts, notes)</td>
+    <td>Email, name, specialty, institution, NPI; registration events</td>
+    <td>On signup, profile update, survey, registration, Zoom join</td>
+    <td>Batch upsert; custom registration properties; timeline note.</td>
+    <td>Platform</td>
+    <td><span class="pill bad">Silent loss</span> Fire-and-forget. Errors are swallowed and the result still reports success. No retry and no backfill.<span class="src">platform <code>outbound-sync/outbound-sync.service.ts:60-81</code></span></td>
+  </tr>
+  <tr>
+    <td>B2</td><td>Hub HCP roster</td>
+    <td>Platform</td>
+    <td>Content Hub HCP roster</td>
+    <td>HCP profile keyed by NPI</td>
+    <td>Same triggers as B1</td>
+    <td>Sent only when the NPI has 10 digits.</td>
+    <td>Platform</td>
+    <td><span class="pill bad">Silent loss</span> Fire-and-forget. Users without an NPI never reach Hub.</td>
+  </tr>
+  <tr>
+    <td>B3</td><td>HubSpot campaign metrics</td>
+    <td>HubSpot Marketing API</td>
+    <td>Platform campaign dashboard and funnel; Hub <code>campaigns.hubspot_raw_data</code></td>
+    <td>Sessions, contacts, email, landing pages, forms, social</td>
+    <td>On demand (page load or admin sync)</td>
+    <td>Recursive key matching into normalised totals; the raw snapshot is stored in Hub.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> Falls back to the cached Hub snapshot; the response shows whether data is live, cached or list-only.</td>
+  </tr>
+  <tr>
+    <td>B4</td><td>Web analytics</td>
+    <td>Learner browser</td>
+    <td>GTM <code>GTM-MR68PMPZ</code>, GA4 <code>G-EXVD5CJLQL</code></td>
+    <td>Video start, progress, complete; clip view, share</td>
+    <td>Real time</td>
+    <td>None (client events).</td>
+    <td>Platform</td>
+    <td><span class="pill bad">Silent loss</span> Blocked by ad blockers and consent settings. Not stored by CHT.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="9">C. Content Hub ingestion</td></tr>
+  <tr>
+    <td>C1</td><td>Platform export ingest</td>
+    <td>Platform <code>GET /api/export/reports/campaigns/:id/input-packet</code> (M2M)</td>
+    <td>Hub <code>export_sessions</code>, <code>export_attendance_events</code>, <code>export_registrations</code>, <code>export_survey_responses</code></td>
+    <td>Sessions, transcript keys, rolled-up attendance, registrations, surveys</td>
+    <td>Campaign link, first transcript, Generate, Refresh data. Weekday 14:00 UTC schedule: <strong>dev only</strong>.</td>
+    <td>Platform rolls up attendance per person (report data preferred) with no date window. Hub upserts by dedupe key and never deletes.</td>
+    <td>Platform (packet), Content Hub (ingest)</td>
+    <td><span class="pill warn">Logged only</span> Background triggers only log a warning. Generate continues with stale data (<code>warehouseSync=failed</code>). Refresh data returns the error. Hub returns 502 or 503 and records <code>export_ingest_runs</code>. Re-linking a program leaves orphaned rows in the old campaign.<span class="src">platform <code>content-hub/campaign-export-ingest.service.ts</code>; <code>reports/reports.service.ts:596-608</code></span></td>
+  </tr>
+  <tr>
+    <td>C2</td><td>Transcript text</td>
+    <td>S3 <code>ObjectCreated</code> on <code>zoom-recordings/*.vtt</code></td>
+    <td>Hub <code>export_sessions.transcript_text</code></td>
+    <td>VTT transcript</td>
+    <td>Event. <strong>Dev only</strong> (prod notification not wired).</td>
+    <td>VTT parsed to text; skipped if unlinked, no session, no campaign, or the hash is unchanged.</td>
+    <td>Content Hub (Lambda), Platform (bucket notify)</td>
+    <td><span class="pill warn">Logged only</span> Skip statuses are logged. Lambda async retries apply (inferred). In prod, the transcript reaches Hub only through C1.</td>
+  </tr>
+  <tr>
+    <td>C3</td><td>YouTube metrics</td>
+    <td>YouTube Data API v3</td>
+    <td>Hub <code>campaign_platform_data</code></td>
+    <td>Video ID, title, published date, views, duration</td>
+    <td>On demand (admin Sync or Sync all)</td>
+    <td>Channel uploads filtered to the reporting period; one row per campaign per UTC day (same-day sync overwrites).</td>
+    <td>Content Hub</td>
+    <td><span class="pill warn">Logged only</span> The connector error is saved on the sync run and returned as 502. The previous snapshot remains. Missing configuration returns 400.<span class="src">hub <code>services/platform_data.py:338-450</code></span></td>
+  </tr>
+  <tr>
+    <td>C4</td><td>LinkedIn metrics</td>
+    <td>LinkedIn Ads API <code>adAnalytics</code> (202501)</td>
+    <td>Hub <code>campaign_platform_data</code></td>
+    <td>Impressions, clicks, video views, completions, dwell</td>
+    <td>On demand</td>
+    <td>Daily rows per campaign; CTR and completion rate computed.</td>
+    <td>Content Hub</td>
+    <td><span class="pill warn">Logged only</span> Same as C3. An expired token fails the sync until it is refreshed.</td>
+  </tr>
+  <tr>
+    <td>C5</td><td>Uploaded platform data</td>
+    <td>Admin CSV upload (Meta, livestream, survey platforms)</td>
+    <td>Hub <code>campaign_platform_data</code> (source=upload)</td>
+    <td>Rows as exported by the platform</td>
+    <td>Manual</td>
+    <td>Parsed rows stored as JSON; no metric math.</td>
+    <td>Content Hub</td>
+    <td><span class="pill warn">Logged only</span> Parse errors are returned to the uploader. Nothing is collected unless someone uploads.</td>
+  </tr>
+  <tr>
+    <td>C6</td><td>Post statistics</td>
+    <td>ops-console and MediaHub</td>
+    <td>Hub <code>posts</code></td>
+    <td>Views, likes, comments, shares, impressions</td>
+    <td>External schedule (not in these repos)</td>
+    <td>Written into <code>posts</code> by the external system; Hub sums per clip on read.</td>
+    <td>External (ops-console)</td>
+    <td><span class="pill warn">Logged only</span> Not visible to these repos. <code>stats_synced_at</code> shows the age of each post.</td>
+  </tr>
+  <tr>
+    <td>C7</td><td>Public catalog</td>
+    <td>Hub <code>/clips</code>, <code>/doctors</code>, <code>/wordpress/*</code></td>
+    <td>Platform catalog API and pages</td>
+    <td>Clips with summed counts, doctors, WordPress posts</td>
+    <td>Per request; Redis cache 1 h (clips), 5 min (WordPress)</td>
+    <td>Passed through; total from <code>X-Total-Count</code>.</td>
+    <td>Content Hub (API), Platform (cache)</td>
+    <td><span class="pill warn">Logged only</span> Cached data is served until it expires. On a cache miss, Hub errors reach the page; WordPress 401 or 404 returns an empty list.</td>
+  </tr>
+  <tr>
+    <td>C8</td><td>WordPress mirror</td>
+    <td>WordPress webhooks</td>
+    <td>SQS, then Hub <code>wordpress_*</code></td>
+    <td>Posts, series, categories, tags</td>
+    <td>Event (prod and dev). Nightly drift reconcile: dev only.</td>
+    <td>Projected into relational tables.</td>
+    <td>Content Hub</td>
+    <td><span class="pill ok">Retries</span> SQS redelivery. Without the nightly reconcile in prod, a missed event stays missing.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="9">D. Report pipeline</td></tr>
+  <tr>
+    <td>D1</td><td>Report request</td>
+    <td>Platform "Generate" or "Regenerate"</td>
+    <td>DynamoDB report job; SQS report-requests queue</td>
+    <td>Campaign, template, frozen window, sources</td>
+    <td>On demand</td>
+    <td>Lock per campaign and template; C1 runs first (best-effort); message enqueued.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> If the enqueue fails, the job is marked failed, the lock is released, and the admin sees 503.<span class="src">platform <code>reports/reports.service.ts:137-151</code></span></td>
+  </tr>
+  <tr>
+    <td>D2</td><td>Report packet</td>
+    <td>Hub report-packet API (M2M)</td>
+    <td>cht-reports worker</td>
+    <td>Sessions, transcripts, attendance summary, surveys, platform data, HubSpot, KOLs, template, completeness</td>
+    <td>Per run</td>
+    <td>Hub computes registered and attended counts and average minutes; nameless attendee list.</td>
+    <td>Content Hub</td>
+    <td><span class="pill ok">Retries</span> Any error fails the attempt; SQS redelivers (maximum 3), then the dead-letter queue. <strong>No dead-letter alarm.</strong></td>
+  </tr>
+  <tr>
+    <td>D3</td><td>Transcript wait</td>
+    <td>cht-reports</td>
+    <td>SQS (re-queue with delay)</td>
+    <td>Request ID</td>
+    <td>Every 300 s, up to 180 min (sessions in the last 24 h)</td>
+    <td>Status <code>waiting_for_transcript</code>.</td>
+    <td>Reports</td>
+    <td><span class="pill warn">Logged only</span> After 180 minutes the job is marked failed with "Zoom's transcript did not arrive"; the admin generates again later.<span class="src">reports <code>reports/orchestrator.ts:96-118</code></span></td>
+  </tr>
+  <tr>
+    <td>D4</td><td>Narrative generation</td>
+    <td>cht-reports</td>
+    <td>Companion <code>/generate</code>, then Amazon Bedrock (Claude Sonnet)</td>
+    <td>System prompt, cleaned transcript (100k characters), packet context</td>
+    <td>Per run</td>
+    <td>13 narrative sections returned as JSON; output limited to 16k tokens.</td>
+    <td>Reports (caller), Companion (service)</td>
+    <td><span class="pill ok">Retries</span> Bedrock: 270 s read timeout, 2 attempts, then 502. Rate limit returns 429. The whole request is retried from the start (maximum 3). A cut-off output fails the attempt rather than being published.</td>
+  </tr>
+  <tr>
+    <td>D5</td><td>PDF upload</td>
+    <td>cht-reports</td>
+    <td>S3 reports bucket; DynamoDB status complete</td>
+    <td>Rendered PDF</td>
+    <td>Per run</td>
+    <td>HTML rendered to PDF; key versioned by edit attempt (v1, v2&hellip;).</td>
+    <td>Reports</td>
+    <td><span class="pill ok">Retries</span> The key is deterministic, so a retry overwrites the same version. An already-complete job is skipped on redelivery.</td>
+  </tr>
+  <tr>
+    <td>D6</td><td>Report ready</td>
+    <td>cht-reports</td>
+    <td>Platform <code>POST /api/internal/reports/:id/ready</code>, then SES email</td>
+    <td>Report ID, campaign, version</td>
+    <td>Per completed run</td>
+    <td>Platform claims <code>notified_version</code> once per version, then emails recipients.</td>
+    <td>Reports (call), Platform (email)</td>
+    <td><span class="pill ok">Retries</span> 3 attempts with backoff (one token refresh on 401). Never fails the report. The conditional write prevents duplicate emails.<span class="src">reports <code>notify/report-ready.service.ts</code></span></td>
+  </tr>
+  <tr>
+    <td>D7</td><td>Stale-report sweep</td>
+    <td>Platform</td>
+    <td>DynamoDB report job</td>
+    <td>Status, <code>updated_at</code></td>
+    <td>On read (list or get)</td>
+    <td>No progress for <code>REPORTS_STALE_MINUTES</code>: mark failed ("Timed out") and free the lock.</td>
+    <td>Platform</td>
+    <td><span class="pill warn">Logged only</span> This is the only signal for a crashed worker or a dead-lettered message.</td>
+  </tr>
+  <tr>
+    <td>D8</td><td>Report download</td>
+    <td>S3 reports bucket</td>
+    <td>User (through Platform)</td>
+    <td>PDF only</td>
+    <td>On demand</td>
+    <td>Streamed through Platform; the S3 URL is never exposed and non-PDF keys are rejected.</td>
+    <td>Platform</td>
+    <td><span class="pill ok">Retries</span> 409 "not ready" until complete; the user retries.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="9">E. Companion</td></tr>
+  <tr>
+    <td>E1</td><td>Chat</td>
+    <td>Platform chat proxy (signed-in user)</td>
+    <td>Companion <code>/chat</code> (SSE), then pgvector and Bedrock; Platform conversation tables</td>
+    <td>Question, last 20 turns (up to 8,192 characters); answer tokens, citations</td>
+    <td>Per message</td>
+    <td>Retrieval k=10 with neighbouring chunks; streamed answer; conversation saved by Platform.</td>
+    <td>Platform (proxy), Companion (service)</td>
+    <td><span class="pill warn">Logged only</span> Not configured: 503. Upstream status passed through. Rate limit: 429 (20/min, 500/day). Redis down: 503 (fails closed). Partial answers are saved.</td>
+  </tr>
+  <tr>
+    <td>E2</td><td>Knowledge-base ingest</td>
+    <td>YouTube captions (KB Lambda)</td>
+    <td>Companion <code>sources</code>, <code>chunks</code>, <code>ingest_jobs</code></td>
+    <td>Caption text, metadata, Titan embeddings</td>
+    <td>Daily (<code>rate(1 day)</code>, dev and prod)</td>
+    <td>Chunked and embedded (1024-d); status pending until approved.</td>
+    <td>Companion</td>
+    <td><span class="pill bad">Silent loss</span> Caption downloads currently return 403, so nothing is queued and no new content arrives.</td>
+  </tr>
+  <tr>
+    <td>E3</td><td>Curated documents</td>
+    <td>Admin upload</td>
+    <td>Companion <code>sources</code>, <code>chunks</code></td>
+    <td>Documents</td>
+    <td>Manual</td>
+    <td>Chunked, embedded, approved.</td>
+    <td>Companion</td>
+    <td><span class="pill warn">Logged only</span> The job is marked failed in <code>ingest_jobs</code> with an error message.</td>
+  </tr>
+  </tbody>
+</table>
+
+<!-- 4. DEV VS PROD -->
+<h2 class="pb"><span class="num">4</span>Dev versus prod</h2>
+<p>Several scheduled flows are switched on in dev and off in prod. Data in prod is therefore fresher only when someone acts in Platform.</p>
+<table>
+  <thead><tr><th>Flow / job</th><th>Repo</th><th>Dev</th><th>Prod</th><th>Effect in prod</th></tr></thead>
+  <tbody>
+    <tr><td class="k">C1 scheduled export ingest</td><td>Content Hub</td><td><span class="pill ok">On</span> weekdays 14:00 UTC</td><td><span class="pill bad">Off</span></td><td>Hub refreshes only on link, transcript pull, Generate or Refresh data.</td></tr>
+    <tr><td class="k">C2 VTT transcript ingest</td><td>Content Hub + Platform</td><td><span class="pill ok">On</span></td><td><span class="pill bad">Off</span></td><td>Transcripts arrive through C1 only.</td></tr>
+    <tr><td class="k">C8 WordPress ingest</td><td>Content Hub</td><td><span class="pill ok">On</span></td><td><span class="pill ok">On</span></td><td>None.</td></tr>
+    <tr><td class="k">WordPress nightly reconcile</td><td>Content Hub</td><td><span class="pill ok">On</span> 03:00 UTC</td><td><span class="pill bad">Off</span></td><td>Missed webhooks are not repaired.</td></tr>
+    <tr><td class="k">Post tagging</td><td>Content Hub</td><td><span class="pill ok">On</span> every 12 h</td><td><span class="pill bad">Off</span></td><td>New posts are not auto-tagged.</td></tr>
+    <tr><td class="k">HCP intel, OpenAlex, KOL&ndash;HCP matcher, playlist tagger</td><td>Content Hub</td><td><span class="pill bad">Off</span></td><td><span class="pill bad">Off</span></td><td>KOL intelligence is not refreshed in either environment.</td></tr>
+    <tr><td class="k">A12 session reminders</td><td>Platform</td><td>Every 12 h</td><td>Every 6 h</td><td>None.</td></tr>
+    <tr><td class="k">E2 KB ingest</td><td>Companion</td><td>Daily</td><td>Daily</td><td>Blocked by caption 403s in both.</td></tr>
+    <tr><td class="k">Companion scheduled scaling</td><td>Companion</td><td>Off 01:00&ndash;13:00 UTC and at weekends</td><td>Always on</td><td>In dev, chat and report generation fail outside working hours.</td></tr>
+  </tbody>
+</table>
+
+<!-- 5. FAILURE PATTERNS -->
+<h2><span class="num">5</span>Failure-handling patterns</h2>
+<table>
+  <thead><tr><th style="width:18%">Pattern</th><th style="width:22%">Flows</th><th>Behaviour</th><th style="width:22%">Visibility</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Queue with retry and DLQ</td><td>A10, A12, C8, D1&ndash;D5</td><td>Message is left on the queue on error, redelivered up to 3 times, then moved to the dead-letter queue. Bad messages are deleted at once.</td><td>DLQ alarms on Platform queues; <strong>none on the reports queue</strong>.</td></tr>
+    <tr><td class="k">Bounded retry in code</td><td>A5, D4, D6</td><td>Fixed attempts with backoff (Bedrock 2 attempts, ready callback 3 attempts, Zoom 404 retried with the UUID).</td><td>Logs.</td></tr>
+    <tr><td class="k">Best-effort, then continue</td><td>A2, C1 (on Generate), B3</td><td>The failure is logged and the main action continues with older data (stale warehouse, cached HubSpot).</td><td>Flags such as <code>warehouseSync=failed</code> and <code>dataSource</code>.</td></tr>
+    <tr><td class="k">Fire-and-forget</td><td>B1, B2, C1 (link, transcript)</td><td>No retry and no outbox. A failure means the data is missing until the next trigger.</td><td>Warning logs only.</td></tr>
+    <tr><td class="k">Acknowledge and drop</td><td>A1 (bad signature), A7</td><td>Returns 200 to the sender, so it never retries.</td><td>Logs only.</td></tr>
+    <tr><td class="k">Manual recovery</td><td>A5, A6, C3&ndash;C5, D3</td><td>An admin re-runs the import, pull, sync or upload, or generates the report again.</td><td>Job and sync status tables, report <code>last_error</code>.</td></tr>
+    <tr><td class="k">Fail closed</td><td>E1 rate limiter</td><td>Returns 503 when Redis is down instead of serving without limits.</td><td>Error response.</td></tr>
+    <tr><td class="k">Timeout sweeper</td><td>D7</td><td>Marks stuck reports failed and frees the lock.</td><td>Report status in Platform.</td></tr>
+  </tbody>
+</table>
+
+<!-- 6. GAPS -->
+<h2><span class="num">6</span>Gaps and recommendations</h2>
+<table>
+  <thead><tr><th style="width:4%">#</th><th style="width:30%">Gap</th><th>Recommendation</th><th style="width:14%">Owner</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>Prod Hub has no scheduled export ingest (C1) and no VTT ingest (C2).</td><td>Set <code>platform_export_base_url</code> for prod and enable <code>platform_export_ingest</code>; wire the prod S3 notification and enable <code>vtt_object_ingest</code>.</td><td>Content Hub, Platform</td></tr>
+    <tr><td>2</td><td>Recordings and transcripts need a manual pull (A6), so reports can wait 3 hours and then fail.</td><td>Subscribe to Zoom <code>recording.completed</code> or <code>recording.transcript_completed</code> and pull automatically.</td><td>Platform</td></tr>
+    <tr><td>3</td><td>Fire-and-forget outbound sync (B1, B2, C1 triggers).</td><td>Send through an SQS outbox with retries and a DLQ, and stop reporting HubSpot success on failure.</td><td>Platform</td></tr>
+    <tr><td>4</td><td>Jotform webhook returns 200 on error; submissions without <code>user_id</code> are dropped (A7).</td><td>Return 5xx on transient errors; record dropped submissions for review.</td><td>Platform</td></tr>
+    <tr><td>5</td><td>Zoom webhook accepts requests without a signature header (A1).</td><td>Reject unsigned events when a secret is configured.</td><td>Platform</td></tr>
+    <tr><td>6</td><td>The reports DLQ has no alarm (D2&ndash;D5).</td><td>Add a CloudWatch alarm on <code>&hellip;-report-requests_dlq</code>, matching Platform's queue alarms.</td><td>Reports</td></tr>
+    <tr><td>7</td><td>Attendance and survey changes do not refresh Hub (A2, A5, A7, A8, then C1).</td><td>Trigger C1 after auto-verify, report import and survey submit, or rely on gap 1's schedule.</td><td>Platform</td></tr>
+    <tr><td>8</td><td>Platform data (C3, C4) refreshes only on demand.</td><td>Schedule <code>sync_all_platforms</code> daily (the <code>next_sync_at</code> field already assumes it).</td><td>Content Hub</td></tr>
+    <tr><td>9</td><td>Re-linking a program leaves orphaned rows in the old campaign (C1).</td><td>Delete or retarget the old campaign's rows on unlink.</td><td>Content Hub</td></tr>
+    <tr><td>10</td><td>Companion KB receives no new content (E2).</td><td>Fix caption access, or ingest from the Zoom VTTs already in S3.</td><td>Companion</td></tr>
+  </tbody>
+</table>
+
+</main>
+</body>
+</html>

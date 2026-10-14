@@ -5,6 +5,8 @@ export type RegistrationInviteTemplateInput = {
   programTitles: string[];
   registerUrl: string;
   supportEmail: string;
+  /** Adds a line pointing at the attached participant user guide PDF. */
+  userGuideAttached?: boolean;
 };
 
 export function buildRegistrationInviteEmail(
@@ -37,6 +39,9 @@ export function buildRegistrationInviteEmail(
     `Open the registration page to select sessions and complete intake (if required):`,
     p.registerUrl,
     '',
+    ...(p.userGuideAttached
+      ? ['The participant user guide is attached as a PDF.', '']
+      : []),
     `Questions? Reply to ${p.supportEmail}.`,
   ].join('\n');
 
@@ -58,6 +63,13 @@ export function buildRegistrationInviteEmail(
       <p style="margin:20px 0 0;color:${E.MUTED};font-size:13px;line-height:1.5">
         Or copy this link: <a href="${url}" style="color:${E.LINK}">${url}</a>
       </p>
+      ${
+        p.userGuideAttached
+          ? `<p style="margin:16px 0 0;color:${E.BODY_TEXT};font-size:14px;line-height:1.5">
+        The participant user guide is attached as a PDF.
+      </p>`
+          : ''
+      }
       ${emailSupportLine(support)}
     `;
 
