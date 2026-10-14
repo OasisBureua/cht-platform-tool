@@ -456,6 +456,7 @@ export class SurveysService {
       questions?: Record<string, unknown>;
       required?: boolean;
       jotformFormId?: string;
+      type?: 'INTAKE' | 'FEEDBACK' | 'PRE_TEST' | 'POST_TEST';
     },
   ) {
     const survey = await this.prisma.survey.findUnique({
@@ -463,6 +464,16 @@ export class SurveysService {
       include: { _count: { select: { responses: true } } },
     });
     if (!survey) throw new NotFoundException('Survey not found');
+
+    // Responses are tied to the survey's purpose (registration vs post-event),
+    // so the type is fixed once anyone has answered.
+    const typeChange =
+      dto.type !== undefined && dto.type !== survey.type ? dto.type : undefined;
+    if (typeChange && survey._count.responses > 0) {
+      throw new BadRequestException(
+        `This survey has ${survey._count.responses} response(s); its type can no longer change.`,
+      );
+    }
 
     let questions: Record<string, unknown> | undefined;
     let schemaVersion: number | undefined;
@@ -523,6 +534,7 @@ export class SurveysService {
           schemaVersion,
         }),
         ...(dto.required !== undefined && { required: dto.required }),
+        ...(typeChange && { type: typeChange }),
         ...(dto.jotformFormId !== undefined && {
           jotformFormId: dto.jotformFormId?.trim() || null,
         }),
@@ -546,6 +558,7 @@ export class SurveysService {
     }
     this.logger.log(
       `Survey ${id} updated and marked customized` +
+        (typeChange ? ` (type ${survey.type} -> ${typeChange})` : '') +
         (schemaVersion != null ? ` (schemaVersion=${schemaVersion})` : ''),
     );
     return updated;
