@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut, CreditCard, CheckCircle2 } from 'lucide-react';
+import { User, LogOut, CreditCard, CheckCircle2, ArrowRight, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -26,6 +26,27 @@ import {
   listMissingProfileFields,
   type ProfileMissingField,
 } from '../utils/profile-completeness';
+import { ContactNoteForm } from '../components/contact/ContactNoteForm';
+import { Button } from '../components/ui';
+
+const SETTINGS_TABS = [
+  { id: 'general', label: 'General' },
+  { id: 'security', label: 'Security' },
+  { id: 'payment', label: 'Payment settings' },
+  { id: 'help', label: 'Help & support' },
+] as const;
+
+type SettingsTab = (typeof SETTINGS_TABS)[number]['id'];
+
+/** Older links used `?tab=contact` before the tab also carried the user guide. */
+const TAB_ALIASES: Record<string, SettingsTab> = { contact: 'help' };
+
+const toSettingsTab = (v: string | null | undefined): SettingsTab | null => {
+  if (!v) return null;
+  const id = TAB_ALIASES[v] ?? v;
+  return SETTINGS_TABS.some((t) => t.id === id) ? (id as SettingsTab) : null;
+};
+
 function getInitials(name: string, email?: string): string {
   const parts = name.trim().split(/\s+/);
   if (parts.length >= 2) {
@@ -55,15 +76,24 @@ export default function Settings() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<'general' | 'security' | 'payment'>(() => {
-    const s = (location.state as { settingsTab?: 'general' | 'security' | 'payment' } | null)?.settingsTab;
-    return s === 'payment' || s === 'security' || s === 'general' ? s : 'general';
-  });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTab = (): SettingsTab | null => {
+    const s =
+      (location.state as { settingsTab?: string } | null)?.settingsTab ?? searchParams.get('tab');
+    return toSettingsTab(s);
+  };
+  const [settingsTab, setSettingsTab] = useState<SettingsTab>(() => requestedTab() ?? 'general');
 
   useEffect(() => {
-    const s = (location.state as { settingsTab?: 'general' | 'security' | 'payment' } | null)?.settingsTab;
-    if (s === 'payment' || s === 'security' || s === 'general') setSettingsTab(s);
-  }, [location.state]);
+    const s = requestedTab();
+    if (s) setSettingsTab(s);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state, searchParams]);
+
+  const selectTab = (tab: SettingsTab) => {
+    setSettingsTab(tab);
+    if (searchParams.get('tab') !== tab) setSearchParams({ tab }, { replace: true });
+  };
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['profile', userId],
@@ -217,19 +247,13 @@ export default function Settings() {
             </div>
 
             <div className="flex flex-wrap gap-1 border-b border-border pb-4" role="tablist" aria-label="Settings sections">
-              {(
-                [
-                  { id: 'general' as const, label: 'General' },
-                  { id: 'security' as const, label: 'Security' },
-                  { id: 'payment' as const, label: 'Payment settings' },
-                ] as const
-              ).map((tab) => (
+              {SETTINGS_TABS.map((tab) => (
                 <button
                   key={tab.id}
                   type="button"
                   role="tab"
                   aria-selected={settingsTab === tab.id}
-                  onClick={() => setSettingsTab(tab.id)}
+                  onClick={() => selectTab(tab.id)}
                   className={`px-4 py-2 text-sm font-medium rounded-t-md transition-colors ${
                     settingsTab === tab.id
                       ? 'text-blue-600 border-b-2 border-blue-600 -mb-px'
@@ -442,6 +466,56 @@ export default function Settings() {
                     </Link>
                   )}
                 </div>
+              </div>
+            ) : settingsTab === 'help' ? (
+              <div className="mt-6 max-w-xl space-y-8">
+                <section aria-labelledby="settings-guide-heading">
+                  <h3 id="settings-guide-heading" className="text-base font-bold text-foreground">
+                    Participant user guide
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Step by step from account setup to honorarium: registering for Live, approval
+                    emails, joining the webinar, the post-session survey, and payment release.
+                  </p>
+                  <Link
+                    to="/app/guide"
+                    className="mt-3 inline-flex items-center gap-2 rounded-[6px] border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+                  >
+                    <BookOpen className="h-4 w-4" aria-hidden />
+                    Open the user guide
+                  </Link>
+                </section>
+              <section aria-labelledby="settings-contact-heading" className="border-t border-border pt-6">
+                <h3 id="settings-contact-heading" className="text-base font-bold text-foreground">
+                  Contact the team
+                </h3>
+                <p className="mb-6 mt-1 text-sm text-muted-foreground">
+                  Questions about a program, a payment or your account all land in the same inbox, and
+                  a person reads it.
+                </p>
+                <ContactNoteForm
+                  initialName={
+                    [profile?.firstName ?? user?.firstName, profile?.lastName ?? user?.lastName]
+                      .filter(Boolean)
+                      .join(' ')
+                      .trim() ||
+                    user?.name ||
+                    ''
+                  }
+                  initialEmail={profile?.email ?? user?.email ?? ''}
+                  sentActions={
+                    <>
+                      <Button to="/app/catalog">
+                        Browse the library
+                        <ArrowRight className="size-4" strokeWidth={1.75} />
+                      </Button>
+                      <Button to="/app/home" variant="outline">
+                        Back to home
+                      </Button>
+                    </>
+                  }
+                />
+              </section>
               </div>
             ) : (
               <div className="mt-6">

@@ -29,6 +29,17 @@ export function buildProgramRegisterHref(programId: string, pathname: string): s
   return `/app/live/${programId}/register`;
 }
 
+/**
+ * Router state set by a session detail page when it opens the register wizard.
+ * The wizard then leaves with history back, so the browser Back button from the
+ * session page does not land on the wizard again.
+ */
+export const FROM_SESSION_DETAIL_STATE = { fromSessionDetail: true } as const;
+
+export function cameFromSessionDetail(state: unknown): boolean {
+  return (state as { fromSessionDetail?: boolean } | null)?.fromSessionDetail === true;
+}
+
 /** Multi-webinar registration wizard: persist selection across Jotform redirects. */
 export const MULTI_REGISTER_STORAGE_KEY = 'cht:live-multi-register';
 

@@ -5,6 +5,8 @@ export type RegistrationInviteTemplateInput = {
   programTitles: string[];
   registerUrl: string;
   supportEmail: string;
+  /** In-app participant user guide (`/app/guide`). */
+  guideUrl?: string;
 };
 
 export function buildRegistrationInviteEmail(
@@ -37,6 +39,12 @@ export function buildRegistrationInviteEmail(
     `Open the registration page to select sessions and complete intake (if required):`,
     p.registerUrl,
     '',
+    ...(p.guideUrl
+      ? [
+          `New to the platform? Read the participant user guide: ${p.guideUrl}`,
+          '',
+        ]
+      : []),
     `Questions? Reply to ${p.supportEmail}.`,
   ].join('\n');
 
@@ -58,6 +66,13 @@ export function buildRegistrationInviteEmail(
       <p style="margin:20px 0 0;color:${E.MUTED};font-size:13px;line-height:1.5">
         Or copy this link: <a href="${url}" style="color:${E.LINK}">${url}</a>
       </p>
+      ${
+        p.guideUrl
+          ? `<p style="margin:16px 0 0;color:${E.BODY_TEXT};font-size:14px;line-height:1.5">
+        New to the platform? <a href="${escape(p.guideUrl)}" style="color:${E.LINK}">Read the participant user guide</a>.
+      </p>`
+          : ''
+      }
       ${emailSupportLine(support)}
     `;
 

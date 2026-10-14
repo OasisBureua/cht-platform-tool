@@ -570,8 +570,17 @@ export class SesEmailService {
     }
     const { to, firstName, programTitles, registerUrl } = opts;
     const supportEmail = this.from;
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
     const { subject, text, html } = buildRegistrationInviteEmail(
-      { firstName, programTitles, registerUrl, supportEmail },
+      {
+        firstName,
+        programTitles,
+        registerUrl,
+        supportEmail,
+        guideUrl: `${base}/app/guide`,
+      },
       escapeHtml,
     );
     await this.sendSimpleEmail(to, subject, text, html);

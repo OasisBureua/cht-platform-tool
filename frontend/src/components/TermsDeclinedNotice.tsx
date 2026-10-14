@@ -18,7 +18,7 @@ export default function TermsDeclinedNotice() {
       <div className="mx-auto flex max-w-6xl items-start gap-3 px-4 py-3 text-sm sm:px-6">
         <Info className="mt-0.5 size-4 shrink-0" aria-hidden />
         <p className="flex-1">
-          <strong>Access restricted.</strong> You were signed out because the Terms of Service and Privacy Policy were
+          <strong>Access restricted.</strong> You were signed out because the Terms of Use and Privacy Policy were
           not accepted. Member areas require acceptance.{' '}
           <Link to="/login" className="font-semibold underline underline-offset-2">
             Log in

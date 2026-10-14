@@ -61,7 +61,7 @@ export default function TermsAcceptanceModal() {
                 <ShieldCheck className="size-5" strokeWidth={1.75} aria-hidden />
               </span>
               <h2 id={titleId} className="text-lg font-semibold text-foreground">
-                Terms of Service &amp; Privacy Policy Confirmation
+                Terms of Use &amp; Privacy Policy Confirmation
               </h2>
             </div>
             <button
@@ -77,7 +77,7 @@ export default function TermsAcceptanceModal() {
 
           <div id={bodyId} className="mt-4 space-y-3 text-sm text-muted-foreground">
             <p>
-              Welcome to Community Health Media. Before you continue, please review our updated Terms and Conditions
+              Welcome to Community Health Media. Before you continue, please review our updated Terms of Use
               and Privacy Policy. Using the site requires that you accept them.
             </p>
             <p>
@@ -93,7 +93,7 @@ export default function TermsAcceptanceModal() {
               rel="noopener noreferrer"
               className="flex items-center justify-between gap-2 rounded-[6px] bg-muted px-4 py-3 text-sm font-medium text-foreground hover:brightness-95"
             >
-              Terms and Conditions
+              Terms of Use
               <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
@@ -119,7 +119,7 @@ export default function TermsAcceptanceModal() {
               className="mt-0.5 size-4 shrink-0 accent-brand-600"
             />
             <span className="text-sm text-foreground">
-              I have read and agree to the Terms and Conditions and the Privacy Policy.
+              I have read and agree to the Terms of Use and the Privacy Policy.
             </span>
           </label>
 

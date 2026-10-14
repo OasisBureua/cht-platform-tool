@@ -144,6 +144,14 @@ export default function Layout() {
               Settings
             </Link>
             {' · '}
+            <Link
+              to="/app/settings?tab=help"
+              className="font-semibold text-steel-700 underline-offset-2 hover:underline dark:text-steel-400"
+              onClick={() => setMobileDrawerOpen(false)}
+            >
+              Help
+            </Link>
+            {' · '}
             <button
               type="button"
               className="font-semibold text-muted-foreground hover:underline"
@@ -240,6 +248,14 @@ export default function Layout() {
                       className="flex min-h-[44px] items-center rounded-[6px] px-3 text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
                     >
                       Settings
+                    </Link>
+                    <Link
+                      to="/app/settings?tab=help"
+                      role="menuitem"
+                      onClick={() => setProfileMenuOpen(false)}
+                      className="flex min-h-[44px] items-center rounded-[6px] px-3 text-sm font-medium text-muted-foreground transition-[background-color,color] duration-200 ease-out hover:bg-muted hover:text-foreground"
+                    >
+                      Help & support
                     </Link>
                     <button
                       type="button"

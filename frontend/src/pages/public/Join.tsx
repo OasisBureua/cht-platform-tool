@@ -722,7 +722,7 @@ export default function Join() {
           rel="noopener noreferrer"
           className="press rounded-[6px] text-anchor hover:brightness-110"
         >
-          Terms and Conditions
+          Terms of Use
         </a>{' '}
         and{' '}
         <a

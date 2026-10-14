@@ -63,6 +63,7 @@ const WatchVideo            = lazy(() => import('./pages/WatchVideo'));
 const Earnings              = lazy(() => import('./pages/Earnings'));
 const Payments              = lazy(() => import('./pages/Payments'));
 const Settings              = lazy(() => import('./pages/Settings'));
+const UserGuide             = lazy(() => import('./pages/guide/UserGuide'));
 const Podcasts              = lazy(() => import('./pages/Podcasts'));
 const PodcastShow           = lazy(() => import('./pages/PodcastShow'));
 const PodcastEpisodeWatch   = lazy(() => import('./pages/PodcastEpisodeWatch'));
@@ -312,6 +313,8 @@ function App() {
                 )}
                 <Route path="settings" element={<Settings />} />
                 <Route path="payments" element={<Payments />} />
+                <Route path="contact" element={<Navigate to="/app/settings?tab=help" replace />} />
+                <Route path="guide" element={<UserGuide />} />
 
                 <Route path="*" element={<Navigate to="/app/home" replace />} />
               </Route>

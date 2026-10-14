@@ -20,7 +20,11 @@ import {
   Clock,
   User,
 } from 'lucide-react';
-import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import {
+  buildProgramRegisterHref,
+  FROM_SESSION_DETAIL_STATE,
+  readIntakeSubmissionIdFromSearch,
+} from '../utils/intake-return';
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { isRegistrationClosed } from '../utils/live-session-timing';
 import {
@@ -508,6 +512,7 @@ export default function WebinarDetail() {
               ) : needsRegistrationWizard && !enrolled ? (
                 <Link
                   to={`/app/live/${program.id}/register`}
+                  state={FROM_SESSION_DETAIL_STATE}
                   className={`${registerCtaClass} bg-brand-600 text-white hover:bg-brand-700`}
                 >
                   Register
@@ -816,6 +821,7 @@ export default function WebinarDetail() {
           ) : needsRegistrationWizard && !enrolled ? (
             <Link
               to={`/app/live/${program.id}/register`}
+              state={FROM_SESSION_DETAIL_STATE}
               className="ml-auto shrink-0 rounded-[6px] bg-brand-600 px-[26px] py-2 text-sm font-semibold text-white min-w-[172px] text-center"
             >
               Register
