@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-export type RecaptchaAction = 'login' | 'signup';
+export type RecaptchaAction = 'login' | 'signup' | 'public_registration';
 
 export function recaptchaConfigured(): boolean {
   return !!siteKey;

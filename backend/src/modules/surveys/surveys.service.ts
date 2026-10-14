@@ -456,6 +456,7 @@ export class SurveysService {
       questions?: Record<string, unknown>;
       required?: boolean;
       jotformFormId?: string;
+      type?: 'INTAKE' | 'FEEDBACK' | 'PRE_TEST' | 'POST_TEST';
     },
   ) {
     const survey = await this.prisma.survey.findUnique({
@@ -463,6 +464,16 @@ export class SurveysService {
       include: { _count: { select: { responses: true } } },
     });
     if (!survey) throw new NotFoundException('Survey not found');
+
+    // Responses are tied to the survey's purpose (registration vs post-event),
+    // so the type is fixed once anyone has answered.
+    const typeChange =
+      dto.type !== undefined && dto.type !== survey.type ? dto.type : undefined;
+    if (typeChange && survey._count.responses > 0) {
+      throw new BadRequestException(
+        `This survey has ${survey._count.responses} response(s); its type can no longer change.`,
+      );
+    }
 
     let questions: Record<string, unknown> | undefined;
     let schemaVersion: number | undefined;
@@ -523,6 +534,7 @@ export class SurveysService {
           schemaVersion,
         }),
         ...(dto.required !== undefined && { required: dto.required }),
+        ...(typeChange && { type: typeChange }),
         ...(dto.jotformFormId !== undefined && {
           jotformFormId: dto.jotformFormId?.trim() || null,
         }),
@@ -546,6 +558,7 @@ export class SurveysService {
     }
     this.logger.log(
       `Survey ${id} updated and marked customized` +
+        (typeChange ? ` (type ${survey.type} -> ${typeChange})` : '') +
         (schemaVersion != null ? ` (schemaVersion=${schemaVersion})` : ''),
     );
     return updated;
@@ -623,10 +636,15 @@ export class SurveysService {
             specialty: true,
           },
         },
+        publicRegistration: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
       },
     });
 
-    const userIds = responses.map((r) => r.userId);
+    const userIds = responses
+      .map((r) => r.userId)
+      .filter((id): id is string => id !== null);
     const registrations =
       survey.programId && userIds.length > 0
         ? await this.prisma.programRegistration.findMany({
@@ -659,8 +677,13 @@ export class SurveysService {
         score: r.score,
         schemaVersion: r.schemaVersion,
         answers: r.answers,
-        user: r.user,
-        registration: regByUser.get(r.userId) ?? null,
+        // Public registrants have no account: identify them by the name and
+        // email they registered with.
+        user: r.user ?? publicRespondent(r.publicRegistration),
+        source: (r.publicRegistration ? 'public' : 'account') as
+          | 'public'
+          | 'account',
+        registration: r.userId ? (regByUser.get(r.userId) ?? null) : null,
       })),
       pagination: {
         page,
@@ -790,8 +813,10 @@ export class SurveysService {
         submittedAt: r.submittedAt,
         schemaVersion: r.schemaVersion,
         answers: (r.answers ?? {}) as Record<string, unknown>,
-        user: r.user,
-        registration: r.registration,
+        user: r.user ?? { email: '', firstName: '', lastName: '' },
+        registration:
+          r.registration ??
+          (r.source === 'public' ? { status: 'PUBLIC' } : null),
       })),
     });
     return {
@@ -1492,4 +1517,30 @@ export class SurveysService {
     if (!user) return {};
     return buildProfilePrefill(survey.questions, user);
   }
+}
+
+/** A public registrant shown in place of an account in admin response lists. */
+function publicRespondent(
+  reg: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  } | null,
+): {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  specialty: string | null;
+} | null {
+  return reg
+    ? {
+        id: `public:${reg.id}`,
+        email: reg.email,
+        firstName: reg.firstName,
+        lastName: reg.lastName,
+        specialty: null,
+      }
+    : null;
 }

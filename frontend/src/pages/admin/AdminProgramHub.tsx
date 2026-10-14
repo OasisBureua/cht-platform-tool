@@ -170,6 +170,8 @@ export default function AdminProgramHub() {
   const [intakeUrl, setIntakeUrl] = useState('');
   const [hostName, setHostName] = useState('');
   const [requireApproval, setRequireApproval] = useState(false);
+  const [publicRegistration, setPublicRegistration] = useState(false);
+  const [publicLinkCopied, setPublicLinkCopied] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<{ ok?: boolean; err?: string }>({});
 
   useEffect(() => {
@@ -179,7 +181,12 @@ export default function AdminProgramHub() {
     setIntakeUrl(zt === 'MEETING' ? '' : String(pr.jotformIntakeFormUrl ?? ''));
     setHostName(String(pr.hostDisplayName ?? ''));
     setRequireApproval(Boolean(pr.registrationRequiresApproval));
+    setPublicRegistration(Boolean(pr.publicRegistrationEnabled));
   }, [program]);
+
+  const publicRegistrationSaved = Boolean((program as Record<string, unknown> | undefined)?.publicRegistrationEnabled);
+  const publicRegistrationUrl = programId ? `${window.location.origin}/register/${programId}` : '';
+  const publicRegistrations = registrationPayload?.publicRegistrations ?? [];
 
   const settingsMutation = useMutation({
     mutationFn: () =>
@@ -188,6 +195,7 @@ export default function AdminProgramHub() {
           zoomTypeForQueries === 'MEETING' ? null : intakeUrl.trim() || null,
         hostDisplayName: hostName.trim() || null,
         registrationRequiresApproval: requireApproval,
+        publicRegistrationEnabled: publicRegistration,
       }),
     onSuccess: () => {
       setSettingsMessage({ ok: true });
@@ -493,6 +501,39 @@ export default function AdminProgramHub() {
               : 'No Jotform intake for office hours. Learners submit registration (and a time slot when configured). With approval on, you review each request before they are enrolled. Rejected learners may register again (pending on resubmit).'}
           </span>
         </label>
+        <label className="flex flex-col gap-1 text-sm font-medium text-foreground">
+          <span className="inline-flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={publicRegistration}
+              onChange={(e) => setPublicRegistration(e.target.checked)}
+            />
+            Public registration (no login, no approval)
+          </span>
+          <span className="text-xs font-normal text-muted-foreground pl-6">
+            Anyone with the public link registers with their name and email, then gets an email with a personal link to
+            this program&apos;s registration survey. No account and no approval needed. Public registrants are not synced
+            to HubSpot.
+          </span>
+        </label>
+        {publicRegistrationSaved && publicRegistrationUrl ? (
+          <div className="flex flex-wrap items-center gap-2 pl-6 text-sm">
+            <code className="rounded bg-muted px-2 py-1 text-xs break-all">{publicRegistrationUrl}</code>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(publicRegistrationUrl).then(() => {
+                  setPublicLinkCopied(true);
+                  window.setTimeout(() => setPublicLinkCopied(false), 2000);
+                });
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted"
+            >
+              <Copy className="h-3.5 w-3.5" />
+              {publicLinkCopied ? 'Copied' : 'Copy link'}
+            </button>
+          </div>
+        ) : null}
         {settingsMessage.ok && (
           <p className="text-sm font-medium text-success" role="status">
             Settings saved.
@@ -587,6 +628,50 @@ export default function AdminProgramHub() {
           </ul>
         </section>
       )}
+
+      {publicRegistrationSaved || publicRegistrations.length > 0 ? (
+        <section className="rounded-card border border-border bg-card p-6 space-y-4">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Public registrations</h2>
+            <p className="text-sm text-muted-foreground">
+              People who registered through the public link. Their survey answers are under the registration
+              survey&apos;s Responses.
+            </p>
+          </div>
+          {publicRegistrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No public registrations yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border text-left text-xs uppercase tracking-wide text-muted-foreground">
+                    <th className="py-2 pr-4">Name</th>
+                    <th className="py-2 pr-4">Email</th>
+                    <th className="py-2 pr-4">Registered</th>
+                    <th className="py-2 pr-4">Link emailed</th>
+                    <th className="py-2">Survey</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {publicRegistrations.map((r) => (
+                    <tr key={r.id} className="border-b border-border/60">
+                      <td className="py-2 pr-4 text-foreground">
+                        {r.firstName} {r.lastName}
+                      </td>
+                      <td className="py-2 pr-4 break-all">{r.email}</td>
+                      <td className="py-2 pr-4">{format(parseISO(r.createdAt), 'MMM d, h:mm a')}</td>
+                      <td className="py-2 pr-4">{r.emailSentAt ? 'Yes' : 'No'}</td>
+                      <td className="py-2">
+                        {r.submittedAt ? `Submitted ${format(parseISO(r.submittedAt), 'MMM d')}` : 'Not yet'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      ) : null}
 
       <section className="rounded-card border border-border bg-card p-6 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">

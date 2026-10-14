@@ -53,6 +53,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
   ],
   exports: [
     AuthService,
+    RecaptchaService,
     JwtAuthGuard,
     OptionalJwtAuthGuard,
     CognitoM2mAuthGuard,

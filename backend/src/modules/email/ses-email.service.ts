@@ -20,6 +20,7 @@ import { buildRegistrationInviteEmail } from './templates/registration-invite-em
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
 import { buildRegistrationRevokedEmail } from './templates/registration-revoked-email';
 import { buildOperationalEmail } from './templates/operational-email';
+import { buildPublicRegistrationSurveyEmail } from './templates/public-registration-survey-email';
 import { buildReportReadyEmail } from './templates/report-ready-email';
 
 /**
@@ -593,6 +594,44 @@ export class SesEmailService {
    * Admin freeform operational notice (Program Hub). Uses configured SES From
    * (default info@communityhealth.media).
    */
+  /**
+   * Public registration: the registrant's personal link to the program's
+   * registration survey (no login). Throws on send failure so the caller can
+   * report it.
+   */
+  async sendPublicRegistrationSurveyEmail(opts: {
+    to: string;
+    firstName: string;
+    program: { id: string; title: string; sponsorName: string };
+    token: string;
+  }): Promise<boolean> {
+    if (!this.enabled) {
+      this.logger.debug(
+        'EMAIL disabled: skip public-registration-survey email',
+      );
+      return false;
+    }
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const surveyUrl = `${base}/register/survey/${encodeURIComponent(opts.token)}`;
+    const { subject, text, html } = buildPublicRegistrationSurveyEmail(
+      {
+        firstName: opts.firstName,
+        programTitle: opts.program.title,
+        surveyUrl,
+        supportEmail: this.from,
+        sponsorName: opts.program.sponsorName,
+      },
+      escapeHtml,
+    );
+    await this.sendSimpleEmail(opts.to, subject, text, html);
+    this.logger.log(
+      `Sent public-registration-survey email for program ${opts.program.id}`,
+    );
+    return true;
+  }
+
   async sendOperationalEmail(opts: {
     to: string;
     subject: string;

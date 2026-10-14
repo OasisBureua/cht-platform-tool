@@ -1,4 +1,10 @@
-import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class UpdateSurveyDto {
@@ -21,6 +27,15 @@ export class UpdateSurveyDto {
   @IsOptional()
   @IsObject()
   questions?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description:
+      'Survey type. Can only change while the survey has no responses.',
+    enum: ['INTAKE', 'FEEDBACK', 'PRE_TEST', 'POST_TEST'],
+  })
+  @IsOptional()
+  @IsEnum(['INTAKE', 'FEEDBACK', 'PRE_TEST', 'POST_TEST'])
+  type?: 'INTAKE' | 'FEEDBACK' | 'PRE_TEST' | 'POST_TEST';
 
   @ApiPropertyOptional({ description: 'Whether completion is required' })
   @IsOptional()

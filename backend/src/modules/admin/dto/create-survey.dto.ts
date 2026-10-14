@@ -1,7 +1,7 @@
 import {
   IsString,
   IsOptional,
-  IsArray,
+  IsDefined,
   IsEnum,
   IsBoolean,
 } from 'class-validator';
@@ -17,8 +17,9 @@ export class CreateSurveyDto {
   @IsString()
   description?: string;
 
-  @IsArray()
-  questions: Record<string, unknown>[];
+  /** Native schema ({ version, sections }) or a legacy flat question list. */
+  @IsDefined()
+  questions: Record<string, unknown>[] | Record<string, unknown>;
 
   @IsOptional()
   @IsEnum(['PRE_TEST', 'POST_TEST', 'FEEDBACK', 'INTAKE'])

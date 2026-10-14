@@ -41,6 +41,8 @@ const PublicWebinarDetail   = lazy(() => import('./pages/public/PublicWebinarDet
 const PublicOfficeHours     = lazy(() => import('./pages/public/PublicOfficeHours'));
 const PublicOfficeHoursDetail = lazy(() => import('./pages/public/PublicOfficeHoursDetail'));
 const PublicSurveys         = lazy(() => import('./pages/public/PublicSurveys'));
+const PublicRegistration = lazy(() => import('./pages/public/PublicRegistration'));
+const PublicRegistrationSurvey = lazy(() => import('./pages/public/PublicRegistrationSurvey'));
 const Services              = lazy(() => import('./pages/public/Services'));
 const Portfolios            = lazy(() => import('./pages/public/Portfolios'));
 const DolNetwork            = lazy(() => import('./pages/public/DolNetwork'));
@@ -202,6 +204,9 @@ function App() {
               <Route path="/chm-office-hours" element={<Navigate to="/office-hours" replace />} />
               <Route path="/chm-office-hours/:id" element={<LegacyOfficeHoursDetailRedirect />} />
               <Route path="/surveys" element={<PublicSurveys />} />
+              {/* Public registration (no login): /register/:programId → emailed /register/survey/:token */}
+              <Route path="/register/survey/:token" element={<PublicRegistrationSurvey />} />
+              <Route path="/register/:programId" element={<PublicRegistration />} />
               <Route path="/for-hcps" element={<ForHCPs />} />
               {/* Merged into /about: one page for who we are and what we run. */}
               <Route path="/what-we-do" element={<Navigate to="/about" replace />} />

@@ -1568,6 +1568,8 @@ export class AdminController {
       hostDisplayName?: string | null;
       hostBio?: string | null;
       registrationRequiresApproval?: boolean;
+      /** Public registration page (no login, no approval) for this program. */
+      publicRegistrationEnabled?: boolean;
     },
   ) {
     const exists = await this.prisma.program.findUnique({
@@ -1585,6 +1587,14 @@ export class AdminController {
     if (body.hostBio !== undefined) data.hostBio = body.hostBio;
     if (body.registrationRequiresApproval !== undefined) {
       data.registrationRequiresApproval = body.registrationRequiresApproval;
+    }
+    if (body.publicRegistrationEnabled !== undefined) {
+      if (typeof body.publicRegistrationEnabled !== 'boolean') {
+        throw new BadRequestException(
+          'publicRegistrationEnabled must be true or false',
+        );
+      }
+      data.publicRegistrationEnabled = body.publicRegistrationEnabled;
     }
     return this.prisma.program.update({ where: { id }, data });
   }
@@ -2217,6 +2227,27 @@ export class AdminController {
         })),
       },
       registrations: rows.map(mapRegistrationRow),
+      /** People who registered through the public page (no account). */
+      publicRegistrations: (
+        await this.prisma.publicRegistration.findMany({
+          where: { programId: id },
+          orderBy: { createdAt: 'desc' },
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            createdAt: true,
+            emailSentAt: true,
+            submittedAt: true,
+          },
+        })
+      ).map((p) => ({
+        ...p,
+        createdAt: p.createdAt.toISOString(),
+        emailSentAt: p.emailSentAt?.toISOString() ?? null,
+        submittedAt: p.submittedAt?.toISOString() ?? null,
+      })),
     };
   }
 
