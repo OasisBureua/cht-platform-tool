@@ -320,11 +320,11 @@ export class ZoomWebhookService {
 
     if (sessionType === 'WEBINAR') {
       this.surveys
-        .attachJotformFormsFromConfig(program.id, title)
+        .attachSurveysForNewWebinar(program.id, title)
         .catch((err: unknown) => {
           const msg = err instanceof Error ? err.message : String(err);
           this.logger.warn(
-            `[Zoom webhook] Jotform form attachment failed for program ${program.id}: ${msg}`,
+            `[Zoom webhook] Native survey attachment failed for program ${program.id}: ${msg}`,
           );
         });
     }

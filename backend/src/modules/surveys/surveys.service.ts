@@ -16,13 +16,11 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
-import { JotformService } from '../jotform/jotform.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import {
   defaultPostEventFeedbackQuestions,
   defaultWebinarIntakeQuestions,
 } from './native-survey-templates';
-import { extractJotformFormIdFromUrl } from '../../utils/jotform-form-id';
 import {
   buildSurveyResponsesCsv,
   surveyResponsesCsvFilename,
@@ -60,7 +58,6 @@ export class SurveysService {
     private queueService: QueueService,
     private configService: ConfigService,
     private outboundSync: OutboundSyncService,
-    private jotformService: JotformService,
     private formJotformProgress: FormJotformProgressService,
     private programRegistrations: ProgramRegistrationsService,
   ) {}
@@ -806,192 +803,46 @@ export class SurveysService {
     };
   }
 
+  /** CPR-5: Jotform survey create/clone is removed; use native surveys. */
+  private jotformCreateRemovedMessage(): string {
+    return (
+      'Creating or attaching Jotform surveys is no longer supported. ' +
+      'Use native intake and feedback surveys (optionally clone questions from an existing survey template).'
+    );
+  }
+
   /**
-   * Create a Survey from a Jotform template: clone form, add webhook, create Survey.
-   * Use when creating a new webinar/program that needs a unique survey.
+   * @deprecated CPR-5 — always rejects. Historical Jotform export still uses JotformService separately.
    */
-  async createSurveyFromJotformTemplate(dto: {
+  async createSurveyFromJotformTemplate(_dto: {
     programId: string;
     templateFormId: string;
     title?: string;
     type?: 'PRE_TEST' | 'POST_TEST' | 'FEEDBACK';
-  }) {
-    const program = await this.prisma.program.findUnique({
-      where: { id: dto.programId },
-    });
-    if (!program) {
-      throw new BadRequestException('Program not found');
-    }
-
-    const {
-      formId,
-      title: clonedTitle,
-      url: clonedFormUrl,
-    } = await this.jotformService.cloneForm(dto.templateFormId);
-    await this.jotformService.addWebhook(formId);
-
-    const survey = await this.prisma.survey.create({
-      data: {
-        programId: dto.programId,
-        title: dto.title || clonedTitle,
-        jotformFormId: formId,
-        questions: { source: 'jotform', formId },
-        type: dto.type ?? 'FEEDBACK',
-        required: true,
-      },
-    });
-
-    const jotformFormUrl = clonedFormUrl;
-    await this.prisma.program.update({
-      where: { id: dto.programId },
-      data: { jotformSurveyUrl: jotformFormUrl },
-    });
-
-    this.logger.log(
-      `Survey created from Jotform template: ${survey.id} (form ${formId})`,
-    );
-    return {
-      ...survey,
-      jotformFormUrl,
-    };
-  }
-
-  webinarJotformTemplateConfigMessage(): string {
-    return (
-      'Webinars need invitation and post-event Jotform setup (or a shared post-event form) plus Jotform API access ' +
-      'configured on the server. Ask your technical administrator to complete this in the deployment environment.'
-    );
-  }
-
-  assertJotformConfiguredForWebinarClones(): void {
-    const inv = this.configService
-      .get<string>('jotform.invitationTemplateFormId')
-      ?.trim();
-    const postTemplate = this.configService
-      .get<string>('jotform.postEventTemplateFormId')
-      ?.trim();
-    const sharedPost = this.configService
-      .get<string>('jotform.postEventSharedFormId')
-      ?.trim();
-    const apiKey = this.configService.get<string>('jotform.apiKey')?.trim();
-    if (!inv || (!sharedPost && !postTemplate)) {
-      throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
-    }
-    if (!apiKey) {
-      throw new BadRequestException(
-        'A Jotform API key is required to create webinar invitation forms. Ask your technical administrator to configure it.',
-      );
-    }
-  }
-
-  /** Invitation clone only (used when admin supplies a manual post-event Jotform). */
-  private assertJotformInvitationCloneRequirements(): void {
-    const inv = this.configService
-      .get<string>('jotform.invitationTemplateFormId')
-      ?.trim();
-    if (!inv) {
-      throw new BadRequestException(this.webinarJotformTemplateConfigMessage());
-    }
-    if (!this.configService.get<string>('jotform.apiKey')?.trim()) {
-      throw new BadRequestException(
-        'A Jotform API key is required to create webinar invitation forms. Ask your technical administrator to configure it.',
-      );
-    }
+  }): Promise<never> {
+    throw new BadRequestException(this.jotformCreateRemovedMessage());
   }
 
   /**
-   * Legacy: link an existing Jotform as the program FEEDBACK survey without
-   * replacing the Survey row. Refuses conversion once responses exist.
+   * @deprecated CPR-5 — always rejects. Cannot attach Jotform as FEEDBACK anymore.
    */
   async applyManualPostEventJotform(
-    programId: string,
-    programTitle: string,
-    formIdOrUrl: string,
-  ) {
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-    });
-    if (!program) throw new BadRequestException('Program not found');
-
-    const trimmed = formIdOrUrl.trim();
-    const formId =
-      this.normalizeJotformFormId(trimmed) ||
-      extractJotformFormIdFromUrl(trimmed) ||
-      '';
-    if (!formId) {
-      throw new BadRequestException(
-        'Enter a valid Jotform form ID or form URL for the post-event survey (e.g. 123456789012345).',
-      );
-    }
-
-    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
-
-    const existing = await this.prisma.survey.findFirst({
-      where: { programId, type: 'FEEDBACK' },
-      include: { _count: { select: { responses: true } } },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (existing?._count.responses) {
-      throw new BadRequestException(
-        'The post-event survey already has responses and cannot be converted to Jotform.',
-      );
-    }
-
-    if (existing) {
-      await this.prisma.survey.update({
-        where: { id: existing.id },
-        data: {
-          jotformFormId: formId,
-          questions: { source: 'jotform', formId, manualPostEvent: true },
-          isCustomized: true,
-        },
-      });
-    } else {
-      await this.prisma.survey.create({
-        data: {
-          programId,
-          title: `${programTitle} - Post Event Survey`,
-          jotformFormId: formId,
-          questions: { source: 'jotform', formId, manualPostEvent: true },
-          type: 'FEEDBACK',
-          required: true,
-          isCustomized: true,
-        },
-      });
-    }
-
-    await this.prisma.program.update({
-      where: { id: programId },
-      data: { jotformSurveyUrl: jotformFormUrl },
-    });
-
-    this.logger.log(
-      `Manual post-event Jotform for program ${programId}: form ${formId}`,
-    );
+    _programId: string,
+    _programTitle: string,
+    _formIdOrUrl: string,
+  ): Promise<never> {
+    throw new BadRequestException(this.jotformCreateRemovedMessage());
   }
 
   /**
-   * Clone invitation from template, then attach admin-provided post-event form (skips env post-event template/shared).
+   * @deprecated CPR-5 — attaches native surveys only (ignores Jotform form id).
    */
   async createWebinarInvitationAndManualPostSurvey(
     programId: string,
     programTitle: string,
-    postEventFormIdOrUrl: string,
+    _postEventFormIdOrUrl: string,
   ) {
-    this.assertJotformInvitationCloneRequirements();
-    const inv = this.configService
-      .get<string>('jotform.invitationTemplateFormId')!
-      .trim();
-    await this.createInvitationFormFromJotformTemplate(
-      programId,
-      inv,
-      `${programTitle} - Invitation`,
-    );
-    await this.applyManualPostEventJotform(
-      programId,
-      programTitle,
-      postEventFormIdOrUrl,
-    );
+    return this.attachSurveysForNewWebinar(programId, programTitle);
   }
 
   /**
@@ -1212,17 +1063,16 @@ export class SurveysService {
   }
 
   /**
-   * When true, legacy Jotform clone paths are used instead of native surveys (platform rollback only).
+   * CPR-5: legacy Jotform create/attach is removed. Always false.
+   * @deprecated Kept for call-site compatibility; do not re-enable.
    */
   useLegacyJotformForms(): boolean {
-    return (
-      this.configService.get<boolean>('surveys.useLegacyJotformForms') === true
-    );
+    return false;
   }
 
-  /** @deprecated Prefer attachSurveysForNewWebinar; native is default unless legacy flag set. */
+  /** Native surveys are the only create path (CPR-5). */
   useNativeForms(): boolean {
-    return !this.useLegacyJotformForms();
+    return true;
   }
 
   /**
@@ -1342,227 +1192,33 @@ export class SurveysService {
   }
 
   /**
-   * Attach Jotform forms to a webhook-imported program without cloning.
-   * Uses env-configured form IDs/URLs directly:
-   *  - Intake: JOTFORM_WEBINAR_DEFAULT_INTAKE_URL (preferred) or constructed from invitationTemplateFormId
-   *  - Post-event: postEventSharedFormId (preferred) or postEventTemplateFormId: no clone, just links the Survey record
-   * Fails gracefully if none of the env vars are set.
+   * @deprecated CPR-5 name kept for callers — always attaches native surveys.
    */
   async attachJotformFormsFromConfig(
     programId: string,
     programTitle: string,
   ): Promise<void> {
-    if (!this.useLegacyJotformForms()) {
-      await this.attachSurveysForNewWebinar(programId, programTitle);
-      return;
-    }
-
-    const defaultIntakeUrl = this.configService
-      .get<string>('jotform.webinarDefaultIntakeUrl')
-      ?.trim();
-    const invFormId = this.configService
-      .get<string>('jotform.invitationTemplateFormId')
-      ?.trim();
-    const sharedPost = this.configService
-      .get<string>('jotform.postEventSharedFormId')
-      ?.trim();
-    const postTemplate = this.configService
-      .get<string>('jotform.postEventTemplateFormId')
-      ?.trim();
-
-    // 1. Intake / invitation form: no clone, just set the URL
-    const intakeUrl =
-      defaultIntakeUrl ||
-      (invFormId
-        ? `https://communityhealthmedia.jotform.com/${invFormId}`
-        : null);
-    if (intakeUrl) {
-      await this.prisma.program.update({
-        where: { id: programId },
-        data: { jotformIntakeFormUrl: intakeUrl },
-      });
-      this.logger.log(
-        `Webhook import: attached intake form for program ${programId}`,
-      );
-    }
-
-    // 2. Post-event survey: use shared form (preferred) or template form ID directly, no clone
-    const postFormId = sharedPost || postTemplate;
-    if (postFormId) {
-      await this.attachSharedPostEventSurvey(
-        programId,
-        programTitle,
-        postFormId,
-      );
-    }
-
-    if (!intakeUrl && !postFormId) {
-      this.logger.warn(
-        `Webhook import: no Jotform env vars configured for program ${programId}, skipping form attachment`,
-      );
-    }
+    await this.attachSurveysForNewWebinar(programId, programTitle);
   }
 
   /**
-   * Clone invitation + post-event forms from env template IDs, add webhooks, set program intake URL + FEEDBACK survey.
+   * @deprecated CPR-5 — native surveys only.
    */
   async createWebinarJotformPairFromTemplates(
     programId: string,
     programTitle: string,
   ) {
-    if (!this.useLegacyJotformForms()) {
-      await this.attachSurveysForNewWebinar(programId, programTitle);
-      return;
-    }
-    this.assertJotformConfiguredForWebinarClones();
-    const inv = this.configService
-      .get<string>('jotform.invitationTemplateFormId')!
-      .trim();
-    const sharedPost = this.configService
-      .get<string>('jotform.postEventSharedFormId')
-      ?.trim();
-    await this.createInvitationFormFromJotformTemplate(
-      programId,
-      inv,
-      `${programTitle} - Invitation`,
-    );
-    if (sharedPost) {
-      await this.attachSharedPostEventSurvey(
-        programId,
-        programTitle,
-        sharedPost,
-      );
-    } else {
-      const post = this.configService
-        .get<string>('jotform.postEventTemplateFormId')!
-        .trim();
-      await this.createSurveyFromJotformTemplate({
-        programId,
-        templateFormId: post,
-        title: `${programTitle} - Post Event Survey`,
-        type: 'FEEDBACK',
-      });
-    }
+    return this.attachSurveysForNewWebinar(programId, programTitle);
   }
 
   /**
-   * Post-event survey only from env (shared form or cloned post template). Use when intake URL is set manually and
-   * invitation must not be cloned from the template.
+   * @deprecated CPR-5 — native surveys only.
    */
   async createWebinarPostEventOnlyFromTemplates(
     programId: string,
     programTitle: string,
   ) {
-    if (!this.useLegacyJotformForms()) {
-      await this.attachSurveysForNewWebinar(programId, programTitle);
-      return;
-    }
-    const sharedPost = this.configService
-      .get<string>('jotform.postEventSharedFormId')
-      ?.trim();
-    if (sharedPost) {
-      await this.attachSharedPostEventSurvey(
-        programId,
-        programTitle,
-        sharedPost,
-      );
-      return;
-    }
-    const postTemplate = this.configService
-      .get<string>('jotform.postEventTemplateFormId')
-      ?.trim();
-    if (!postTemplate) {
-      throw new BadRequestException(
-        'No Jotform post-event shared form or template is configured. Set JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID or JOTFORM_WEBINAR_POST_EVENT_TEMPLATE_FORM_ID, or provide a manual post-event form when scheduling.',
-      );
-    }
-    if (!this.configService.get<string>('jotform.apiKey')?.trim()) {
-      throw new BadRequestException(
-        'A Jotform API key is required to clone the post-event survey from the template.',
-      );
-    }
-    await this.createSurveyFromJotformTemplate({
-      programId,
-      templateFormId: postTemplate,
-      title: `${programTitle} - Post Event Survey`,
-      type: 'FEEDBACK',
-    });
-  }
-
-  /**
-   * Link program to an existing Jotform for post-event (no clone; webhook should be configured on that form if needed).
-   */
-  private async attachSharedPostEventSurvey(
-    programId: string,
-    programTitle: string,
-    formIdRaw: string,
-  ) {
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-    });
-    if (!program) throw new BadRequestException('Program not found');
-
-    const formId = this.normalizeJotformFormId(formIdRaw);
-    if (!formId) {
-      throw new BadRequestException(
-        'Invalid JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID',
-      );
-    }
-
-    const jotformFormUrl = `https://communityhealthmedia.jotform.com/${formId}`;
-    await this.prisma.survey.create({
-      data: {
-        programId,
-        title: `${programTitle} - Post Event Survey`,
-        jotformFormId: formId,
-        questions: { source: 'jotform', formId, sharedPostEvent: true },
-        type: 'FEEDBACK',
-        required: true,
-      },
-    });
-    await this.prisma.program.update({
-      where: { id: programId },
-      data: { jotformSurveyUrl: jotformFormUrl },
-    });
-    this.logger.log(
-      `Shared post-event Jotform for program ${programId}: form ${formId}`,
-    );
-  }
-
-  /** Accepts a numeric id or a full Jotform URL. */
-  private normalizeJotformFormId(raw: string): string {
-    const s = raw.trim();
-    if (!s) return '';
-    const fromUrl = s.match(/jotform\.com\/+(\d+)/i);
-    if (fromUrl?.[1]) return fromUrl[1];
-    return /^\d+$/.test(s) ? s : '';
-  }
-
-  /** Clone a Jotform template for webinar invitation/registration; webhook matches intakes to this program. */
-  async createInvitationFormFromJotformTemplate(
-    programId: string,
-    templateFormId: string,
-    titleHint?: string,
-  ) {
-    const program = await this.prisma.program.findUnique({
-      where: { id: programId },
-    });
-    if (!program) throw new BadRequestException('Program not found');
-
-    const {
-      formId,
-      title: clonedTitle,
-      url: jotformFormUrl,
-    } = await this.jotformService.cloneForm(templateFormId);
-    await this.jotformService.addWebhook(formId);
-    await this.prisma.program.update({
-      where: { id: programId },
-      data: { jotformIntakeFormUrl: jotformFormUrl },
-    });
-    this.logger.log(
-      `Invitation Jotform for program ${programId}: form ${formId} (${titleHint ?? clonedTitle})`,
-    );
-    return { formId, jotformFormUrl };
+    return this.attachSurveysForNewWebinar(programId, programTitle);
   }
 
   /**

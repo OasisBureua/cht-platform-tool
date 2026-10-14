@@ -4,7 +4,6 @@ import { SurveyType } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
-import { JotformService } from '../jotform/jotform.service';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from './surveys.service';
@@ -81,7 +80,6 @@ describe('SurveysService.cloneSurveyOntoProgram', () => {
       {} as QueueService,
       { get: jest.fn() } as unknown as ConfigService,
       {} as OutboundSyncService,
-      {} as JotformService,
       {} as FormJotformProgressService,
       {} as ProgramRegistrationsService,
     );

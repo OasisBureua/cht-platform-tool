@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
-import { JotformService } from '../jotform/jotform.service';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from './surveys.service';
@@ -73,7 +72,6 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       {} as QueueService,
       { get: jest.fn() } as unknown as ConfigService,
       {} as OutboundSyncService,
-      {} as JotformService,
       {} as FormJotformProgressService,
       {} as ProgramRegistrationsService,
     );
@@ -245,20 +243,15 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     expect(prisma.survey.delete).not.toHaveBeenCalled();
   });
 
-  it('blocks legacy Jotform conversion when the survey has responses', async () => {
-    prisma.survey.findFirst.mockResolvedValue({
-      id: 'feedback-1',
-      _count: { responses: 1 },
-    });
-
+  it('rejects legacy Jotform conversion (CPR-5: create/attach removed)', async () => {
     await expect(
       service.applyManualPostEventJotform(
         'program-1',
         'Program One',
         '123456789012345',
       ),
-    ).rejects.toThrow('already has responses');
-    expect(prisma.survey.deleteMany).not.toHaveBeenCalled();
+    ).rejects.toThrow(/no longer supported/i);
+    expect(prisma.survey.findFirst).not.toHaveBeenCalled();
     expect(prisma.survey.update).not.toHaveBeenCalled();
   });
 });
