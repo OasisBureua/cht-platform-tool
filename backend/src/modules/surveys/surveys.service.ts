@@ -636,10 +636,15 @@ export class SurveysService {
             specialty: true,
           },
         },
+        publicRegistration: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
       },
     });
 
-    const userIds = responses.map((r) => r.userId);
+    const userIds = responses
+      .map((r) => r.userId)
+      .filter((id): id is string => id !== null);
     const registrations =
       survey.programId && userIds.length > 0
         ? await this.prisma.programRegistration.findMany({
@@ -672,8 +677,13 @@ export class SurveysService {
         score: r.score,
         schemaVersion: r.schemaVersion,
         answers: r.answers,
-        user: r.user,
-        registration: regByUser.get(r.userId) ?? null,
+        // Public registrants have no account: identify them by the name and
+        // email they registered with.
+        user: r.user ?? publicRespondent(r.publicRegistration),
+        source: (r.publicRegistration ? 'public' : 'account') as
+          | 'public'
+          | 'account',
+        registration: r.userId ? (regByUser.get(r.userId) ?? null) : null,
       })),
       pagination: {
         page,
@@ -803,8 +813,10 @@ export class SurveysService {
         submittedAt: r.submittedAt,
         schemaVersion: r.schemaVersion,
         answers: (r.answers ?? {}) as Record<string, unknown>,
-        user: r.user,
-        registration: r.registration,
+        user: r.user ?? { email: '', firstName: '', lastName: '' },
+        registration:
+          r.registration ??
+          (r.source === 'public' ? { status: 'PUBLIC' } : null),
       })),
     });
     return {
@@ -1505,4 +1517,30 @@ export class SurveysService {
     if (!user) return {};
     return buildProfilePrefill(survey.questions, user);
   }
+}
+
+/** A public registrant shown in place of an account in admin response lists. */
+function publicRespondent(
+  reg: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  } | null,
+): {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  specialty: string | null;
+} | null {
+  return reg
+    ? {
+        id: `public:${reg.id}`,
+        email: reg.email,
+        firstName: reg.firstName,
+        lastName: reg.lastName,
+        specialty: null,
+      }
+    : null;
 }

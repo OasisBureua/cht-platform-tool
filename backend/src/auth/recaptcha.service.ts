@@ -10,7 +10,7 @@ interface SiteverifyResponse {
   'error-codes'?: string[];
 }
 
-export type RecaptchaAction = 'login' | 'signup';
+export type RecaptchaAction = 'login' | 'signup' | 'public_registration';
 
 /** Only forward a client IP Google can use; skip ALB / private / malformed. */
 function publicClientIp(remoteIp?: string): string | undefined {
