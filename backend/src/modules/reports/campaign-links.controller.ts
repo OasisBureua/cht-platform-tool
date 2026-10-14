@@ -12,6 +12,7 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { CampaignExportIngestService } from '../content-hub/campaign-export-ingest.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LinkCampaignDto } from './dto/link-campaign.dto';
 
@@ -45,7 +46,10 @@ export type CampaignLinkProgram = {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class CampaignLinksController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly exportIngest: CampaignExportIngestService,
+  ) {}
 
   @Get('programs')
   @ApiOperation({
@@ -60,22 +64,34 @@ export class CampaignLinksController {
   }
 
   @Patch('programs/:id')
-  @ApiOperation({ summary: 'Link or unlink a Program to a Hub campaign' })
+  @ApiOperation({
+    summary:
+      'Link or unlink a Program to a Hub campaign (triggers Hub export-ingest)',
+  })
   async linkProgram(
     @Param('id') id: string,
     @Body() body: LinkCampaignDto,
   ): Promise<CampaignLinkProgram> {
     const exists = await this.prisma.program.findUnique({
       where: { id },
-      select: { id: true },
+      select: { id: true, campaignId: true },
     });
     if (!exists) throw new NotFoundException('Program not found');
 
+    const nextCampaignId = body.campaignId?.trim() || null;
     const updated = await this.prisma.program.update({
       where: { id },
-      data: { campaignId: body.campaignId?.trim() || null },
+      data: { campaignId: nextCampaignId },
       select: PROGRAM_LINK_SELECT,
     });
+
+    // CPR-41 — refresh warehouse for the new campaign only (async).
+    // Unlink skips ingest: upsert does not delete orphaned warehouse rows.
+    this.exportIngest.triggerForProgramLink({
+      previousCampaignId: exists.campaignId,
+      nextCampaignId,
+    });
+
     return toLinkProgram(updated);
   }
 }

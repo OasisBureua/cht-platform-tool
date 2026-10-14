@@ -20,6 +20,12 @@ export type ContentHubGetOptions = {
   cache?: boolean;
 };
 
+export type ContentHubWriteOptions = {
+  /** Per-request axios timeout (ms). */
+  timeoutMs?: number;
+  params?: Record<string, string | number | boolean | undefined>;
+};
+
 /**
  * Server-to-server client for Content Hub public + admin APIs.
  * Auth: Cognito M2M Bearer only (no X-API-Key).
@@ -157,12 +163,20 @@ export class ContentHubClientService {
     return this.requestOnBase<T>('POST', this.baseUrl, path, body);
   }
 
-  async postAdmin<T>(path: string, body?: unknown): Promise<T> {
-    return this.requestOnBase<T>('POST', this.adminBaseUrl, path, body);
+  async postAdmin<T>(
+    path: string,
+    body?: unknown,
+    options?: ContentHubWriteOptions,
+  ): Promise<T> {
+    return this.requestOnBase<T>('POST', this.adminBaseUrl, path, body, options);
   }
 
   async patchAdmin<T>(path: string, body: unknown): Promise<T> {
     return this.requestOnBase<T>('PATCH', this.adminBaseUrl, path, body);
+  }
+
+  async putAdmin<T>(path: string, body: unknown): Promise<T> {
+    return this.requestOnBase<T>('PUT', this.adminBaseUrl, path, body);
   }
 
   async deleteAdmin(path: string): Promise<void> {
@@ -170,15 +184,23 @@ export class ContentHubClientService {
   }
 
   private async requestOnBase<T>(
-    method: 'POST' | 'PATCH' | 'DELETE',
+    method: 'POST' | 'PATCH' | 'PUT' | 'DELETE',
     base: string,
     path: string,
     body?: unknown,
+    options?: ContentHubWriteOptions,
   ): Promise<T> {
     if (!base) {
       throw new UnauthorizedException('Content Hub base URL is not configured');
     }
-    const url = `${base}${path}`;
+    const qs = options?.params
+      ? new URLSearchParams(
+          Object.entries(options.params)
+            .filter(([, v]) => v !== undefined && v !== '')
+            .map(([k, v]) => [k, String(v)]),
+        ).toString()
+      : '';
+    const url = `${base}${path}${qs ? `?${qs}` : ''}`;
     const requestId = newContentHubRequestId();
 
     try {
@@ -188,6 +210,9 @@ export class ContentHubClientService {
           url,
           headers: await this.buildHeaders(requestId),
           data: body,
+          ...(options?.timeoutMs != null
+            ? { timeout: options.timeoutMs }
+            : {}),
         }),
       );
       return data;

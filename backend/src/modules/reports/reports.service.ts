@@ -18,6 +18,10 @@ import { SendMessageCommand } from '@aws-sdk/client-sqs';
 import { GetObjectCommand } from '@aws-sdk/client-s3';
 import { randomUUID } from 'crypto';
 import { Readable } from 'stream';
+import {
+  CampaignExportIngestService,
+  type ExportIngestRunView,
+} from '../content-hub/campaign-export-ingest.service';
 import { ReportsAwsClients } from './reports-aws.clients';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { CreateReportDto } from './dto/create-report.dto';
@@ -58,10 +62,22 @@ export class ReportsService {
     private readonly config: ConfigService,
     private readonly aws: ReportsAwsClients,
     private readonly recipients: ReportRecipientsService,
+    private readonly exportIngest: CampaignExportIngestService,
   ) {}
 
   isConfigured(): boolean {
     return !!(this.tableName() && this.queueUrl());
+  }
+
+  /** CPR-41 — pull fresh warehouse data (blocked while a report is in flight). */
+  async refreshCampaignData(
+    campaignId: string,
+  ): Promise<ExportIngestRunView> {
+    this.requireConfigured();
+    const id = campaignId.trim();
+    if (!id) throw new BadRequestException('campaignId is required');
+    await this.assertNoInFlightReport(id, DEFAULT_TEMPLATE_TYPE);
+    return this.exportIngest.ingestCampaign(id, 'platform_refresh');
   }
 
   async create(dto: CreateReportDto, requestedBy: string): Promise<ReportView> {
@@ -78,6 +94,7 @@ export class ReportsService {
       now,
       dto.dateRangeDays,
     );
+    // Validate cheap inputs before lock / Hub ingest.
     const notifyEmails = await this.recipients.requireAdminEmails(
       dto.notifyEmails,
     );
@@ -117,6 +134,10 @@ export class ReportsService {
       ),
     );
 
+    // After lock: best-effort Hub sync so a second Generate cannot rewrite mid-report,
+    // and a Hub 503 does not block enqueue (data may be stale).
+    const warehouseSync = await this.syncWarehouseBestEffort(campaignId);
+
     try {
       await this.enqueue(reportId, campaignId);
     } catch (err) {
@@ -131,14 +152,15 @@ export class ReportsService {
     }
 
     this.logger.log(
-      `[reports] queued reportId=${reportId} campaignId=${campaignId} template=${templateType}`,
+      `[reports] queued reportId=${reportId} campaignId=${campaignId} template=${templateType} warehouseSync=${warehouseSync}`,
     );
-    return this.toView(report);
+    return this.toView(report, { warehouseSync });
   }
 
   async get(reportId: string, campaignId?: string): Promise<ReportView> {
     this.requireConfigured();
-    return this.toView(await this.requireReport(reportId, campaignId));
+    const report = await this.requireReport(reportId, campaignId);
+    return this.toView(await this.expireIfStale(report));
   }
 
   async list(campaignId: string): Promise<ReportView[]> {
@@ -164,8 +186,10 @@ export class ReportsService {
       startKey = page.LastEvaluatedKey;
     } while (startKey && items.length < LIST_MAX_ITEMS);
 
-    return items
-      .slice(0, LIST_MAX_ITEMS)
+    const current = await Promise.all(
+      items.slice(0, LIST_MAX_ITEMS).map((item) => this.expireIfStale(item)),
+    );
+    return current
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .map((item) => this.toView(item));
   }
@@ -233,6 +257,10 @@ export class ReportsService {
       throw err;
     }
 
+    const warehouseSync = await this.syncWarehouseBestEffort(
+      current.campaign_id,
+    );
+
     try {
       await this.enqueue(reportId, current.campaign_id);
     } catch (err) {
@@ -251,9 +279,10 @@ export class ReportsService {
     }
 
     this.logger.log(
-      `[reports] regenerate queued reportId=${reportId} campaignId=${current.campaign_id} editAttempts=${(current.edit_attempts ?? 0) + 1}/${max}`,
+      `[reports] regenerate queued reportId=${reportId} campaignId=${current.campaign_id} editAttempts=${(current.edit_attempts ?? 0) + 1}/${max} warehouseSync=${warehouseSync}`,
     );
-    return this.get(reportId, current.campaign_id);
+    const view = await this.get(reportId, current.campaign_id);
+    return { ...view, warehouseSync };
   }
 
   /** Streams the PDF through the API so the S3 location is never exposed. */
@@ -386,22 +415,20 @@ export class ReportsService {
     reportId: string,
     now: Date,
   ) {
-    const nowSec = Math.floor(now.getTime() / 1000);
     const lock: LockItem = {
       campaign_id: campaignId,
       report_id: `${LOCK_PREFIX}${templateType}`,
       locked_report_id: reportId,
       template_type: templateType,
-      expires_at: nowSec + this.lockTtlSeconds(),
       created_at: now.toISOString(),
     };
     return {
       Put: {
         TableName: this.tableName(),
         Item: lock,
-        ConditionExpression:
-          'attribute_not_exists(report_id) OR expires_at < :nowSec',
-        ExpressionAttributeValues: { ':nowSec': nowSec },
+        // No time-based takeover: a report waiting hours for its transcript
+        // keeps the lock. withLockRetry frees it once the holder is final or stale.
+        ConditionExpression: 'attribute_not_exists(report_id)',
       },
     };
   }
@@ -466,7 +493,8 @@ export class ReportsService {
     );
     const holderItem = holder.Item as ReportItem | undefined;
     if (holderItem && !TERMINAL_STATUSES.has(holderItem.status)) {
-      return false;
+      const current = await this.expireIfStale(holderItem);
+      if (!TERMINAL_STATUSES.has(current.status)) return false;
     }
 
     return this.releaseLock(campaignId, templateType, lock.locked_report_id);
@@ -564,7 +592,60 @@ export class ReportsService {
     }
   }
 
-  private toView(item: ReportItem): ReportView {
+  /** CPR-41 — Hub sync after lock; never fails Generate/Regenerate. */
+  private async syncWarehouseBestEffort(
+    campaignId: string,
+  ): Promise<'ok' | 'failed'> {
+    try {
+      await this.exportIngest.ingestCampaign(campaignId, 'platform_generate');
+      return 'ok';
+    } catch (err) {
+      this.logger.warn(
+        `[reports] warehouse sync failed campaignId=${campaignId}: ${errMessage(err)}`,
+      );
+      return 'failed';
+    }
+  }
+
+  /** Block Refresh data while this campaign/template already has a live report. */
+  private async assertNoInFlightReport(
+    campaignId: string,
+    templateType: string,
+  ): Promise<void> {
+    const res = await this.aws.dynamodb.send(
+      new GetCommand({
+        TableName: this.tableName(),
+        Key: {
+          campaign_id: campaignId,
+          report_id: `${LOCK_PREFIX}${templateType}`,
+        },
+        ConsistentRead: true,
+      }),
+    );
+    const lock = res.Item as LockItem | undefined;
+    if (!lock) return;
+
+    const holder = await this.aws.dynamodb.send(
+      new GetCommand({
+        TableName: this.tableName(),
+        Key: { campaign_id: campaignId, report_id: lock.locked_report_id },
+        ConsistentRead: true,
+      }),
+    );
+    const holderItem = holder.Item as ReportItem | undefined;
+    if (!holderItem) return;
+    const current = await this.expireIfStale(holderItem);
+    if (!TERMINAL_STATUSES.has(current.status)) {
+      throw new ConflictException(
+        'A report is already being generated for this campaign; try Refresh data after it finishes',
+      );
+    }
+  }
+
+  private toView(
+    item: ReportItem,
+    extras?: { warehouseSync?: 'ok' | 'failed' },
+  ): ReportView {
     return {
       reportId: item.report_id,
       campaignId: item.campaign_id,
@@ -584,7 +665,149 @@ export class ReportsService {
       downloadAvailable: item.status === 'complete' && !!item.s3_key_pdf,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
+      ...(extras?.warehouseSync
+        ? { warehouseSync: extras.warehouseSync }
+        : {}),
     };
+  }
+
+  /**
+   * Claim the report-ready email for `version` (CPR-35). The conditional
+   * write records notified_version, so it succeeds once per version: a
+   * retried call from cht-reports gets null and sends nothing. Throws
+   * NotFound for an unknown report, Conflict if the row is not complete at
+   * that version.
+   */
+  async claimReadyNotification(
+    campaignId: string,
+    reportId: string,
+    version: number,
+  ): Promise<ReportItem | null> {
+    this.requireConfigured();
+    if (reportId.startsWith(LOCK_PREFIX)) {
+      throw new NotFoundException('Report not found');
+    }
+    try {
+      const res = await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: campaignId, report_id: reportId },
+          UpdateExpression: 'SET notified_version = :v, notified_at = :now',
+          ConditionExpression:
+            'attribute_exists(report_id) AND #status = :complete AND #version = :v AND (attribute_not_exists(notified_version) OR notified_version < :v)',
+          ExpressionAttributeNames: {
+            '#status': 'status',
+            '#version': 'version',
+          },
+          ExpressionAttributeValues: {
+            ':v': version,
+            ':complete': 'complete',
+            ':now': new Date().toISOString(),
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      );
+      return res.Attributes as ReportItem;
+    } catch (err) {
+      if ((err as AwsError)?.name !== 'ConditionalCheckFailedException') {
+        throw err;
+      }
+      const report = await this.requireReport(reportId, campaignId);
+      if ((report.notified_version ?? 0) >= version) return null;
+      throw new ConflictException(
+        `Report is not complete at version ${version}`,
+      );
+    }
+  }
+
+  /** Undo a claim when no email could be sent, so the caller's retry can send. */
+  async releaseReadyNotification(
+    campaignId: string,
+    reportId: string,
+    version: number,
+  ): Promise<void> {
+    try {
+      await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: campaignId, report_id: reportId },
+          UpdateExpression: 'SET notified_version = :prev',
+          ConditionExpression: 'notified_version = :v',
+          ExpressionAttributeValues: { ':v': version, ':prev': version - 1 },
+        }),
+      );
+    } catch (err) {
+      this.logger.warn(
+        `[reports] could not release ready notification reportId=${reportId} v${version}: ${errMessage(err)}`,
+      );
+    }
+  }
+
+  /**
+   * An in-flight report with no progress for `staleMinutes` is stuck: the worker
+   * crashed, or its message went to the DLQ. Mark it failed and free the campaign
+   * lock so Generate works again. Conditional on updated_at, so a report that just
+   * moved on is left alone.
+   */
+  private async expireIfStale(
+    item: ReportItem,
+    now: Date = new Date(),
+  ): Promise<ReportItem> {
+    if (TERMINAL_STATUSES.has(item.status)) return item;
+    const minutes = this.staleMinutes();
+    const lastProgress = Date.parse(item.updated_at);
+    if (
+      Number.isNaN(lastProgress) ||
+      now.getTime() - lastProgress < minutes * 60_000
+    ) {
+      return item;
+    }
+
+    const lastError = `Timed out: no progress for ${minutes} minutes.`;
+    try {
+      const res = await this.aws.dynamodb.send(
+        new UpdateCommand({
+          TableName: this.tableName(),
+          Key: { campaign_id: item.campaign_id, report_id: item.report_id },
+          UpdateExpression:
+            'SET #status = :failed, last_error = :err, updated_at = :now',
+          ConditionExpression: '#status = :seen AND updated_at = :seenAt',
+          ExpressionAttributeNames: { '#status': 'status' },
+          ExpressionAttributeValues: {
+            ':failed': 'failed',
+            ':err': lastError,
+            ':now': now.toISOString(),
+            ':seen': item.status,
+            ':seenAt': item.updated_at,
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      );
+      this.logger.warn(
+        `[reports] timed out reportId=${item.report_id} campaignId=${item.campaign_id} status=${item.status}`,
+      );
+      await this.releaseLock(
+        item.campaign_id,
+        item.template_type || DEFAULT_TEMPLATE_TYPE,
+        item.report_id,
+      );
+      return (
+        (res.Attributes as ReportItem | undefined) ?? {
+          ...item,
+          status: 'failed',
+          last_error: lastError,
+          updated_at: now.toISOString(),
+        }
+      );
+    } catch (err) {
+      if ((err as AwsError)?.name === 'ConditionalCheckFailedException') {
+        return item;
+      }
+      this.logger.warn(
+        `[reports] could not time out reportId=${item.report_id}: ${errMessage(err)}`,
+      );
+      return item;
+    }
   }
 
   private requireConfigured(): void {
@@ -615,8 +838,8 @@ export class ReportsService {
     return this.config.get<number>('reports.maxEditAttempts') ?? 3;
   }
 
-  private lockTtlSeconds(): number {
-    return this.config.get<number>('reports.lockTtlSeconds') ?? 1800;
+  private staleMinutes(): number {
+    return this.config.get<number>('reports.staleMinutes') ?? 20;
   }
 }
 

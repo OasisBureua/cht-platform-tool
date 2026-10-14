@@ -9,7 +9,11 @@ import { ChevronLeft, Video, ExternalLink, MonitorPlay } from 'lucide-react';
 import { format } from 'date-fns';
 import { isPostEventSurveyUnlocked } from '../utils/post-event-survey';
 import PostEventParticipantFlow from '../components/programs/PostEventParticipantFlow';
-import { buildProgramRegisterHref, readIntakeSubmissionIdFromSearch } from '../utils/intake-return';
+import {
+  buildProgramRegisterHref,
+  FROM_SESSION_DETAIL_STATE,
+  readIntakeSubmissionIdFromSearch,
+} from '../utils/intake-return';
 import { isRegistrationClosed } from '../utils/live-session-timing';
 import { programHasHonorarium } from '../utils/program-has-honorarium';
 import {
@@ -222,6 +226,7 @@ export default function OfficeHoursDetail() {
             ) : needsRegistrationWizard ? (
               <Link
                 to={`/app/office-hours/${id}/register`}
+                state={FROM_SESSION_DETAIL_STATE}
                 className="inline-flex w-fit items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-[background-color,color,transform] duration-200 ease-[cubic-bezier(0.2,0,0,1)] hover:bg-brand-700 active:scale-[0.96]"
               >
                 Register for this session

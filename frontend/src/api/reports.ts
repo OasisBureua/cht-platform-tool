@@ -6,6 +6,7 @@ export type ReportStatus =
   | 'generating'
   | 'rendering'
   | 'uploading'
+  | 'waiting_for_transcript'
   | 'complete'
   | 'failed';
 
@@ -15,6 +16,7 @@ export const REPORT_IN_FLIGHT: ReadonlySet<ReportStatus> = new Set([
   'generating',
   'rendering',
   'uploading',
+  'waiting_for_transcript',
 ]);
 
 export type DateRangeDays = 30 | 60 | 90;
@@ -38,6 +40,8 @@ export type Report = {
   downloadAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /** Set on create/regenerate when Hub sync was attempted (CPR-41). */
+  warehouseSync?: 'ok' | 'failed';
 };
 
 export type CreateReportInput = {
@@ -156,6 +160,17 @@ export const reportsApi = {
     );
     return data;
   },
+
+  /** CPR-41 — sync platform export into Hub for this campaign (no report generate). */
+  refreshData: async (
+    campaignId: string,
+  ): Promise<{ status?: string; sessionsUpserted?: number }> => {
+    const { data } = await apiClient.post<{
+      status?: string;
+      sessionsUpserted?: number;
+    }>(`/reports/campaigns/${encodeURIComponent(campaignId)}/refresh-data`);
+    return data;
+  },
 };
 
 export const campaignLinksApi = {
@@ -175,5 +190,31 @@ export const campaignLinksApi = {
       { campaignId },
     );
     return data;
+  },
+};
+
+/** Hub KOL attached to a campaign; the report's KOL section uses these (CPR-45). */
+export interface CampaignKol {
+  id: string;
+  slug: string;
+  name: string;
+  title: string | null;
+  institution: string | null;
+}
+
+export const campaignKolsApi = {
+  list: async (campaignId: string): Promise<CampaignKol[]> => {
+    const { data } = await apiClient.get<{ items: CampaignKol[] }>(
+      `/admin/content-hub/campaigns/${campaignId}/kols`,
+    );
+    return data?.items ?? [];
+  },
+
+  set: async (campaignId: string, kolIds: string[]): Promise<CampaignKol[]> => {
+    const { data } = await apiClient.put<{ items: CampaignKol[] }>(
+      `/admin/content-hub/campaigns/${campaignId}/kols`,
+      { kolIds },
+    );
+    return data?.items ?? [];
   },
 };

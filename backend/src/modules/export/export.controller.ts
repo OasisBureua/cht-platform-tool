@@ -40,7 +40,7 @@ export class ExportController {
   @ApiOperation({
     summary: 'Campaign input packet for Hub ingest',
     description:
-      'Requires Cognito M2M scope platform/export.read. Returns sessions/attendance/surveys for Programs linked to campaignId only. URL-encode campaign ids (e.g. AZ-25-01_LIV001).',
+      'Requires Cognito M2M scope platform/export.read. Returns sessions, rolled attendance (watch time, specialty/institution), registrations, and surveys for Programs linked to campaignId only. URL-encode campaign ids (e.g. AZ-25-01_LIV001).',
   })
   async getCampaignInputPacket(
     @Param('campaignId') campaignId: string,

@@ -2,8 +2,10 @@
 // Platform reports API) and the Program → Hub campaign link.
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '../../../../api/admin';
 import {
   REPORT_IN_FLIGHT,
+  campaignKolsApi,
   campaignLinksApi,
   reportsApi,
   type CreateReportInput,
@@ -17,6 +19,8 @@ export const reportKeys = {
   list: (campaignId: string) => [KEY, 'reports', campaignId] as const,
   recipients: () => [KEY, 'report-recipients'] as const,
   linkPrograms: () => [KEY, 'campaign-link-programs'] as const,
+  campaignKols: (campaignId: string) => [KEY, 'campaign-kols', campaignId] as const,
+  kolRoster: () => [KEY, 'kol-roster'] as const,
 };
 
 export function hasInFlight(reports: Report[] | undefined): boolean {
@@ -71,6 +75,13 @@ export function useDownloadReport() {
   return useMutation({ mutationFn: (report: Report) => reportsApi.download(report) });
 }
 
+/** CPR-41 — pull platform data into Hub without generating a report. */
+export function useRefreshCampaignData(campaignId: string) {
+  return useMutation({
+    mutationFn: () => reportsApi.refreshData(campaignId),
+  });
+}
+
 export function useReportRecipients(enabled = true) {
   return useQuery({
     queryKey: reportKeys.recipients(),
@@ -100,5 +111,31 @@ export function useSetProgramCampaign() {
           prev?.map((p) => (p.id === updated.id ? updated : p)),
       );
     },
+  });
+}
+
+export function useCampaignKols(campaignId: string) {
+  return useQuery({
+    queryKey: reportKeys.campaignKols(campaignId),
+    queryFn: () => campaignKolsApi.list(campaignId),
+    enabled: !!campaignId,
+  });
+}
+
+export function useSetCampaignKols(campaignId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (kolIds: string[]) => campaignKolsApi.set(campaignId, kolIds),
+    onSuccess: (kols) => qc.setQueryData(reportKeys.campaignKols(campaignId), kols),
+  });
+}
+
+/** Full Hub KOL roster for the picker. */
+export function useKolRoster(enabled = true) {
+  return useQuery({
+    queryKey: reportKeys.kolRoster(),
+    queryFn: async () => (await adminApi.getKolNetwork()).items,
+    enabled,
+    staleTime: 5 * 60_000,
   });
 }

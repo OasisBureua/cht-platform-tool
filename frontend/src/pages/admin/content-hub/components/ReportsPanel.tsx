@@ -31,20 +31,27 @@ import {
   useCampaignReports,
   useCreateReport,
   useDownloadReport,
+  useRefreshCampaignData,
   useRegenerateReport,
   useReportRecipients,
 } from '../lib/reportHooks';
+import { CampaignKolsCard } from './CampaignKolsCard';
 import { RecipientPicker } from './RecipientPicker';
 import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
 
+/**
+ * CPR-44 — keep in sync with Hub `schemas/report_sources.py` REPORT_SOURCE_KEYS.
+ * `survey` platform uploads map to `surveys`. Livestream omitted until CPR-33.
+ */
 const REPORT_SOURCES: Array<{ value: string; label: string }> = [
   { value: 'hubspot', label: 'HubSpot' },
   { value: 'linkedin', label: 'LinkedIn' },
   { value: 'meta', label: 'Meta' },
   { value: 'youtube', label: 'YouTube' },
-  { value: 'livestream', label: 'Livestream' },
   { value: 'sessions', label: 'Zoom sessions' },
+  { value: 'attendance', label: 'Attendance' },
+  { value: 'kols', label: 'Hub KOLs' },
   { value: 'surveys', label: 'Surveys' },
 ];
 
@@ -62,6 +69,7 @@ const STATUS_LABEL: Record<ReportStatus, string> = {
   generating: 'Writing report',
   rendering: 'Printing PDF',
   uploading: 'Saving PDF',
+  waiting_for_transcript: "Waiting for Zoom's transcript…",
   complete: 'Ready',
   failed: 'Failed',
 };
@@ -79,6 +87,12 @@ function windowLabel(r: Report): string {
   const end = fmtDate(r.windowEnd);
   if (r.dateRangeDays) return `Last ${r.dateRangeDays} days · to ${end}`;
   return r.windowStart ? `${fmtDate(r.windowStart)} – ${end}` : `Campaign to ${end}`;
+}
+
+/** First line of the worker's error, capped, so admins see why without a stack dump. */
+function failureReason(lastError: string): string {
+  const line = lastError.split('\n')[0].trim();
+  return line.length > 200 ? `${line.slice(0, 200)}…` : line;
 }
 
 function StatusBadge({ status }: { status: ReportStatus }) {
@@ -122,6 +136,7 @@ function GenerateCard({
 
   const recipients = useReportRecipients();
   const create = useCreateReport(campaignId);
+  const refreshData = useRefreshCampaignData(campaignId);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -135,15 +150,34 @@ function GenerateCard({
         notifyEmails: notify,
       },
       {
-        onSuccess: () =>
+        onSuccess: (report) =>
           toast({
             title: 'Report queued',
-            description: 'Generation runs in the background. Its status updates in Report history.',
+            description:
+              report.warehouseSync === 'failed'
+                ? 'Queued, but Hub data sync failed — the report may use stale warehouse data.'
+                : 'Generation runs in the background. Its status updates in Report history.',
           }),
         onError: async (err) =>
           setError(await reportErrorMessage(err, 'Could not queue the report. Try again shortly.')),
       },
     );
+  };
+
+  const onRefreshData = () => {
+    setError(null);
+    refreshData.mutate(undefined, {
+      onSuccess: (run) =>
+        toast({
+          title: 'Campaign data refreshed',
+          description:
+            run.status === 'success'
+              ? `Hub warehouse updated${typeof run.sessionsUpserted === 'number' ? ` (${run.sessionsUpserted} sessions)` : ''}.`
+              : 'Hub ingest finished.',
+        }),
+      onError: async (err) =>
+        setError(await reportErrorMessage(err, 'Could not refresh campaign data.')),
+    });
   };
 
   return (
@@ -215,13 +249,26 @@ function GenerateCard({
         {error ? <ZoomAlert tone="error">{error}</ZoomAlert> : null}
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button onClick={submit} disabled={busy || create.isPending || sources.length === 0}>
+          <Button onClick={submit} disabled={busy || create.isPending || refreshData.isPending || sources.length === 0}>
             {create.isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             ) : (
               <Sparkles className="h-4 w-4" aria-hidden />
             )}
-            {create.isPending ? 'Queuing…' : 'Generate report'}
+            {create.isPending ? 'Syncing & queuing…' : 'Generate report'}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRefreshData}
+            disabled={busy || refreshData.isPending || create.isPending}
+          >
+            {refreshData.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+            ) : (
+              <RefreshCw className="h-4 w-4" aria-hidden />
+            )}
+            {refreshData.isPending ? 'Refreshing…' : 'Refresh data'}
           </Button>
           {busy ? (
             <p className="text-sm text-muted-foreground">
@@ -254,8 +301,14 @@ function RegenerateForm({
     regenerate.mutate(
       { reportId: report.reportId, editInstructions: instructions },
       {
-        onSuccess: () => {
-          toast({ title: 'Regenerating report' });
+        onSuccess: (next) => {
+          toast({
+            title: 'Regenerating report',
+            description:
+              next.warehouseSync === 'failed'
+                ? 'Queued, but Hub data sync failed — the report may use stale warehouse data.'
+                : undefined,
+          });
           onDone();
         },
         onError: async (err) =>
@@ -337,7 +390,7 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
                 : ''}
             </p>
             {report.status === 'failed' && report.lastError ? (
-              <p className="text-xs text-destructive">Generation failed. Try generating a new report.</p>
+              <p className="text-xs text-destructive">Generation failed: {failureReason(report.lastError)}</p>
             ) : null}
           </div>
         </div>
@@ -399,6 +452,8 @@ export default function ReportsPanel({
         busy={inFlight.length > 0}
         onGoToPrograms={onGoToPrograms}
       />
+
+      <CampaignKolsCard campaignId={campaignId} />
 
       <ZoomSectionCard
         title="Report history"

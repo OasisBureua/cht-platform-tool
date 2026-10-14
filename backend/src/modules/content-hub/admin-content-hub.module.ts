@@ -4,7 +4,6 @@ import { CacheModule } from '../../cache/cache.module';
 import { HubSpotModule } from '../hubspot/hubspot.module';
 import { WebinarsModule } from '../webinars/webinars.module';
 import { AdminContentHubController } from './admin-content-hub.controller';
-import { ContentHubCampaignService } from './content-hub-campaign.service';
 import { ContentHubModule } from './content-hub.module';
 
 @Module({
@@ -16,7 +15,6 @@ import { ContentHubModule } from './content-hub.module';
     WebinarsModule,
   ],
   controllers: [AdminContentHubController],
-  providers: [ContentHubCampaignService],
-  exports: [ContentHubCampaignService],
+  exports: [ContentHubModule],
 })
 export class AdminContentHubModule {}

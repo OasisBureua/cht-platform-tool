@@ -67,7 +67,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
       statusCode: 403,
       code: TERMS_NOT_ACCEPTED_CODE,
       message:
-        'Please accept the Terms of Service and Privacy Policy to continue.',
+        'Please accept the Terms of Use and Privacy Policy to continue.',
     });
   }
 

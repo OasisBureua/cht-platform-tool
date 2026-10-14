@@ -9,6 +9,7 @@ import {
   Param,
   Patch,
   Post,
+  Put,
   Query,
   ServiceUnavailableException,
   UseGuards,
@@ -33,6 +34,7 @@ import {
   ContentHubCampaignService,
   type CampaignPlatform,
 } from './content-hub-campaign.service';
+import { SetCampaignKolsDto } from './dto/set-campaign-kols.dto';
 
 /** Platforms whose credentials and connection status live on CHT, not Content Hub. */
 const CHT_INTEGRATION_KEYS = new Set(['hubspot', 'livestream', 'survey']);
@@ -137,6 +139,25 @@ export class AdminContentHubController {
     await this.hubCall(() => this.campaigns.deleteCampaign(id));
     await this.afterHubWrite();
     return { deleted: true, id };
+  }
+
+  // ─── KOLs (CPR-45) ──────────────────────────────────────────────────────
+
+  @Get('campaigns/:id/kols')
+  @ApiOperation({ summary: 'Hub KOLs attached to the campaign' })
+  async listCampaignKols(@Param('id') id: string) {
+    return this.hubCall(() => this.campaigns.listCampaignKols(id));
+  }
+
+  @Put('campaigns/:id/kols')
+  @ApiOperation({
+    summary: 'Replace the Hub KOLs attached to the campaign (used by reports)',
+  })
+  async setCampaignKols(
+    @Param('id') id: string,
+    @Body() body: SetCampaignKolsDto,
+  ) {
+    return this.hubCall(() => this.campaigns.setCampaignKols(id, body.kolIds));
   }
 
   // ─── Platform data ───────────────────────────────────────────────────────

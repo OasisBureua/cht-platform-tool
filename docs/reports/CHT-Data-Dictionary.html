@@ -1,0 +1,693 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CHT Data Dictionary &amp; Metric Definitions</title>
+<style>
+  @page {
+    size: Letter landscape;
+    margin: 0.6in 0.6in 0.7in;
+    @bottom-left { content: "CHT Data Dictionary & Metric Definitions  |  v1.0  |  Confidential"; font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+  }
+  @page :first { size: Letter landscape; @bottom-left { content: none; } @bottom-right { content: none; } }
+  :root {
+    --ink: #14202e;
+    --muted: #5b6878;
+    --line: #dfe4ea;
+    --soft: #f4f6f9;
+    --brand: #0f6f7a;
+    --brand-soft: #e6f3f4;
+    --warn: #a16207;
+    --warn-soft: #fdf6e3;
+    --bad: #b42318;
+    --bad-soft: #fdecea;
+    --ok: #15803d;
+    --ok-soft: #e8f5ec;
+    --plan: #4338ca;
+    --plan-soft: #eef0fd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); font: 10pt/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif; background: #fff; }
+  main { margin: 0 auto; }
+  @media screen { body { background: #eef1f4; } main { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 56px 64px 96px; margin: 32px auto; max-width: 11in; } }
+
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; margin: 0; }
+  h2 { font-size: 16pt; margin: 26px 0 10px; padding-top: 6px; border-top: 2px solid var(--brand); break-after: avoid; }
+  h2 .num { color: var(--brand); margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 18px 0 6px; break-after: avoid; }
+  h4 { font-size: 10pt; margin: 14px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; break-after: avoid; }
+  p { margin: 6px 0 10px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  code { font: 8.4pt/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; border-bottom: 1px solid #c9d1da; }
+  td.k { font-weight: 600; white-space: nowrap; width: 1%; }
+
+  table.metrics { font-size: 8.4pt; line-height: 1.4; table-layout: fixed; }
+  table.metrics th, table.metrics td { padding: 5px 6px; }
+  table.metrics col.c1 { width: 12%; }
+  table.metrics col.c2 { width: 14%; }
+  table.metrics col.c3 { width: 17%; }
+  table.metrics col.c4 { width: 21%; }
+  table.metrics col.c5 { width: 13%; }
+  table.metrics col.c6 { width: 23%; }
+  table.metrics td:first-child { font-weight: 600; }
+  table.metrics tr.grp td { background: var(--brand-soft); color: var(--brand); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: 7.8pt; padding: 4px 6px; }
+  table.metrics code { font-size: 7.4pt; padding: 0 3px; }
+  table code { overflow-wrap: anywhere; }
+  .src { display: block; color: var(--muted); font-size: 7.2pt; margin-top: 2px; overflow-wrap: anywhere; }
+
+  table.dict { font-size: 8.4pt; }
+  table.dict td:first-child { white-space: nowrap; }
+
+  .cover { min-height: 6.9in; display: flex; flex-direction: column; break-after: page; }
+  .cover .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 9pt; }
+  .cover h1 { font-size: 32pt; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .cover .sub { font-size: 13pt; color: var(--muted); max-width: 6in; }
+  .cover .bar { height: 6px; width: 72px; background: var(--brand); border-radius: 3px; margin: 20px 0 20px; }
+  .cover .meta td { padding: 4px 8px; }
+  .cover .meta { margin-top: auto; }
+  .cover .meta table { font-size: 9.5pt; }
+  .cover .meta td:first-child { color: var(--muted); width: 1.6in; }
+
+  .callout { border-left: 3px solid var(--brand); background: var(--brand-soft); padding: 10px 14px; margin: 12px 0 16px; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout .t { font-weight: 600; margin-bottom: 2px; }
+
+  .pill { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 7pt; font-weight: 600; white-space: nowrap; vertical-align: 1px; }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.plan { background: var(--plan-soft); color: var(--plan); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 10px 0 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .card h4 { margin-top: 0; color: var(--brand); }
+  .card ul, .card p { margin-bottom: 0; }
+
+  .toc ol { list-style: none; padding: 0; columns: 2; column-gap: 28px; }
+  .toc li { margin: 4px 0; break-inside: avoid; }
+  .toc .num { color: var(--brand); font-weight: 600; display: inline-block; width: 24px; }
+
+  pre.diagram { font: 7.6pt/1.4 "SF Mono", Menlo, Consolas, monospace; background: var(--soft); border: 1px solid var(--line); border-radius: 6px; padding: 12px; white-space: pre; overflow: hidden; break-inside: avoid; }
+  .legend { font-size: 8.5pt; color: var(--muted); margin: -4px 0 12px; }
+  .pb { break-before: page; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- COVER -->
+<section class="cover">
+  <div class="eyebrow">CHT Platform &middot; Data Governance</div>
+  <h1>Data Dictionary &amp;<br>Metric Definitions</h1>
+  <div class="sub">What each reported number means, where it comes from, how it is calculated, how often it refreshes and where it is unreliable. Covers Platform, Content Hub, Reports and Companion.</div>
+  <div class="bar"></div>
+
+  <div class="callout">
+    <div class="t">How to read this document</div>
+    Section 2 is the one-page answer: every metric in the same six columns (Metric, Source, Definition, Calculation, Refresh, Known limitation). Section 3 shows how data moves between systems. Section 4 is the field-level dictionary for each repo. Section 6 proposes the definitions we should standardise on.
+  </div>
+
+  <div class="meta">
+    <table>
+      <tr><td>Version</td><td>1.0 (draft for product and data review)</td></tr>
+      <tr><td>Scope</td><td><code>develop</code> branch of each repo, read-only static review</td></tr>
+      <tr><td>Platform</td><td><code>cht-platform-tool</code> @ <code>ad32e73</code> (2026-10-09)</td></tr>
+      <tr><td>Content Hub</td><td><code>cht-content-hub</code> @ <code>72d245d</code> (2026-10-09)</td></tr>
+      <tr><td>Reports</td><td><code>cht-reports</code> @ <code>a641074</code> (2026-10-08, template 1.2.0)</td></tr>
+      <tr><td>Companion</td><td><code>cht-companion</code> @ <code>b9a0e7e</code> (2026-09-30)</td></tr>
+      <tr><td>Method</td><td>Each definition is traced to the code that computes it (file:line in grey). Items marked <em>inferred</em> depend on third-party API behaviour or runtime ordering that code alone cannot prove.</td></tr>
+      <tr><td>Classification</td><td>Confidential. Internal use only.</td></tr>
+    </table>
+  </div>
+</section>
+
+<section class="toc">
+  <h2 style="border-top:0;margin-top:0">Contents</h2>
+  <ol>
+    <li><span class="num">1</span>Summary</li>
+    <li><span class="num">2</span>Metric definitions</li>
+    <li><span class="num">3</span>Data lineage</li>
+    <li><span class="num">4</span>Data dictionary by repo</li>
+    <li><span class="num">5</span>Refresh schedule</li>
+    <li><span class="num">6</span>Conflicts and recommended definitions</li>
+    <li><span class="num">7</span>Known limitations (consolidated)</li>
+    <li><span class="num">8</span>Glossary</li>
+  </ol>
+</section>
+
+<!-- 1. SUMMARY -->
+<h2><span class="num">1</span>Summary</h2>
+<p>Most client reporting depends on three words: <strong>views</strong>, <strong>engagement</strong> and <strong>attendance</strong>. In the current code, "views" has five different meanings, "engagement" is not defined anywhere, and "attended" means "joined the Zoom session at least once, for any length of time". Every other number in the reports builds on these three, so they need to be defined first.</p>
+
+<div class="grid2">
+  <div class="card">
+    <h4>Views are platform-native lifetime totals</h4>
+    <p>YouTube <code>viewCount</code> and clip <code>view_count</code> are cumulative counts as of the last sync, not views inside the report window. No system collects watch time. The YouTube field labelled "average view duration" actually holds the video's length.</p>
+  </div>
+  <div class="card">
+    <h4>Engagement is undefined</h4>
+    <p>No repo computes an engagement count or rate. The only computed ratios are LinkedIn CTR and video completion rate. The funnel stage named "Engaged" is HubSpot landing-page views.</p>
+  </div>
+  <div class="card">
+    <h4>Attendance means any join</h4>
+    <p>One Zoom join event of any duration counts as attended and verifies the registrant. If a Zoom report import exists for a program, it replaces all webhook data for that program. Attendees seen only through webhooks have no duration, so they count as 0 minutes watched.</p>
+  </div>
+  <div class="card">
+    <h4>Refresh is mostly on demand</h4>
+    <p>In prod, Content Hub has no scheduled refresh: the weekday 14:00 UTC export ingest runs in dev only. YouTube and LinkedIn sync when an admin clicks Sync. Meta, livestream and survey platform data arrive by CSV upload. Nothing refreshes "daily" today.</p>
+  </div>
+  <div class="card">
+    <h4>Reports compute few numbers in code</h4>
+    <p>cht-reports computes attendance rate, attendee breakdowns and survey percentages itself. Platform performance (YouTube, LinkedIn, Meta) and HubSpot data are passed to the model as raw text, so the numbers in the narrative are not calculated deterministically.</p>
+  </div>
+  <div class="card">
+    <h4>Some screens disagree</h4>
+    <p>Examples: two different "total earnings" figures; video "complete" at 95% in the database but 100% in GA4; survey unlock after 60 minutes for some checks and 105 minutes for others; the funnel counts registration rows, not distinct people.</p>
+  </div>
+</div>
+
+<!-- 2. METRIC DEFINITIONS (landscape) -->
+<section class="wide">
+<h2 class="pb"><span class="num">2</span>Metric definitions</h2>
+<p class="legend">Status pills: <span class="pill ok">Computed</span> calculated in our code; <span class="pill warn">Native</span> passed through from a third-party API as-is; <span class="pill bad">Not defined</span> no implementation exists; <span class="pill plan">Proposed</span> see Section 6. File references are relative to each repo's backend source root.</p>
+
+<table class="metrics">
+  <colgroup><col class="c1"><col class="c2"><col class="c3"><col class="c4"><col class="c5"><col class="c6"></colgroup>
+  <thead><tr><th>Metric</th><th>Source</th><th>Definition</th><th>Calculation</th><th>Refresh</th><th>Known limitation</th></tr></thead>
+  <tbody>
+
+  <tr class="grp"><td colspan="6">Views</td></tr>
+  <tr>
+    <td>Views (YouTube, campaign) <span class="pill warn">Native</span></td>
+    <td>YouTube Data API v3 <code>videos.list statistics.viewCount</code>, via Content Hub connector</td>
+    <td>Platform view count for each campaign video published in the reporting period (or each video ID listed explicitly in the campaign settings)</td>
+    <td>Native value per video, no CHT math<span class="src">hub <code>services/connectors/youtube.py:197-209</code></span></td>
+    <td>On demand (admin Sync in Content Hub). One snapshot per campaign per UTC day.</td>
+    <td>Lifetime total, not views inside the window. YouTube's own counting rules apply. No watch time (needs the YouTube Analytics API, not implemented). The "average view duration" column holds video length.</td>
+  </tr>
+  <tr>
+    <td>Clip views (catalog) <span class="pill ok">Computed</span></td>
+    <td>Content Hub <code>posts</code> (YouTube and podcast posts synced from ops-console and MediaHub)</td>
+    <td>Total views of an official CHM clip (<code>channel = chm-official</code>) across all its posts</td>
+    <td><code>view_count = &Sigma; posts.view_count</code> per clip, at request time. Likes and comments are summed the same way.<span class="src">hub <code>public/clips.py:332-334</code>; platform cache <code>contenthub-catalog.service.ts</code></span></td>
+    <td>Whenever ops-console pushes post stats (schedule owned outside these repos). Platform caches for up to 1 hour.</td>
+    <td>Lifetime. Mixes platforms. Neither repo controls freshness. The <code>/clips</code> sort has no tiebreaker, so a clip can appear on two pages.</td>
+  </tr>
+  <tr>
+    <td>Video views (LinkedIn) <span class="pill warn">Native</span></td>
+    <td>LinkedIn Marketing API <code>adAnalytics</code> (version 202501), pivot CAMPAIGN</td>
+    <td>LinkedIn-reported video views of sponsored campaign content in the period</td>
+    <td>Native <code>videoViews</code>, one row per day in the period<span class="src">hub <code>services/connectors/linkedin_ads.py:95-111</code></span></td>
+    <td>On demand (admin Sync)</td>
+    <td>Paid (sponsored) only, no organic posts. LinkedIn's view threshold applies (inferred).</td>
+  </tr>
+  <tr>
+    <td>Views (Meta, livestream)</td>
+    <td>CSV export uploaded to Content Hub</td>
+    <td>Whatever the uploaded export reports</td>
+    <td>No CHT math. Rows stored as uploaded.<span class="src">hub <code>campaign_platform_data.rows</code> (source=upload)</span></td>
+    <td>Manual upload</td>
+    <td>No API connector. Column names and definitions depend on the export used.</td>
+  </tr>
+  <tr>
+    <td>On-platform video watch <span class="pill ok">Computed</span></td>
+    <td>Platform browser player (<code>WatchVideo</code>)</td>
+    <td>Per-learner progress on CHT program videos</td>
+    <td><code>watchedSeconds</code> +1 per second while the tab is visible. <code>progress = watched / duration</code> (0 to 1). Complete at <code>progress &ge; 0.95</code>.<span class="src">platform <code>fe/pages/WatchVideo.tsx:14, 80-123</code></span></td>
+    <td>Client sync every 15 s and on tab hide</td>
+    <td>Visible-tab timer, not player time (a paused but visible video still counts). Values are reported by the client. API and schema document progress as 0&ndash;100, but the client sends 0&ndash;1.</td>
+  </tr>
+  <tr>
+    <td>Clip page views (web)</td>
+    <td>GA4 via GTM <code>GTM-MR68PMPZ</code>, event <code>clip_view</code></td>
+    <td>Public clip page loads on the CHT site</td>
+    <td>GA4 event count<span class="src">platform <code>fe/lib/analytics.ts:31-46</code></span></td>
+    <td>Real time in GA4</td>
+    <td>Not stored in any CHT database and not used in reports.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Engagement</td></tr>
+  <tr>
+    <td>Engagement (overall) <span class="pill bad">Not defined</span></td>
+    <td>None</td>
+    <td>No repo defines an engagement count or rate</td>
+    <td>None. The <code>engagement_rate</code> column in Hub's <code>clip_analytics</code> table has no code that writes to it.</td>
+    <td>None</td>
+    <td>Needs a documented formula. See the proposal in Section 6. <span class="pill plan">Proposed</span></td>
+  </tr>
+  <tr>
+    <td>CTR (LinkedIn) <span class="pill ok">Computed</span></td>
+    <td>LinkedIn Ads API</td>
+    <td>Clicks per impression on sponsored content</td>
+    <td><code>clicks &divide; impressions</code>, 4 significant figures; 0 if impressions = 0<span class="src">hub <code>linkedin_ads.py:110</code>; <code>common.py:52</code></span></td>
+    <td>On demand</td>
+    <td>Paid only. Stored as text. A rate of 0 can mean "no impressions".</td>
+  </tr>
+  <tr>
+    <td>Video completion rate (LinkedIn) <span class="pill ok">Computed</span></td>
+    <td>LinkedIn Ads API</td>
+    <td>Share of video views that played to the end</td>
+    <td><code>videoCompletions &divide; videoViews</code><span class="src">hub <code>linkedin_ads.py:108</code></span></td>
+    <td>On demand</td>
+    <td>Daily rates cannot be averaged. Re-derive the rate from the summed numerator and denominator.</td>
+  </tr>
+  <tr>
+    <td>Dwell time, impressions, clicks (LinkedIn) <span class="pill warn">Native</span></td>
+    <td>LinkedIn Ads API</td>
+    <td>Average seconds in view; times shown; clicks</td>
+    <td>Native <code>averageDwellTime</code>, <code>impressions</code>, <code>clicks</code></td>
+    <td>On demand</td>
+    <td>LinkedIn API definitions apply. Paid only.</td>
+  </tr>
+  <tr>
+    <td>Likes, comments (clips) <span class="pill ok">Computed</span></td>
+    <td>Content Hub <code>posts</code></td>
+    <td>Total reactions on a clip across its posts</td>
+    <td><code>&Sigma; like_count</code>, <code>&Sigma; comment_count</code><span class="src">hub <code>public/clips.py:333-334</code></span></td>
+    <td>As for clip views</td>
+    <td><code>share_count</code> and <code>impression_count</code> are stored on posts but not exposed by any API or report.</td>
+  </tr>
+  <tr>
+    <td>Funnel "Engaged" stage <span class="pill ok">Computed</span></td>
+    <td>HubSpot campaign metrics (Platform admin funnel)</td>
+    <td>Landing-page views for the selected campaigns</td>
+    <td>Sum of every numeric HubSpot field named <code>views</code><span class="src">platform <code>campaigns-funnel.service.ts:197</code>; <code>hubspot-campaign-metrics.util.ts:40</code></span></td>
+    <td>On demand. Default window: last 90 days.</td>
+    <td>The generic key search can double count. The unit (page views) differs from the CHT stages (registrations).</td>
+  </tr>
+  <tr>
+    <td>Email sent, opens, clicks (HubSpot) <span class="pill warn">Native</span></td>
+    <td>HubSpot email statistics</td>
+    <td>Marketing email performance per campaign</td>
+    <td>Summed per campaign row, then across rows<span class="src">platform <code>campaigns-dashboard.service.ts:290-340</code></span></td>
+    <td>On demand</td>
+    <td>The statistics endpoint is portal-wide (inferred) and is merged into every campaign row, then summed. Totals can be multiplied by the number of campaigns.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Attendance</td></tr>
+  <tr>
+    <td>Registered <span class="pill ok">Computed</span></td>
+    <td>Platform <code>ProgramRegistration</code>, copied to Hub <code>export_registrations</code></td>
+    <td>Registrations for the campaign's linked programs that are not rejected</td>
+    <td><code>count(export_registrations)</code>. Includes PENDING, WAITLISTED and SURVEY_SUBMITTED.<span class="src">platform <code>export.service.ts:156</code>; hub <code>services/report_packet.py:674</code></span></td>
+    <td>Hub ingest on link, transcript pull, report generate or refresh (weekday 14:00 UTC schedule in dev only)</td>
+    <td>Not limited to the report date window. Includes registrants who were never approved.</td>
+  </tr>
+  <tr>
+    <td>Attended <span class="pill ok">Computed</span></td>
+    <td>Zoom webhooks, in-app Meeting SDK joins and the Zoom Report API, rolled up by Platform and sent to Hub</td>
+    <td>Distinct people (by email, otherwise user ID) with at least one Zoom join, excluding hosts and panelists</td>
+    <td>Platform combines each person's join rows into one. If any Report API rows exist for the program, only those are used. Hub counts the combined rows.<span class="src">platform <code>export.service.ts:490-566</code>; hub <code>report_packet.py:666-676</code></span></td>
+    <td>Zoom events arrive in real time. Report import is manual. Hub picks them up on the ingest schedule.</td>
+    <td>No minimum minutes. A partial report import discards webhook attendees. Webhook-only hosts are removed only by the panelist email list. <strong>Reconciliation required.</strong></td>
+  </tr>
+  <tr>
+    <td>Attendance rate <span class="pill ok">Computed</span></td>
+    <td>cht-reports</td>
+    <td>Share of registrants who attended</td>
+    <td><code>round(attended &divide; registered &times; 100)</code><span class="src">reports <code>render/report-doc.service.ts:207</code></span></td>
+    <td>Per report run</td>
+    <td>The denominator includes pending and waitlisted registrants. The rate can exceed 100% if people attend without registering.</td>
+  </tr>
+  <tr>
+    <td>Avg minutes watched <span class="pill ok">Computed</span></td>
+    <td>Hub report packet, then cht-reports</td>
+    <td>Mean minutes in session per attendee</td>
+    <td>Hub: <code>&Sigma; floor(duration_s / 60) &divide; attended</code>, 1 decimal place. Reports rounds to a whole number.<span class="src">hub <code>report_packet.py:654-681</code>; reports <code>content/attendees.ts:50</code></span></td>
+    <td>Per report run</td>
+    <td>Attendees without a duration (webhook-only) count as 0 minutes, which understates the mean. Each attendee is floored, then the mean is rounded again.</td>
+  </tr>
+  <tr>
+    <td>Attendees by specialty, institution <span class="pill ok">Computed</span></td>
+    <td>Platform <code>User.specialty</code> and <code>institution</code>, via the packet</td>
+    <td>Count of attendees per profile value</td>
+    <td>Group and count. Institutions: top 9 plus "Other institutions". Blank values are shown as "Not provided".<span class="src">reports <code>content/attendees.ts:11-55</code></span></td>
+    <td>Per report run</td>
+    <td>Profile values are self-reported and free text, so the same institution can appear under different spellings.</td>
+  </tr>
+  <tr>
+    <td>Verified attendance (Platform) <span class="pill ok">Computed</span></td>
+    <td>Platform <code>postEventAttendanceStatus</code></td>
+    <td>Attendance accepted for survey and honorarium</td>
+    <td>VERIFIED if the registrant's email matches any join row after the session ends, or if an admin sets it<span class="src">platform <code>webinars/zoom-attendance-match.ts:105-143</code></span></td>
+    <td>Zoom "ended" webhook. Report import (auto-verify is off by default). Admin action.</td>
+    <td>No minimum duration. An in-app SDK join verifies the user's own account. The webhook skips signature checks when the signature header is missing.</td>
+  </tr>
+  <tr>
+    <td>Funnel Registered, Attended, Converted <span class="pill ok">Computed</span></td>
+    <td>Platform</td>
+    <td>Approved, then verified, then survey acknowledged, within the window</td>
+    <td>Count of registration rows by status and date<span class="src">platform <code>campaigns-funnel.service.ts:1379-1420</code></span></td>
+    <td>On demand</td>
+    <td>Counts rows, not distinct people. Auto-approved rows are dated by <code>updatedAt</code>, which changes on later edits. NOT_REQUIRED attendance never counts as attended.</td>
+  </tr>
+  <tr>
+    <td>No-show <span class="pill bad">Not defined</span></td>
+    <td>None</td>
+    <td>None</td>
+    <td>None. Non-joiners stay PENDING_VERIFICATION.</td>
+    <td>None</td>
+    <td>No count or rate exists. <span class="pill plan">Proposed</span></td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Surveys</td></tr>
+  <tr>
+    <td>Survey responses <span class="pill ok">Computed</span></td>
+    <td>Platform native forms and the Jotform webhook, copied to Hub <code>export_survey_responses</code></td>
+    <td>One response per user per survey</td>
+    <td>Count of rows. FEEDBACK surveys keep the first submission; other types keep the latest.<span class="src">platform <code>surveys.service.ts:1600-1643</code></span></td>
+    <td>On submit. Reaches Hub on the ingest schedule.</td>
+    <td>A Jotform submission without the hidden <code>user_id</code> field is dropped. Legacy Jotform forms shared by several programs attach every submission to each program (1,000-row cap).</td>
+  </tr>
+  <tr>
+    <td>Survey completion rate <span class="pill ok">Computed</span></td>
+    <td>Platform admin analytics</td>
+    <td>Respondents per approved registrant</td>
+    <td><code>round(uniqueRespondents &divide; APPROVED registrations &times; 100)</code><span class="src">platform <code>utils/survey-analytics.ts:458-466</code></span></td>
+    <td>On demand</td>
+    <td>The denominator includes people who could not open the survey (denied or unverified). The rate can exceed 100%.</td>
+  </tr>
+  <tr>
+    <td>Answer distribution (report) <span class="pill ok">Computed</span></td>
+    <td>cht-reports</td>
+    <td>Share of respondents choosing each option</td>
+    <td><code>round(count &divide; responses &times; 100)</code>. FEEDBACK surveys only, up to 12 options, contact fields removed.<span class="src">reports <code>render/report-doc.service.ts:256</code></span></td>
+    <td>Per report run</td>
+    <td>For multi-select questions, percentages add up to more than 100%.</td>
+  </tr>
+  <tr>
+    <td>Survey score</td>
+    <td>Learner client</td>
+    <td>Numeric score</td>
+    <td>Stored exactly as the client sends it. Null for Jotform.</td>
+    <td>On submit</td>
+    <td>No server-side scoring or answer key.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Honoraria and earnings</td></tr>
+  <tr>
+    <td>Honoraria paid <span class="pill ok">Computed</span></td>
+    <td>Platform <code>Payment</code> (Stripe or Bill.com)</td>
+    <td>Payouts that reached PAID</td>
+    <td><code>count</code> and <code>&Sigma; amount</code> where <code>status = PAID</code>, in cents<span class="src">platform <code>admin.controller.ts:286-295</code></span></td>
+    <td>On demand. Status changes come from payout-provider webhooks.</td>
+    <td>The worker only creates PENDING rows. An admin must click "Pay now".</td>
+  </tr>
+  <tr>
+    <td>Total earnings (HCP)</td>
+    <td>Platform</td>
+    <td>Lifetime amount paid to an HCP</td>
+    <td>Dashboard: <code>&Sigma; PAID</code> payments. Settings and summary: the <code>User.totalEarnings</code> counter.<span class="src">platform <code>dashboard.service.ts:43-45, 302</code></span></td>
+    <td>On demand / on PAID</td>
+    <td>The two figures can drift apart. The counter is not adjusted on admin deletes or Bill.com failures, and webhook ordering can double count it.</td>
+  </tr>
+  <tr>
+    <td>Pending payments</td>
+    <td>Platform</td>
+    <td>Not yet paid</td>
+    <td><code>&Sigma; amount</code> where status is PENDING or PROCESSING</td>
+    <td>On demand</td>
+    <td>The Earnings page counts only the last 100 rows. The field named <code>availableBalance</code> is actually &Sigma; PAID.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Learning and CME</td></tr>
+  <tr>
+    <td>Program completion</td>
+    <td>Platform <code>ProgramEnrollment</code></td>
+    <td>Every video in the program is complete</td>
+    <td>The learner has a view on every video and each view has <code>completed = true</code> (each at least 95% watched)<span class="src">platform <code>programs.service.ts:574-659</code></span></td>
+    <td>On video-progress sync</td>
+    <td>Live webinars never mark completion. GA4 counts "complete" at 100%; the database uses 95%.</td>
+  </tr>
+  <tr>
+    <td>CME credits earned</td>
+    <td>Platform</td>
+    <td>Credits from completed programs</td>
+    <td><code>&Sigma; Program.creditAmount</code> over completed enrollments<span class="src">platform <code>dashboard.service.ts:117-123</code></span></td>
+    <td>On demand</td>
+    <td>The <code>CMECredit</code> table is never written (the CME worker is disabled). Webinars earn 0 credits.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Campaign marketing and report inputs</td></tr>
+  <tr>
+    <td>HubSpot campaign totals <span class="pill warn">Native</span></td>
+    <td>HubSpot Marketing API (Platform dashboard). Content Hub stores an unparsed snapshot.</td>
+    <td>Sessions, influenced contacts, new contacts, form submissions, social clicks, event registrations</td>
+    <td>Recursive search through the HubSpot JSON, summing matching numeric keys<span class="src">platform <code>hubspot-campaign-metrics.util.ts:30-113</code></span></td>
+    <td>On demand. Platform can also save a cached snapshot.</td>
+    <td>Matching keys by name can double count. Content Hub passes the snapshot to the model without calculating anything.</td>
+  </tr>
+  <tr>
+    <td>Input completeness</td>
+    <td>Hub report packet</td>
+    <td>Whether each of the 10 report inputs is present</td>
+    <td>Present or missing for HubSpot, LinkedIn, Meta, YouTube, sessions, attendance, registrations, KOLs, survey responses and template<span class="src">hub <code>services/report_packet.py</code></span></td>
+    <td>Per packet</td>
+    <td>Checks presence only, not freshness or date window.</td>
+  </tr>
+  <tr>
+    <td>Narrative figures</td>
+    <td>Claude Sonnet via Companion <code>/generate</code> (Bedrock)</td>
+    <td>Numbers quoted in the 13 narrative sections</td>
+    <td>Written by the model from raw platform and HubSpot text. Transcript truncated at 100k characters; output capped at 16k tokens.<span class="src">reports <code>reports/orchestrator.ts:258</code></span></td>
+    <td>Per report run</td>
+    <td>Not computed by code, so numbers can vary between runs. Should be limited to figures already in the packet.</td>
+  </tr>
+
+  <tr class="grp"><td colspan="6">Companion (operational)</td></tr>
+  <tr>
+    <td>Chat and generate telemetry</td>
+    <td>Companion structured logs (CloudWatch)</td>
+    <td>Citations, retrieval time, latency, token counts, finish reason</td>
+    <td>Log events: <code>chat_retrieval</code>, <code>chat_done</code>, <code>bedrock_generate_ok</code></td>
+    <td>Per request</td>
+    <td>Logs only. Not stored in a database and not shown on any dashboard. No user-facing content metrics.</td>
+  </tr>
+  </tbody>
+</table>
+</section>
+
+<!-- 3. LINEAGE -->
+<h2 class="pb"><span class="num">3</span>Data lineage</h2>
+<p>Data enters through four routes: Zoom and learner activity into Platform; Platform's packet into Content Hub; third-party platform data into Content Hub; and post statistics from ops-console into Content Hub. Reports reads only the Content Hub packet.</p>
+<pre class="diagram">
+ Zoom webhooks ---------+
+ In-app Meeting SDK ----+--> PLATFORM (Aurora)               M2M input packet
+ Zoom Report API (man.) +     WebinarParticipantEvent  --------------------------+
+ Native + Jotform forms ----> Survey / SurveyResponse     rollupAttendance()     |
+ Learner player, payouts ---> VideoView, Payment             (no date window)    v
+                                                                     CONTENT HUB (Aurora)
+ YouTube Data API  (on demand) -----------------------------------> campaign_platform_data
+ LinkedIn Ads API  (on demand) ----------------------------------->   (1 row per campaign,
+ Meta / livestream / survey CSV (upload) ------------------------->    platform, UTC day)
+ HubSpot snapshot (Platform sync) -------------------------------> campaigns.hubspot_raw_data
+ ops-console / MediaHub post stats ------> posts --> /clips ------> Platform catalog (1 h cache)
+                                                                     export_sessions / attendance /
+                                                                     registrations / survey_responses
+                                                                              |
+                                                                     build report packet
+                                                                              |
+                                              SQS                             v
+ Platform "Generate" --> DynamoDB job --> CHT-REPORTS worker --> pull packet, wait for transcript
+                                              |                    compute attendance + survey charts
+                                              v
+                                    COMPANION /generate (Claude via Bedrock) --> narrative
+                                              |
+                                              v
+                              PDF rendered --> S3 --> Platform signed download
+</pre>
+<p class="legend">Content Hub refreshes the Platform export when it is triggered by a campaign link, the first transcript pull, report generate, Refresh data, or (dev only) the weekday 14:00 UTC schedule. Attendance verification and survey submissions do not trigger a refresh by themselves.</p>
+
+<!-- 4. DATA DICTIONARY -->
+<h2><span class="num">4</span>Data dictionary by repo</h2>
+
+<h3>4.1 Platform (<code>cht-platform-tool</code>)</h3>
+<table class="dict">
+  <thead><tr><th>Table.field</th><th>Type</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>Program.zoomSessionType</code></td><td>WEBINAR | MEETING</td><td>Live session kind (meeting = office hours). Null for on-demand video programs.</td></tr>
+    <tr><td><code>Program.startDate</code>, <code>duration</code></td><td>DateTime, Int (min)</td><td>Scheduled start and length. Used for survey unlock when Zoom has not sent an end time.</td></tr>
+    <tr><td><code>Program.zoomSessionEndedAt</code></td><td>DateTime?</td><td>Actual end time from the Zoom "ended" webhook. Only ever moves later.</td></tr>
+    <tr><td><code>Program.campaignId</code></td><td>String?</td><td>Linked Content Hub campaign (numeric ID stored as text). Defines what goes into the input packet.</td></tr>
+    <tr><td><code>Program.honorariumAmount</code>, <code>creditAmount</code></td><td>Int cents, Float</td><td>Honorarium offered; CME credits offered.</td></tr>
+    <tr><td><code>ProgramRegistration.status</code></td><td>enum</td><td>SURVEY_SUBMITTED, PENDING, APPROVED, REJECTED, WAITLISTED. One row per user per program.</td></tr>
+    <tr><td><code>ProgramRegistration.postEventAttendanceStatus</code></td><td>enum</td><td>NOT_REQUIRED, PENDING_VERIFICATION, VERIFIED, DENIED. Gates the survey and honorarium.</td></tr>
+    <tr><td><code>ProgramRegistration.postEventSurveyAcknowledgedAt</code></td><td>DateTime?</td><td>FEEDBACK survey completed. Defines "Converted" in the funnel.</td></tr>
+    <tr><td><code>WebinarParticipantEvent</code></td><td>row</td><td>One row of Zoom join or leave evidence: <code>event</code> (JOINED/LEFT), <code>source</code> (WEBHOOK/REPORT_IMPORT; SDK rows are stored as WEBHOOK), <code>participantEmail</code>, <code>userId</code>, <code>isHost</code>. <code>joinTime</code>, <code>leaveTime</code> and <code>durationSeconds</code> are filled only by report import.</td></tr>
+    <tr><td><code>Survey.type</code></td><td>enum</td><td>PRE_TEST, POST_TEST, FEEDBACK (post-event), INTAKE (registration). <code>jotformFormId</code> set means the survey is Jotform-backed.</td></tr>
+    <tr><td><code>SurveyResponse</code></td><td>row</td><td><code>answers</code> JSON, <code>score</code> (client-supplied), <code>submissionId</code>, <code>submittedAt</code>. Unique per user per survey.</td></tr>
+    <tr><td><code>VideoView</code></td><td>row</td><td><code>watchedSeconds</code>, <code>progress</code> (sent as 0&ndash;1, documented as 0&ndash;100), <code>completed</code>, <code>completedAt</code>.</td></tr>
+    <tr><td><code>ProgramEnrollment</code></td><td>row</td><td><code>overallProgress</code> (mean of video progress), <code>completed</code>, <code>completedAt</code>.</td></tr>
+    <tr><td><code>Payment</code></td><td>row</td><td><code>amount</code> (cents), <code>type</code> (HONORARIUM, SURVEY_BONUS; CME_COMPLETION and REFERRAL unused), <code>status</code> (PENDING, PROCESSING, PAID, FAILED), <code>paidAt</code>, <code>idempotencyKey</code>.</td></tr>
+    <tr><td><code>User.totalEarnings</code></td><td>Int cents</td><td>Running counter of PAID amounts. Can drift from the Payment rows.</td></tr>
+    <tr><td><code>User.specialty</code>, <code>institution</code></td><td>String?</td><td>Self-reported profile values. Feed the report's attendee breakdowns.</td></tr>
+    <tr><td><code>CMECredit</code>, <code>AnalyticsEvent</code>, <code>User.lastLoginAt</code></td><td>row / field</td><td>Defined in the schema but never written.</td></tr>
+  </tbody>
+</table>
+
+<h4>Platform input packet (sent to Content Hub)</h4>
+<p><code>GET /api/export/reports/campaigns/:campaignId/input-packet</code>, Cognito M2M scope <code>platform/export.read</code>. Includes every program linked to the campaign, with no date filter.</p>
+<table class="dict">
+  <thead><tr><th>Block</th><th>Fields and rules</th></tr></thead>
+  <tbody>
+    <tr><td><code>sessions[]</code></td><td><code>platformToolProgramId</code>, <code>kind</code>, <code>title</code>, <code>sessionDate</code> (program start, otherwise recording start), <code>zoomMeetingId</code>, <code>zoomMeetingUuid</code>, <code>transcriptS3Key</code>, <code>transcriptStatus</code> (ok/missing), <code>chmProgramId</code>.</td></tr>
+    <tr><td><code>attendance[]</code></td><td>One row per person: <code>participantEmail</code>, <code>userId</code>, earliest <code>joinTime</code>, latest <code>leaveTime</code>, summed <code>durationSeconds</code> (null if 0), <code>source</code>, <code>specialty</code>, <code>institution</code>, <code>platformEventId</code> = <code>rollup:{program}:{email or user}</code>. Uses JOINED rows only. Uses report rows only, if any exist. Hosts and panelists are dropped.</td></tr>
+    <tr><td><code>registrations[]</code></td><td><code>userId</code>, <code>registeredAt</code>, <code>status</code> (all except REJECTED), <code>specialty</code>, <code>institution</code>.</td></tr>
+    <tr><td><code>surveys[]</code></td><td><code>surveyId</code>, <code>type</code>, <code>source</code> (native/jotform), <code>questions[]</code>, <code>responseCount</code>, <code>responses[]</code>. Programs that only have a Jotform URL are fetched live as <code>legacy-{type}:{formId}</code>.</td></tr>
+  </tbody>
+</table>
+
+<h3>4.2 Content Hub (<code>cht-content-hub</code>)</h3>
+<table class="dict">
+  <thead><tr><th>Table</th><th>Key fields</th><th>Meaning / writer</th></tr></thead>
+  <tbody>
+    <tr><td><code>export_sessions</code></td><td><code>platform_tool_program_id</code>, <code>campaign_id</code>, <code>kind</code>, <code>session_date</code>, <code>zoom_meeting_id</code>, <code>transcript_s3_key</code>, <code>transcript_text</code>, <code>zoom_session_ended_at</code></td><td>Platform sessions. Written by export ingest.</td></tr>
+    <tr><td><code>export_attendance_events</code></td><td><code>dedupe_key</code>, <code>event</code> (defaults to JOINED), <code>source</code>, <code>participant_email</code>, <code>duration_seconds</code>, <code>join_time</code>, <code>leave_time</code>, <code>user_id</code>, <code>specialty</code>, <code>institution</code></td><td>One row per rolled-up attendee. Written by export ingest.</td></tr>
+    <tr><td><code>export_registrations</code></td><td><code>user_id</code>, <code>registered_at</code>, <code>status</code>, <code>specialty</code>, <code>institution</code></td><td>Platform registrations (not rejected). Written by export ingest.</td></tr>
+    <tr><td><code>export_survey_responses</code></td><td><code>respondent_id</code>, <code>source</code>, <code>survey_type</code>, <code>submitted_at</code>, <code>answers</code>, <code>questions</code></td><td>Platform survey responses. Written by export ingest.</td></tr>
+    <tr><td><code>export_ingest_runs</code></td><td>trigger, status, counts</td><td>Audit of each Platform-to-Hub pull.</td></tr>
+    <tr><td><code>campaign_platform_data</code></td><td><code>campaign_id</code>, <code>platform</code>, <code>fetch_date</code> (UTC), <code>status</code>, <code>rows</code> JSON, <code>source</code> (api/upload), <code>synced_at</code>, <code>next_sync_at</code></td><td>One row per campaign, platform and UTC day; same-day syncs overwrite. Holds YouTube, LinkedIn, Meta, livestream and survey platform data. <code>next_sync_at</code> is set to the next day, but nothing schedules it.</td></tr>
+    <tr><td><code>platform_sync_runs</code></td><td>platform, status, error</td><td>Audit of each connector sync.</td></tr>
+    <tr><td><code>posts</code></td><td><code>clip_id</code>, <code>platform</code>, <code>posted_at</code>, <code>view_count</code>, <code>like_count</code>, <code>comment_count</code>, <code>share_count</code>, <code>impression_count</code>, <code>stats_synced_at</code>, <code>source</code> (webhook/direct)</td><td>Platform posts with engagement counters. Written by ops-console and MediaHub; nothing in this repo writes them.</td></tr>
+    <tr><td><code>clips</code>, <code>shoots</code>, <code>kols</code>, <code>campaign_kols</code></td><td>catalog and KOL fields</td><td>Content catalog and KOL roster that feed the report's KOL section.</td></tr>
+    <tr><td><code>reports.clip_analytics</code>, <code>reports.campaign_analytics</code></td><td>incl. <code>engagement_rate</code></td><td>Warehouse tables with no ingest code. Unused.</td></tr>
+  </tbody>
+</table>
+<p>Report packet attendance block: <code>registered_count</code> = number of registration rows; <code>attended_count</code> = number of JOINED attendee rows; <code>avg_minutes_watched</code> = mean of floored minutes (0 when duration is missing); <code>attendees[]</code> = specialty, institution and minutes, with no names.</p>
+
+<h3>4.3 Reports (<code>cht-reports</code>)</h3>
+<table class="dict">
+  <thead><tr><th>Item</th><th>Definition</th></tr></thead>
+  <tbody>
+    <tr><td>Report job</td><td>DynamoDB item owned by Platform: <code>campaign_id</code>, <code>report_id</code>, <code>template_type</code> (executive_summary 1.0.0 / 1.1.0 / 1.2.0), <code>window_start</code>, <code>window_end</code>, <code>status</code>, <code>s3_key_pdf</code>, <code>version</code>.</td></tr>
+    <tr><td>Lifecycle</td><td>queued, pulling_data, waiting_for_transcript (re-checked every 300 s for up to 180 min), generating, rendering, uploading, complete or failed. SQS allows up to 3 receives.</td></tr>
+    <tr><td>Computed in code</td><td>Registered and attended (passed through; attended falls back to the attendee count), attendance rate, average minutes (rounded), attendees by specialty and institution, survey answer percentages.</td></tr>
+    <tr><td>Passed to the model</td><td>Transcript (up to 100k characters), platform slices (YouTube, LinkedIn, Meta rows), HubSpot snapshot, KOLs (from Hub, or extracted from the transcript as a fallback), session format (inferred from Q&amp;A markers).</td></tr>
+    <tr><td>Output</td><td>13 narrative sections plus code-built charts, rendered to a PDF on S3. Users only ever receive the PDF.</td></tr>
+  </tbody>
+</table>
+
+<h3>4.4 Companion (<code>cht-companion</code>)</h3>
+<table class="dict">
+  <thead><tr><th>Table / item</th><th>Key fields</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>sources</code></td><td><code>source_type</code> (youtube_caption, catalog_clip, curated_doc), <code>status</code> (pending, approved, rejected, soft_deleted), <code>doctors[]</code>, <code>topics[]</code>, <code>content_date</code>, <code>chunk_count</code>, <code>embedding_model</code></td><td>Knowledge-base documents. Only <code>approved</code> sources are retrievable.</td></tr>
+    <tr><td><code>chunks</code></td><td><code>text</code>, <code>embedding</code> vector(1024) (Titan v2), <code>speaker</code>, <code>timestamp_start</code>, <code>timestamp_end</code>, <code>url</code></td><td>Retrieval units. HNSW cosine index (m 16, ef_construction 128).</td></tr>
+    <tr><td><code>ingest_jobs</code></td><td><code>kind</code> (initial, reindex, refresh), <code>status</code>, <code>chunks_before</code>, <code>chunks_after</code>, <code>chunks_skipped</code></td><td>Ingest audit.</td></tr>
+    <tr><td>Retrieval</td><td>k = 10, sibling radius 1</td><td>On develop there is no reranker and no distance cutoff.</td></tr>
+    <tr><td>Rate limits</td><td>chat 20/min, 500/day; generate 5/min, 200/day</td><td>Per caller.</td></tr>
+    <tr><td>Ingest coverage</td><td>youtube_caption discovery runs daily</td><td>Caption downloads fail with 403, so nothing is queued. <code>catalog_clip</code> exists in the schema only; <code>curated_doc</code> is added manually.</td></tr>
+  </tbody>
+</table>
+
+<!-- 5. REFRESH -->
+<h2><span class="num">5</span>Refresh schedule</h2>
+<table>
+  <thead><tr><th>Job / feed</th><th>Repo</th><th>Schedule</th><th>Prod</th><th>Feeds</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Zoom webhooks</td><td>Platform</td><td>Real time</td><td>On</td><td>Join and leave rows, session end, auto-verify</td></tr>
+    <tr><td class="k">Zoom attendee report import</td><td>Platform</td><td>Manual (admin)</td><td>On</td><td>Durations and the authoritative attendee list</td></tr>
+    <tr><td class="k">Session reminders</td><td>Platform</td><td><code>cron(0 0/3 * * ? *)</code> by default; every 6 h on platform, every 12 h on dev</td><td>On (6 h)</td><td>24-hour reminder emails</td></tr>
+    <tr><td class="k">Platform export ingest</td><td>Content Hub</td><td><code>cron(0 14 ? * MON-FRI *)</code>, 25 campaigns per batch, plus event triggers</td><td><span class="pill bad">Off</span> (triggers only)</td><td><code>export_*</code> tables</td></tr>
+    <tr><td class="k">YouTube / LinkedIn sync</td><td>Content Hub</td><td>On demand (admin Sync or Sync all)</td><td>On</td><td><code>campaign_platform_data</code></td></tr>
+    <tr><td class="k">Meta, livestream, survey uploads</td><td>Content Hub</td><td>Manual CSV upload</td><td>On</td><td><code>campaign_platform_data</code></td></tr>
+    <tr><td class="k">Post statistics</td><td>external (ops-console)</td><td>Not defined in these repos</td><td>External</td><td><code>posts</code>, so clip views, likes and comments</td></tr>
+    <tr><td class="k">HCP intel poll</td><td>Content Hub</td><td><code>rate(30 minutes)</code></td><td><span class="pill bad">Off</span> (also off in dev)</td><td>KOL activity (PubMed, CT.gov, news, Bluesky, CMS, Open Payments, NIH)</td></tr>
+    <tr><td class="k">OpenAlex</td><td>Content Hub</td><td><code>cron(30 3 ? * SUN *)</code></td><td><span class="pill bad">Off</span> (also off in dev)</td><td>KOL publications</td></tr>
+    <tr><td class="k">KOL&ndash;HCP matcher</td><td>Content Hub</td><td><code>cron(0 4 * * ? *)</code></td><td><span class="pill bad">Off</span> (also off in dev)</td><td>KOL to HCP links</td></tr>
+    <tr><td class="k">Post tagging / playlist doctor tagger</td><td>Content Hub</td><td><code>rate(12 hours)</code> / <code>cron(30 4 * * ? *)</code></td><td><span class="pill bad">Off</span> (tagging on in dev)</td><td>Clip and playlist tags</td></tr>
+    <tr><td class="k">WordPress projection ops</td><td>Content Hub</td><td><code>cron(0 3 * * ? *)</code>; ingest via SQS</td><td>Ingest on; nightly reconcile <span class="pill bad">Off</span></td><td>WordPress catalog</td></tr>
+    <tr><td class="k">Report generation</td><td>Reports</td><td>On demand (Generate or Regenerate)</td><td>On</td><td>PDF</td></tr>
+    <tr><td class="k">Companion caption discovery</td><td>Companion</td><td>Daily</td><td>On (blocked)</td><td>Knowledge base (currently blocked by caption 403s)</td></tr>
+    <tr><td class="k">Platform catalog cache</td><td>Platform</td><td>Redis TTL 1 h (clips, YouTube), 5 min (WordPress)</td><td>On</td><td>Public catalog pages</td></tr>
+  </tbody>
+</table>
+
+<!-- 6. CONFLICTS + RECOMMENDATIONS -->
+<h2 class="pb"><span class="num">6</span>Conflicts and recommended definitions</h2>
+<p>The table below lists each place where one word currently has several meanings, followed by a proposed canonical definition. Items marked <span class="pill plan">Proposed</span> need product sign-off before engineering changes the code.</p>
+
+<table>
+  <thead><tr><th style="width:15%">Term</th><th style="width:38%">Meanings in code today</th><th>Proposed canonical definition <span class="pill plan">Proposed</span></th></tr></thead>
+  <tbody>
+    <tr><td class="k">Views</td><td>(1) Hub clip <code>view_count</code>, summed over posts; (2) YouTube <code>viewCount</code>; (3) HubSpot landing-page "views"; (4) GA4 <code>clip_view</code>; (5) <code>VideoView</code> progress rows.</td><td><strong>Views</strong> = native platform views for the content, reported <em>per platform</em> and never summed across platforms without a label. State "lifetime as of &lt;sync date&gt;" unless a window delta is computed. Call HubSpot's figure "page views" and the Platform figure "watch progress".</td></tr>
+    <tr><td class="k">Engagement</td><td>Not defined. The funnel "Engaged" stage is HubSpot landing-page views. LinkedIn has CTR, completion rate and dwell time.</td><td><strong>Engagements</strong> = likes + comments + shares + clicks (whichever the platform reports). <strong>Engagement rate</strong> = engagements &divide; impressions; if impressions are not available, engagements &divide; views, labelled as such. Rename the funnel stage to "Visited".</td></tr>
+    <tr><td class="k">Attended</td><td>(1) Any JOINED row; (2) verified status; (3) report-import segment count; (4) "seen in Zoom" (email or user ID).</td><td><strong>Attended</strong> = distinct registrant with at least <em>N</em> cumulative minutes in the live session (suggest N = 10, or 25% of scheduled length), using report-import data when available and webhook data otherwise, merged per person rather than all-or-nothing. Hosts and panelists excluded.</td></tr>
+    <tr><td class="k">Registered</td><td>Report: all non-rejected rows, no window. Funnel: APPROVED within the window.</td><td><strong>Registered</strong> = APPROVED registrations for the program. Report pending and waitlisted counts separately.</td></tr>
+    <tr><td class="k">Attendance rate</td><td>attended &divide; all non-rejected registrations.</td><td>Attended registrants &divide; approved registrants. Report walk-ins (attended, not registered) separately so the rate cannot exceed 100%.</td></tr>
+    <tr><td class="k">Avg minutes watched</td><td>Missing durations count as 0; floored, then rounded.</td><td>Mean over attendees <em>with a known duration</em>, rounded once, and the coverage shown ("n of N attendees had duration data").</td></tr>
+    <tr><td class="k">No-show</td><td>Not defined.</td><td>Approved registrants who did not attend after the session ended. <strong>No-show rate</strong> = no-shows &divide; approved.</td></tr>
+    <tr><td class="k">Video complete</td><td>95% in the database; 100% (YouTube ENDED) in GA4.</td><td>95% everywhere. Rename the GA4 event to <code>video_ended</code>.</td></tr>
+    <tr><td class="k">Survey unlock</td><td>Survey window: start + (duration or 90) + 15 min. Access and honorarium: start + (duration or 60), no buffer.</td><td>One helper: the Zoom end time if known; otherwise scheduled end + 15 min. Used by every check.</td></tr>
+    <tr><td class="k">Total earnings</td><td>Dashboard &Sigma; PAID versus the <code>User.totalEarnings</code> counter.</td><td>&Sigma; PAID payments everywhere. Keep the counter as a cache only, or remove it.</td></tr>
+    <tr><td class="k">Refresh "daily"</td><td>YouTube and LinkedIn are on demand. Export ingest runs on weekdays only.</td><td>Schedule a daily Content Hub <code>sync_all_platforms</code> run (the <code>next_sync_at</code> field already assumes a daily sync) and run export ingest every day.</td></tr>
+  </tbody>
+</table>
+
+<!-- 7. LIMITATIONS -->
+<h2><span class="num">7</span>Known limitations (consolidated)</h2>
+<h4>Accuracy (affects reported numbers)</h4>
+<ol>
+  <li><strong>Report import is all-or-nothing.</strong> One report row for a program discards every webhook or SDK attendee for that program (platform <code>export.service.ts:496-502</code>).</li>
+  <li><strong>Webhook-only attendance has no duration</strong>, so average minutes are understated. LEFT rows are never paired with JOINED rows.</li>
+  <li><strong>No minimum attendance duration.</strong> A 1-second join verifies attendance and unlocks the honorarium. An in-app SDK join verifies the user's own account.</li>
+  <li><strong>The Zoom webhook accepts unsigned requests</strong> when the signature header is missing (<code>zoom-webhook.service.ts:117</code>). A forged join could verify attendance (inferred).</li>
+  <li><strong>The packet has no date window.</strong> Registrations include pending and waitlisted.</li>
+  <li><strong>YouTube views are lifetime</strong>, and "average view duration" is actually video length.</li>
+  <li><strong>HubSpot email statistics can be multiplied</strong> across campaigns, and the generic key search can double count.</li>
+  <li><strong>The model writes the narrative numbers</strong> for platform and HubSpot data. They are not computed in code.</li>
+  <li><strong>Survey completion rate</strong> can understate the true rate or exceed 100%. Survey scores are client-supplied.</li>
+  <li><strong>Video progress unit mismatch</strong> (0&ndash;1 sent, 0&ndash;100 documented), so admin progress shows 100&times; too small.</li>
+</ol>
+<h4>Freshness</h4>
+<ol start="11">
+  <li>Platform connectors are on demand only; Meta, livestream and survey data are uploaded manually.</li>
+  <li>Hub export ingest is not triggered by attendance verification, report imports or survey submissions.</li>
+  <li>Post statistics freshness is owned by ops-console and is not visible to these repos. The catalog adds up to 1 hour of cache.</li>
+  <li>Zoom attendee report import is manual. Its lock is held in memory, so multiple ECS tasks could run the same import twice (inferred).</li>
+</ol>
+<h4>Coverage (metrics that do not exist)</h4>
+<ol start="15">
+  <li>No engagement, no-show, unique-viewer or watch-time metric.</li>
+  <li>CME credits are never issued (<code>CMECredit</code> is empty). Live sessions never mark an enrollment complete.</li>
+  <li><code>AnalyticsEvent</code> and <code>User.lastLoginAt</code> are never written, so user activity and recency cannot be measured.</li>
+  <li>Hub's <code>clip_analytics</code> and <code>campaign_analytics</code> tables have no ingest code. Post <code>share_count</code> and <code>impression_count</code> are not exposed.</li>
+  <li>Companion telemetry exists only in logs. The knowledge base has no YouTube captions yet.</li>
+</ol>
+
+<!-- 8. GLOSSARY -->
+<h2><span class="num">8</span>Glossary</h2>
+<table>
+  <tbody>
+    <tr><td class="k">Program</td><td>A content unit on Platform: an on-demand video program, a WEBINAR, or a MEETING (office hours).</td></tr>
+    <tr><td class="k">Campaign</td><td>A Content Hub campaign. Programs link to it through <code>Program.campaignId</code>; it is the unit of a report.</td></tr>
+    <tr><td class="k">Registration / Enrollment</td><td>Registration is the application and approval record. Enrollment is the access and progress record.</td></tr>
+    <tr><td class="k">JOINED / LEFT</td><td>Zoom participant events stored in <code>WebinarParticipantEvent</code>.</td></tr>
+    <tr><td class="k">Report import</td><td>An admin pull of Zoom's official participant report (with durations) into Platform.</td></tr>
+    <tr><td class="k">Rollup</td><td>The export step that combines one person's join rows into a single attendance row.</td></tr>
+    <tr><td class="k">Verified</td><td>Attendance status that unlocks the post-event survey and honorarium.</td></tr>
+    <tr><td class="k">FEEDBACK / INTAKE</td><td>Post-event survey / registration survey.</td></tr>
+    <tr><td class="k">Input packet</td><td>Platform's export of sessions, attendance, registrations and surveys for one campaign.</td></tr>
+    <tr><td class="k">Export ingest</td><td>Content Hub pulling the input packet into its <code>export_*</code> tables.</td></tr>
+    <tr><td class="k">Report packet</td><td>Content Hub's combined payload (Platform export, platform data, HubSpot, KOLs, template) consumed by cht-reports.</td></tr>
+    <tr><td class="k">Platform data</td><td>Per-campaign, per-day YouTube, LinkedIn, Meta, livestream and survey rows in Content Hub.</td></tr>
+    <tr><td class="k">Post</td><td>One published copy of a clip on a social platform, holding that platform's counters.</td></tr>
+    <tr><td class="k">KOL</td><td>Key opinion leader. A doctor featured in or relevant to the campaign.</td></tr>
+    <tr><td class="k">M2M</td><td>Cognito client-credentials authentication between Platform and Content Hub.</td></tr>
+    <tr><td class="k">Native / Computed</td><td>Native: a value passed through from a third-party API. Computed: calculated by CHT code.</td></tr>
+  </tbody>
+</table>
+
+</main>
+</body>
+</html>

@@ -10,6 +10,7 @@ export type ReportStatus =
   | 'generating'
   | 'rendering'
   | 'uploading'
+  | 'waiting_for_transcript'
   | 'complete'
   | 'failed';
 
@@ -39,6 +40,9 @@ export type ReportItem = {
   requested_by: string;
   s3_key_pdf?: string | null;
   version?: number | null;
+  /** Last version whose report-ready email went out (CPR-35). */
+  notified_version?: number | null;
+  notified_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -48,7 +52,6 @@ export type LockItem = {
   report_id: string;
   locked_report_id: string;
   template_type: string;
-  expires_at: number;
   created_at: string;
 };
 
@@ -72,4 +75,9 @@ export type ReportView = {
   downloadAvailable: boolean;
   createdAt: string;
   updatedAt: string;
+  /**
+   * CPR-41 — set on create/regenerate only. Hub sync is best-effort after the
+   * lock so a Hub 503 does not block Generate; `failed` means data may be stale.
+   */
+  warehouseSync?: 'ok' | 'failed';
 };

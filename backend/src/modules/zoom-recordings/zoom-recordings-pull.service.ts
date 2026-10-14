@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { ZoomRecordingPullStatus } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { CampaignExportIngestService } from '../content-hub/campaign-export-ingest.service';
 import {
   ZoomService,
   type ZoomMeetingRecordings,
@@ -54,6 +55,7 @@ export class ZoomRecordingsPullService {
     private readonly chmContentId: ChmContentIdService,
     private readonly sessions: ZoomRecordingsSessionService,
     private readonly storage: ZoomRecordingsStorageService,
+    private readonly exportIngest: CampaignExportIngestService,
   ) {}
 
   toDto(r: {
@@ -315,6 +317,8 @@ export class ZoomRecordingsPullService {
     const upserted: string[] = [];
     const errors: string[] = [];
     const assetSeqByFormat = new Map<string, number>();
+    // CPR-41 — one Hub ingest per pull when a transcript newly completes.
+    let fireZoomIngest = false;
 
     for (const file of opts.files) {
       const ext = extForFile(file.fileType, file.fileExtension);
@@ -324,6 +328,9 @@ export class ZoomRecordingsPullService {
         fileId: file.id,
         ext,
       });
+      const fileTypeUpper = (file.fileType || '').toUpperCase();
+      const isTranscript =
+        fileTypeUpper === 'TRANSCRIPT' || fileTypeUpper === 'CC';
 
       try {
         // Mark in-progress before download so the admin UI can poll live status.
@@ -472,6 +479,10 @@ export class ZoomRecordingsPullService {
           },
         });
         upserted.push(row.id);
+        // Fire on new completes and re-pulls so Hub gets a fresh packet after transcript land.
+        if (isTranscript && opts.programId && !fireZoomIngest) {
+          fireZoomIngest = true;
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         this.logger.warn(
@@ -489,6 +500,17 @@ export class ZoomRecordingsPullService {
           },
         });
       }
+    }
+
+    if (fireZoomIngest && opts.programId) {
+      void this.exportIngest.triggerForProgramZoom(opts.programId).catch(
+        (err: unknown) => {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `[export-ingest] zoom trigger failed programId=${opts.programId}: ${msg}`,
+          );
+        },
+      );
     }
 
     return { upserted, errors };

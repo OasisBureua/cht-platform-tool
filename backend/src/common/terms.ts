@@ -1,8 +1,8 @@
 /**
- * Version of the Terms of Service & Privacy Policy users must accept.
+ * Version of the Terms of Use & Privacy Policy users must accept.
  * Bump when either document changes materially; every user is re-prompted on next visit.
  */
-export const CURRENT_TERMS_VERSION = '2026-09-29';
+export const CURRENT_TERMS_VERSION = '2026-10-13';
 
 /** Error code returned with 403 when an API call is made before accepting the terms. */
 export const TERMS_NOT_ACCEPTED_CODE = 'TERMS_NOT_ACCEPTED';

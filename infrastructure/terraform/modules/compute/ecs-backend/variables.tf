@@ -186,6 +186,12 @@ variable "cognito_m2m_export_client_id" {
   default     = ""
 }
 
+variable "cognito_m2m_reports_client_id" {
+  description = "Cognito M2M client ID allowed for POST /api/internal/reports/:id/ready (cht-reports, platform/reports.notify)"
+  type        = string
+  default     = ""
+}
+
 variable "cognito_m2m_platform_secret_arn" {
   description = "Secrets Manager ARN for Platform → Hub M2M (client_id, client_secret, token_url, scope). Empty disables outbound Hub M2M."
   type        = string

@@ -29,6 +29,7 @@ Related: [cognito-m2m-export.md](./cognito-m2m-export.md), [cache-sync-contract.
 |--------|---------------|------|----------------|
 | **Content Hub** (ingest) | `GET /api/export/reports/campaigns/:campaignId/input-packet` | Bearer + `platform/export.read` + `X-Request-Id` | SM `cht-{env}-cognito-m2m-export` |
 | **Content Hub / ops** | `POST /api/internal/cache/clear*` | Bearer + `platform/cache.clear` **or** legacy `INTERNAL_CACHE_SECRET` | Same Hub M2M client (both scopes) / `internal_cache_secret` |
+| **cht-reports** (CPR-35) | `POST /api/internal/reports/:id/ready` | Bearer + `platform/reports.notify` | Client `cht-reports-m2m-{env}` (Hub TF), SM `cht-{env}-cognito-m2m-reports` |
 | **Zoom / Stripe / Bill** | webhooks | Vendor HMAC | vendor secrets |
 | **Browser / admin** | `/api/*` | Session / user JWT | `cht-web` PKCE |
 
@@ -79,6 +80,8 @@ Clients for other callers of Hub (e.g. `cht-reports-m2m-{env}` with `hub/reports
 ## 5. Nest behavior
 
 **Inbound (Hub → us):** `CognitoM2mAuthGuard` on `/api/export/*` (`platform/export.read`). Cache clear accepts the same Hub client with `platform/cache.clear`.
+
+**Inbound (cht-reports → us):** `ReportsNotifyM2mGuard` on `/api/internal/reports/*` accepts only `COGNITO_M2M_REPORTS_CLIENT_ID` (TF looks up `cht-reports-m2m-{label}` by name) with `platform/reports.notify`.
 
 **Outbound (us → Hub):** `CognitoM2mTokenService` warms on `OnModuleInit`, caches until ~expiry − 60s, every `ContentHubClientService` / `ContentHubCatalogService` call sends `Authorization: Bearer …`. Missing/failed mint → **401** (no `X-API-Key` fallback).
 

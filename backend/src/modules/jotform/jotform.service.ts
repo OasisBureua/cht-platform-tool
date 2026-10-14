@@ -271,10 +271,22 @@ const USER_ID_NAMES = new Set([
   'chtuserid',
 ]);
 
+function scalarText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (
+    typeof value === 'number' ||
+    typeof value === 'boolean' ||
+    typeof value === 'bigint'
+  ) {
+    return String(value);
+  }
+  return '';
+}
+
 function mapJotformSubmission(item: unknown): JotformFormSubmission | null {
   if (!item || typeof item !== 'object') return null;
   const row = item as Record<string, unknown>;
-  const submissionId = String(row.id ?? '').trim();
+  const submissionId = scalarText(row.id).trim();
   if (!submissionId) return null;
   const { answers, userId } = flattenJotformAnswers(row.answers);
   return {
@@ -298,26 +310,22 @@ function flattenJotformAnswers(raw: unknown): {
       continue;
     }
     const field = value as Record<string, unknown>;
-    const name = String(field.name ?? '')
-      .trim()
-      .toLowerCase();
+    const name = scalarText(field.name).trim().toLowerCase();
     const answer = field.answer ?? field.prettyFormat ?? null;
     if (USER_ID_NAMES.has(name)) {
-      const id = String(answer ?? '').trim();
+      const id = scalarText(answer).trim();
       if (id) userId = id;
       continue;
     }
     const key =
-      String(field.name ?? '').trim() ||
-      String(field.text ?? '').trim() ||
-      qid;
+      scalarText(field.name).trim() || scalarText(field.text).trim() || qid;
     answers[key] = answer;
   }
   return { answers, userId };
 }
 
 function jotformTimestampToIso(value: unknown): string {
-  const text = String(value ?? '').trim();
+  const text = scalarText(value).trim();
   if (!text) return new Date(0).toISOString();
   const normalized = text.includes('T') ? text : text.replace(' ', 'T');
   const withZone = /[zZ]|[+-]\d{2}:?\d{2}$/.test(normalized)

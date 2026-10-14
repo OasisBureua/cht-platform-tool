@@ -665,7 +665,7 @@ export class AuthService {
     return user;
   }
 
-  /** Record Terms of Service & Privacy Policy acceptance on the user's profile. */
+  /** Record Terms of Use & Privacy Policy acceptance on the user's profile. */
   async acceptTerms(
     userId: string,
     version: string,

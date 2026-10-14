@@ -451,6 +451,7 @@ module "ecs_backend" {
   cognito_user_pool_id             = var.enable_cognito_pools ? module.cognito[0].user_pool_id : ""
   cognito_client_id                = var.enable_cognito_pools ? module.cognito[0].client_id : ""
   cognito_m2m_export_client_id     = var.enable_cognito_pools ? module.cognito[0].m2m_export_client_id : ""
+  cognito_m2m_reports_client_id    = var.enable_cognito_pools ? module.cognito[0].m2m_reports_client_id : ""
   cognito_m2m_platform_secret_arn  = var.enable_cognito_pools && var.enable_cognito_platform_outbound_m2m ? module.cognito[0].m2m_platform_secret_arn : ""
   cognito_hosted_ui_base_url       = var.enable_cognito_pools ? module.cognito[0].hosted_ui_base_url : ""
   cognito_jwks_uri                 = var.enable_cognito_pools ? module.cognito[0].jwks_uri : ""

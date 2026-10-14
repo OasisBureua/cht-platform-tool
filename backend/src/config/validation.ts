@@ -28,6 +28,8 @@ export const validationSchema = Joi.object({
   COGNITO_M2M_EXPORT_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_EXPORT_SCOPE: Joi.string().allow('').optional(),
   COGNITO_M2M_CACHE_CLEAR_SCOPE: Joi.string().allow('').optional(),
+  COGNITO_M2M_REPORTS_CLIENT_ID: Joi.string().allow('').optional(),
+  COGNITO_M2M_REPORTS_NOTIFY_SCOPE: Joi.string().allow('').optional(),
   COGNITO_M2M_PLATFORM_CLIENT_ID: Joi.string().allow('').optional(),
   COGNITO_M2M_PLATFORM_CLIENT_SECRET: Joi.string().allow('').optional(),
   COGNITO_M2M_TOKEN_URL: Joi.string().allow('').optional(),
@@ -88,7 +90,7 @@ export const validationSchema = Joi.object({
   REPORTS_QUEUE_URL: Joi.string().allow('').optional(),
   REPORTS_BUCKET: Joi.string().allow('').optional(),
   REPORTS_MAX_EDIT_ATTEMPTS: Joi.number().integer().min(0).optional(),
-  REPORTS_LOCK_TTL_SECONDS: Joi.number().integer().min(60).optional(),
+  REPORTS_STALE_MINUTES: Joi.number().integer().min(5).optional(),
 
   // Surveys
   SURVEY_BONUS_AMOUNT_CENTS: Joi.number().optional(),

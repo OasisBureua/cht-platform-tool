@@ -10,6 +10,7 @@ import type { ReportsAwsClients } from './reports-aws.clients';
 import type { ReportItem } from './reports.types';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { CampaignExportIngestService } from '../content-hub/campaign-export-ingest.service';
 
 async function readAll(stream: Readable): Promise<string> {
   const chunks: Buffer[] = [];
@@ -85,6 +86,7 @@ function completeReport(overrides: Partial<ReportItem> = {}): ReportItem {
 function build(
   handler: Handler,
   configOverrides: Record<string, unknown> = {},
+  exportIngestOverrides: Partial<CampaignExportIngestService> = {},
 ) {
   const map: Record<string, unknown> = {
     'reports.tableName': 'cht-dev-report-state',
@@ -93,7 +95,6 @@ function build(
       'https://sqs.us-east-1.amazonaws.com/1/cht-dev-report-requests',
     'reports.bucket': 'cht-reports-dev-artifacts',
     'reports.maxEditAttempts': 3,
-    'reports.lockTtlSeconds': 1800,
     ...configOverrides,
   };
   const config = { get: (key: string) => map[key] } as unknown as ConfigService;
@@ -117,7 +118,18 @@ function build(
     },
   } as unknown as PrismaService;
   const recipients = new ReportRecipientsService(prisma);
-  return { service: new ReportsService(config, aws, recipients), send };
+  const ingestCampaign = jest
+    .fn()
+    .mockResolvedValue({ status: 'success', campaignId: 42 });
+  const exportIngest = {
+    ingestCampaign,
+    ...exportIngestOverrides,
+  } as unknown as CampaignExportIngestService;
+  return {
+    service: new ReportsService(config, aws, recipients, exportIngest),
+    send,
+    ingestCampaign,
+  };
 }
 
 const ADMIN_EMAILS = ['a@cht.com', 'b@cht.com'];
@@ -195,6 +207,11 @@ describe('ReportsService', () => {
         'LOCK#executive_summary',
       );
       expect(tx.TransactItems[0].Put.Item.locked_report_id).toBe(view.reportId);
+      expect(
+        (tx.TransactItems[0].Put as { ConditionExpression?: string })
+          .ConditionExpression,
+      ).toBe('attribute_not_exists(report_id)');
+      expect(tx.TransactItems[0].Put.Item).not.toHaveProperty('expires_at');
       expect(tx.TransactItems[1].Put.Item).toMatchObject({
         campaign_id: 'AZ-25-01_LIV001',
         status: 'queued',
@@ -271,6 +288,73 @@ describe('ReportsService', () => {
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
     });
 
+    it('validates and locks before Hub ingest, then enqueues even if ingest fails', async () => {
+      const order: string[] = [];
+      const ingestCampaign = jest.fn().mockImplementation(async () => {
+        order.push('ingest');
+        throw new ServiceUnavailableException('Hub down');
+      });
+      const { service, send } = build(
+        (command) => {
+          if (command === 'TransactWriteCommand') order.push('lock');
+          if (command === 'SendMessageCommand') order.push('enqueue');
+          return {};
+        },
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
+
+      const view = await service.create({ campaignId: '42' }, 'user-1');
+
+      expect(order).toEqual(['lock', 'ingest', 'enqueue']);
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
+      expect(view.warehouseSync).toBe('failed');
+      expect(view.status).toBe('queued');
+      expect(calls(send, 'SendMessageCommand')).toHaveLength(1);
+    });
+
+    it('refreshCampaignData rejects when a report is in flight', async () => {
+      const { service } = build((command, input) => {
+        if (
+          command === 'GetCommand' &&
+          input.Key?.report_id === 'LOCK#executive_summary'
+        ) {
+          return { Item: { locked_report_id: 'r-live' } };
+        }
+        if (command === 'GetCommand' && input.Key?.report_id === 'r-live') {
+          return {
+            Item: completeReport({
+              report_id: 'r-live',
+              status: 'generating',
+              updated_at: new Date().toISOString(),
+            }),
+          };
+        }
+        return {};
+      });
+
+      await expect(service.refreshCampaignData('42')).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('refreshCampaignData ingests when no report is in flight', async () => {
+      const ingestCampaign = jest
+        .fn()
+        .mockResolvedValue({ status: 'success', sessionsUpserted: 2 });
+      const { service } = build(
+        () => ({}),
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
+
+      await expect(service.refreshCampaignData('42')).resolves.toEqual({
+        status: 'success',
+        sessionsUpserted: 2,
+      });
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_refresh');
+    });
+
     it('returns 503 when reports are not configured', async () => {
       const { service } = build(() => ({}), { 'reports.tableName': '' });
       await expect(
@@ -309,21 +393,151 @@ describe('ReportsService', () => {
     });
   });
 
-  describe('regenerate', () => {
-    it('queues a completed report and increments edit_attempts', async () => {
-      let item = completeReport();
+  describe('stuck reports', () => {
+    const minutesAgo = (m: number) =>
+      new Date(Date.now() - m * 60_000).toISOString();
+
+    it('marks an in-flight report with no progress for 20 minutes as failed and frees the lock', async () => {
+      const stuck = completeReport({
+        status: 'generating',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(25),
+      });
       const { service, send } = build((command) => {
-        if (command === 'GetCommand') return { Item: item };
-        if (command === 'TransactWriteCommand') {
-          item = {
-            ...item,
-            status: 'queued',
-            edit_attempts: item.edit_attempts + 1,
+        if (command === 'QueryCommand') return { Items: [stuck] };
+        if (command === 'UpdateCommand')
+          return {
+            Attributes: {
+              ...stuck,
+              status: 'failed',
+              last_error: 'Timed out: no progress for 20 minutes.',
+            },
           };
-          return {};
+        return {};
+      });
+
+      const [view] = await service.list('AZ-25-01_LIV001');
+
+      expect(view.status).toBe('failed');
+      expect(view.lastError).toBe('Timed out: no progress for 20 minutes.');
+      const [update] = calls<ExpressionInput & { ConditionExpression: string }>(
+        send,
+        'UpdateCommand',
+      );
+      expect(update.ConditionExpression).toBe(
+        '#status = :seen AND updated_at = :seenAt',
+      );
+      expect(update.ExpressionAttributeValues[':seen']).toBe('generating');
+      expect(calls(send, 'DeleteCommand')).toHaveLength(1);
+    });
+
+    it('leaves a report that is still making progress alone', async () => {
+      const running = completeReport({
+        status: 'generating',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(5),
+      });
+      const { service, send } = build((command) =>
+        command === 'GetCommand' ? { Item: running } : {},
+      );
+
+      const view = await service.get(running.report_id, 'AZ-25-01_LIV001');
+
+      expect(view.status).toBe('generating');
+      expect(calls(send, 'UpdateCommand')).toHaveLength(0);
+    });
+
+    it('keeps the lock while a report waits hours for its transcript', async () => {
+      const waiting = completeReport({
+        report_id: 'waiting-1',
+        status: 'waiting_for_transcript',
+        s3_key_pdf: null,
+        created_at: minutesAgo(120),
+        updated_at: minutesAgo(3),
+      });
+      const { service, send } = build((command, input) => {
+        if (command === 'TransactWriteCommand') throw lockCancelled();
+        if (command === 'GetCommand') {
+          return input.Key?.report_id === 'LOCK#executive_summary'
+            ? { Item: { locked_report_id: 'waiting-1' } }
+            : { Item: waiting };
         }
         return {};
       });
+
+      await expect(
+        service.create({ campaignId: 'AZ-25-01_LIV001' }, 'user-1'),
+      ).rejects.toBeInstanceOf(ConflictException);
+      expect(calls(send, 'DeleteCommand')).toHaveLength(0);
+    });
+
+    it('lets Generate through when the lock holder is stuck', async () => {
+      const stuck = completeReport({
+        report_id: 'stuck-1',
+        status: 'pulling_data',
+        s3_key_pdf: null,
+        updated_at: minutesAgo(40),
+      });
+      let transactCalls = 0;
+      const { service } = build((command, input) => {
+        if (command === 'TransactWriteCommand') {
+          transactCalls += 1;
+          if (transactCalls === 1) throw lockCancelled();
+          return {};
+        }
+        if (command === 'GetCommand') {
+          return input.Key?.report_id === 'LOCK#executive_summary'
+            ? {
+                Item: {
+                  campaign_id: 'AZ-25-01_LIV001',
+                  report_id: 'LOCK#executive_summary',
+                  locked_report_id: 'stuck-1',
+                },
+              }
+            : { Item: stuck };
+        }
+        if (command === 'UpdateCommand')
+          return { Attributes: { ...stuck, status: 'failed' } };
+        return {};
+      });
+
+      const view = await service.create(
+        { campaignId: 'AZ-25-01_LIV001', notifyEmails: [] },
+        'user-1',
+      );
+
+      expect(view.status).toBe('queued');
+      expect(transactCalls).toBe(2);
+    });
+  });
+
+  describe('regenerate', () => {
+    it('queues a completed report and increments edit_attempts', async () => {
+      let item = completeReport({ campaign_id: '42' });
+      const order: string[] = [];
+      const ingestCampaign = jest.fn().mockImplementation(async () => {
+        order.push('ingest');
+        return { status: 'success' };
+      });
+      const { service, send } = build(
+        (command) => {
+          if (command === 'GetCommand') return { Item: item };
+          if (command === 'TransactWriteCommand') {
+            order.push('lock');
+            item = {
+              ...item,
+              status: 'queued',
+              edit_attempts: item.edit_attempts + 1,
+              updated_at: new Date().toISOString(),
+            };
+            return {};
+          }
+          if (command === 'SendMessageCommand') order.push('enqueue');
+          return {};
+        },
+        {},
+        { ingestCampaign } as Partial<CampaignExportIngestService>,
+      );
 
       const view = await service.regenerate(
         item.report_id,
@@ -331,6 +545,9 @@ describe('ReportsService', () => {
         '  Shorten the summary  ',
       );
 
+      expect(order).toEqual(['lock', 'ingest', 'enqueue']);
+      expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
+      expect(view.warehouseSync).toBe('ok');
       expect(view.status).toBe('queued');
       expect(view.editAttempts).toBe(1);
       const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');
@@ -474,6 +691,90 @@ describe('ReportsService', () => {
       await expect(
         service.openDownload(completeReport().report_id, 'AZ-25-01_LIV001'),
       ).rejects.toBeInstanceOf(ConflictException);
+    });
+  });
+
+  describe('claimReadyNotification', () => {
+    const conditionFailed = () =>
+      Object.assign(new Error('failed'), {
+        name: 'ConditionalCheckFailedException',
+      });
+    const reportId = completeReport().report_id;
+
+    it('claims the version with a conditional write and returns the row', async () => {
+      const { service, send } = build((command) =>
+        command === 'UpdateCommand'
+          ? { Attributes: completeReport({ notified_version: 1 }) }
+          : {},
+      );
+
+      const row = await service.claimReadyNotification(
+        'AZ-25-01_LIV001',
+        reportId,
+        1,
+      );
+
+      expect(row?.notified_version).toBe(1);
+      const [update] = calls<
+        ExpressionInput & {
+          ConditionExpression: string;
+          UpdateExpression: string;
+        }
+      >(send, 'UpdateCommand');
+      expect(update.UpdateExpression).toContain('notified_version = :v');
+      expect(update.ConditionExpression).toContain('#status = :complete');
+      expect(update.ConditionExpression).toContain('#version = :v');
+      expect(update.ConditionExpression).toContain('notified_version < :v');
+      expect(update.ExpressionAttributeValues[':v']).toBe(1);
+    });
+
+    it('returns null when that version was already emailed (retry is a no-op)', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return { Item: completeReport({ version: 2, notified_version: 2 }) };
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 2),
+      ).resolves.toBeNull();
+    });
+
+    it('409s when the row is not complete at that version', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return { Item: completeReport({ status: 'generating', version: 1 }) };
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 2),
+      ).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('404s for an unknown report or a lock row id', async () => {
+      const { service } = build((command) => {
+        if (command === 'UpdateCommand') throw conditionFailed();
+        return {};
+      });
+
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', reportId, 1),
+      ).rejects.toThrow('Report not found');
+      await expect(
+        service.claimReadyNotification('AZ-25-01_LIV001', 'LOCK#x', 1),
+      ).rejects.toThrow('Report not found');
+    });
+
+    it('release sets notified_version back one, only if still at this version', async () => {
+      const { service, send } = build(() => ({}));
+
+      await service.releaseReadyNotification('AZ-25-01_LIV001', reportId, 2);
+
+      const [update] = calls<ExpressionInput & { ConditionExpression: string }>(
+        send,
+        'UpdateCommand',
+      );
+      expect(update.ConditionExpression).toBe('notified_version = :v');
+      expect(update.ExpressionAttributeValues).toEqual({ ':v': 2, ':prev': 1 });
     });
   });
 

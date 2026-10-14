@@ -38,6 +38,7 @@ import { CreateVendorDto } from './dto/create-vendor.dto';
 import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 import { BillFundingAccountsResponseDto } from './dto/bill-funding-accounts.dto';
+import { ProgramPaymentSummaryResponseDto } from './dto/program-payment-summary.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -190,43 +191,87 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/pending
-   * List pending payments for admin "Pay now" flow (admin only)
+   * List pending payments for admin "Pay now" flow (admin only).
+   * Optional programId: omit | none | program cuid.
    */
   @Get('pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async getPendingPayments() {
-    return this.paymentsService.getPendingPayments();
+  @ApiQuery({
+    name: 'programId',
+    required: false,
+    description: 'Program id, or "none" for payments with no program',
+  })
+  async getPendingPayments(@Query('programId') programId?: string) {
+    return this.paymentsService.getPendingPayments(programId);
   }
 
   /**
    * GET /api/payments/failed
-   * List failed payments for admin retry flow (admin only)
+   * List failed payments for admin retry flow (admin only).
+   * Optional programId: omit | none | program cuid.
    */
   @Get('failed')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async getFailedPayments() {
-    return this.paymentsService.getFailedPayments();
+  @ApiQuery({
+    name: 'programId',
+    required: false,
+    description: 'Program id, or "none" for payments with no program',
+  })
+  async getFailedPayments(@Query('programId') programId?: string) {
+    return this.paymentsService.getFailedPayments(programId);
   }
 
   /**
    * GET /api/payments/paid
-   * Recent successfully paid payouts (admin payments page).
+   * Successful payouts (admin payments page).
+   * Without programId: recent window (default 200, max 500).
+   * With programId / none: scoped list (default 1000, max 2000).
    */
   @Get('paid')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'List recent PAID payments (admin)' })
+  @ApiOperation({ summary: 'List PAID payments (admin); optional program scope' })
   @ApiQuery({
     name: 'limit',
     required: false,
-    description: 'Max rows (1–500, default 200)',
+    description:
+      'Max rows. Unscoped: 1–500 (default 200). Scoped by programId: 1–2000 (default 1000).',
   })
-  async getPaidPayments(@Query('limit') limit?: string) {
+  @ApiQuery({
+    name: 'programId',
+    required: false,
+    description: 'Program id, or "none" for payments with no program',
+  })
+  async getPaidPayments(
+    @Query('limit') limit?: string,
+    @Query('programId') programId?: string,
+  ) {
     const n = limit != null && limit !== '' ? parseInt(limit, 10) : undefined;
-    return this.paymentsService.getPaidPaymentsForAdmin(n);
+    return this.paymentsService.getPaidPaymentsForAdmin(
+      Number.isFinite(n as number) ? n : undefined,
+      programId,
+    );
+  }
+
+  /**
+   * GET /api/payments/program-summary
+   * All-time PENDING / PAID / FAILED totals per program (admin).
+   * Static path — must stay before :userId / :paymentId routes.
+   */
+  @Get('program-summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'All-time payment totals by program (PENDING / PAID / FAILED) for admin Payments drill-down',
+  })
+  @ApiOkResponse({ type: ProgramPaymentSummaryResponseDto })
+  async getProgramPaymentSummary(): Promise<ProgramPaymentSummaryResponseDto> {
+    return this.paymentsService.getProgramPaymentSummary();
   }
 
   /**
