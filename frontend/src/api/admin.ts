@@ -1218,6 +1218,7 @@ export const adminApi = {
       questions?: Record<string, unknown>;
       required?: boolean;
       jotformFormId?: string;
+      type?: 'INTAKE' | 'FEEDBACK' | 'PRE_TEST' | 'POST_TEST';
     },
   ) => {
     const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
