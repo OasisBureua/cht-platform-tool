@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect, useRef } from 'react';
+import type { MouseEvent } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { programsApi, type Program } from '../api/programs';
@@ -12,6 +13,7 @@ import SessionDisclaimerNotice from '../components/programs/SessionDisclaimerNot
 import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { getApiErrorMessage } from '../api/client';
 import { isRegistrationClosed } from '../utils/live-session-timing';
+import { cameFromSessionDetail } from '../utils/intake-return';
 
 // SCRUM-178: removed 'submit' step; last-step button fires submitRegistration directly.
 type StepKey = 'intake' | 'slot';
@@ -82,6 +84,22 @@ export default function ProgramRegisterWizard() {
   const backHref = isOfficeHours
     ? `/app/office-hours/${id}`
     : `/app/live/${id}`;
+  /**
+   * Return to the session page without leaving the wizard in history: pop back
+   * to the session entry when we came from it, otherwise replace this entry.
+   */
+  const leaveWizard = () => {
+    if (cameFromSessionDetail(location.state) && window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate(backHref, { replace: true });
+    }
+  };
+  const onBackLinkClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+    e.preventDefault();
+    leaveWizard();
+  };
 
   const { data: program, isLoading, isError } = useQuery({
     queryKey: ['program', id],
@@ -203,7 +221,7 @@ export default function ProgramRegisterWizard() {
       queryClient.invalidateQueries({
         queryKey: ['admin', 'webinar-registrations', 'pending'],
       });
-      navigate(`${backHref}?registered=1`);
+      leaveWizard();
     },
   });
 
@@ -236,7 +254,7 @@ export default function ProgramRegisterWizard() {
 
   const goNext = () => {
     if (alreadyRegistered && isLastStep) {
-      navigate(`${backHref}?registered=1`);
+      leaveWizard();
       return;
     }
 
@@ -289,6 +307,7 @@ export default function ProgramRegisterWizard() {
     <div className="mx-auto max-w-3xl space-y-6 pb-24 md:pb-8">
       <Link
         to={backHref}
+        onClick={onBackLinkClick}
         className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -325,6 +344,7 @@ export default function ProgramRegisterWizard() {
               </p>
               <Link
                 to={backHref}
+                onClick={onBackLinkClick}
                 className="inline-flex w-fit items-center rounded-[6px] bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-black"
               >
                 Back to session

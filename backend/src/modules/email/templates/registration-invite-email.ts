@@ -5,8 +5,8 @@ export type RegistrationInviteTemplateInput = {
   programTitles: string[];
   registerUrl: string;
   supportEmail: string;
-  /** Adds a line pointing at the attached participant user guide PDF. */
-  userGuideAttached?: boolean;
+  /** In-app participant user guide (`/app/guide`). */
+  guideUrl?: string;
 };
 
 export function buildRegistrationInviteEmail(
@@ -39,8 +39,11 @@ export function buildRegistrationInviteEmail(
     `Open the registration page to select sessions and complete intake (if required):`,
     p.registerUrl,
     '',
-    ...(p.userGuideAttached
-      ? ['The participant user guide is attached as a PDF.', '']
+    ...(p.guideUrl
+      ? [
+          `New to the platform? Read the participant user guide: ${p.guideUrl}`,
+          '',
+        ]
       : []),
     `Questions? Reply to ${p.supportEmail}.`,
   ].join('\n');
@@ -64,9 +67,9 @@ export function buildRegistrationInviteEmail(
         Or copy this link: <a href="${url}" style="color:${E.LINK}">${url}</a>
       </p>
       ${
-        p.userGuideAttached
+        p.guideUrl
           ? `<p style="margin:16px 0 0;color:${E.BODY_TEXT};font-size:14px;line-height:1.5">
-        The participant user guide is attached as a PDF.
+        New to the platform? <a href="${escape(p.guideUrl)}" style="color:${E.LINK}">Read the participant user guide</a>.
       </p>`
           : ''
       }

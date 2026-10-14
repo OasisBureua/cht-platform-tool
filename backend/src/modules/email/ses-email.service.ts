@@ -1,13 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { readFile } from 'fs/promises';
-import { join } from 'path';
 import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import { ProgramZoomSessionType } from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
 import {
   buildApprovalEmailMimeBuffer,
-  buildEmailWithAttachmentsMimeBuffer,
   buildLiveSessionIcs,
   googleCalendarTemplateUrl,
 } from './live-session-calendar';
@@ -560,11 +557,7 @@ export class SesEmailService {
     }
   }
 
-  /**
-   * Invite learners to the multi-webinar registration landing page.
-   * Dev only for now: the participant user guide PDF rides along as an
-   * attachment so the invite flow can be tested end to end.
-   */
+  /** Invite learners to the multi-webinar registration landing page. */
   async sendRegistrationInviteEmail(opts: {
     to: string;
     firstName: string;
@@ -577,81 +570,23 @@ export class SesEmailService {
     }
     const { to, firstName, programTitles, registerUrl } = opts;
     const supportEmail = this.from;
-    const build = (userGuideAttached: boolean) =>
-      buildRegistrationInviteEmail(
-        {
-          firstName,
-          programTitles,
-          registerUrl,
-          supportEmail,
-          userGuideAttached,
-        },
-        escapeHtml,
-      );
-
-    const guide = this.isDevEnvironment()
-      ? await this.loadUserGuidePdf()
-      : null;
-    if (guide) {
-      try {
-        const { subject, text, html } = build(true);
-        const raw = buildEmailWithAttachmentsMimeBuffer({
-          from: this.from,
-          to,
-          subject,
-          textPlain: text,
-          html,
-          attachments: [
-            {
-              filename: USER_GUIDE_FILENAME,
-              contentType: 'application/pdf',
-              content: guide,
-            },
-          ],
-        });
-        await this.client.send(
-          new SendEmailCommand({
-            FromEmailAddress: this.from,
-            Destination: { ToAddresses: [to] },
-            Content: { Raw: { Data: raw } },
-          }),
-        );
-        this.logger.log(
-          `Sent registration-invite email with user guide to ${to} (${programTitles.length} program(s))`,
-        );
-        return;
-      } catch (err) {
-        this.logger.warn(
-          `Registration-invite email with user guide failed for ${to}, falling back to Simple: ${(err as Error).message}`,
-        );
-      }
-    }
-
-    const { subject, text, html } = build(false);
+    const base = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    const { subject, text, html } = buildRegistrationInviteEmail(
+      {
+        firstName,
+        programTitles,
+        registerUrl,
+        supportEmail,
+        guideUrl: `${base}/app/guide`,
+      },
+      escapeHtml,
+    );
     await this.sendSimpleEmail(to, subject, text, html);
     this.logger.log(
       `Sent registration-invite email to ${to} (${programTitles.length} program(s))`,
     );
-  }
-
-  private isDevEnvironment(): boolean {
-    const env = this.config.get<string>('app.environment') ?? '';
-    return env === 'dev' || env === 'development';
-  }
-
-  private userGuidePdf: Promise<Buffer | null> | null = null;
-
-  /** Read once per process; a missing file only disables the attachment. */
-  private loadUserGuidePdf(): Promise<Buffer | null> {
-    this.userGuidePdf ??= readFile(
-      join(process.cwd(), 'assets', USER_GUIDE_FILENAME),
-    ).catch((err: Error) => {
-      this.logger.warn(
-        `User guide PDF not available for invite emails: ${err.message}`,
-      );
-      return null;
-    });
-    return this.userGuidePdf;
   }
 
   /**
@@ -739,8 +674,6 @@ export class SesEmailService {
     );
   }
 }
-
-const USER_GUIDE_FILENAME = 'chm-participant-user-guide.pdf';
 
 function escapeHtml(s: string): string {
   return s

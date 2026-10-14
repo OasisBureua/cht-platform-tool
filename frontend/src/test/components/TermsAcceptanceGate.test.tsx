@@ -42,20 +42,20 @@ describe('Terms acceptance gate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
-    mockUser = { userId: 'u1', role: 'HCP', termsAccepted: false, termsVersion: '2026-09-29' };
+    mockUser = { userId: 'u1', role: 'HCP', termsAccepted: false, termsVersion: '2026-10-13' };
   });
 
   it('blocks protected content until terms are accepted', () => {
     renderGate();
 
-    expect(screen.getByRole('dialog', { name: /terms of service & privacy policy confirmation/i })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: /terms of use & privacy policy confirmation/i })).toBeInTheDocument();
     expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument();
   });
 
   it('links to the full documents in a new tab', () => {
     renderGate();
 
-    const terms = screen.getByRole('link', { name: /terms and conditions/i });
+    const terms = screen.getByRole('link', { name: /terms of use/i });
     const privacy = screen.getByRole('link', { name: /privacy policy/i });
     expect(terms).toHaveAttribute('href', '/terms');
     expect(terms).toHaveAttribute('target', '_blank');
@@ -75,7 +75,7 @@ describe('Terms acceptance gate', () => {
     fireEvent.click(accept);
 
     await waitFor(() => expect(mockRefreshProfile).toHaveBeenCalled());
-    expect(mockAccept).toHaveBeenCalledWith('2026-09-29');
+    expect(mockAccept).toHaveBeenCalledWith('2026-10-13');
     expect(mockLogout).not.toHaveBeenCalled();
   });
 

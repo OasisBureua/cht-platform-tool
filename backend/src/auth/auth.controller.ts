@@ -1691,7 +1691,7 @@ export class AuthController {
   }> {
     if (version !== CURRENT_TERMS_VERSION) {
       throw new BadRequestException(
-        'The Terms of Service have been updated. Please reload and review the latest version.',
+        'The Terms of Use have been updated. Please reload and review the latest version.',
       );
     }
     const saved = await this.authService.acceptTerms(

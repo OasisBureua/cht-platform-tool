@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut, CreditCard, CheckCircle2, ArrowRight } from 'lucide-react';
+import { User, LogOut, CreditCard, CheckCircle2, ArrowRight, BookOpen } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
@@ -468,7 +468,24 @@ export default function Settings() {
                 </div>
               </div>
             ) : settingsTab === 'help' ? (
-              <section className="mt-6 max-w-xl" aria-labelledby="settings-contact-heading">
+              <div className="mt-6 max-w-xl space-y-8">
+                <section aria-labelledby="settings-guide-heading">
+                  <h3 id="settings-guide-heading" className="text-base font-bold text-foreground">
+                    Participant user guide
+                  </h3>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Step by step from account setup to honorarium: registering for Live, approval
+                    emails, joining the webinar, the post-session survey, and payment release.
+                  </p>
+                  <Link
+                    to="/app/guide"
+                    className="mt-3 inline-flex items-center gap-2 rounded-[6px] border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+                  >
+                    <BookOpen className="h-4 w-4" aria-hidden />
+                    Open the user guide
+                  </Link>
+                </section>
+              <section aria-labelledby="settings-contact-heading" className="border-t border-border pt-6">
                 <h3 id="settings-contact-heading" className="text-base font-bold text-foreground">
                   Contact the team
                 </h3>
@@ -499,6 +516,7 @@ export default function Settings() {
                   }
                 />
               </section>
+              </div>
             ) : (
               <div className="mt-6">
                 <PaymentSettingsSection
