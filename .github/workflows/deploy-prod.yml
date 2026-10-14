@@ -40,7 +40,7 @@ env:
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
   TF_VAR_FILE: ../variables/platform.github.tfvars
   TF_BACKEND_CONFIG: ../backends/us-east-1-platform.hcl
-  APP_URL: https://testapp.communityhealth.media
+  APP_URL: https://app.communityhealth.media
   API_URL: https://app.communityhealth.media/api
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
