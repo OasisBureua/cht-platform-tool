@@ -26,8 +26,13 @@ import { ReportsAwsClients } from './reports-aws.clients';
 import { ReportRecipientsService } from './report-recipients.service';
 import type { CreateReportDto } from './dto/create-report.dto';
 import {
+  apiTemplateType,
   DEFAULT_TEMPLATE_TYPE,
+  fromStoredItem,
   LOCK_PREFIX,
+  lockReportId,
+  statusSpellings,
+  storedTemplateType,
   TERMINAL_STATUSES,
   type LockItem,
   type ReportItem,
@@ -84,7 +89,7 @@ export class ReportsService {
     this.requireConfigured();
 
     const campaignId = dto.campaignId.trim();
-    const templateType = dto.templateType || DEFAULT_TEMPLATE_TYPE;
+    const templateType = apiTemplateType(dto.templateType);
     const now = new Date();
     const nowIso = now.toISOString();
     const reportId = randomUUID();
@@ -102,13 +107,13 @@ export class ReportsService {
     const report: ReportItem = {
       campaign_id: campaignId,
       report_id: reportId,
-      template_type: templateType,
+      template_type: storedTemplateType(templateType),
       sources: dto.sources ?? [],
       date_range_days: dto.dateRangeDays ?? null,
       window_start: windowStart,
       window_end: windowEnd,
       notify_emails: notifyEmails,
-      status: 'queued',
+      status: 'QUEUED',
       attempt_count: 0,
       edit_attempts: 0,
       last_error: null,
@@ -179,9 +184,9 @@ export class ReportsService {
       );
       // report_id is the sort key, which DynamoDB rejects in a FilterExpression.
       items.push(
-        ...((page.Items ?? []) as ReportItem[]).filter(
-          (item) => !item.report_id.startsWith(LOCK_PREFIX),
-        ),
+        ...((page.Items ?? []) as ReportItem[])
+          .filter((item) => !item.report_id.startsWith(LOCK_PREFIX))
+          .map(fromStoredItem),
       );
       startKey = page.LastEvaluatedKey;
     } while (startKey && items.length < LIST_MAX_ITEMS);
@@ -229,11 +234,12 @@ export class ReportsService {
                   UpdateExpression:
                     'SET #status = :queued, attempt_count = :zero, last_error = :null, edit_instructions = :edit, updated_at = :now ADD edit_attempts :one',
                   ConditionExpression:
-                    '#status = :complete AND (attribute_not_exists(edit_attempts) OR edit_attempts < :max)',
+                    '#status IN (:complete, :completeLegacy) AND (attribute_not_exists(edit_attempts) OR edit_attempts < :max)',
                   ExpressionAttributeNames: { '#status': 'status' },
                   ExpressionAttributeValues: {
-                    ':queued': 'queued',
-                    ':complete': 'complete',
+                    ':queued': 'QUEUED',
+                    ':complete': 'COMPLETE',
+                    ':completeLegacy': 'complete',
                     ':zero': 0,
                     ':null': null,
                     ':edit': editInstructions?.trim() || null,
@@ -300,7 +306,7 @@ export class ReportsService {
 
     const report = await this.requireReport(reportId, campaignId);
     const key = report.s3_key_pdf?.trim();
-    if (report.status !== 'complete' || !key) {
+    if (report.status !== 'COMPLETE' || !key) {
       throw new ConflictException('Report is not ready for download');
     }
     if (
@@ -362,7 +368,7 @@ export class ReportsService {
   }
 
   private assertRegenerable(report: ReportItem): void {
-    if (report.status !== 'complete') {
+    if (report.status !== 'COMPLETE') {
       throw new ConflictException(
         'Report can only be regenerated once generation is complete',
       );
@@ -406,7 +412,7 @@ export class ReportsService {
     }
 
     if (!item) throw new NotFoundException('Report not found');
-    return item;
+    return fromStoredItem(item);
   }
 
   private lockPut(
@@ -417,9 +423,9 @@ export class ReportsService {
   ) {
     const lock: LockItem = {
       campaign_id: campaignId,
-      report_id: `${LOCK_PREFIX}${templateType}`,
+      report_id: lockReportId(templateType),
       locked_report_id: reportId,
-      template_type: templateType,
+      template_type: storedTemplateType(templateType),
       created_at: now.toISOString(),
     };
     return {
@@ -476,7 +482,7 @@ export class ReportsService {
         TableName: this.tableName(),
         Key: {
           campaign_id: campaignId,
-          report_id: `${LOCK_PREFIX}${templateType}`,
+          report_id: lockReportId(templateType),
         },
         ConsistentRead: true,
       }),
@@ -491,7 +497,9 @@ export class ReportsService {
         ConsistentRead: true,
       }),
     );
-    const holderItem = holder.Item as ReportItem | undefined;
+    const holderItem = holder.Item
+      ? fromStoredItem(holder.Item as ReportItem)
+      : undefined;
     if (holderItem && !TERMINAL_STATUSES.has(holderItem.status)) {
       const current = await this.expireIfStale(holderItem);
       if (!TERMINAL_STATUSES.has(current.status)) return false;
@@ -511,7 +519,7 @@ export class ReportsService {
           TableName: this.tableName(),
           Key: {
             campaign_id: campaignId,
-            report_id: `${LOCK_PREFIX}${templateType}`,
+            report_id: lockReportId(templateType),
           },
           ConditionExpression: 'locked_report_id = :r',
           ExpressionAttributeValues: { ':r': reportId },
@@ -551,7 +559,7 @@ export class ReportsService {
             'SET #status = :failed, last_error = :err, updated_at = :now',
           ExpressionAttributeNames: { '#status': 'status' },
           ExpressionAttributeValues: {
-            ':failed': 'failed',
+            ':failed': 'FAILED',
             ':err': 'enqueue_failed',
             ':now': new Date().toISOString(),
           },
@@ -575,11 +583,12 @@ export class ReportsService {
           Key: { campaign_id: campaignId, report_id: reportId },
           UpdateExpression:
             'SET #status = :complete, updated_at = :now ADD edit_attempts :minusOne',
-          ConditionExpression: '#status = :queued',
+          ConditionExpression: '#status IN (:queued, :queuedLegacy)',
           ExpressionAttributeNames: { '#status': 'status' },
           ExpressionAttributeValues: {
-            ':complete': 'complete',
-            ':queued': 'queued',
+            ':complete': 'COMPLETE',
+            ':queued': 'QUEUED',
+            ':queuedLegacy': 'queued',
             ':now': new Date().toISOString(),
             ':minusOne': -1,
           },
@@ -617,7 +626,7 @@ export class ReportsService {
         TableName: this.tableName(),
         Key: {
           campaign_id: campaignId,
-          report_id: `${LOCK_PREFIX}${templateType}`,
+          report_id: lockReportId(templateType),
         },
         ConsistentRead: true,
       }),
@@ -632,9 +641,10 @@ export class ReportsService {
         ConsistentRead: true,
       }),
     );
-    const holderItem = holder.Item as ReportItem | undefined;
-    if (!holderItem) return;
-    const current = await this.expireIfStale(holderItem);
+    if (!holder.Item) return;
+    const current = await this.expireIfStale(
+      fromStoredItem(holder.Item as ReportItem),
+    );
     if (!TERMINAL_STATUSES.has(current.status)) {
       throw new ConflictException(
         'A report is already being generated for this campaign; try Refresh data after it finishes',
@@ -649,7 +659,7 @@ export class ReportsService {
     return {
       reportId: item.report_id,
       campaignId: item.campaign_id,
-      templateType: item.template_type || DEFAULT_TEMPLATE_TYPE,
+      templateType: apiTemplateType(item.template_type),
       status: item.status,
       sources: item.sources ?? [],
       dateRangeDays: item.date_range_days ?? null,
@@ -662,7 +672,7 @@ export class ReportsService {
       lastError: item.last_error ?? null,
       requestedBy: item.requested_by,
       version: item.version ?? null,
-      downloadAvailable: item.status === 'complete' && !!item.s3_key_pdf,
+      downloadAvailable: item.status === 'COMPLETE' && !!item.s3_key_pdf,
       createdAt: item.created_at,
       updatedAt: item.updated_at,
       ...(extras?.warehouseSync
@@ -694,20 +704,21 @@ export class ReportsService {
           Key: { campaign_id: campaignId, report_id: reportId },
           UpdateExpression: 'SET notified_version = :v, notified_at = :now',
           ConditionExpression:
-            'attribute_exists(report_id) AND #status = :complete AND #version = :v AND (attribute_not_exists(notified_version) OR notified_version < :v)',
+            'attribute_exists(report_id) AND #status IN (:complete, :completeLegacy) AND #version = :v AND (attribute_not_exists(notified_version) OR notified_version < :v)',
           ExpressionAttributeNames: {
             '#status': 'status',
             '#version': 'version',
           },
           ExpressionAttributeValues: {
             ':v': version,
-            ':complete': 'complete',
+            ':complete': 'COMPLETE',
+            ':completeLegacy': 'complete',
             ':now': new Date().toISOString(),
           },
           ReturnValues: 'ALL_NEW',
         }),
       );
-      return res.Attributes as ReportItem;
+      return fromStoredItem(res.Attributes as ReportItem);
     } catch (err) {
       if ((err as AwsError)?.name !== 'ConditionalCheckFailedException') {
         throw err;
@@ -764,6 +775,7 @@ export class ReportsService {
     }
 
     const lastError = `Timed out: no progress for ${minutes} minutes.`;
+    const [seen, seenLegacy] = statusSpellings(item.status);
     try {
       const res = await this.aws.dynamodb.send(
         new UpdateCommand({
@@ -771,13 +783,15 @@ export class ReportsService {
           Key: { campaign_id: item.campaign_id, report_id: item.report_id },
           UpdateExpression:
             'SET #status = :failed, last_error = :err, updated_at = :now',
-          ConditionExpression: '#status = :seen AND updated_at = :seenAt',
+          ConditionExpression:
+            '#status IN (:seen, :seenLegacy) AND updated_at = :seenAt',
           ExpressionAttributeNames: { '#status': 'status' },
           ExpressionAttributeValues: {
-            ':failed': 'failed',
+            ':failed': 'FAILED',
             ':err': lastError,
             ':now': now.toISOString(),
-            ':seen': item.status,
+            ':seen': seen,
+            ':seenLegacy': seenLegacy,
             ':seenAt': item.updated_at,
           },
           ReturnValues: 'ALL_NEW',
@@ -788,17 +802,17 @@ export class ReportsService {
       );
       await this.releaseLock(
         item.campaign_id,
-        item.template_type || DEFAULT_TEMPLATE_TYPE,
+        item.template_type,
         item.report_id,
       );
-      return (
-        (res.Attributes as ReportItem | undefined) ?? {
-          ...item,
-          status: 'failed',
-          last_error: lastError,
-          updated_at: now.toISOString(),
-        }
-      );
+      return res.Attributes
+        ? fromStoredItem(res.Attributes as ReportItem)
+        : {
+            ...item,
+            status: 'FAILED',
+            last_error: lastError,
+            updated_at: now.toISOString(),
+          };
     } catch (err) {
       if ((err as AwsError)?.name === 'ConditionalCheckFailedException') {
         return item;
@@ -897,7 +911,7 @@ function reportConditionFailed(err: unknown): boolean {
 function downloadFilename(report: ReportItem): string {
   const safe = (s: string) => s.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 80);
   const version = report.version ?? 1;
-  return `${safe(report.campaign_id)}-${safe(report.template_type || DEFAULT_TEMPLATE_TYPE)}-v${version}.pdf`;
+  return `${safe(report.campaign_id)}-${safe(apiTemplateType(report.template_type))}-v${version}.pdf`;
 }
 
 /**

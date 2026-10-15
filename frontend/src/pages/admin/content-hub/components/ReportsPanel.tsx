@@ -64,14 +64,14 @@ const RANGE_SEGMENTS: Array<{ value: `${DateRangeDays}`; label: string }> = [
 ];
 
 const STATUS_LABEL: Record<ReportStatus, string> = {
-  queued: 'Queued',
-  pulling_data: 'Pulling data',
-  generating: 'Writing report',
-  rendering: 'Printing PDF',
-  uploading: 'Saving PDF',
-  waiting_for_transcript: "Waiting for Zoom's transcript…",
-  complete: 'Ready',
-  failed: 'Failed',
+  QUEUED: 'Queued',
+  PULLING_DATA: 'Pulling data',
+  GENERATING: 'Writing report',
+  RENDERING: 'Printing PDF',
+  UPLOADING: 'Saving PDF',
+  WAITING_FOR_TRANSCRIPT: "Waiting for Zoom's transcript…",
+  COMPLETE: 'Ready',
+  FAILED: 'Failed',
 };
 
 function fmtDate(iso: string | null | undefined, pattern = 'MMM d, yyyy'): string {
@@ -96,14 +96,14 @@ function failureReason(lastError: string): string {
 }
 
 function StatusBadge({ status }: { status: ReportStatus }) {
-  if (status === 'complete') {
+  if (status === 'COMPLETE') {
     return (
       <ZoomStatusBadge tone="success" icon={CheckCircle2}>
         Ready
       </ZoomStatusBadge>
     );
   }
-  if (status === 'failed') {
+  if (status === 'FAILED') {
     return (
       <ZoomStatusBadge tone="error" icon={XCircle}>
         Failed
@@ -350,7 +350,7 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
   const download = useDownloadReport();
   const [editing, setEditing] = useState(false);
   const canRegenerate =
-    report.status === 'complete' && report.editAttempts < report.maxEditAttempts && !blocked;
+    report.status === 'COMPLETE' && report.editAttempts < report.maxEditAttempts && !blocked;
 
   const doDownload = () =>
     download.mutate(report, {
@@ -389,7 +389,7 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
                 ? ` · ${report.editAttempts}/${report.maxEditAttempts} regenerations used`
                 : ''}
             </p>
-            {report.status === 'failed' && report.lastError ? (
+            {report.status === 'FAILED' && report.lastError ? (
               <p className="text-xs text-destructive">Generation failed: {failureReason(report.lastError)}</p>
             ) : null}
           </div>
