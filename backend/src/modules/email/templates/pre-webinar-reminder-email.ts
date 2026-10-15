@@ -116,7 +116,7 @@ export function buildPreWebinarReminderEmail(
       <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:${E.BODY_TEXT}">Quick tips</p>
       <ul style="margin:0;padding-left:18px;font-size:13px;line-height:1.7;color:${E.MUTED}">
         <li>Join 2&ndash;3 minutes early to test your audio.</li>
-        <li>Keep questions ready &mdash; there will be time for Q&amp;A.</li>
+        <li>Keep questions ready. There will be time for Q&amp;A.</li>
         ${zoomUrl ? '<li>The Zoom link above is your direct join link.</li>' : ''}
       </ul>
     </div>`;
