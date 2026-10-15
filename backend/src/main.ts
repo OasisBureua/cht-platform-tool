@@ -89,7 +89,6 @@ async function bootstrap() {
   // CORS: allow frontend origins. FRONTEND_URL from env (e.g. ECS) is added when set.
   const corsOrigins = [
     'https://testapp.communityhealth.media',
-    'https://staging.testapp.communityhealth.media',
     'https://app.communityhealth.media',
     'https://devapp.communityhealth.media',
     'https://communityhealth.media',

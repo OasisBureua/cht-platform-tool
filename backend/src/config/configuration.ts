@@ -394,6 +394,9 @@ export default () => ({
   /** CHT Companion (SSE RAG chat) — BFF proxies browser → Service Connect. */
   companion: {
     baseUrl: (process.env.COMPANION_BASE_URL || '').replace(/\/$/, ''),
-    internalSecret: process.env.COMPANION_INTERNAL_SECRET?.trim() || '',
+    /** Scope on the platform outbound M2M token sent as the Bearer to /chat. */
+    m2mScope:
+      process.env.COGNITO_M2M_COMPANION_SCOPE?.trim() ||
+      'companion/chat.invoke',
   },
 });

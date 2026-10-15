@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # Verify GitHub Environment secrets via gh CLI (local pre-deploy check).
-# Usage: ./scripts/verify-github-secrets.sh [staging|platform|production|development]
+# Usage: ./scripts/verify-github-secrets.sh [platform|production|development]
 set -euo pipefail
 
-RAW_ENV="${1:-staging}"
+RAW_ENV="${1:-platform}"
 case "$RAW_ENV" in
   production|platform) GH_ENV="platform" ;;
-  staging|development) GH_ENV="$RAW_ENV" ;;
+  development) GH_ENV="$RAW_ENV" ;;
   *)
-    echo "Unknown environment: $RAW_ENV (use staging, platform, production, or development)"
+    echo "Unknown environment: $RAW_ENV (use platform, production, or development)"
     exit 1
     ;;
 esac
@@ -103,7 +103,7 @@ echo ""
 echo "================================================"
 echo ""
 
-if [ "$GH_ENV" = "staging" ] || [ "$GH_ENV" = "platform" ]; then
+if [ "$GH_ENV" = "platform" ]; then
   CERT_ARN=""
   CERT_FILE="infrastructure/terraform/environments/variables/.cert-arns-testapp"
   if [ -f "$CERT_FILE" ]; then
@@ -156,7 +156,4 @@ echo ""
 echo "Fix:"
 echo "  Settings → Environments → $GH_ENV → Environment secrets"
 echo "  Or: ./scripts/sync-github-secrets-from-tfvars.sh $GH_ENV"
-if [ "$GH_ENV" = "staging" ]; then
-  echo "  AWS runtime secrets: ./scripts/bootstrap-staging-secrets-from-platform.sh"
-fi
 exit 1

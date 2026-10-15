@@ -189,3 +189,9 @@ variable "platform_outbound_hub_scopes" {
     "hub/admin.delete",
   ]
 }
+
+variable "platform_outbound_companion_scopes" {
+  description = "companion/… scopes allowed on the platform outbound M2M client. Requires cht-companion's `companion` resource server on this pool; empty until it exists. Kept out of the Hub token's scope list."
+  type        = list(string)
+  default     = []
+}

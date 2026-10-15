@@ -239,7 +239,7 @@ output "next_steps" {
   value       = <<-EOT
     
     ✅ us-east-1 (Primary) deployed successfully!
-    
+    %{if var.app_url == ""}
     📋 Add NS records in your DNS provider (GoDaddy for communityhealth.media):
     
     Type: NS
@@ -248,12 +248,12 @@ output "next_steps" {
     ${join("\n    ", module.route53.name_servers)}
     
     This delegates ${var.domain_name} to Route53.
-    
-    🌐 URL: https://${var.domain_name}
-    API:  https://${var.domain_name}/api/*
+    %{endif}
+    🌐 URL: ${local.public_app_url}
+    API:  ${local.public_app_url}/api/*
     
     🧪 Test your deployment:
-    curl https://${var.domain_name}/health/ready
+    curl ${local.public_app_url}/health/ready
     
     💰 Current cost: ~$273/month
     

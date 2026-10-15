@@ -16,7 +16,11 @@ import { buildMissedWebinarEmail } from './templates/missed-webinar-email';
 import { buildPostWebinarSurveyEmail } from './templates/post-webinar-survey-email';
 import { buildWebinarAccessEmail } from './templates/webinar-access-email';
 import { buildPreWebinarReminderEmail } from './templates/pre-webinar-reminder-email';
-import { buildRegistrationInviteEmail } from './templates/registration-invite-email';
+import {
+  buildRegistrationInviteEmail,
+  type InviteSession,
+} from './templates/registration-invite-email';
+import { setEmailAssetBase } from './templates/email-layout';
 import { buildRegistrationSubmittedEmail } from './templates/registration-submitted-email';
 import { buildRegistrationRevokedEmail } from './templates/registration-revoked-email';
 import { buildOperationalEmail } from './templates/operational-email';
@@ -32,6 +36,10 @@ export class SesEmailService {
   private readonly logger = new Logger(SesEmailService.name);
   private readonly client: SESv2Client;
   private readonly from: string;
+  /** Bare address from `from` (no display name), for mailto links and copy. */
+  private readonly supportEmail: string;
+  /** App origin for links and images in emails (FRONTEND_URL: app.communityhealth.media in prod). */
+  private readonly appBase: string;
   private readonly enabled: boolean;
 
   constructor(private readonly config: ConfigService) {
@@ -41,6 +49,11 @@ export class SesEmailService {
     this.from =
       this.config.get<string>('email.from') ||
       '"Community Health Media" <info@communityhealth.media>';
+    this.supportEmail = mailboxAddress(this.from);
+    this.appBase = (
+      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
+    ).replace(/\/$/, '');
+    setEmailAssetBase(this.appBase);
     this.enabled = this.config.get<boolean>('email.enabled') !== false;
     this.client = new SESv2Client({
       region,
@@ -75,14 +88,12 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const zoomTrim = program.zoomJoinUrl?.trim() || null;
     const googleDetails = (
       sanitizePlainDescription(program.description) +
@@ -141,7 +152,7 @@ export class SesEmailService {
           durationMinutes: program.duration ?? 60,
           appSessionUrl,
           zoomJoinUrl: program.zoomJoinUrl,
-          organizerEmail: this.from,
+          organizerEmail: this.supportEmail,
         });
         const raw = buildApprovalEmailMimeBuffer({
           from: this.from,
@@ -199,9 +210,7 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind, requiresApproval } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -213,7 +222,7 @@ export class SesEmailService {
         requiresApproval,
         sessionKind,
         appSessionUrl,
-        supportEmail: this.from,
+        supportEmail: this.supportEmail,
       },
       escapeHtml,
     );
@@ -245,14 +254,12 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind, reason, adminNote } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildRegistrationRejectedEmail(
       {
         firstName,
@@ -294,14 +301,12 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, sessionKind, adminNote } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildRegistrationRevokedEmail(
       {
         firstName,
@@ -345,11 +350,9 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appHomeUrl = `${base}/app/home`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildMissedWebinarEmail(
       {
         firstName,
@@ -400,9 +403,7 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program, surveyUrl, feedbackSurveyId } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
@@ -412,7 +413,7 @@ export class SesEmailService {
       : null;
     // Prefer in-app Surveys tab; optional surveyUrl only if explicitly passed.
     const resolvedSurveyUrl = appSurveyUrl || surveyUrl?.trim() || null;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildPostWebinarSurveyEmail(
       {
         firstName,
@@ -462,14 +463,12 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, program } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildWebinarAccessEmail(
       {
         firstName,
@@ -522,14 +521,12 @@ export class SesEmailService {
       return;
     }
     const { to, firstName, hoursUntilStart, program } = opts;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const appSessionUrl =
       program.zoomSessionType === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const supportEmail = this.from;
+    const supportEmail = this.supportEmail;
     const { subject, text, html } = buildPreWebinarReminderEmail(
       {
         firstName,
@@ -562,22 +559,20 @@ export class SesEmailService {
   async sendRegistrationInviteEmail(opts: {
     to: string;
     firstName: string;
-    programTitles: string[];
+    sessions: InviteSession[];
     registerUrl: string;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip registration-invite email');
       return;
     }
-    const { to, firstName, programTitles, registerUrl } = opts;
-    const supportEmail = this.from;
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const { to, firstName, sessions, registerUrl } = opts;
+    const supportEmail = this.supportEmail;
+    const base = this.appBase;
     const { subject, text, html } = buildRegistrationInviteEmail(
       {
         firstName,
-        programTitles,
+        sessions,
         registerUrl,
         supportEmail,
         guideUrl: `${base}/app/guide`,
@@ -586,7 +581,7 @@ export class SesEmailService {
     );
     await this.sendSimpleEmail(to, subject, text, html);
     this.logger.log(
-      `Sent registration-invite email to ${to} (${programTitles.length} program(s))`,
+      `Sent registration-invite email to ${to} (${sessions.length} program(s))`,
     );
   }
 
@@ -611,16 +606,14 @@ export class SesEmailService {
       );
       return false;
     }
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const surveyUrl = `${base}/register/survey/${encodeURIComponent(opts.token)}`;
     const { subject, text, html } = buildPublicRegistrationSurveyEmail(
       {
         firstName: opts.firstName,
         programTitle: opts.program.title,
         surveyUrl,
-        supportEmail: this.from,
+        supportEmail: this.supportEmail,
         sponsorName: opts.program.sponsorName,
       },
       escapeHtml,
@@ -653,7 +646,7 @@ export class SesEmailService {
         subject,
         textBody,
         programTitle: opts.programTitle,
-        supportEmail: this.from,
+        supportEmail: this.supportEmail,
       },
       escapeHtml,
     );
@@ -676,12 +669,10 @@ export class SesEmailService {
     }
     const to = opts.to.trim().toLowerCase();
     if (!to) throw new Error('to is required');
-    const base = (
-      this.config.get<string>('frontendUrl') || 'https://communityhealth.media'
-    ).replace(/\/$/, '');
+    const base = this.appBase;
     const reportsUrl = `${base}/admin/reports/campaigns/${encodeURIComponent(opts.campaignId)}?tab=reports`;
     const { subject, text, html } = buildReportReadyEmail(
-      { version: opts.version, reportsUrl, supportEmail: this.from },
+      { version: opts.version, reportsUrl, supportEmail: this.supportEmail },
       escapeHtml,
     );
     await this.sendSimpleEmail(to, subject, text, html);
@@ -727,4 +718,10 @@ function sanitizePlainDescription(htmlOrText: string): string {
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/** `"Community Health Media" <info@x>` → `info@x`; a bare address passes through. */
+export function mailboxAddress(from: string): string {
+  const m = from.match(/<([^<>\s]+@[^<>\s]+)>/);
+  return (m ? m[1] : from).trim();
 }

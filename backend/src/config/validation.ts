@@ -3,7 +3,7 @@ import * as Joi from 'joi';
 export const validationSchema = Joi.object({
   // Application
   NODE_ENV: Joi.string()
-    .valid('development', 'production', 'test', 'staging')
+    .valid('development', 'production', 'test')
     .default('development'),
   PORT: Joi.number().default(3000),
   FRONTEND_URL: Joi.string().default('http://localhost:5173'),
@@ -139,5 +139,5 @@ export const validationSchema = Joi.object({
 
   // CHT Companion (optional until service is deployed)
   COMPANION_BASE_URL: Joi.string().allow('').optional(),
-  COMPANION_INTERNAL_SECRET: Joi.string().allow('').optional(),
+  COGNITO_M2M_COMPANION_SCOPE: Joi.string().allow('').optional(),
 });

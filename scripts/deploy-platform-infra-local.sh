@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Apply platform (testapp) infrastructure locally: one-time / infra changes only.
+# Apply platform (app.communityhealth.media) infrastructure locally: one-time / infra changes only.
 # App images + frontend are deployed via deploy-prod.yml (CI) after infra is in place.
 #
 # Prerequisites:

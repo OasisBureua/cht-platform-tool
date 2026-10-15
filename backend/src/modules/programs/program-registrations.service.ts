@@ -1558,7 +1558,7 @@ export class ProgramRegistrationsService {
         status: ProgramStatus.PUBLISHED,
         zoomSessionType: ProgramZoomSessionType.WEBINAR,
       },
-      select: { id: true, title: true, startDate: true },
+      select: { id: true, title: true, startDate: true, duration: true },
       orderBy: { startDate: 'asc' },
     });
     if (programs.length === 0) {
@@ -1648,7 +1648,11 @@ export class ProgramRegistrationsService {
         await this.sesEmail.sendRegistrationInviteEmail({
           to: user.email,
           firstName: user.firstName ?? '',
-          programTitles: programs.map((p) => p.title),
+          sessions: programs.map((p) => ({
+            title: p.title,
+            startDate: p.startDate,
+            duration: p.duration,
+          })),
           registerUrl,
         });
         emailed += 1;
@@ -1674,7 +1678,11 @@ export class ProgramRegistrationsService {
         await this.sesEmail.sendRegistrationInviteEmail({
           to: email,
           firstName: '',
-          programTitles: programs.map((p) => p.title),
+          sessions: programs.map((p) => ({
+            title: p.title,
+            startDate: p.startDate,
+            duration: p.duration,
+          })),
           registerUrl: inviteUrl,
         });
         emailed += 1;
