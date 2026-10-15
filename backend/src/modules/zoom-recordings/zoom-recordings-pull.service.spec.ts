@@ -335,4 +335,25 @@ describe('ZoomRecordingsPullService', () => {
       }),
     );
   });
+
+  it('returns stored file sizes over 2 GB as JSON-safe numbers', () => {
+    const dto = service.toDto({
+      id: 'row-mp4',
+      programId: program.id,
+      zoomMeetingId: program.zoomMeetingId,
+      zoomRecordingFileId: 'mp4-1',
+      fileType: 'MP4',
+      recordingType: 'shared_screen_with_speaker_view',
+      fileExtension: 'MP4',
+      fileSizeBytes: BigInt(2422755454),
+      recordingStart: null,
+      recordingEnd: null,
+      topic: null,
+      pulledAt: null,
+      pulledByUserId: null,
+    });
+
+    expect(dto.fileSizeBytes).toBe(2422755454);
+    expect(() => JSON.stringify(dto)).not.toThrow();
+  });
 });

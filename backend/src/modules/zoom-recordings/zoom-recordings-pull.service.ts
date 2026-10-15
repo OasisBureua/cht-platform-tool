@@ -66,7 +66,7 @@ export class ZoomRecordingsPullService {
     fileType: string;
     recordingType: string | null;
     fileExtension: string | null;
-    fileSizeBytes: number | null;
+    fileSizeBytes: bigint | number | null;
     recordingStart: Date | null;
     recordingEnd: Date | null;
     topic: string | null;
@@ -86,7 +86,7 @@ export class ZoomRecordingsPullService {
       fileType: r.fileType,
       recordingType: r.recordingType,
       fileExtension: r.fileExtension,
-      fileSizeBytes: r.fileSizeBytes,
+      fileSizeBytes: r.fileSizeBytes == null ? null : Number(r.fileSizeBytes),
       topic: r.topic,
       recordingStart: r.recordingStart?.toISOString() ?? null,
       recordingEnd: r.recordingEnd?.toISOString() ?? null,

@@ -230,7 +230,7 @@ model ZoomRecordingSession {
   sessionType     ProgramZoomSessionType @default(WEBINAR)
   startTime       DateTime?
   durationMinutes Int?
-  totalSizeBytes  Int?
+  totalSizeBytes  BigInt?
   programId       String?
   chmProgramId    String?
   firstSyncedAt   DateTime @default(now())
@@ -264,7 +264,7 @@ model ZoomRecordingFile {
   fileType            String
   recordingType       String?
   fileExtension       String?
-  fileSizeBytes       Int?
+  fileSizeBytes       BigInt?
   s3Bucket            String?
   s3Key               String?
   chmAssetFilename    String?
