@@ -69,9 +69,9 @@ variable "ecr_replication_destination_region" {
 }
 
 variable "ecr_repository_prefixes" {
-  description = "Primary only: PREFIX_MATCH filters for account ECR replication (contenthub- + cht-platform-)."
+  description = "Primary only: PREFIX_MATCH filters for account ECR replication (contenthub- + cht-platform- + cht-companion)."
   type        = list(string)
-  default     = ["contenthub-", "cht-platform-"]
+  default     = ["contenthub-", "cht-platform-", "cht-companion"]
 }
 
 variable "ecr_repository_names" {
@@ -369,13 +369,6 @@ variable "cognito_mrr_associate_waf_replica" {
 variable "companion_base_url" {
   description = "Primary only: companion Service Connect URL (unused in replica)."
   type        = string
-  default     = ""
-}
-
-variable "companion_internal_secret" {
-  description = "Primary only: companion X-BFF-Auth secret (unused in replica)."
-  type        = string
-  sensitive   = true
   default     = ""
 }
 

@@ -331,7 +331,6 @@ module "secrets" {
   hubspot_access_token                      = var.hubspot_access_token
   recaptcha_secret_key                      = var.recaptcha_secret_key
   internal_cache_secret                     = var.internal_cache_secret
-  companion_internal_secret                 = var.companion_internal_secret
 }
 
 # ============================================
@@ -658,7 +657,9 @@ module "cognito" {
   # Platform → Hub M2M (hub RS must already exist on this pool; we do not create it)
   enable_platform_outbound_m2m = var.enable_cognito_platform_outbound_m2m
   platform_outbound_hub_scopes = var.cognito_platform_outbound_hub_scopes
-  m2m_hub_secret_name          = var.cognito_m2m_hub_secret_name
+  # Platform → Companion (companion RS must already exist on this pool; companion TF creates it)
+  platform_outbound_companion_scopes = var.cognito_platform_outbound_companion_scopes
+  m2m_hub_secret_name                = var.cognito_m2m_hub_secret_name
 }
 
 # ============================================

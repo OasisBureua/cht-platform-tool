@@ -139,5 +139,5 @@ export const validationSchema = Joi.object({
 
   // CHT Companion (optional until service is deployed)
   COMPANION_BASE_URL: Joi.string().allow('').optional(),
-  COMPANION_INTERNAL_SECRET: Joi.string().allow('').optional(),
+  COGNITO_M2M_COMPANION_SCOPE: Joi.string().allow('').optional(),
 });

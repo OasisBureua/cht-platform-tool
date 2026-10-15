@@ -228,9 +228,9 @@ variable "ecr_replication_destination_region" {
 }
 
 variable "ecr_repository_prefixes" {
-  description = "PREFIX_MATCH filters for the account ECR replication ruleset (must include contenthub- and cht-platform-)."
+  description = "PREFIX_MATCH filters for the account ECR replication ruleset (must include contenthub-, cht-platform- and cht-companion)."
   type        = list(string)
-  default     = ["contenthub-", "cht-platform-"]
+  default     = ["contenthub-", "cht-platform-", "cht-companion"]
 }
 
 variable "ecr_repository_names" {
@@ -631,6 +631,12 @@ variable "cognito_platform_outbound_hub_scopes" {
   ]
 }
 
+variable "cognito_platform_outbound_companion_scopes" {
+  description = "companion/… scopes for the platform outbound M2M client (e.g. [\"companion/chat.invoke\"]). Empty until cht-companion has created its `companion` resource server on this pool."
+  type        = list(string)
+  default     = []
+}
+
 variable "companion_base_url" {
   description = "cht-companion Service Connect URL for Nest BFF (empty disables). Dev: http://cht-companion:8080"
   type        = string
@@ -650,13 +656,6 @@ variable "reports" {
     queue_url  = ""
     bucket     = ""
   }
-}
-
-variable "companion_internal_secret" {
-  description = "Shared X-BFF-Auth secret for Nest → cht-companion"
-  type        = string
-  sensitive   = true
-  default     = ""
 }
 
 variable "vtt_object_ingest_lambda_arn" {

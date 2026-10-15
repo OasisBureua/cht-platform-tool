@@ -74,6 +74,8 @@ cognito_m2m_hub_secret_name = "cht-dev-cognito-m2m-export"
 # CHT Companion (Service Connect client on backend → cht-companion:8080)
 service_connect_namespace = "cht-dev.local"
 companion_base_url        = "http://cht-companion:8080"
+# Platform → Companion M2M scope on cht-platform-m2m-dev (companion RS exists on cht-dev-users).
+cognito_platform_outbound_companion_scopes = ["companion/chat.invoke"]
 
 # Hub VTT ingest — Lambda already has S3 invoke permission; wire bucket notify only.
 vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-dev-sync-vtt-object-ingest"

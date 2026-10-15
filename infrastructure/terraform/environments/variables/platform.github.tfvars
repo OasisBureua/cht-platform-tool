@@ -87,6 +87,17 @@ enable_cognito_platform_outbound_m2m = true
 # Non-secret app configuration (same pattern as dev.github.tfvars)
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 
+# CHT Companion (Service Connect client on backend → cht-companion:8080).
+# Uncomment all three once companion's prod apply has created the cht.local namespace
+# and RS `companion` on cht-platform-users; before that the ECS service update and
+# the Cognito client update both fail. The chat UI stays hidden on prod hosts either way.
+# service_connect_namespace = "cht.local"
+# companion_base_url        = "http://cht-companion:8080"
+# cognito_platform_outbound_companion_scopes = ["companion/chat.invoke"]
+
+# Hub VTT ingest — Lambda already has S3 invoke permission; wire bucket notify only.
+vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-sync-vtt-object-ingest"
+
 # Redis cache for upstream Content Hub reads (1h TTL in app)
 enable_elasticache    = true
 elasticache_node_type = "cache.t3.medium"

@@ -284,10 +284,6 @@ resource "aws_ecs_task_definition" "backend" {
               name      = "INTERNAL_CACHE_SECRET"
               valueFrom = "${var.app_secrets_arn}:internal_cache_secret::"
             },
-            {
-              name      = "COMPANION_INTERNAL_SECRET"
-              valueFrom = "${var.app_secrets_arn}:companion_internal_secret::"
-            },
           ],
           var.cognito_m2m_platform_secret_arn != ""
           ? [

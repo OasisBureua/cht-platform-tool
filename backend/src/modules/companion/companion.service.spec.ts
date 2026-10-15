@@ -3,6 +3,7 @@ import type { ConfigService } from '@nestjs/config';
 import { EventEmitter } from 'node:events';
 import type { Request, Response } from 'express';
 import type { AuthUser } from '../../auth/auth.service';
+import type { CognitoM2mTokenService } from '../../auth/cognito-m2m-token.service';
 import type { PrismaService } from '../../prisma/prisma.service';
 import { CompanionService, conversationTitle } from './companion.service';
 
@@ -64,15 +65,40 @@ function makePrisma() {
   };
 }
 
-function makeService(prisma: ReturnType<typeof makePrisma>) {
+function makeTokens(...tokens: string[]) {
+  const queue = tokens.length ? [...tokens] : ['tok-1'];
+  return {
+    getAccessToken: jest.fn(() =>
+      Promise.resolve(queue.length > 1 ? queue.shift()! : queue[0]),
+    ),
+    invalidate: jest.fn(),
+  };
+}
+
+function makeService(
+  prisma: ReturnType<typeof makePrisma>,
+  tokens: ReturnType<typeof makeTokens> = makeTokens(),
+) {
   const config = {
     get: (key: string) =>
       ({
         'companion.baseUrl': 'http://companion:8080',
-        'companion.internalSecret': 's3cret',
+        'companion.m2mScope': 'companion/chat.invoke',
       })[key],
   } as unknown as ConfigService;
-  return new CompanionService(config, prisma as unknown as PrismaService);
+  return new CompanionService(
+    config,
+    prisma as unknown as PrismaService,
+    tokens as unknown as CognitoM2mTokenService,
+  );
+}
+
+function sentHeaders(fetchMock: jest.Mock, call = 0): Record<string, string> {
+  const [, init] = fetchMock.mock.calls[call] as [
+    string,
+    { headers: Record<string, string> },
+  ];
+  return init.headers;
 }
 
 const SSE =
@@ -173,6 +199,105 @@ describe('CompanionService', () => {
       { role: 'user', content: 'first' },
       { role: 'assistant', content: 'second' },
     ]);
+  });
+
+  it('authenticates with a companion/chat.invoke Bearer and keeps caller headers', async () => {
+    const prisma = makePrisma();
+    const tokens = makeTokens('tok-1');
+    const service = makeService(prisma, tokens);
+
+    await service.proxyChat(
+      { query: 'hi' },
+      user,
+      'req-auth',
+      new EventEmitter() as unknown as Request,
+      new FakeResponse() as unknown as Response,
+    );
+
+    expect(tokens.getAccessToken).toHaveBeenCalledWith('companion/chat.invoke');
+    const headers = sentHeaders(fetchMock);
+    expect(headers.Authorization).toBe('Bearer tok-1');
+    expect(headers['X-BFF-Auth']).toBeUndefined();
+    expect(headers).toMatchObject({
+      'X-User-Id': 'user-1',
+      'X-User-Role': 'member',
+      'X-Request-Id': 'req-auth',
+      'X-Client': 'web',
+    });
+  });
+
+  it('on a 401 drops the cached token and retries once with a fresh one', async () => {
+    const prisma = makePrisma();
+    const tokens = makeTokens('stale', 'fresh');
+    fetchMock
+      .mockReset()
+      .mockResolvedValueOnce(new Response('{}', { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(SSE, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      );
+    const service = makeService(prisma, tokens);
+    const res = new FakeResponse();
+
+    await service.proxyChat(
+      { query: 'hi' },
+      user,
+      'req-401',
+      new EventEmitter() as unknown as Request,
+      res as unknown as Response,
+    );
+
+    expect(tokens.invalidate).toHaveBeenCalledWith('companion/chat.invoke');
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(sentHeaders(fetchMock, 0).Authorization).toBe('Bearer stale');
+    expect(sentHeaders(fetchMock, 1).Authorization).toBe('Bearer fresh');
+    expect(res.statusCode).toBe(200);
+    expect(res.chunks.slice(1).join('')).toBe(SSE);
+  });
+
+  it('passes a second 401 through instead of retrying again', async () => {
+    const prisma = makePrisma();
+    fetchMock.mockReset().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ error: { code: 'unauthorized' } }), {
+          status: 401,
+        }),
+      ),
+    );
+    const service = makeService(prisma);
+    const res = new FakeResponse();
+
+    await service.proxyChat(
+      { query: 'hi' },
+      user,
+      'req-401x2',
+      new EventEmitter() as unknown as Request,
+      res as unknown as Response,
+    );
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('returns 503 without calling the companion when no token can be minted', async () => {
+    const prisma = makePrisma();
+    const tokens = makeTokens();
+    tokens.getAccessToken.mockRejectedValue(new Error('not configured'));
+    const service = makeService(prisma, tokens);
+    const res = new FakeResponse();
+
+    await service.proxyChat(
+      { query: 'hi' },
+      user,
+      'req-notoken',
+      new EventEmitter() as unknown as Request,
+      res as unknown as Response,
+    );
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(res.statusCode).toBe(503);
   });
 
   it('returns 404 for another user’s conversation without calling the companion', async () => {

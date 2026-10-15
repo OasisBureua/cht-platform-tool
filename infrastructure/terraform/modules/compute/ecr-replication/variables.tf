@@ -11,7 +11,7 @@ variable "repository_prefixes" {
     us-east-1 → destination replication (ContentHub and platform share one ruleset).
   EOT
   type        = list(string)
-  default     = ["contenthub-", "cht-platform-"]
+  default     = ["contenthub-", "cht-platform-", "cht-companion", "cht-reports-"]
 }
 
 variable "repository_names" {
