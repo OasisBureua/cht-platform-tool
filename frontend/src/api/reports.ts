@@ -1,22 +1,22 @@
 import apiClient from './client';
 
 export type ReportStatus =
-  | 'queued'
-  | 'pulling_data'
-  | 'generating'
-  | 'rendering'
-  | 'uploading'
-  | 'waiting_for_transcript'
-  | 'complete'
-  | 'failed';
+  | 'QUEUED'
+  | 'PULLING_DATA'
+  | 'GENERATING'
+  | 'RENDERING'
+  | 'UPLOADING'
+  | 'WAITING_FOR_TRANSCRIPT'
+  | 'COMPLETE'
+  | 'FAILED';
 
 export const REPORT_IN_FLIGHT: ReadonlySet<ReportStatus> = new Set([
-  'queued',
-  'pulling_data',
-  'generating',
-  'rendering',
-  'uploading',
-  'waiting_for_transcript',
+  'QUEUED',
+  'PULLING_DATA',
+  'GENERATING',
+  'RENDERING',
+  'UPLOADING',
+  'WAITING_FOR_TRANSCRIPT',
 ]);
 
 export type DateRangeDays = 30 | 60 | 90;

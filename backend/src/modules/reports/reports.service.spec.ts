@@ -66,11 +66,11 @@ function completeReport(overrides: Partial<ReportItem> = {}): ReportItem {
   return {
     campaign_id: 'AZ-25-01_LIV001',
     report_id: '6f1c2f5e-8a4b-4f7e-9a51-3b8d2e1c0a11',
-    template_type: 'executive_summary',
+    template_type: 'EXECUTIVE_SUMMARY',
     sources: [],
     window_start: null,
     window_end: '2026-09-20T00:00:00.000Z',
-    status: 'complete',
+    status: 'COMPLETE',
     attempt_count: 1,
     edit_attempts: 0,
     last_error: null,
@@ -196,7 +196,7 @@ describe('ReportsService', () => {
         'user-1',
       );
 
-      expect(view.status).toBe('queued');
+      expect(view.status).toBe('QUEUED');
       expect(view.templateType).toBe('executive_summary');
       expect(view.editAttempts).toBe(0);
       expect(view.downloadAvailable).toBe(false);
@@ -212,9 +212,13 @@ describe('ReportsService', () => {
           .ConditionExpression,
       ).toBe('attribute_not_exists(report_id)');
       expect(tx.TransactItems[0].Put.Item).not.toHaveProperty('expires_at');
+      expect(tx.TransactItems[0].Put.Item.template_type).toBe(
+        'EXECUTIVE_SUMMARY',
+      );
       expect(tx.TransactItems[1].Put.Item).toMatchObject({
         campaign_id: 'AZ-25-01_LIV001',
-        status: 'queued',
+        template_type: 'EXECUTIVE_SUMMARY',
+        status: 'QUEUED',
         edit_attempts: 0,
         requested_by: 'user-1',
       });
@@ -235,7 +239,7 @@ describe('ReportsService', () => {
         ) {
           return { Item: { locked_report_id: 'r-active' } };
         }
-        if (command === 'GetCommand') return { Item: { status: 'generating' } };
+        if (command === 'GetCommand') return { Item: { status: 'GENERATING' } };
         return {};
       });
 
@@ -258,7 +262,7 @@ describe('ReportsService', () => {
         ) {
           return { Item: { locked_report_id: 'r-done' } };
         }
-        if (command === 'GetCommand') return { Item: { status: 'complete' } };
+        if (command === 'GetCommand') return { Item: { status: 'COMPLETE' } };
         return {};
       });
 
@@ -267,7 +271,7 @@ describe('ReportsService', () => {
         'user-1',
       );
 
-      expect(view.status).toBe('queued');
+      expect(view.status).toBe('QUEUED');
       expect(attempts).toBe(2);
       const [del] = calls<ExpressionInput>(send, 'DeleteCommand');
       expect(del.ExpressionAttributeValues[':r']).toBe('r-done');
@@ -284,7 +288,7 @@ describe('ReportsService', () => {
       ).rejects.toBeInstanceOf(ServiceUnavailableException);
 
       const [update] = calls<ExpressionInput>(send, 'UpdateCommand');
-      expect(update.ExpressionAttributeValues[':failed']).toBe('failed');
+      expect(update.ExpressionAttributeValues[':failed']).toBe('FAILED');
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
     });
 
@@ -309,7 +313,7 @@ describe('ReportsService', () => {
       expect(order).toEqual(['lock', 'ingest', 'enqueue']);
       expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
       expect(view.warehouseSync).toBe('failed');
-      expect(view.status).toBe('queued');
+      expect(view.status).toBe('QUEUED');
       expect(calls(send, 'SendMessageCommand')).toHaveLength(1);
     });
 
@@ -325,7 +329,7 @@ describe('ReportsService', () => {
           return {
             Item: completeReport({
               report_id: 'r-live',
-              status: 'generating',
+              status: 'GENERATING',
               updated_at: new Date().toISOString(),
             }),
           };
@@ -399,7 +403,7 @@ describe('ReportsService', () => {
 
     it('marks an in-flight report with no progress for 20 minutes as failed and frees the lock', async () => {
       const stuck = completeReport({
-        status: 'generating',
+        status: 'GENERATING',
         s3_key_pdf: null,
         updated_at: minutesAgo(25),
       });
@@ -409,7 +413,7 @@ describe('ReportsService', () => {
           return {
             Attributes: {
               ...stuck,
-              status: 'failed',
+              status: 'FAILED',
               last_error: 'Timed out: no progress for 20 minutes.',
             },
           };
@@ -418,22 +422,41 @@ describe('ReportsService', () => {
 
       const [view] = await service.list('AZ-25-01_LIV001');
 
-      expect(view.status).toBe('failed');
+      expect(view.status).toBe('FAILED');
       expect(view.lastError).toBe('Timed out: no progress for 20 minutes.');
       const [update] = calls<ExpressionInput & { ConditionExpression: string }>(
         send,
         'UpdateCommand',
       );
       expect(update.ConditionExpression).toBe(
-        '#status = :seen AND updated_at = :seenAt',
+        '#status IN (:seen, :seenLegacy) AND updated_at = :seenAt',
       );
-      expect(update.ExpressionAttributeValues[':seen']).toBe('generating');
+      expect(update.ExpressionAttributeValues[':seen']).toBe('GENERATING');
+      expect(update.ExpressionAttributeValues[':seenLegacy']).toBe(
+        'generating',
+      );
       expect(calls(send, 'DeleteCommand')).toHaveLength(1);
+    });
+
+    it('reads a row written before statuses were uppercase', async () => {
+      const legacy = completeReport({
+        status: 'complete' as ReportItem['status'],
+        template_type: 'executive_summary',
+      });
+      const { service } = build((command) =>
+        command === 'GetCommand' ? { Item: legacy } : {},
+      );
+
+      const view = await service.get(legacy.report_id, 'AZ-25-01_LIV001');
+
+      expect(view.status).toBe('COMPLETE');
+      expect(view.templateType).toBe('executive_summary');
+      expect(view.downloadAvailable).toBe(true);
     });
 
     it('leaves a report that is still making progress alone', async () => {
       const running = completeReport({
-        status: 'generating',
+        status: 'GENERATING',
         s3_key_pdf: null,
         updated_at: minutesAgo(5),
       });
@@ -443,14 +466,14 @@ describe('ReportsService', () => {
 
       const view = await service.get(running.report_id, 'AZ-25-01_LIV001');
 
-      expect(view.status).toBe('generating');
+      expect(view.status).toBe('GENERATING');
       expect(calls(send, 'UpdateCommand')).toHaveLength(0);
     });
 
     it('keeps the lock while a report waits hours for its transcript', async () => {
       const waiting = completeReport({
         report_id: 'waiting-1',
-        status: 'waiting_for_transcript',
+        status: 'WAITING_FOR_TRANSCRIPT',
         s3_key_pdf: null,
         created_at: minutesAgo(120),
         updated_at: minutesAgo(3),
@@ -474,7 +497,7 @@ describe('ReportsService', () => {
     it('lets Generate through when the lock holder is stuck', async () => {
       const stuck = completeReport({
         report_id: 'stuck-1',
-        status: 'pulling_data',
+        status: 'PULLING_DATA',
         s3_key_pdf: null,
         updated_at: minutesAgo(40),
       });
@@ -497,7 +520,7 @@ describe('ReportsService', () => {
             : { Item: stuck };
         }
         if (command === 'UpdateCommand')
-          return { Attributes: { ...stuck, status: 'failed' } };
+          return { Attributes: { ...stuck, status: 'FAILED' } };
         return {};
       });
 
@@ -506,7 +529,7 @@ describe('ReportsService', () => {
         'user-1',
       );
 
-      expect(view.status).toBe('queued');
+      expect(view.status).toBe('QUEUED');
       expect(transactCalls).toBe(2);
     });
   });
@@ -526,7 +549,7 @@ describe('ReportsService', () => {
             order.push('lock');
             item = {
               ...item,
-              status: 'queued',
+              status: 'QUEUED',
               edit_attempts: item.edit_attempts + 1,
               updated_at: new Date().toISOString(),
             };
@@ -548,7 +571,7 @@ describe('ReportsService', () => {
       expect(order).toEqual(['lock', 'ingest', 'enqueue']);
       expect(ingestCampaign).toHaveBeenCalledWith('42', 'platform_generate');
       expect(view.warehouseSync).toBe('ok');
-      expect(view.status).toBe('queued');
+      expect(view.status).toBe('QUEUED');
       expect(view.editAttempts).toBe(1);
       const [tx] = calls<TransactInput>(send, 'TransactWriteCommand');
       expect(
@@ -565,7 +588,7 @@ describe('ReportsService', () => {
 
     it('returns 409 when the report is not complete', async () => {
       const { service, send } = build(() => ({
-        Item: completeReport({ status: 'generating' }),
+        Item: completeReport({ status: 'GENERATING' }),
       }));
 
       await expect(
@@ -610,7 +633,7 @@ describe('ReportsService', () => {
   describe('openDownload', () => {
     it('returns 409 until the report is complete', async () => {
       const { service } = build(() => ({
-        Item: completeReport({ status: 'rendering', s3_key_pdf: null }),
+        Item: completeReport({ status: 'RENDERING', s3_key_pdf: null }),
       }));
 
       await expect(
@@ -722,7 +745,9 @@ describe('ReportsService', () => {
         }
       >(send, 'UpdateCommand');
       expect(update.UpdateExpression).toContain('notified_version = :v');
-      expect(update.ConditionExpression).toContain('#status = :complete');
+      expect(update.ConditionExpression).toContain(
+        '#status IN (:complete, :completeLegacy)',
+      );
       expect(update.ConditionExpression).toContain('#version = :v');
       expect(update.ConditionExpression).toContain('notified_version < :v');
       expect(update.ExpressionAttributeValues[':v']).toBe(1);
@@ -742,7 +767,7 @@ describe('ReportsService', () => {
     it('409s when the row is not complete at that version', async () => {
       const { service } = build((command) => {
         if (command === 'UpdateCommand') throw conditionFailed();
-        return { Item: completeReport({ status: 'generating', version: 1 }) };
+        return { Item: completeReport({ status: 'GENERATING', version: 1 }) };
       });
 
       await expect(

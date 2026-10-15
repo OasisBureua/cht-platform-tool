@@ -4,24 +4,59 @@
  * status in place and writes s3_key_pdf when the PDF is uploaded.
  */
 
+/** Stored uppercase. Rows written before that are lowercase; see fromStoredItem. */
 export type ReportStatus =
-  | 'queued'
-  | 'pulling_data'
-  | 'generating'
-  | 'rendering'
-  | 'uploading'
-  | 'waiting_for_transcript'
-  | 'complete'
-  | 'failed';
+  | 'QUEUED'
+  | 'PULLING_DATA'
+  | 'GENERATING'
+  | 'RENDERING'
+  | 'UPLOADING'
+  | 'WAITING_FOR_TRANSCRIPT'
+  | 'COMPLETE'
+  | 'FAILED';
 
 export const TERMINAL_STATUSES: ReadonlySet<ReportStatus> = new Set([
-  'complete',
-  'failed',
+  'COMPLETE',
+  'FAILED',
 ]);
 
 export const LOCK_PREFIX = 'LOCK#';
 
+/** API / Hub catalog / S3 template identifier (lowercase). */
 export const DEFAULT_TEMPLATE_TYPE = 'executive_summary';
+
+/** Template type as the API, Hub catalog, lock key and download name use it. */
+export function apiTemplateType(value?: string | null): string {
+  return (value?.trim() || DEFAULT_TEMPLATE_TYPE).toLowerCase();
+}
+
+/** Template type as stored on report and lock rows (uppercase enum). */
+export function storedTemplateType(value?: string | null): string {
+  return apiTemplateType(value).toUpperCase();
+}
+
+/** Lock row key for a campaign + template type. Lowercase, as before the enum change. */
+export function lockReportId(templateType?: string | null): string {
+  return `${LOCK_PREFIX}${apiTemplateType(templateType)}`;
+}
+
+/** Both spellings of a status, for DynamoDB conditions on rows of either age. */
+export function statusSpellings(status: ReportStatus): [string, string] {
+  return [status, status.toLowerCase()];
+}
+
+/** A stored report row with status and template_type normalized to uppercase. */
+export function fromStoredItem<
+  T extends { status?: string; template_type?: string },
+>(item: T): T {
+  return {
+    ...item,
+    ...(item.status ? { status: item.status.toUpperCase() } : {}),
+    ...(item.template_type
+      ? { template_type: storedTemplateType(item.template_type) }
+      : {}),
+  };
+}
 
 export type ReportItem = {
   campaign_id: string;
