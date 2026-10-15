@@ -156,24 +156,6 @@ resource "aws_kms_key" "sns" {
           "kms:GenerateDataKey*"
         ]
         Resource = "*"
-      },
-      {
-        # EventBridge scheduled rules (Bill MFA reminder) publish to this encrypted topic.
-        Sid    = "AllowEventBridgeEncrypt"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-        Action = [
-          "kms:Decrypt",
-          "kms:GenerateDataKey*"
-        ]
-        Resource = "*"
-        Condition = {
-          StringEquals = {
-            "aws:SourceAccount" = var.aws_account_id
-          }
-        }
       }
     ]
   })
