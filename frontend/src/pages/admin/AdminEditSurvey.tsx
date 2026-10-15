@@ -5,6 +5,7 @@ import { AlertTriangle, ArrowLeft, Save } from 'lucide-react';
 import { surveysApi, type Survey } from '../../api/surveys';
 import { adminApi } from '../../api/admin';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
+import { SURVEY_TYPE_OPTIONS, surveyTypeLabel, type SurveyTypeValue } from '../../utils/survey-types';
 import { NativeSurveyQuestionEditor } from '../../components/admin/NativeSurveyQuestionEditor';
 import {
   normalizeEditableSurveySchema,
@@ -50,6 +51,9 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
   const [title, setTitle] = useState(survey.title);
   const [description, setDescription] = useState(survey.description ?? '');
   const [required, setRequired] = useState(survey.required);
+  const [surveyType, setSurveyType] = useState<SurveyTypeValue>(survey.type as SurveyTypeValue);
+  // The type is fixed once anyone has answered (the API enforces it too).
+  const typeLocked = Boolean(survey.responseCount);
   const [questions, setQuestions] = useState<EditableSurveySchema>(() =>
     normalizeEditableSurveySchema(survey.questions),
   );
@@ -71,6 +75,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         title: title.trim(),
         description: description.trim(),
         required,
+        ...(surveyType !== survey.type ? { type: surveyType } : {}),
         questions: questions as unknown as Record<string, unknown>,
       }),
     onMutate: () => setSaveError(null),
@@ -122,9 +127,7 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
         </Link>
         <h1 className="mt-4 text-2xl font-bold text-foreground">Edit Survey</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Edit the auto-generated{' '}
-          {survey.type === 'INTAKE' ? 'registration intake' : 'post-event'}{' '}
-          survey. Saving marks it customized, so template regeneration will
+          Edit this {surveyTypeLabel(survey.type).toLowerCase()}. Saving marks it customized, so template regeneration will
           leave it untouched.
           {typeof survey.schemaVersion === 'number' ? (
             <>
@@ -149,6 +152,26 @@ function AdminEditSurveyForm({ survey }: { survey: Survey }) {
               className="w-full rounded-xl border border-border px-4 py-3 text-sm"
               required
             />
+          </label>
+          <label className="block space-y-1">
+            <span className="text-sm font-semibold text-foreground">Survey type</span>
+            <select
+              value={surveyType}
+              onChange={(event) => setSurveyType(event.target.value as SurveyTypeValue)}
+              disabled={typeLocked}
+              className="w-full rounded-xl border border-border px-4 py-3 text-sm disabled:opacity-60"
+            >
+              {SURVEY_TYPE_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <span className="block text-xs text-muted-foreground">
+              {typeLocked
+                ? 'The type cannot change once the survey has responses.'
+                : SURVEY_TYPE_OPTIONS.find((o) => o.value === surveyType)?.help}
+            </span>
           </label>
           <label className="block space-y-1">
             <span className="text-sm font-semibold text-foreground">

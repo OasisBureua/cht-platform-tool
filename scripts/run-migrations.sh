@@ -22,13 +22,6 @@ case "$ENV" in
     SERVICE="cht-platform-backend"
     TASK_FAMILY="cht-platform-backend"
     ;;
-  staging)
-    TF_DIR="infrastructure/terraform/environments/us-east-1-staging"
-    BACKEND_CONFIG=""
-    CLUSTER="cht-platform-staging-cluster"
-    SERVICE="cht-platform-staging-backend"
-    TASK_FAMILY="cht-platform-staging-backend"
-    ;;
   dev)
     TF_DIR="infrastructure/terraform/environments/us-east-1"
     BACKEND_CONFIG="$BACKENDS_DIR/us-east-1-dev.hcl"
@@ -44,7 +37,7 @@ case "$ENV" in
     TASK_FAMILY="cht-platform-prod-backend"
     ;;
   *)
-    echo "Usage: ./run-migrations.sh [platform|staging|dev|prod]"
+    echo "Usage: ./run-migrations.sh [platform|dev|prod]"
     echo "  Default: platform"
     exit 1
     ;;

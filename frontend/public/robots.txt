@@ -1,4 +1,4 @@
-# Staging environment shield: testapp has no production content yet.
+# Pre-launch shield: the platform has no public production content yet.
 # Remove this file (or replace contents) before launching the production domain.
 User-agent: *
 Disallow: /

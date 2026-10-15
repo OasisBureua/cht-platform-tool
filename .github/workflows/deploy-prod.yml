@@ -1,6 +1,6 @@
 name: Deploy to Platform
 
-# Mirror of deploy-dev.yml for testapp (us-east-1 only).
+# Mirror of deploy-dev.yml for platform, app.communityhealth.media (us-east-1 only).
 # us-east-2 ECS / deploy-secondary.sh is intentional later, not part of this workflow.
 # Runs on main: when a release/* or hotfix/* PR merges into main (push to main),
 # or via manual dispatch. Pushes to release/* / hotfix/* do not deploy.
@@ -40,7 +40,7 @@ env:
   TF_ENV_DIR: infrastructure/terraform/environments/us-east-1
   TF_VAR_FILE: ../variables/platform.github.tfvars
   TF_BACKEND_CONFIG: ../backends/us-east-1-platform.hcl
-  APP_URL: https://testapp.communityhealth.media
+  APP_URL: https://app.communityhealth.media
   API_URL: https://app.communityhealth.media/api
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 

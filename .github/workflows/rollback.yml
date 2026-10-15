@@ -3,13 +3,6 @@ name: Rollback Deployment
 on:
   workflow_dispatch:
     inputs:
-      environment:
-        description: 'Environment to rollback'
-        required: true
-        type: choice
-        options:
-          - platform
-          - staging
       image_tag:
         description: 'Image tag to rollback to (e.g., platform-abc1234-1234567890)'
         required: true
@@ -28,7 +21,7 @@ jobs:
   rollback:
     name: Rollback to Previous Version
     runs-on: ubuntu-latest
-    environment: ${{ inputs.environment == 'platform' && 'production' || 'staging' }}
+    environment: platform
 
     steps:
       - name: Checkout code
@@ -43,15 +36,9 @@ jobs:
       - name: Set deployment targets
         id: targets
         run: |
-          if [ "${{ inputs.environment }}" = "platform" ]; then
-            echo "cluster=cht-platform-cluster" >> $GITHUB_OUTPUT
-            echo "prefix=cht-platform" >> $GITHUB_OUTPUT
-            echo "health_url=https://testapp.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
-          else
-            echo "cluster=cht-platform-staging-cluster" >> $GITHUB_OUTPUT
-            echo "prefix=cht-platform-staging" >> $GITHUB_OUTPUT
-            echo "health_url=https://staging.testapp.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
-          fi
+          echo "cluster=cht-platform-cluster" >> $GITHUB_OUTPUT
+          echo "prefix=cht-platform" >> $GITHUB_OUTPUT
+          echo "health_url=https://app.communityhealth.media/health/ready" >> $GITHUB_OUTPUT
 
       - name: Roll back ECS services
         env:

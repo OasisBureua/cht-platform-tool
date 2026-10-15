@@ -26,6 +26,7 @@ import { HubSpotModule } from './modules/hubspot/hubspot.module';
 import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module';
 import { ContactModule } from './modules/contact/contact.module';
 import { InvitesModule } from './modules/invites/invites.module';
+import { PublicRegistrationModule } from './modules/public-registration/public-registration.module';
 import { CacheModule } from './cache/cache.module';
 import { InternalModule } from './modules/internal/internal.module';
 import { AdminContentHubModule } from './modules/content-hub/admin-content-hub.module';
@@ -167,6 +168,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     OutboundSyncModule,
     ContactModule,
     InvitesModule,
+    PublicRegistrationModule,
     InternalModule,
     AdminContentHubModule,
     CampaignsModule,

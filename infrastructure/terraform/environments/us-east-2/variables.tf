@@ -4,13 +4,19 @@ variable "project" {
 }
 
 variable "environment" {
-  description = "Environment name (platform/dev/staging)."
+  description = "Environment name (platform/dev)."
   type        = string
 }
 
 variable "domain_name" {
   description = "Primary platform domain (used for CORS and app URLs)."
   type        = string
+}
+
+variable "app_url" {
+  description = "Public app URL for links in emails and redirects (backend FRONTEND_URL). Empty: https://<domain_name>."
+  type        = string
+  default     = ""
 }
 
 variable "backend_image" {

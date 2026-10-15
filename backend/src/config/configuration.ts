@@ -220,13 +220,9 @@ export default () => ({
       process.env.SURVEY_BONUS_AMOUNT_CENTS || '0',
       10,
     ),
-    useNativeForms:
-      process.env.SURVEYS_USE_NATIVE_FORMS?.trim().toLowerCase() !== 'false' &&
-      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() !==
-        'true',
-    useLegacyJotformForms:
-      process.env.SURVEYS_USE_LEGACY_JOTFORM_FORMS?.trim().toLowerCase() ===
-      'true',
+    /** CPR-5: native is the only create path; legacy flag is ignored if set. */
+    useNativeForms: true,
+    useLegacyJotformForms: false,
   },
 
   // Content Hub: catalog clips/tags/KOLs + HCP upsert (auth: Cognito M2M Bearer)
@@ -323,7 +319,7 @@ export default () => ({
       process.env.JOTFORM_WEBHOOK_URL ||
       (process.env.FRONTEND_URL
         ? `${process.env.FRONTEND_URL.replace(/\/$/, '')}/api/webhooks/jotform`
-        : 'https://testapp.communityhealth.media/api/webhooks/jotform'),
+        : 'https://app.communityhealth.media/api/webhooks/jotform'),
   },
 
   /**
@@ -398,6 +394,9 @@ export default () => ({
   /** CHT Companion (SSE RAG chat) — BFF proxies browser → Service Connect. */
   companion: {
     baseUrl: (process.env.COMPANION_BASE_URL || '').replace(/\/$/, ''),
-    internalSecret: process.env.COMPANION_INTERNAL_SECRET?.trim() || '',
+    /** Scope on the platform outbound M2M token sent as the Bearer to /chat. */
+    m2mScope:
+      process.env.COGNITO_M2M_COMPANION_SCOPE?.trim() ||
+      'companion/chat.invoke',
   },
 });

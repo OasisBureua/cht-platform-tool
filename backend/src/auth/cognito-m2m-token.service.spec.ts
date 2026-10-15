@@ -77,4 +77,67 @@ describe('CognitoM2mTokenService', () => {
     await expect(service.getAccessToken()).resolves.toBe('warm');
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
+
+  function tokenPerScopeFetch() {
+    let n = 0;
+    return jest.fn((_url: string, init: RequestInit) => {
+      const scope = new URLSearchParams(init.body as URLSearchParams).get(
+        'scope',
+      );
+      n += 1;
+      return Promise.resolve({
+        ok: true,
+        json: () =>
+          Promise.resolve({ access_token: `${scope}#${n}`, expires_in: 3600 }),
+      });
+    });
+  }
+
+  it('caches one token per scope', async () => {
+    const fetchMock = tokenPerScopeFetch();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = buildService();
+    const hub = await service.getAccessToken();
+    const companion = await service.getAccessToken('companion/chat.invoke');
+
+    expect(hub).toMatch(/^hub\/catalog\.read /);
+    expect(companion).toBe('companion/chat.invoke#2');
+    await expect(service.getAccessToken()).resolves.toBe(hub);
+    await expect(service.getAccessToken('companion/chat.invoke')).resolves.toBe(
+      companion,
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one in-flight request per scope', async () => {
+    const fetchMock = tokenPerScopeFetch();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = buildService();
+    const [a, b] = await Promise.all([
+      service.getAccessToken('companion/chat.invoke'),
+      service.getAccessToken('companion/chat.invoke'),
+    ]);
+
+    expect(a).toBe(b);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('invalidate drops only that scope', async () => {
+    const fetchMock = tokenPerScopeFetch();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const service = buildService();
+    const hub = await service.getAccessToken();
+    await service.getAccessToken('companion/chat.invoke');
+
+    service.invalidate('companion/chat.invoke');
+
+    await expect(service.getAccessToken('companion/chat.invoke')).resolves.toBe(
+      'companion/chat.invoke#3',
+    );
+    await expect(service.getAccessToken()).resolves.toBe(hub);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
 });

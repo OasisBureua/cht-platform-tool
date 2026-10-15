@@ -39,11 +39,13 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
+  # Public app URL for links and logs. domain_name stays the CloudFront/Route53 zone.
+  public_app_url      = var.app_url != "" ? trimsuffix(var.app_url, "/") : "https://${var.domain_name}"
   dr_project          = "${var.project}-dr-use2"
   dr_resource_prefix  = var.environment == "platform" ? local.dr_project : "${local.dr_project}-${var.environment}"
   primary_prefix      = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
   primary_state_key   = var.environment == "platform" ? "us-east-1/terraform.tfstate" : "us-east-1-${var.environment}/terraform.tfstate"
-  log_retention_days  = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  log_retention_days  = contains(["prod", "platform"], var.environment) ? 365 : 7
   standby_scale       = var.dr_standby_scale_factor
   backend_desired_dr  = max(1, ceil(var.backend_desired_count * local.standby_scale))
   backend_min_dr      = max(1, floor(var.backend_min_capacity * local.standby_scale))
@@ -303,7 +305,7 @@ module "ecs_backend" {
   desired_count         = local.backend_desired_dr
   min_capacity          = local.backend_min_dr
   max_capacity          = local.backend_max_dr
-  frontend_url          = "https://${var.domain_name}"
+  frontend_url          = local.public_app_url
   sqs_email_queue_url   = module.sqs.email_queue_url
   sqs_payment_queue_url = module.sqs.payment_queue_url
   sqs_cme_queue_url     = module.sqs.cme_queue_url
@@ -344,7 +346,7 @@ module "ecs_worker" {
   sqs_cme_queue_url            = module.sqs.cme_queue_url
   sqs_scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
   ses_from_email               = var.worker_ses_from_email
-  frontend_app_url             = "https://${var.domain_name}"
+  frontend_app_url             = local.public_app_url
 }
 
 module "scheduled_eventbridge" {

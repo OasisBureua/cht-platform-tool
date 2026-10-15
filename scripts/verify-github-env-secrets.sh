@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fail fast when required GitHub Environment secrets are missing/empty.
-# Usage: verify-github-env-secrets.sh [development|staging|platform|production]
+# Usage: verify-github-env-secrets.sh [development|platform|production]
 set -euo pipefail
 
 ENV_LABEL="${1:-development}"
@@ -41,9 +41,8 @@ require INTERNAL_CACHE_SECRET INTERNAL_CACHE_SECRET || missing=1
 if [ "$missing" -ne 0 ]; then
   echo ""
   echo "Terraform will write empty strings to Secrets Manager when these are missing."
-  if [ "$ENV_LABEL" = "staging" ] || [ "$ENV_LABEL" = "development" ]; then
+  if [ "$ENV_LABEL" = "development" ]; then
     echo "Check GitHub: ./scripts/verify-github-secrets.sh $ENV_LABEL"
-    echo "AWS Secrets Manager: ./scripts/bootstrap-staging-secrets-from-platform.sh"
   else
     echo "From platform.tfvars: ./scripts/sync-github-secrets-from-tfvars.sh platform"
     echo "Check GitHub: ./scripts/verify-github-secrets.sh platform"

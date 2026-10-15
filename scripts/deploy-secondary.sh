@@ -5,7 +5,7 @@ echo "🚀 CHT Platform - Deploy Secondary Region (us-east-2 DR standby)"
 echo "================================================================="
 echo ""
 
-# platform → platform.tfvars (testapp.communityhealth.media)
+# platform → platform.tfvars (app.communityhealth.media)
 # dev      → dev.tfvars      (devapp.communityhealth.media)
 ENV=${1:-platform}
 

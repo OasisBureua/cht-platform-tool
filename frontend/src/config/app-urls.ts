@@ -37,7 +37,7 @@ export function isDevappHost(
 export function isCompanionEnabled(
   hostname = typeof window !== 'undefined' ? window.location.hostname : '',
 ): boolean {
-  // Platform / staging aliases must never show Companion until cutover.
+  // Platform hosts (testapp / app.) must never show Companion until cutover.
   if (isTestappHost(hostname)) return false;
   if (isDevappHost(hostname)) return true;
   if (typeof import.meta !== 'undefined' && import.meta.env?.DEV) {

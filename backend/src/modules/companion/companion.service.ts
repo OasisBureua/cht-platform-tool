@@ -9,6 +9,7 @@ import { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { once } from 'node:events';
 import type { AuthUser } from '../../auth/auth.service';
+import { CognitoM2mTokenService } from '../../auth/cognito-m2m-token.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ChatRequestDto } from './dto/chat-request.dto';
 import { SseAccumulator } from './sse-accumulator';
@@ -32,12 +33,16 @@ export class CompanionService {
   constructor(
     private readonly config: ConfigService,
     private readonly prisma: PrismaService,
+    private readonly m2mTokens: CognitoM2mTokenService,
   ) {}
 
   /**
    * Authenticated SSE proxy to companion POST /chat.
    * History comes from the database (never the request body). The stream is
    * forwarded as it arrives; the assistant turn is saved once it ends.
+   *
+   * Companion authenticates the platform with a Cognito M2M Bearer carrying
+   * companion/chat.invoke. A 401 drops the cached token and retries once.
    */
   async proxyChat(
     dto: ChatRequestDto,
@@ -47,8 +52,9 @@ export class CompanionService {
     res: Response,
   ): Promise<void> {
     const baseUrl = this.config.get<string>('companion.baseUrl')?.trim() || '';
-    const secret =
-      this.config.get<string>('companion.internalSecret')?.trim() || '';
+    const scope =
+      this.config.get<string>('companion.m2mScope')?.trim() ||
+      'companion/chat.invoke';
 
     if (!baseUrl) {
       res.status(HttpStatus.SERVICE_UNAVAILABLE).json({
@@ -115,21 +121,32 @@ export class CompanionService {
         'X-Request-Id': requestId,
         'X-Client': 'web',
       };
-      if (secret) {
-        headers['X-BFF-Auth'] = secret;
-      }
-
-      const upstream = await fetch(`${baseUrl}/chat`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          query: dto.query,
-          conversation_id: conversationId,
-          history,
-          options: dto.options,
-        }),
-        signal: abort.signal,
+      const body = JSON.stringify({
+        query: dto.query,
+        conversation_id: conversationId,
+        history,
+        options: dto.options,
       });
+      const send = async () =>
+        fetch(`${baseUrl}/chat`, {
+          method: 'POST',
+          headers: {
+            ...headers,
+            Authorization: `Bearer ${await this.m2mTokens.getAccessToken(scope)}`,
+          },
+          body,
+          signal: abort.signal,
+        });
+
+      let upstream = await send();
+      if (upstream.status === 401) {
+        await upstream.body?.cancel().catch(() => undefined);
+        this.m2mTokens.invalidate(scope);
+        this.logger.warn(
+          `[M2M] Companion rejected the platform token; retrying once with a fresh one requestId=${requestId}`,
+        );
+        upstream = await send();
+      }
 
       if (!upstream.ok || !upstream.body) {
         let payload: unknown;

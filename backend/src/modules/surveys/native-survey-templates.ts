@@ -98,7 +98,11 @@ export function defaultWebinarIntakeQuestions() {
   };
 }
 
-/** Default post-event FEEDBACK template (oncology example from Phase 0 PDF). */
+/**
+ * Default post-event FEEDBACK template (CPR-5: topic-neutral).
+ * For disease-specific questions, clone a customized FEEDBACK survey onto the
+ * new program via `feedbackSurveySourceId` when scheduling.
+ */
 export function defaultPostEventFeedbackQuestions() {
   return {
     version: 1,
@@ -106,7 +110,7 @@ export function defaultPostEventFeedbackQuestions() {
       section('demographics', 'About you', [
         text('npi', 'NPI number', { required: false }),
         single('q1_role', 'Which best describes your primary role?', [
-          'Medical Oncologist',
+          'Physician',
           'Advanced Practice Provider (NP/PA)',
           'Pharmacist',
           'Nurse / Navigator',
@@ -126,101 +130,56 @@ export function defaultPostEventFeedbackQuestions() {
           '>20',
           'Prefer not to answer',
         ]),
-        single('q4_her2_patients', 'HER2+ mBC patients you actively manage', [
-          '≤5',
-          '6–10',
-          '11–20',
-          '21–40',
-          '>40',
-        ]),
-        single(
-          'q5_tdxd_patients',
-          'Patients you have treated with T-DXd to date',
-          ['0', '1–5', '6–15', '>15', 'Unsure'],
-        ),
       ]),
-      section('clinical', 'Clinical practice', [
+      section('session', 'About this session', [
         single(
-          'q6_initial_regimen',
-          'For de novo or relapsed HER2-positive metastatic breast cancer, what is your typical initial systemic regimen?',
+          'q4_objectives_met',
+          'Overall, how well did this session meet its learning objectives?',
           [
-            'THP (docetaxel + trastuzumab + pertuzumab)',
-            'T-DXd + pertuzumab',
-            'T-DM1-based',
-            'Other / trial-based',
-            'No single go-to; case-by-case',
+            'Not at all',
+            'Slightly',
+            'Moderately',
+            'Very well',
+            'Completely',
           ],
-          {
-            followUp: {
-              whenOption: 'No single go-to; case-by-case',
-              question: text('q6_other', 'Briefly describe:', {
-                required: false,
-              }),
-            },
-          },
         ),
         single(
-          'q7_hr_plan',
-          'For HR+/HER2+ disease, what is your typical endocrine + anti-HER2 plan?',
+          'q5_content_relevance',
+          'How relevant was the content to your clinical practice?',
           [
-            'Endocrine + trastuzumab ± pertuzumab',
-            'Chemotherapy + anti-HER2 upfront',
-            'T-DXd-containing',
-            'Varies substantially by patient factors',
-            'Other',
+            'Not relevant',
+            'Slightly relevant',
+            'Moderately relevant',
+            'Very relevant',
+            'Extremely relevant',
           ],
-          {
-            followUp: {
-              whenOption: 'Varies substantially by patient factors',
-              question: text('q7_other', 'Briefly describe:', {
-                required: false,
-              }),
-            },
-          },
         ),
-        single('q8_db09', 'How familiar are you with the DB-09 trial data?', [
-          'Not familiar',
-          'Aware but have not reviewed in detail',
-          'Reviewed data; not yet changed practice',
-          'Reviewed data; already influencing practice',
-          'Presented / taught on this data',
-        ]),
+        single(
+          'q6_practice_change',
+          'How likely are you to change something in your practice based on this session?',
+          [
+            'Not likely',
+            'Somewhat likely',
+            'Likely',
+            'Very likely',
+            'Already planning a change',
+          ],
+        ),
         multi(
-          'q12_tdxd_factors',
-          'Factors pushing T-DXd + pertuzumab in 1L (select up to 3)',
+          'q7_valuable_aspects',
+          'What was most valuable? (select up to 3)',
           [
-            'Efficacy vs THP',
-            'CNS activity',
-            'Patient preference',
-            'Guideline alignment',
-            'Institutional pathway',
-            'Prior exposure / sequencing',
+            'Clinical evidence / data',
+            'Practical case discussion',
+            'Peer perspectives',
+            'Faculty Q&A',
+            'Guidelines / pathways',
             'Other',
           ],
           3,
         ),
-        single(
-          'q21_post_progression',
-          'After progression on T-DXd + pertuzumab, what is your typical next regimen?',
-          [
-            'T-DM1',
-            'Tucatinib-based',
-            'Clinical trial',
-            'Chemotherapy + trastuzumab',
-            'Depends on site pathways and prior exposure',
-            'Other',
-          ],
-          {
-            followUp: {
-              whenOption: 'Depends on site pathways and prior exposure',
-              question: text('q21_other', 'Briefly describe:', {
-                required: false,
-              }),
-            },
-          },
-        ),
         text(
-          'q23_faculty',
+          'q8_practice_notes',
           'What change do you anticipate in your practice, and what questions remain for faculty?',
           { required: true, long: true },
         ),

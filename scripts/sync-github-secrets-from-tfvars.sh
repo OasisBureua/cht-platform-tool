@@ -3,8 +3,8 @@
 # Default: platform.tfvars → platform (used by deploy-prod.yml "Deploy to Platform").
 #
 # Usage:
-#   ./scripts/sync-github-secrets-from-tfvars.sh [platform|production|staging|development]
-#   ./scripts/sync-github-secrets-from-tfvars.sh staging --tfvars infrastructure/terraform/environments/variables/staging.tfvars
+#   ./scripts/sync-github-secrets-from-tfvars.sh [platform|production|development]
+#   ./scripts/sync-github-secrets-from-tfvars.sh development --tfvars infrastructure/terraform/environments/variables/dev.tfvars
 #   ./scripts/sync-github-secrets-from-tfvars.sh platform --dry-run
 #   ./scripts/sync-github-secrets-from-tfvars.sh platform --with-aws-role
 #
@@ -24,7 +24,7 @@ AWS_ROLE_ARN_OVERRIDE=""
 normalize_gh_env() {
   case "$1" in
     production|platform) echo "platform" ;;
-    staging|development) echo "$1" ;;
+    development) echo "$1" ;;
     *) return 1 ;;
   esac
 }
@@ -37,7 +37,7 @@ usage() {
 while [[ $# -gt 0 ]]; do
   case "$1" in
     -h|--help) usage 0 ;;
-    production|platform|staging|development)
+    production|platform|development)
       GH_ENV=$(normalize_gh_env "$1") || { echo "Unknown environment: $1" >&2; exit 1; }
       ;;
     --tfvars) shift; TFVARS="${1:?--tfvars requires a path}" ;;
@@ -136,7 +136,7 @@ set_github_secret() {
 aws_role_for_env() {
   case "$1" in
     platform|production) echo "GitHubActions-CHT-Platform" ;;
-    staging|development) echo "GitHubActions-CHT-Platform" ;;
+    development) echo "GitHubActions-CHT-Platform" ;;
     *) return 1 ;;
   esac
 }

@@ -21,7 +21,7 @@ describe('ZoomWebhookService', () => {
     getWebinarById: jest.Mock;
     getMeetingById: jest.Mock;
   };
-  let surveys: { attachJotformFormsFromConfig: jest.Mock };
+  let surveys: { attachSurveysForNewWebinar: jest.Mock };
   let programRegistrations: {
     autoVerifyAttendanceFromZoomJoins: jest.Mock;
   };
@@ -42,7 +42,10 @@ describe('ZoomWebhookService', () => {
       getMeetingById: jest.fn(),
     };
     surveys = {
-      attachJotformFormsFromConfig: jest.fn().mockResolvedValue(undefined),
+      attachSurveysForNewWebinar: jest.fn().mockResolvedValue({
+        intakeSurveyId: 'intake-1',
+        feedbackSurveyId: 'feedback-1',
+      }),
     };
     programRegistrations = {
       autoVerifyAttendanceFromZoomJoins: jest
@@ -107,7 +110,7 @@ describe('ZoomWebhookService', () => {
           importedViaWebhook: true,
         }) as unknown,
       });
-      expect(surveys.attachJotformFormsFromConfig).toHaveBeenCalledWith(
+      expect(surveys.attachSurveysForNewWebinar).toHaveBeenCalledWith(
         'prog-webhook-1',
         'Imported Oncology Webinar',
       );
@@ -120,7 +123,7 @@ describe('ZoomWebhookService', () => {
 
       expect(prisma.program.create).not.toHaveBeenCalled();
       expect(zoom.getWebinarById).not.toHaveBeenCalled();
-      expect(surveys.attachJotformFormsFromConfig).not.toHaveBeenCalled();
+      expect(surveys.attachSurveysForNewWebinar).not.toHaveBeenCalled();
     });
 
     it('does not auto-import meeting.created events', async () => {

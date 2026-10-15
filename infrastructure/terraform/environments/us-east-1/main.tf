@@ -47,8 +47,10 @@ provider "aws" {
 data "aws_caller_identity" "current" {}
 
 locals {
+  # Public app URL for links, logs and outputs. domain_name stays the CloudFront/Route53 zone.
+  public_app_url           = var.app_url != "" ? trimsuffix(var.app_url, "/") : "https://${var.domain_name}"
   resource_prefix          = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
-  log_retention_days       = contains(["prod", "platform", "staging"], var.environment) ? 365 : 7
+  log_retention_days       = contains(["prod", "platform"], var.environment) ? 365 : 7
   manage_account_resources = var.environment == "platform"
   elasticache_enabled      = var.enable_elasticache != null ? var.enable_elasticache : var.environment == "dev"
   ecr_repository_names = var.environment == "dev" ? [
@@ -331,7 +333,6 @@ module "secrets" {
   hubspot_access_token                      = var.hubspot_access_token
   recaptcha_secret_key                      = var.recaptcha_secret_key
   internal_cache_secret                     = var.internal_cache_secret
-  companion_internal_secret                 = var.companion_internal_secret
 }
 
 # ============================================
@@ -442,7 +443,7 @@ module "ecs_backend" {
   desired_count                  = var.backend_desired_count
   min_capacity                   = var.backend_min_capacity
   max_capacity                   = var.backend_max_capacity
-  frontend_url                   = "https://${var.domain_name}"
+  frontend_url                   = local.public_app_url
   sqs_email_queue_url            = module.sqs.email_queue_url
   sqs_payment_queue_url          = module.sqs.payment_queue_url
   sqs_cme_queue_url              = module.sqs.cme_queue_url
@@ -511,7 +512,7 @@ module "ecs_worker" {
   sqs_cme_queue_url            = module.sqs.cme_queue_url
   sqs_scheduled_jobs_queue_url = module.sqs.scheduled_jobs_queue_url
   ses_from_email               = var.worker_ses_from_email
-  frontend_app_url             = "https://${var.domain_name}"
+  frontend_app_url             = local.public_app_url
 }
 
 # ============================================
@@ -658,7 +659,9 @@ module "cognito" {
   # Platform → Hub M2M (hub RS must already exist on this pool; we do not create it)
   enable_platform_outbound_m2m = var.enable_cognito_platform_outbound_m2m
   platform_outbound_hub_scopes = var.cognito_platform_outbound_hub_scopes
-  m2m_hub_secret_name          = var.cognito_m2m_hub_secret_name
+  # Platform → Companion (companion RS must already exist on this pool; companion TF creates it)
+  platform_outbound_companion_scopes = var.cognito_platform_outbound_companion_scopes
+  m2m_hub_secret_name                = var.cognito_m2m_hub_secret_name
 }
 
 # ============================================

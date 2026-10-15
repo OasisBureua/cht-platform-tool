@@ -6,10 +6,10 @@
 # so CI / rollback scripts can react.
 #
 # Usage:
-#   ./smoke.sh                                        # defaults to testapp
-#   ./smoke.sh testapp.communityhealth.media          # https:// added automatically
-#   ./smoke.sh https://testapp.communityhealth.media
-#   ./smoke.sh https://staging.testapp.communityhealth.media
+#   ./smoke.sh                                        # defaults to app (platform)
+#   ./smoke.sh app.communityhealth.media              # https:// added automatically
+#   ./smoke.sh https://app.communityhealth.media
+#   ./smoke.sh https://devapp.communityhealth.media
 #
 # Exit codes:
 #   0 = all checks passed
@@ -18,8 +18,8 @@
 
 set -u
 
-BASE="${1:-https://testapp.communityhealth.media}"
-# Allow `./smoke.sh testapp.communityhealth.media`: curl treats bare hosts as http:// → 301.
+BASE="${1:-https://app.communityhealth.media}"
+# Allow `./smoke.sh app.communityhealth.media`: curl treats bare hosts as http:// → 301.
 BASE="${BASE%/}"
 if [[ "$BASE" != http://* && "$BASE" != https://* ]]; then
   BASE="https://${BASE}"

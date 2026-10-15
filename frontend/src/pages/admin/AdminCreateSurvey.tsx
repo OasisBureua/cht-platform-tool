@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
-import { adminApi } from '../../api/admin';
+import { adminApi, type CreateSurveyPayload } from '../../api/admin';
+import { SURVEY_TYPE_OPTIONS, type SurveyTypeValue } from '../../utils/survey-types';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 
 export default function AdminCreateSurvey() {
@@ -12,6 +13,7 @@ export default function AdminCreateSurvey() {
   const [description, setDescription] = useState('');
   const [programId, setProgramId] = useState('');
   const [jotformFormId, setJotformFormId] = useState('');
+  const [surveyType, setSurveyType] = useState<SurveyTypeValue>('INTAKE');
   const [questions, setQuestions] = useState<{ prompt: string }[]>([
     { prompt: '' },
     { prompt: '' },
@@ -24,13 +26,7 @@ export default function AdminCreateSurvey() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (payload: {
-      programId: string;
-      title: string;
-      description?: string;
-      questions: Record<string, unknown>[];
-      jotformFormId?: string;
-    }) => adminApi.createSurvey(payload),
+    mutationFn: (payload: CreateSurveyPayload) => adminApi.createSurvey(payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'surveys'] });
       navigate('/admin/surveys');
@@ -56,26 +52,28 @@ export default function AdminCreateSurvey() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!programId || !title.trim()) return;
-    const qs = questions
-      .filter((q) => q.prompt.trim())
-      .map((q, i) => ({ id: `q${i}`, type: 'text', prompt: q.prompt }));
+    const prompts = questions.map((q) => q.prompt.trim()).filter(Boolean);
     const basePayload = {
       programId,
       title: title.trim(),
+      type: surveyType,
       description: description.trim() || undefined,
       jotformFormId: jotformFormId.trim() || undefined,
     };
-    if (qs.length === 0) {
-      createMutation.mutate({
-        ...basePayload,
-        questions: [{ id: 'q0', type: 'text', prompt: 'Default question' }],
-      });
-    } else {
-      createMutation.mutate({
-        ...basePayload,
-        questions: qs,
-      });
-    }
+    // Native schema, so the survey can be used for registration, reused as a
+    // template, and edited in place. Free-text questions to start; refine in Edit.
+    const nativeQuestions = (prompts.length ? prompts : ['Default question']).map((prompt, i) => ({
+      id: `q${i + 1}`,
+      type: 'long_text',
+      prompt,
+      required: false,
+    }));
+    createMutation.mutate({
+      ...basePayload,
+      questions: basePayload.jotformFormId
+        ? nativeQuestions
+        : { version: 1, sections: [{ id: 'questions', title: 'Questions', questions: nativeQuestions }] },
+    });
   };
 
   if (programsLoading) {
@@ -127,6 +125,26 @@ export default function AdminCreateSurvey() {
                   No programs yet. Create a program first via Schedule Webinar.
                 </p>
               )}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-foreground mb-1">
+                Survey type *
+              </label>
+              <select
+                required
+                value={surveyType}
+                onChange={(e) => setSurveyType(e.target.value as SurveyTypeValue)}
+                className="w-full rounded-xl border border-border px-4 py-3 text-sm"
+              >
+                {SURVEY_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {SURVEY_TYPE_OPTIONS.find((o) => o.value === surveyType)?.help}
+              </p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-foreground mb-1">

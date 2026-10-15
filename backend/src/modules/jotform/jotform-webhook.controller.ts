@@ -10,7 +10,7 @@ import { JotformWebhookService } from './jotform-webhook.service';
 /**
  * Receives Jotform webhook POST when a form is submitted.
  * Jotform sends multipart/form-data with rawRequest (JSON string).
- * Webhook URL: https://testapp.communityhealth.media/api/webhooks/jotform
+ * Webhook URL: https://app.communityhealth.media/api/webhooks/jotform
  */
 @Controller('webhooks/jotform')
 export class JotformWebhookController {

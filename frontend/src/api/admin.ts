@@ -142,6 +142,17 @@ export interface CreateProgramPayload {
   endDate?: string;
 }
 
+/** Someone who registered through a program's public page (no account). */
+export interface PublicRegistrationAdminRow {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  createdAt: string;
+  emailSentAt: string | null;
+  submittedAt: string | null;
+}
+
 export interface CreateSurveyPayload {
   programId: string;
   title: string;
@@ -1218,6 +1229,7 @@ export const adminApi = {
       questions?: Record<string, unknown>;
       required?: boolean;
       jotformFormId?: string;
+      type?: 'INTAKE' | 'FEEDBACK' | 'PRE_TEST' | 'POST_TEST';
     },
   ) => {
     const { data } = await apiClient.patch(`/admin/surveys/${id}`, payload);
@@ -1391,6 +1403,7 @@ export const adminApi = {
       jotformPreEventUrl?: string | null;
       hostDisplayName?: string | null;
       registrationRequiresApproval?: boolean;
+      publicRegistrationEnabled?: boolean;
     },
   ) => {
     const { data } = await apiClient.patch(`/admin/programs/${encodeURIComponent(id)}/registration-settings`, body);
@@ -1414,16 +1427,19 @@ export const adminApi = {
               isCustomized?: boolean;
             }>;
           };
+          publicRegistrations?: PublicRegistrationAdminRow[];
         }
       | ProgramRegistrationAdminRow[];
     if (Array.isArray(payload)) {
       return {
         registrations: payload,
         surveys: { intake: null, feedback: null, all: [] },
+        publicRegistrations: [] as PublicRegistrationAdminRow[],
       };
     }
     return {
       registrations: payload.registrations ?? [],
+      publicRegistrations: payload.publicRegistrations ?? [],
       surveys: {
         intake: payload.surveys?.intake ?? null,
         feedback: payload.surveys?.feedback ?? null,

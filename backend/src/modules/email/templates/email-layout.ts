@@ -1,88 +1,108 @@
 /**
- * Shared HTML email layout helpers: Community Health Media brand (orange palette).
+ * Shared HTML email layout: Community Health Media brand (brand guide v2, the
+ * same tokens as the site).
  *
- * All transactional emails use `emailWrap()` to produce a consistent shell:
- *   - Deep-orange header bar  (#7c2d12 brand-800)
- *   - White card body
- *   - Orange CTA buttons      (#ea580c brand-500)
- *   - Orange-accented info cards (#fff7ed bg / #ea580c left border)
- *   - Gray footer strip
+ * All transactional emails use `emailWrap()` for one shell:
+ *   - optional photo hero (event emails) across the top of the card
+ *   - CHM lockup with the signature pixel cluster, then the email's label
+ *   - white card body on the brand's cool grey ground
+ *   - signature-blue buttons with ink labels; soft grey info panels
+ *   - one muted footer line under the card
  *
- * Colors align with tailwind.config.js `brand.*` palette (orange).
+ * Images load from the public app (`/email/*` in the frontend), set once by
+ * the email service through `setEmailAssetBase()`.
  */
 
 // ── Brand palette ──────────────────────────────────────────────────────────────
 export const E = {
-  HEADER_BG: '#7c2d12', // brand-800
-  HEADER_SUB: '#fdba74', // brand-300
-  ACCENT: '#ea580c', // brand-500
-  ACCENT_DARK: '#c2410c', // brand-600
-  CARD_BG: '#fff7ed', // brand-50
-  BODY_TEXT: '#111827', // gray-900
-  MUTED: '#4b5563', // gray-600
-  LABEL: '#6b7280', // gray-500
-  FOOTER_BG: '#f9fafb', // gray-50
-  BORDER: '#e5e7eb', // gray-200
-  LINK: '#c2410c', // brand-600
-  WARN_BG: '#fef9c3', // yellow-100
-  WARN_BORDER: '#fde047', // yellow-300
-  WARN_TEXT: '#713f12', // yellow-900
-  SUCCESS_BG: '#f0fdf4', // green-50
-  SUCCESS_BORDER: '#bbf7d0', // green-200
-  SUCCESS_TEXT: '#14532d', // green-900
+  HEADER_BG: '#144C60', // deep expertise
+  HEADER_SUB: '#F5A524', // amber
+  ACCENT: '#2FA9CC', // knowledge blue (buttons; labels sit on it in ink)
+  ACCENT_DARK: '#144C60', // deep expertise
+  CARD_BG: '#F2F4F8', // base
+  BODY_TEXT: '#22303C', // ink
+  MUTED: '#3A4A58',
+  LABEL: '#5B6B7A',
+  FOOTER_BG: '#F2F4F8',
+  BORDER: '#E3E7EE',
+  LINK: '#144C60',
+  WARN_BG: '#FEF6E7',
+  WARN_BORDER: '#F5D08A',
+  WARN_TEXT: '#6B4A0B',
+  SUCCESS_BG: '#F0FDF4',
+  SUCCESS_BORDER: '#BBF7D0',
+  SUCCESS_TEXT: '#14532D',
 } as const;
+
+const FONT =
+  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+
+let ASSET_BASE = 'https://app.communityhealth.media';
+/** Where `/email/*` images are served from (the public app URL). */
+export function setEmailAssetBase(url: string): void {
+  if (url) ASSET_BASE = url.replace(/\/$/, '');
+}
+const asset = (name: string) => `${ASSET_BASE}/email/${name}`;
 
 // ── Full wrapper ───────────────────────────────────────────────────────────────
 /**
- * Wraps `body` HTML in the standard CHM email chrome: outer bg, card, orange
- * header, and footer.
+ * Wraps `body` HTML in the standard CHM email chrome.
  *
- * @param sponsorName  Displayed in the header (e.g. "Community Health Media").
- * @param subtitle     Short label shown under sponsor name (e.g. "Session Reminder").
- * @param body         Inner HTML to render between header and footer.
+ * @param sponsorName  Kept for callers; the lockup carries the name.
+ * @param subtitle     The email's label above the body (e.g. "Session Reminder").
+ * @param body         Inner HTML to render under the label.
  * @param footerNote   Optional extra line in the footer (e.g. timezone notice).
+ * @param hero         Show the event photo across the top (invites, reminders).
  */
 export function emailWrap(opts: {
   sponsorName: string;
   subtitle: string;
   body: string;
   footerNote?: string;
+  hero?: boolean;
 }): string {
-  const { subtitle, body, footerNote } = opts;
+  const { subtitle, body, footerNote, hero } = opts;
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light">
+  <meta name="supported-color-schemes" content="light">
 </head>
-<body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased">
-<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f3f4f6">
+<body style="margin:0;padding:0;background:${E.CARD_BG};font-family:${FONT};-webkit-font-smoothing:antialiased">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${E.CARD_BG}">
   <tr><td align="center" style="padding:40px 16px">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0"
-           style="background:#ffffff;border-radius:16px;box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;max-width:600px;width:100%">
+           style="background:#ffffff;border:1px solid ${E.BORDER};border-radius:16px;overflow:hidden;max-width:600px;width:100%">
+${
+  hero
+    ? `
+      <!-- Hero -->
+      <tr><td style="padding:0;line-height:0"><img src="${asset('hero.jpg')}" width="600" alt="An audience at a Community Health Media live session" style="display:block;width:100%;max-width:600px;height:auto;border:0;border-radius:16px 16px 0 0"></td></tr>`
+    : ''
+}
+      <!-- Lockup and pixel cluster -->
+      <tr><td style="padding:0">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+          <td valign="top" style="padding:32px 0 0 40px"><img src="${asset('chm-lockup.png')}" width="104" height="27" alt="Community Health Media" style="display:block;border:0"></td>
+          <td valign="top" align="right" width="168" style="padding:0;line-height:0"><img src="${asset('cluster.png')}" width="168" height="88" alt="" style="display:block;border:0"></td>
+        </tr></table>
+      </td></tr>
 
-      <!-- Header -->
-      <tr>
-        <td style="background:${E.HEADER_BG};padding:28px 36px 24px">
-          <p style="margin:0;color:#ffffff;font-size:20px;font-weight:700;letter-spacing:-0.02em">Community Health Media</p>
-          <p style="margin:5px 0 0;color:${E.HEADER_SUB};font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase">${subtitle}</p>
-        </td>
-      </tr>
+      <!-- Label and body -->
+      <tr><td style="padding:0 40px 32px">
+        <p style="margin:0 0 10px;color:${E.LINK};font-size:12px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase">${subtitle}</p>
+        ${body}
+      </td></tr>
+    </table>
 
-      <!-- Body -->
-      <tr><td style="padding:32px 36px 24px">${body}</td></tr>
-
-      <!-- Footer -->
-      <tr>
-        <td style="background:${E.FOOTER_BG};border-top:1px solid ${E.BORDER};padding:16px 36px">
-          <p style="margin:0;color:#9ca3af;font-size:11px;text-align:center;line-height:1.6">
-            &copy; Community Health Media &nbsp;&middot;&nbsp; You are receiving this because you have an account on the platform.
-            ${footerNote ? `<br>${footerNote}` : ''}
-          </p>
-        </td>
-      </tr>
-
+    <!-- Footer -->
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+      <tr><td style="padding:20px 8px 0;color:${E.LABEL};font-size:12px;line-height:1.6;text-align:center">
+        Community Health Media &middot; You&rsquo;re receiving this because you have an account on the platform.
+        ${footerNote ? `<br>${footerNote}` : ''}
+      </td></tr>
     </table>
   </td></tr>
 </table>
@@ -92,19 +112,19 @@ export function emailWrap(opts: {
 
 // ── Reusable blocks ────────────────────────────────────────────────────────────
 
-/** Orange CTA button. */
+/** Signature-blue CTA button with an ink label. */
 export function emailButton(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.ACCENT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
+  return `<a href="${href}" style="display:inline-block;padding:14px 22px;background:${E.ACCENT};color:${E.BODY_TEXT};text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;line-height:1">${label}</a>`;
 }
 
-/** Secondary (dark) button: used for neutral actions like "Open in app". */
+/** Secondary (deep) button: used for neutral actions like "Open in app". */
 export function emailButtonDark(href: string, label: string): string {
-  return `<a href="${href}" style="display:inline-block;padding:12px 24px;background:${E.BODY_TEXT};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;letter-spacing:0.01em;line-height:1">${label} &rarr;</a>`;
+  return `<a href="${href}" style="display:inline-block;padding:14px 22px;background:${E.ACCENT_DARK};color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:10px;line-height:1">${label}</a>`;
 }
 
-/** Orange-accented info card (brand-50 bg + brand-500 left border). */
+/** Soft grey info panel (session details, next steps). */
 export function emailInfoCard(innerHtml: string): string {
-  return `<div style="background:${E.CARD_BG};border-left:4px solid ${E.ACCENT};border-radius:10px;padding:20px 24px;margin:20px 0 0">${innerHtml}</div>`;
+  return `<div style="background:${E.CARD_BG};border-radius:12px;padding:18px 20px;margin:20px 0 0">${innerHtml}</div>`;
 }
 
 /** Amber warning card (used for rejection notes, incomplete intake, etc.). */
@@ -117,7 +137,7 @@ export function emailSuccessCard(innerHtml: string): string {
   return `<div style="background:${E.SUCCESS_BG};border:1px solid ${E.SUCCESS_BORDER};border-radius:10px;padding:14px 18px;margin:20px 0 0">${innerHtml}</div>`;
 }
 
-/** Inline orange link. */
+/** Inline link in deep blue. */
 export function emailLink(href: string, label: string): string {
   return `<a href="${href}" style="color:${E.LINK};text-decoration:underline">${label}</a>`;
 }

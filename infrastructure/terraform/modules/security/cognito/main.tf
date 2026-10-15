@@ -305,7 +305,7 @@ resource "aws_cognito_user_pool_client" "platform_m2m" {
 
   allowed_oauth_flows                  = ["client_credentials"]
   allowed_oauth_flows_user_pool_client = true
-  allowed_oauth_scopes                 = var.platform_outbound_hub_scopes
+  allowed_oauth_scopes                 = concat(var.platform_outbound_hub_scopes, var.platform_outbound_companion_scopes)
 
   supported_identity_providers = ["COGNITO"]
 

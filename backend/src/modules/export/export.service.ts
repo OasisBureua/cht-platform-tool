@@ -71,7 +71,10 @@ export interface ExportSurveyPacket {
   questions: ExportSurveyQuestion[] | null;
   responseCount: number;
   responses: Array<{
-    userId: string;
+    /** Null for a public registrant (no account). */
+    userId: string | null;
+    /** userId, or public:<PublicRegistration.id> for a public registrant. */
+    respondentId: string;
     submittedAt: string;
     score: number | null;
     schemaVersion: number;
@@ -176,6 +179,7 @@ export class ExportService {
               orderBy: { submittedAt: 'asc' },
               select: {
                 userId: true,
+                publicRegistrationId: true,
                 submittedAt: true,
                 score: true,
                 schemaVersion: true,
@@ -301,6 +305,7 @@ export class ExportService {
           responseCount: survey.responses.length,
           responses: survey.responses.map((r) => ({
             userId: r.userId,
+            respondentId: r.userId ?? `public:${r.publicRegistrationId}`,
             submittedAt: r.submittedAt.toISOString(),
             score: r.score ?? null,
             schemaVersion: r.schemaVersion,
@@ -389,6 +394,7 @@ export class ExportService {
         responseCount: submissions.length,
         responses: submissions.map((row) => ({
           userId: row.userId ?? '',
+          respondentId: row.userId ?? '',
           submittedAt: row.submittedAt,
           score: null,
           schemaVersion: 1,

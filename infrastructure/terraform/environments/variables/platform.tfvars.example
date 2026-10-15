@@ -12,6 +12,8 @@ environment = "platform"
 
 # Public domain (Route53 / CloudFront)
 domain_name  = "testapp.communityhealth.media"
+# Optional: app URL for email links (backend FRONTEND_URL); defaults to https://<domain_name>
+# app_url = "https://app.communityhealth.media"
 
 # Primary Docker images (ECR)
 backend_image = "233636046512.dkr.ecr.us-east-1.amazonaws.com/cht-platform-backend:v1.0.0"
@@ -46,7 +48,7 @@ elasticache_node_type = "cache.t3.medium"
 single_nat_gateway = false
 
 # CHT Companion (SSE chat BFF) — enable when cht-companion is on Service Connect
-# service_connect_namespace = "cht-platform.local"   # when prod companion namespace exists
+# service_connect_namespace = "cht.local"   # when prod companion namespace exists
 # companion_base_url = "http://cht-companion:8080"
-# companion_internal_secret = ""
+# cognito_platform_outbound_companion_scopes = ["companion/chat.invoke"]
 

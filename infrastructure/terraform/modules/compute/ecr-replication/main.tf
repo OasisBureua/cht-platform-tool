@@ -3,7 +3,7 @@
 #
 # WARNING: `aws_ecr_replication_configuration` is a per-account singleton. Applying
 # from any stack that manages this resource REPLACES the whole account ruleset.
-# Include every shared-account prefix (e.g. contenthub- and cht-platform-) or the
+# Include every shared-account prefix (contenthub-, cht-platform-, cht-companion) or the
 # omitted side's replication silently stops (breaks ContentHub "Wait for ECR
 # replication" on us-east-2).
 

@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
-import { JotformService } from '../jotform/jotform.service';
 import { FormJotformProgressService } from '../programs/form-jotform-progress.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from './surveys.service';
@@ -73,7 +72,6 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       {} as QueueService,
       { get: jest.fn() } as unknown as ConfigService,
       {} as OutboundSyncService,
-      {} as JotformService,
       {} as FormJotformProgressService,
       {} as ProgramRegistrationsService,
     );
@@ -245,20 +243,85 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     expect(prisma.survey.delete).not.toHaveBeenCalled();
   });
 
-  it('blocks legacy Jotform conversion when the survey has responses', async () => {
-    prisma.survey.findFirst.mockResolvedValue({
-      id: 'feedback-1',
-      _count: { responses: 1 },
-    });
-
+  it('rejects legacy Jotform conversion (CPR-5: create/attach removed)', async () => {
     await expect(
       service.applyManualPostEventJotform(
         'program-1',
         'Program One',
         '123456789012345',
       ),
-    ).rejects.toThrow('already has responses');
-    expect(prisma.survey.deleteMany).not.toHaveBeenCalled();
+    ).rejects.toThrow(/no longer supported/i);
+    expect(prisma.survey.findFirst).not.toHaveBeenCalled();
     expect(prisma.survey.update).not.toHaveBeenCalled();
+  });
+
+  describe('survey type', () => {
+    const base = {
+      id: 'survey-1',
+      programId: 'program-1',
+      type: 'POST_TEST',
+      questions: existingSchema,
+      schemaVersion: 1,
+    };
+
+    it('changes the type while the survey has no responses', async () => {
+      prisma.survey.findUnique.mockResolvedValue({
+        ...base,
+        _count: { responses: 0 },
+      });
+      prisma.survey.update.mockResolvedValue({ ...base, type: 'INTAKE' });
+      await service.updateSurvey('survey-1', { type: 'INTAKE' });
+      expect(prisma.survey.update).toHaveBeenCalledWith({
+        where: { id: 'survey-1' },
+        data: expect.objectContaining({
+          type: 'INTAKE',
+          isCustomized: true,
+        }) as unknown,
+      });
+    });
+
+    it('refuses to change the type once anyone has responded', async () => {
+      prisma.survey.findUnique.mockResolvedValue({
+        ...base,
+        _count: { responses: 2 },
+      });
+      await expect(
+        service.updateSurvey('survey-1', { type: 'INTAKE' }),
+      ).rejects.toThrow(
+        'This survey has 2 response(s); its type can no longer change.',
+      );
+      expect(prisma.survey.update).not.toHaveBeenCalled();
+    });
+
+    it('ignores a type equal to the current one, even with responses', async () => {
+      prisma.survey.findUnique.mockResolvedValue({
+        ...base,
+        _count: { responses: 2 },
+      });
+      prisma.survey.update.mockResolvedValue(base);
+      await service.updateSurvey('survey-1', {
+        type: 'POST_TEST',
+        title: 'Renamed',
+      });
+      expect(prisma.survey.update).toHaveBeenCalledWith({
+        where: { id: 'survey-1' },
+        data: expect.not.objectContaining({
+          type: expect.anything(),
+        }) as unknown,
+      });
+    });
+
+    it('creates a survey with the chosen type', async () => {
+      prisma.survey.create.mockResolvedValue({ id: 'new', title: 'T' });
+      await service.createSurvey({
+        programId: 'program-1',
+        title: 'T',
+        questions: existingSchema,
+        type: 'INTAKE',
+      });
+      expect(prisma.survey.create.mock.calls[0][0].data).toEqual(
+        expect.objectContaining({ type: 'INTAKE' }),
+      );
+    });
   });
 });
