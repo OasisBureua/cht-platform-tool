@@ -18,6 +18,23 @@ export function extForFile(
   return 'bin';
 }
 
+/** Zoom file types that Sync and Pull skip. MP4 video is not stored for now. */
+const SKIPPED_FILE_TYPES = new Set(['MP4']);
+
+export function isSkippedFileType(fileType: string): boolean {
+  return SKIPPED_FILE_TYPES.has(fileType.trim().toUpperCase());
+}
+
+/** Size of the files we keep; Zoom's total_size also counts the skipped MP4s. */
+export function keptFilesTotalSize(
+  files: Array<{ fileType: string; fileSize?: number | null }>,
+): number | null {
+  const kept = files.filter(
+    (f) => !isSkippedFileType(f.fileType) && f.fileSize != null,
+  );
+  return kept.length ? kept.reduce((n, f) => n + (f.fileSize ?? 0), 0) : null;
+}
+
 export function contentTypeFor(fileType: string, ext: string): string {
   const t = fileType.toUpperCase();
   if (t === 'MP4' || ext === 'mp4') return 'video/mp4';

@@ -5,7 +5,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
-import { Readable } from 'stream';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { ChmContentIdService } from './chm-content-id.service';
@@ -154,11 +153,12 @@ describe('ZoomRecordingsPullService', () => {
     );
   });
 
-  it('pulls TRANSCRIPT via buffer and MP4 via stream upload', async () => {
+  it('skips MP4 and pulls the TRANSCRIPT via buffer', async () => {
     prisma.program.findUnique.mockResolvedValue(program);
     zoom.getMeetingRecordings.mockResolvedValue({
       topic: 'Webinar Test',
       downloadAccessToken: 'dl-token',
+      totalSize: 2422756132,
       recordingFiles: [
         {
           id: 'mp4-1',
@@ -167,7 +167,7 @@ describe('ZoomRecordingsPullService', () => {
           downloadUrl: 'https://zoom.example/video.mp4',
           status: 'completed',
           recordingType: 'active_speaker',
-          fileSize: 1000,
+          fileSize: 2422755454,
         },
         {
           id: 'tr-1',
@@ -180,10 +180,6 @@ describe('ZoomRecordingsPullService', () => {
         },
       ],
     });
-    zoom.downloadRecordingFileStream.mockResolvedValue({
-      stream: Readable.from([Buffer.from('mp4')]),
-      contentType: 'video/mp4',
-    });
     zoom.downloadRecordingFile.mockResolvedValue({
       buffer: Buffer.from('WEBVTT\n\nhello'),
       contentType: 'text/vtt',
@@ -194,13 +190,18 @@ describe('ZoomRecordingsPullService', () => {
     });
 
     expect(zoom.getMeetingRecordings).toHaveBeenCalledWith('83768449108');
-    expect(zoom.downloadRecordingFileStream).toHaveBeenCalledTimes(1);
+    expect(zoom.downloadRecordingFileStream).not.toHaveBeenCalled();
     expect(zoom.downloadRecordingFile).toHaveBeenCalledTimes(1);
-    expect(mockUploadDone).toHaveBeenCalledTimes(1);
+    expect(mockUploadDone).not.toHaveBeenCalled();
     expect(mockS3Send).toHaveBeenCalledTimes(1);
     expect(prisma.zoomRecordingSession.upsert).toHaveBeenCalledTimes(1);
-    // Each file: IN_PROGRESS upsert (live UI status) + COMPLETED upsert after S3 upload.
-    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledTimes(4);
+    expect(prisma.zoomRecordingSession.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ totalSizeBytes: 678 }) as unknown,
+      }),
+    );
+    // IN_PROGRESS upsert (live UI status) + COMPLETED upsert after S3 upload.
+    expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledTimes(2);
     expect(prisma.zoomRecordingFile.upsert).toHaveBeenCalledWith(
       expect.objectContaining({
         create: expect.objectContaining({
@@ -213,7 +214,7 @@ describe('ZoomRecordingsPullService', () => {
         create: expect.objectContaining({ pullStatus: 'COMPLETED' }) as unknown,
       }),
     );
-    expect(result.upserted).toHaveLength(2);
+    expect(result.upserted).toHaveLength(1);
     expect(exportIngest.triggerForProgramZoom).toHaveBeenCalledWith(program.id);
   });
 

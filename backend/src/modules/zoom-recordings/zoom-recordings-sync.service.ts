@@ -11,7 +11,11 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { ZoomService } from '../webinars/zoom.service';
 import { buildMonthWindows } from './zoom-sync-date.util';
 import { ZoomRecordingsSessionService } from './zoom-recordings-session.service';
-import { extForFile } from './zoom-recordings-media.util';
+import {
+  extForFile,
+  isSkippedFileType,
+  keptFilesTotalSize,
+} from './zoom-recordings-media.util';
 import { formatZoomHttpError } from './zoom-http-error.util';
 
 type SyncProgress = {
@@ -196,13 +200,13 @@ export class ZoomRecordingsSyncService {
                   durationMinutes: summary.duration ?? null,
                   zoomUuid: summary.uuid,
                   hostEmail: summary.hostEmail || user.email || null,
-                  totalSizeBytes: summary.totalSize ?? null,
+                  totalSizeBytes: keptFilesTotalSize(summary.recordingFiles),
                   programId: linked?.id ?? null,
                 });
                 progress.sessionsUpserted += 1;
 
                 for (const file of summary.recordingFiles) {
-                  if (!file.id) continue;
+                  if (!file.id || isSkippedFileType(file.fileType)) continue;
                   await this.sessions.upsertFileStub({
                     sessionId: session.id,
                     programId: linked?.id ?? null,
