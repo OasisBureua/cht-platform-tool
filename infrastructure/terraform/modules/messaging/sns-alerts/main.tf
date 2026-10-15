@@ -34,20 +34,6 @@ resource "aws_sns_topic_policy" "alerts" {
             "aws:SourceAccount" = var.aws_account_id
           }
         }
-      },
-      {
-        Sid    = "AllowEventBridgePublish"
-        Effect = "Allow"
-        Principal = {
-          Service = "events.amazonaws.com"
-        }
-        Action   = "sns:Publish"
-        Resource = aws_sns_topic.alerts.arn
-        Condition = {
-          StringEquals = {
-            "aws:SourceAccount" = var.aws_account_id
-          }
-        }
       }
     ]
   })

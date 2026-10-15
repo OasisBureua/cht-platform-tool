@@ -526,10 +526,6 @@ module "scheduled_eventbridge" {
   scheduled_jobs_queue_arn   = module.sqs.scheduled_jobs_queue_arn
   scheduled_jobs_queue_url   = module.sqs.scheduled_jobs_queue_url
   session_reminders_schedule = var.session_reminders_schedule_expression
-
-  enable_bill_mfa_reminder   = var.enable_bill_mfa_reminder
-  alerts_topic_arn           = module.sns_alerts.topic_arn
-  bill_mfa_reminder_schedule = var.bill_mfa_reminder_schedule
 }
 
 # ============================================
