@@ -19,6 +19,8 @@ import { buildChmAssetFilenameForZoomFile } from './chm-content-id.util';
 import {
   buildRecordingS3Key,
   extForFile,
+  isSkippedFileType,
+  keptFilesTotalSize,
   shouldStreamFileType,
   storedContentType,
 } from './zoom-recordings-media.util';
@@ -148,7 +150,7 @@ export class ZoomRecordingsPullService {
       durationMinutes: zoomPayload.duration ?? null,
       chmProgramId: program.chmProgramId,
       zoomUuid: zoomPayload.uuid,
-      totalSizeBytes: zoomPayload.totalSize ?? null,
+      totalSizeBytes: keptFilesTotalSize(zoomPayload.recordingFiles),
     });
 
     const result = await this.pullFiles({
@@ -296,7 +298,9 @@ export class ZoomRecordingsPullService {
   ): ZoomRecordingFile[] {
     return zoomPayload.recordingFiles.filter(
       (f) =>
-        f.downloadUrl && (!f.status || f.status.toLowerCase() === 'completed'),
+        f.downloadUrl &&
+        (!f.status || f.status.toLowerCase() === 'completed') &&
+        !isSkippedFileType(f.fileType),
     );
   }
 
