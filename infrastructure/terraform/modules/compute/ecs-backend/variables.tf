@@ -91,7 +91,7 @@ variable "sqs_queue_urls_env_file_arn" {
 }
 
 variable "frontend_url" {
-  description = "Frontend URL for CORS and redirects (e.g. https://testapp.communityhealth.media)"
+  description = "Frontend URL for CORS and redirects (e.g. https://app.communityhealth.media)"
   type        = string
   default     = ""
 }

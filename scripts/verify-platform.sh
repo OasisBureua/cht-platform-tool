@@ -1,5 +1,5 @@
 #!/bin/bash
-# Verify platform (single account) is ready for deployment (testapp.communityhealth.media)
+# Verify platform (single account) is ready for deployment (app.communityhealth.media)
 
 set -e
 
@@ -13,8 +13,8 @@ echo "🔍 CHT Platform - Platform Verification"
 echo "=============================================="
 echo ""
 
-# 1. Certificate status (testapp)
-echo "1️⃣  SSL Certificate (testapp.communityhealth.media)"
+# 1. Certificate status (platform cert)
+echo "1️⃣  SSL Certificate (platform: app.communityhealth.media)"
 if [ -f "infrastructure/terraform/environments/variables/.cert-arns-testapp" ]; then
   source infrastructure/terraform/environments/variables/.cert-arns-testapp
   CERT_STATUS=$(aws acm describe-certificate \

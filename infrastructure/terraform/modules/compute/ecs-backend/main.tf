@@ -2,9 +2,7 @@ locals {
   is_prod = var.environment == "prod" || var.environment == "platform"
   prefix  = var.environment == "platform" ? var.project : "${var.project}-${var.environment}"
   node_env = contains(["prod", "platform"], var.environment) ? "production" : (
-    var.environment == "staging" ? "staging" : (
-      var.environment == "test" ? "test" : "development"
-    )
+    var.environment == "test" ? "test" : "development"
   )
   container_image_parts = split(":", var.container_image)
   container_image_tag   = length(local.container_image_parts) > 1 ? local.container_image_parts[length(local.container_image_parts) - 1] : "unknown"
@@ -370,13 +368,13 @@ resource "aws_ecs_service" "backend" {
     container_port   = 3000
   }
 
-  # In staging we want a clean view of what's happening during a deploy:
+  # Outside prod we want a clean view of what's happening during a deploy:
   # spin a NEW task up alongside the old one (max 200%) and only kill the
   # old one once the new one is steady. Disable rollback so failed deploys
   # stop in place, surfaces the real cause in ECS events + CloudWatch
   # instead of silently reverting to the previous task definition.
   # Prod stays conservative (100% max, 50% min, auto-rollback) until we
-  # explicitly graduate this config after staging validates.
+  # explicitly graduate this config after dev validates.
   deployment_maximum_percent         = local.is_prod ? 100 : 200
   deployment_minimum_healthy_percent = local.is_prod ? 50 : 100
 

@@ -8,7 +8,7 @@ echo ""
 if [ -z "$1" ]; then
     echo "Usage: ./deploy-frontend.sh [platform|dev] [both]"
     echo ""
-    echo "  platform       testapp.communityhealth.media  (platform.tfvars)"
+    echo "  platform       app.communityhealth.media      (platform.tfvars)"
     echo "  dev            devapp.communityhealth.media    (dev.tfvars)"
     echo "  both (optional) also sync build to us-east-2 DR S3 bucket"
     exit 1
@@ -31,7 +31,7 @@ AWS_REGION="${AWS_REGION:-us-east-1}"
 case "$ENV" in
   platform|dev) ;;
   prod)
-    echo "ℹ️  'prod' is an alias for platform (testapp.communityhealth.media)"
+    echo "ℹ️  'prod' is an alias for platform (app.communityhealth.media)"
     ENV=platform
     VAR_FILE="$REPO_ROOT/infrastructure/terraform/environments/variables/platform.tfvars"
     ;;

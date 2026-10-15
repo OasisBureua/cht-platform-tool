@@ -5,7 +5,7 @@ echo "🚀 CHT Platform - Deploy Primary Region"
 echo "========================================"
 echo ""
 
-# platform → platform.tfvars (testapp.communityhealth.media)
+# platform → platform.tfvars (app.communityhealth.media)
 # dev      → dev.tfvars      (devapp.communityhealth.media)
 ENV=${1:-platform}
 
@@ -147,6 +147,6 @@ echo "4. Run database migrations: ./scripts/run-migrations.sh $ENV"
 if [ -n "$DOMAIN" ]; then
   echo "5. Test: curl https://${DOMAIN}/health/ready"
 else
-  echo "5. Test: curl https://testapp.communityhealth.media/health/ready  # platform"
+  echo "5. Test: curl https://app.communityhealth.media/health/ready      # platform"
   echo "         curl https://devapp.communityhealth.media/health/ready    # dev"
 fi
