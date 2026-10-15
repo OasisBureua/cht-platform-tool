@@ -63,8 +63,6 @@ alarm_notification_emails = [
   "sebastien@communityhealth.media",
 ]
 session_reminders_schedule_expression = "cron(0 0/6 * * ? *)"
-enable_bill_mfa_reminder              = true
-bill_mfa_reminder_schedule            = "rate(20 days)"
 enable_cognito_pools                = true
 cognito_domain_prefix               = "chm-platform"
 cognito_user_pool_tier              = "ESSENTIALS"
@@ -88,15 +86,22 @@ enable_cognito_platform_outbound_m2m = true
 contenthub_base_url = "https://contenthub.communityhealth.media/api/public"
 
 # CHT Companion (Service Connect client on backend → cht-companion:8080).
-# Uncomment all three once companion's prod apply has created the cht.local namespace
-# and RS `companion` on cht-platform-users; before that the ECS service update and
-# the Cognito client update both fail. The chat UI stays hidden on prod hosts either way.
-# service_connect_namespace = "cht.local"
-# companion_base_url        = "http://cht-companion:8080"
-# cognito_platform_outbound_companion_scopes = ["companion/chat.invoke"]
+# Requires companion's cht.local namespace and RS `companion` on cht-platform-users.
+# The chat UI stays hidden on prod hosts.
+service_connect_namespace                  = "cht.local"
+companion_base_url                         = "http://cht-companion:8080"
+cognito_platform_outbound_companion_scopes = ["companion/chat.invoke"]
 
 # Hub VTT ingest — Lambda already has S3 invoke permission; wire bucket notify only.
 vtt_object_ingest_lambda_arn = "arn:aws:lambda:us-east-1:233636046512:function:contenthub-sync-vtt-object-ingest"
+
+# On-demand reports (cht-reports owns these; access via its resource policies on cht-platform-ecs-task).
+reports = {
+  table_name      = "cht-prod-report-state"
+  report_id_index = "report_id-index"
+  queue_url       = "https://sqs.us-east-1.amazonaws.com/233636046512/cht-prod-report-requests"
+  bucket          = "cht-reports-prod-artifacts"
+}
 
 # Redis cache for upstream Content Hub reads (1h TTL in app)
 enable_elasticache    = true
