@@ -81,9 +81,20 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
         startTime: '2026-08-10T18:00:00Z',
         duration: 45,
         hostEmail: '',
-        totalSize: 10,
+        totalSize: 2422755464,
         recordingFiles: [
-          { id: 'file-1', fileType: 'MP4', fileExtension: 'mp4', fileSize: 10 },
+          {
+            id: 'file-mp4',
+            fileType: 'MP4',
+            fileExtension: 'mp4',
+            fileSize: 2422755454,
+          },
+          {
+            id: 'file-1',
+            fileType: 'TRANSCRIPT',
+            fileExtension: 'vtt',
+            fileSize: 10,
+          },
         ],
       },
     ]);
@@ -110,8 +121,10 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
         meetingId: '111',
         hostEmail: 'host@example.com',
         sessionType: ProgramZoomSessionType.WEBINAR,
+        totalSizeBytes: 10,
       }),
     );
+    expect(upsertFileStub).toHaveBeenCalledTimes(1);
     expect(upsertFileStub).toHaveBeenCalledWith(
       expect.objectContaining({ zoomRecordingFileId: 'file-1' }),
     );
@@ -245,7 +258,7 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
       {
         id: 'good',
         topic: 'Ok',
-        recordingFiles: [{ id: 'file-ok', fileType: 'MP4' }],
+        recordingFiles: [{ id: 'file-ok', fileType: 'TRANSCRIPT' }],
       },
     ]);
     const ensureSessionFromSync = jest
@@ -279,8 +292,8 @@ describe('ZoomRecordingsSyncService per-user inventory', () => {
         id: '333',
         topic: 'Has files',
         recordingFiles: [
-          { id: '', fileType: 'MP4' },
-          { id: 'file-2', fileType: 'MP4' },
+          { id: '', fileType: 'TRANSCRIPT' },
+          { id: 'file-2', fileType: 'TRANSCRIPT' },
         ],
       },
     ]);
