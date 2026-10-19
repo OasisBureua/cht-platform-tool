@@ -28,15 +28,19 @@ import {
   type ReportStatus,
 } from '../../../../api/reports';
 import {
+  useCampaignLinkPrograms,
   useCampaignReports,
   useCreateReport,
   useDownloadReport,
   useRefreshCampaignData,
   useRegenerateReport,
+  useReportInputs,
   useReportRecipients,
 } from '../lib/reportHooks';
+import { sourcesWithData } from '../lib/reportInputs';
 import { CampaignKolsCard } from './CampaignKolsCard';
 import { RecipientPicker } from './RecipientPicker';
+import { ReportInputsSummary } from './ReportInputsSummary';
 import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
 
@@ -130,13 +134,43 @@ function GenerateCard({
 }) {
   const { toast } = useToast();
   const [range, setRange] = useState<`${DateRangeDays}`>('30');
-  const [sources, setSources] = useState<string[]>(REPORT_SOURCES.map((s) => s.value));
+  const [sources, setSourcesState] = useState<string[]>(REPORT_SOURCES.map((s) => s.value));
+  // Once the admin picks sources, data checks never change them.
+  const [sourcesTouched, setSourcesTouched] = useState(false);
+  const [autoOff, setAutoOff] = useState<string[]>([]);
   const [notify, setNotify] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const recipients = useReportRecipients();
   const create = useCreateReport(campaignId);
   const refreshData = useRefreshCampaignData(campaignId);
+  const { data: linkPrograms } = useCampaignLinkPrograms();
+  // CPR-51: every source's status, independent of the toggles.
+  const inputs = useReportInputs(
+    campaignId,
+    Number(range) as DateRangeDays,
+    REPORT_SOURCES.map((s) => s.value),
+  );
+
+  const linked = (linkPrograms ?? []).filter((p) => p.campaignId === campaignId);
+  const programHubPath = linked.length === 1 ? `/admin/programs/${linked[0].id}/hub` : null;
+
+  const setSources = (next: string[] | ((prev: string[]) => string[])) => {
+    setSourcesTouched(true);
+    setAutoOff([]);
+    setSourcesState(next);
+  };
+
+  // Once the first data check arrives, keep only the sources that have data,
+  // so the deck has no empty sections. Set during render, not in an effect.
+  if (!sourcesTouched && inputs.data) {
+    const withData = sourcesWithData(inputs.data, REPORT_SOURCES);
+    setSourcesTouched(true);
+    if (withData.length > 0 && withData.length < REPORT_SOURCES.length) {
+      setSourcesState(withData);
+      setAutoOff(REPORT_SOURCES.filter((s) => !withData.includes(s.value)).map((s) => s.label));
+    }
+  }
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -237,6 +271,17 @@ function GenerateCard({
             <p className="mt-2 text-sm text-destructive">Pick at least one source.</p>
           ) : null}
         </div>
+
+        <ReportInputsSummary
+          campaignId={campaignId}
+          inputs={inputs.data}
+          isLoading={inputs.isLoading}
+          isError={inputs.isError}
+          sourceOptions={REPORT_SOURCES}
+          selected={sources}
+          autoOff={autoOff}
+          programHubPath={programHubPath}
+        />
 
         {recipients.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading admins…</p>
@@ -453,7 +498,9 @@ export default function ReportsPanel({
         onGoToPrograms={onGoToPrograms}
       />
 
-      <CampaignKolsCard campaignId={campaignId} />
+      <div id="campaign-kols" className="scroll-mt-6">
+        <CampaignKolsCard campaignId={campaignId} />
+      </div>
 
       <ZoomSectionCard
         title="Report history"

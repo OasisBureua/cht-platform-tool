@@ -18,6 +18,24 @@ export type CampaignKol = {
 
 export type CampaignKolList = { items: CampaignKol[] };
 
+export type ReportSourceInput = {
+  fetchedAt: string | null;
+  rowCount: number;
+  status: 'ok' | 'missing' | 'error';
+};
+
+/** CPR-51: what Generate would find per source (Hub report-inputs). */
+export type ReportInputs = {
+  campaignId: number;
+  windowStart: string | null;
+  windowEnd: string | null;
+  sources: string[];
+  inputCompleteness: Record<string, ReportSourceInput>;
+  registeredCount: number | null;
+  attendedCount: number | null;
+  attendeesWithProfile: number | null;
+};
+
 export type CampaignListResponse = {
   items: unknown[];
   total: number;
@@ -60,6 +78,27 @@ export class ContentHubCampaignService {
   listCampaignKols(id: number | string): Promise<CampaignKolList> {
     return this.client.getAdmin<CampaignKolList>(
       `/campaigns/${id}/kols`,
+      undefined,
+      { cache: false },
+    );
+  }
+
+  /** Not cached: the card should show the latest sync. */
+  getReportInputs(
+    id: number | string,
+    query: {
+      windowStart: string | null;
+      windowEnd: string;
+      sources?: string[];
+    },
+  ): Promise<ReportInputs> {
+    // getAdmin params are scalar; sources repeats, as FastAPI list params expect.
+    const qs = new URLSearchParams();
+    if (query.windowStart) qs.set('windowStart', query.windowStart);
+    qs.set('windowEnd', query.windowEnd);
+    for (const source of query.sources ?? []) qs.append('sources', source);
+    return this.client.getAdmin<ReportInputs>(
+      `/campaigns/${id}/report-inputs?${qs.toString()}`,
       undefined,
       { cache: false },
     );

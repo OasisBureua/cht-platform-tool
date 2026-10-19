@@ -35,6 +35,8 @@ import {
   type CampaignPlatform,
 } from './content-hub-campaign.service';
 import { SetCampaignKolsDto } from './dto/set-campaign-kols.dto';
+import { ReportInputsQueryDto } from './dto/report-inputs-query.dto';
+import { freezeWindow } from '../reports/reports.service';
 
 /** Platforms whose credentials and connection status live on CHT, not Content Hub. */
 const CHT_INTEGRATION_KEYS = new Set(['hubspot', 'livestream', 'survey']);
@@ -158,6 +160,32 @@ export class AdminContentHubController {
     @Body() body: SetCampaignKolsDto,
   ) {
     return this.hubCall(() => this.campaigns.setCampaignKols(id, body.kolIds));
+  }
+
+  // ─── Report inputs (CPR-51) ─────────────────────────────────────────────
+
+  @Get('campaigns/:id/report-inputs')
+  @ApiOperation({
+    summary: 'Per-source counts Generate would find for the report window',
+  })
+  async getReportInputs(
+    @Param('id') id: string,
+    @Query() query: ReportInputsQueryDto,
+  ) {
+    // Same window as Generate; the Hub filters by UTC date.
+    const { windowStart, windowEnd } = freezeWindow(
+      undefined,
+      undefined,
+      new Date(),
+      query.dateRangeDays,
+    );
+    return this.hubCall(() =>
+      this.campaigns.getReportInputs(id, {
+        windowStart: windowStart?.slice(0, 10) ?? null,
+        windowEnd: windowEnd.slice(0, 10),
+        sources: query.sources,
+      }),
+    );
   }
 
   // ─── Platform data ───────────────────────────────────────────────────────

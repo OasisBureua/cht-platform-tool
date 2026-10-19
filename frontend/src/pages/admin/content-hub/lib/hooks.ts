@@ -91,6 +91,7 @@ export function useUploadCsv(id: string | number) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: qk.csvData(id) });
       qc.invalidateQueries({ queryKey: qk.validation(id) });
+      qc.invalidateQueries({ queryKey: [KEY, 'report-inputs', String(id)] });
     },
   });
 }
@@ -142,7 +143,10 @@ export function useHubspotSync(id: string | number) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => store.hubspotSync(n(id)),
-    onSuccess: () => qc.invalidateQueries({ queryKey: qk.campaign(id) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: qk.campaign(id) });
+      qc.invalidateQueries({ queryKey: [KEY, 'report-inputs', String(id)] });
+    },
   });
 }
 
