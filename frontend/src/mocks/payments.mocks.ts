@@ -2,11 +2,11 @@ export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
 
 export interface PaymentSummary {
   availableBalance: number; // ready to withdraw
-  pendingBalance: number;   // processing
+  pendingBalance: number; // processing
   lifetimeEarnings: number;
   lastPayoutDate?: string | null;
-  billConnected: boolean;
-  billVendorId?: string | null;
+  stripeConnected: boolean;
+  stripeAccountId?: string | null;
 }
 
 export interface PaymentItem {
@@ -18,7 +18,7 @@ export interface PaymentItem {
   programTitle?: string | null;
   amount: number;
   status: PaymentStatus;
-  method?: 'Bill.com' | 'ACH' | 'Check' | 'Card' | 'N/A' | string;
+  method?: 'ACH' | 'Check' | 'Card' | 'N/A' | string;
   deliveryMethod?: 'ACH' | 'CHECK' | null;
   checkStatus?: string | null;
   checkMailedAt?: string | null;
@@ -31,8 +31,8 @@ export const mockPaymentSummary: PaymentSummary = {
   pendingBalance: 62.0,
   lifetimeEarnings: 2480.75,
   lastPayoutDate: new Date(Date.now() - 1000 * 60 * 60 * 24 * 12).toISOString(),
-  billConnected: false,
-  billVendorId: null,
+  stripeConnected: false,
+  stripeAccountId: null,
 };
 
 export const mockPaymentItems: PaymentItem[] = [
@@ -42,7 +42,7 @@ export const mockPaymentItems: PaymentItem[] = [
     title: 'Webinar: Modern Cardiology',
     amount: 45,
     status: 'PENDING',
-    method: 'Bill.com',
+    method: 'ACH',
   },
   {
     id: 'pay_2',
@@ -50,7 +50,7 @@ export const mockPaymentItems: PaymentItem[] = [
     title: 'Survey: Oncology Feedback',
     amount: 25,
     status: 'PROCESSING',
-    method: 'Bill.com',
+    method: 'ACH',
   },
   {
     id: 'pay_3',
@@ -58,6 +58,6 @@ export const mockPaymentItems: PaymentItem[] = [
     title: 'Webinar: Diabetes Updates',
     amount: 60,
     status: 'PAID',
-    method: 'Bill.com',
+    method: 'ACH',
   },
 ];

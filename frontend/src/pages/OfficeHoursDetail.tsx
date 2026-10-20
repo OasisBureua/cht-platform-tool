@@ -20,6 +20,7 @@ import {
   isApiNotFoundError,
   removeSessionFromLiveListCaches,
 } from '../utils/live-session-list-query';
+import { isPlatformAdmin } from '../utils/roles';
 
 export default function OfficeHoursDetail() {
   const { id } = useParams<{ id: string }>();
@@ -277,7 +278,7 @@ export default function OfficeHoursDetail() {
             ) : (
               <p className="text-sm text-muted-foreground">Join link will appear here when available.</p>
             )}
-            {user?.role === 'ADMIN' && id ? (
+            {isPlatformAdmin(user?.role) && id ? (
               <div className="rounded-[6px] border border-violet-200 bg-violet-50 px-3 py-3 space-y-2">
                 <p className="text-xs font-semibold text-violet-900">Admin: start as Zoom host</p>
                 <Link

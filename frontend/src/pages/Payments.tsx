@@ -4,7 +4,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
 import { paymentsApi } from '../api/payments';
 import type { PaymentItem, PaymentStatus } from '../mocks/payments.mocks';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle2, AlertCircle, Clock3 } from 'lucide-react';
 import { format } from 'date-fns';
 import { StripeConnectOnboarding } from '../components/payments/StripeConnectOnboarding';
@@ -14,6 +14,15 @@ import {
   formatMissingProfileFields,
   listMissingProfileFields,
 } from '../utils/profile-completeness';
+
+/** Only allow in-app return paths (post-event survey → payments handoff). */
+function safeAppReturnTo(raw: string | null): string | null {
+  if (!raw) return null;
+  const path = raw.trim();
+  if (!path.startsWith('/app/')) return null;
+  if (path.startsWith('//') || path.includes('://')) return null;
+  return path;
+}
 
 function statusChip(status: PaymentStatus) {
   const base = 'inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold';
@@ -34,6 +43,8 @@ export default function Payments() {
   const { user } = useAuth();
   const userId = user?.userId ?? '';
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const returnTo = safeAppReturnTo(searchParams.get('returnTo'));
   const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
   const [programFilter, setProgramFilter] = useState<string>('all');
   const { data: accountStatus, isLoading: loadingAccount } = useQuery({
@@ -108,6 +119,23 @@ export default function Payments() {
 
   return (
     <div className="space-y-8">
+      {returnTo ? (
+        <div className="rounded-card border border-steel-200 bg-steel-50 p-4 text-sm text-steel-950 dark:border-steel-700 dark:bg-steel-950/40 dark:text-steel-100">
+          <p className="font-semibold">Finish your post-event survey</p>
+          <p className="mt-1 text-steel-800 dark:text-steel-200">
+            {payoutsReady
+              ? 'Your payout account looks ready. Return to submit your survey and request honorarium in one click.'
+              : 'Connect your bank and tax details below, then return to complete your survey and payment request.'}
+          </p>
+          <Link
+            to={returnTo}
+            className="mt-3 inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+          >
+            {payoutsReady ? 'Return to submit survey & request payment' : 'Return when payments are set up'}
+          </Link>
+        </div>
+      ) : null}
+
       <header className="space-y-2">
         <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payment Settings</h1>
         <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
@@ -271,9 +299,7 @@ function HistoryRow({ item }: { item: PaymentItem }) {
       ? item.checkStatus
         ? `Check · ${item.checkStatus.replace(/_/g, ' ').toLowerCase()}`
         : 'Check'
-      : item.method === 'Bill.com'
-        ? 'Stripe ACH'
-        : item.method || 'ACH';
+      : item.method || 'ACH';
 
   return (
     <div className="flex items-center justify-between gap-4 px-4 py-3">

@@ -632,7 +632,7 @@ export class ProgramsService {
       },
     });
 
-    // Honorarium for LIVE webinars / office hours is requested by the learner after post-event steps (admin pays via Bill.com).
+    // Honorarium for LIVE webinars / office hours is requested by the learner after post-event steps (admin pays via Stripe Connect).
     const isLiveSession =
       program.zoomSessionType === 'WEBINAR' ||
       program.zoomSessionType === 'MEETING';

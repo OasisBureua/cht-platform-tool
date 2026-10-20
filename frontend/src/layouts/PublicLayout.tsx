@@ -14,7 +14,7 @@ import ChmWordmarkOption2 from '../components/brand/ChmWordmarkOption2';
 import { ClosingBand } from '../components/home/HomeSkinSections';
 import TermsDeclinedNotice from '../components/TermsDeclinedNotice';
 import { useTheme } from '../contexts/ThemeContext';
-import { isTestappHost } from '../config/app-urls';
+import { isProdAppHost, isTestappHost, MARKETING_SITE_URL } from '../config/app-urls';
 import DISEASE_AREAS from '../data/disease-areas';
 import { PODCAST_SHOWS } from '../data/podcastsCatalog';
 
@@ -74,8 +74,8 @@ export default function PublicLayout() {
     (r) => pathname === r || pathname.startsWith(r + '/'),
   );
 
-  /* Platform (testapp / app.) auth chrome: hold marketing IA until homepage ships. */
-  const hidePrelaunchNav = isTestappHost() && isAuthRoute;
+  /* app.communityhealth.media: no public marketing nav (only login/join). */
+  const hidePrelaunchNav = isProdAppHost() || (isTestappHost() && isAuthRoute);
 
   /* One navigation closes every transient surface. Adjusting during
      render rather than in an effect means the panel is never painted
@@ -174,13 +174,23 @@ export default function PublicLayout() {
             {!detached && (
               <span aria-hidden className="absolute inset-x-0 bottom-0 h-px bg-hairline" />
             )}
-            <Link
-              to="/"
-              className="press shrink-0 rounded-[6px] py-1 text-text"
-              aria-label="Community Health Media, home"
-            >
-              <ChmWordmarkOption2 className="h-auto w-[4.75rem] sm:w-[5.25rem]" />
-            </Link>
+            {isTestappHost() ? (
+              <a
+                href={MARKETING_SITE_URL}
+                className="press shrink-0 rounded-[6px] py-1 text-text"
+                aria-label="Community Health Media, home"
+              >
+                <ChmWordmarkOption2 className="h-auto w-[4.75rem] sm:w-[5.25rem]" />
+              </a>
+            ) : (
+              <Link
+                to="/"
+                className="press shrink-0 rounded-[6px] py-1 text-text"
+                aria-label="Community Health Media, home"
+              >
+                <ChmWordmarkOption2 className="h-auto w-[4.75rem] sm:w-[5.25rem]" />
+              </Link>
+            )}
 
             {!isAuthRoute && (
             <nav aria-label="Primary" className="hidden shrink-0 items-center gap-0.5 lg:flex">
@@ -311,7 +321,7 @@ export default function PublicLayout() {
         <Outlet />
       </main>
 
-      {!isAuthRoute && <SiteFooter />}
+      {!isAuthRoute && !isProdAppHost() && <SiteFooter />}
 
       {searchOpen && !hidePrelaunchNav ? (
         <SearchDialog

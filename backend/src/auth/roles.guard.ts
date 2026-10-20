@@ -8,12 +8,14 @@ import { Reflector } from '@nestjs/core';
 import { UserRole } from '@prisma/client';
 import type { Request } from 'express';
 import type { AuthUser } from './auth.service';
+import { roleSatisfiesRequirement } from '../common/roles';
 
 export const ROLES_KEY = 'roles';
 
 /**
  * Restricts access to users with specific roles.
  * Use with @Roles(UserRole.ADMIN) decorator.
+ * SUPER_ADMIN satisfies any requirement that includes ADMIN.
  */
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -32,8 +34,7 @@ export class RolesGuard implements CanActivate {
       .getRequest<Request & { user?: AuthUser }>();
     if (!user) throw new ForbiddenException('Not authenticated');
 
-    const hasRole = requiredRoles.includes(user.role);
-    if (!hasRole) {
+    if (!roleSatisfiesRequirement(user.role, requiredRoles)) {
       throw new ForbiddenException(
         `Requires one of: ${requiredRoles.join(', ')}`,
       );

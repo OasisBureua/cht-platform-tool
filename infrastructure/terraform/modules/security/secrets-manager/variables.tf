@@ -146,63 +146,6 @@ variable "jotform_webinar_post_event_shared_form_id" {
   default     = ""
 }
 
-# Bill.com (payment processing - HCP payouts via ACH/check)
-variable "bill_dev_key" {
-  description = "Bill.com developer key (from Settings > Sync & Integrations > Manage Developer Keys)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_username" {
-  description = "Bill.com account email for API login"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_password" {
-  description = "Bill.com account password for API login"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_org_id" {
-  description = "Bill.com organization ID (from Sync & Integrations page)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_funding_account_id" {
-  description = "Bill.com funding account ID (bank account for payouts)"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_webhook_secret" {
-  description = "Bill.com webhook signing secret for validating payment.updated/payment.failed events"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_remember_me_id" {
-  description = "From POST /v3/mfa/challenge/validate with rememberMe: true; expires ~30 days. Pair with bill_mfa_device_name."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_device_name" {
-  description = "Stable device label paired with bill_mfa_remember_me_id on POST /v3/login"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "stripe_secret_key" {
   description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps the existing Secrets Manager value."
   type        = string

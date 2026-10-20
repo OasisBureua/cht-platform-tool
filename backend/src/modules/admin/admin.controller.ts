@@ -40,6 +40,7 @@ import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthService, AuthUser } from '../../auth/auth.service';
+import { isPlatformAdmin, isSuperAdmin } from '../../common/roles';
 import { ProgramsService } from '../programs/programs.service';
 import { ProgramRegistrationsService } from '../programs/program-registrations.service';
 import { SurveysService } from '../surveys/surveys.service';
@@ -106,19 +107,19 @@ export class AdminController {
     private sesEmail: SesEmailService,
   ) {}
 
-  // ─── Bootstrap (no auth - first-admin setup) ─────────────────────────────
+  // ─── Bootstrap (no auth - first super-admin setup) ───────────────────────
 
   /**
    * POST /api/admin/bootstrap
-   * One-time endpoint to promote the first admin.
-   * Protected by ADMIN_BOOTSTRAP_SECRET env var.
-   * Safe to call repeatedly - always requires the secret.
+   * Promotes an existing user to SUPER_ADMIN (secret-gated). Use this to
+   * create the first super admin, then promote others from User Management.
+   * Safe to call repeatedly — always requires ADMIN_BOOTSTRAP_SECRET.
    */
   @Post('bootstrap')
   @ApiOperation({
-    summary: 'Bootstrap first admin',
+    summary: 'Bootstrap super admin',
     description:
-      'Promotes an existing user to ADMIN role. Requires the ADMIN_BOOTSTRAP_SECRET header. ' +
+      'Promotes an existing user to SUPER_ADMIN. Requires ADMIN_BOOTSTRAP_SECRET. ' +
       'Set ADMIN_BOOTSTRAP_SECRET in AWS Secrets Manager / environment variables.',
   })
   @ApiBody({
@@ -134,7 +135,7 @@ export class AdminController {
       },
     },
   })
-  @ApiResponse({ status: 200, description: 'User promoted to ADMIN' })
+  @ApiResponse({ status: 200, description: 'User promoted to SUPER_ADMIN' })
   @ApiResponse({ status: 403, description: 'Invalid bootstrap secret' })
   @ApiResponse({
     status: 400,
@@ -163,7 +164,10 @@ export class AdminController {
     if (!user) {
       throw new BadRequestException(`No user found with email: ${email}`);
     }
-    const updated = await this.authService.setUserRole(user.id, UserRole.ADMIN);
+    const updated = await this.authService.setUserRole(
+      user.id,
+      UserRole.SUPER_ADMIN,
+    );
     return { promoted: true, user: updated };
   }
 
@@ -821,7 +825,7 @@ export class AdminController {
   @ApiQuery({
     name: 'role',
     required: false,
-    description: 'Filter by role (HCP, KOL, ADMIN)',
+    description: 'Filter by role (HCP, KOL, ADMIN, SUPER_ADMIN)',
   })
   @ApiQuery({
     name: 'status',
@@ -863,7 +867,8 @@ export class AdminController {
       cities: parseCsvQueryParam(cities),
       states: parseCsvQueryParam(states),
       institutions: parseCsvQueryParam(institutions),
-      ...(role && ['HCP', 'KOL', 'ADMIN'].includes(role.toUpperCase())
+      ...(role &&
+      ['HCP', 'KOL', 'ADMIN', 'SUPER_ADMIN'].includes(role.toUpperCase())
         ? { role: role.toUpperCase() as UserRole }
         : {}),
       ...(status && Object.values(UserStatus).includes(status as UserStatus)
@@ -917,16 +922,23 @@ export class AdminController {
 
   @Patch('users/:userId/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.SUPER_ADMIN)
   @ApiBearerAuth('session-token')
-  @ApiOperation({ summary: 'Promote or demote a user role' })
+  @ApiOperation({
+    summary: 'Promote or demote a user role',
+    description:
+      'Super Admin only. Assign HCP, KOL, ADMIN, or SUPER_ADMIN. Cannot demote the last super admin.',
+  })
   @ApiParam({ name: 'userId', description: 'User ID' })
   @ApiBody({
     schema: {
       type: 'object',
       required: ['role'],
       properties: {
-        role: { type: 'string', enum: ['HCP', 'KOL', 'ADMIN'] },
+        role: {
+          type: 'string',
+          enum: ['HCP', 'KOL', 'ADMIN', 'SUPER_ADMIN'],
+        },
       },
     },
   })
@@ -934,12 +946,44 @@ export class AdminController {
   async updateUserRole(
     @Param('userId') userId: string,
     @Body('role') role: UserRole,
+    @CurrentUser() actor: AuthUser,
   ) {
-    if (!role || !['HCP', 'KOL', 'ADMIN'].includes(role)) {
+    const allowedRoles: UserRole[] = [
+      UserRole.HCP,
+      UserRole.KOL,
+      UserRole.ADMIN,
+      UserRole.SUPER_ADMIN,
+    ];
+
+    if (!role || !allowedRoles.includes(role)) {
       throw new BadRequestException(
-        'Invalid role. Must be HCP, KOL, or ADMIN.',
+        'Invalid role. Must be HCP, KOL, ADMIN, or SUPER_ADMIN.',
       );
     }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+
+    if (
+      isSuperAdmin(target.role) &&
+      role !== UserRole.SUPER_ADMIN
+    ) {
+      const superCount = await this.prisma.user.count({
+        where: { role: UserRole.SUPER_ADMIN },
+      });
+      if (superCount <= 1) {
+        throw new BadRequestException(
+          'Cannot demote the last super admin. Bootstrap or promote another first.',
+        );
+      }
+    }
+
+    // actor is guaranteed SUPER_ADMIN by RolesGuard; keep for audit clarity
+    void actor;
+
     return this.authService.setUserRole(userId, role);
   }
 
@@ -948,9 +992,9 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({
-    summary: 'Delete an HCP or KOL user',
+    summary: 'Delete a user account',
     description:
-      'Removes the user and cascaded data (enrollments, registrations, etc.). Admin accounts cannot be deleted. You cannot delete yourself.',
+      'Removes the user and cascaded data. Admins may delete HCP/KOL. Super admins may also delete ADMIN / SUPER_ADMIN (not themselves; not the last super admin).',
   })
   @ApiParam({ name: 'userId', description: 'User ID' })
   async deleteParticipantUser(
@@ -960,32 +1004,39 @@ export class AdminController {
     if (userId === admin.userId) {
       throw new BadRequestException('You cannot delete your own account.');
     }
+
     const target = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { id: true, role: true, email: true },
     });
     if (!target) throw new NotFoundException('User not found');
-    if (target.role === UserRole.ADMIN) {
-      throw new ForbiddenException(
-        'Admin accounts cannot be deleted from the portal.',
-      );
+
+    const actorIsSuper = isSuperAdmin(admin.role);
+    if (isPlatformAdmin(target.role)) {
+      if (!actorIsSuper) {
+        throw new ForbiddenException(
+          'Only a super admin can delete admin accounts.',
+        );
+      }
+      if (isSuperAdmin(target.role)) {
+        const superCount = await this.prisma.user.count({
+          where: { role: UserRole.SUPER_ADMIN },
+        });
+        if (superCount <= 1) {
+          throw new BadRequestException(
+            'Cannot delete the last super admin.',
+          );
+        }
+      }
     }
-    await this.prisma.$transaction(async (tx) => {
-      await tx.session.deleteMany({ where: { userId } });
-      await tx.programRegistration.updateMany({
-        where: { reviewedByUserId: userId },
-        data: { reviewedByUserId: null },
-      });
-      await tx.webinarParticipantEvent.updateMany({
-        where: { userId },
-        data: { userId: null },
-      });
-      await tx.user.delete({ where: { id: userId } });
+
+    const result = await this.authService.deleteUserAccount(userId, {
+      allowAdminTarget: actorIsSuper && isPlatformAdmin(target.role),
     });
     this.logger.log(
-      `Admin ${admin.userId} deleted user ${userId} (${target.email})`,
+      `Admin ${admin.userId} deleted user ${result.id} (${result.email})`,
     );
-    return { deleted: true, id: userId };
+    return { deleted: true, id: result.id };
   }
 
   // ─── Admin Webinar Management ─────────────────────────────────────────────

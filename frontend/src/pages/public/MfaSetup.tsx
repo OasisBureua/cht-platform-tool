@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../contexts/AuthContext';
+import { isPlatformAdmin } from '../../utils/roles';
 import AuthFormCard from './components/AuthFormCard';
 
 export default function MfaSetup() {
@@ -18,7 +19,7 @@ export default function MfaSetup() {
   const location = useLocation();
   const from =
     (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ||
-    (user?.role === 'ADMIN' ? '/admin' : '/app/home');
+    (isPlatformAdmin(user?.role) ? '/admin' : '/app/home');
 
   const method = user?.mfaFeature?.method === 'totp' ? 'totp' : 'sms';
 

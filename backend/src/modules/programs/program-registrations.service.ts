@@ -16,7 +16,10 @@ import {
   SurveyType,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
-import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
+import {
+  assertProfileCompleteForPayments,
+  assertProfileHasNameForRegistration,
+} from '../../common/profile-payment-eligibility';
 import {
   isPostEventSurveyWithinWindow,
   getPostEventSurveyUnlockAt,
@@ -618,6 +621,12 @@ export class ProgramRegistrationsService {
     programId: string,
     body: { officeHoursSlotId?: string; intakeSubmissionId?: string },
   ) {
+    const profile = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    assertProfileHasNameForRegistration(profile);
+
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
     });
@@ -832,6 +841,12 @@ export class ProgramRegistrationsService {
     skipped: Array<{ programId: string; title: string; reason: string }>;
     failed: Array<{ programId: string; title: string; message: string }>;
   }> {
+    const profile = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { firstName: true, lastName: true },
+    });
+    assertProfileHasNameForRegistration(profile);
+
     const uniqueIds = [
       ...new Set(programIds.map((id) => id.trim()).filter(Boolean)),
     ];
@@ -2152,10 +2167,11 @@ export class ProgramRegistrationsService {
     const payUser = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
+        firstName: true,
+        lastName: true,
         specialty: true,
         npiNumber: true,
         phoneNumber: true,
-        billVendorId: true,
         stripeAccountId: true,
         stripePayoutsEnabled: true,
         w9Submitted: true,
@@ -2164,25 +2180,20 @@ export class ProgramRegistrationsService {
     if (!payUser) throw new NotFoundException('User not found');
     assertProfileCompleteForPayments(payUser);
 
-    const useStripe = !!this.config.get<string>('stripe.secretKey');
-    const hasPayoutAccount = useStripe
-      ? !!payUser.stripeAccountId
-      : !!payUser.billVendorId;
+    const hasPayoutAccount = !!payUser.stripeAccountId;
     if (!hasPayoutAccount) {
       throw new BadRequestException(
         'Add your payment profile under Payments before requesting an honorarium.',
       );
     }
-    if (useStripe && !payUser.stripePayoutsEnabled) {
+    if (!payUser.stripePayoutsEnabled) {
       throw new BadRequestException(
         'Finish Stripe Connect ACH onboarding under Payments before requesting an honorarium.',
       );
     }
     if (!payUser.w9Submitted) {
       throw new BadRequestException(
-        useStripe
-          ? 'Finish tax details in Stripe Connect onboarding under Payments before requesting an honorarium.'
-          : 'Submit your W-9 under Payments before requesting an honorarium.',
+        'Finish tax details in Stripe Connect onboarding under Payments before requesting an honorarium.',
       );
     }
 

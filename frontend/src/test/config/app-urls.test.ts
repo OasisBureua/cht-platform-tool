@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { isTestappHost, isDevappHost, isCompanionEnabled, resolveApiBaseUrl, resolveAppBaseUrl } from '../../config/app-urls';
+import {
+  isTestappHost,
+  isProdAppHost,
+  isDevappHost,
+  isCompanionEnabled,
+  resolveApiBaseUrl,
+  resolveAppBaseUrl,
+} from '../../config/app-urls';
 
 describe('app-urls', () => {
   afterEach(() => {
@@ -38,6 +45,13 @@ describe('app-urls', () => {
     expect(isTestappHost('testapp.communityhealth.media')).toBe(true);
     expect(isTestappHost('app.communityhealth.media')).toBe(true);
     expect(isTestappHost('devapp.communityhealth.media')).toBe(false);
+  });
+
+  it('detects production app. host for public-site hold', () => {
+    expect(isProdAppHost('app.communityhealth.media')).toBe(true);
+    expect(isProdAppHost('www.app.communityhealth.media')).toBe(true);
+    expect(isProdAppHost('testapp.communityhealth.media')).toBe(false);
+    expect(isProdAppHost('devapp.communityhealth.media')).toBe(false);
   });
 
   it('detects devapp hosts for Companion gating', () => {

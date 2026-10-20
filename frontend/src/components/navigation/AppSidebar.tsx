@@ -1,4 +1,5 @@
 import { LayoutGrid } from 'lucide-react';
+import { MARKETING_SITE_URL } from '../../config/app-urls';
 import RailSidebar from './RailSidebar';
 import { getAppNavItems } from './appNavItems';
 
@@ -8,8 +9,8 @@ const DASHBOARD_ITEM = { to: '/app/home', label: 'Dashboard', icon: LayoutGrid, 
 export default function AppSidebar() {
   return (
     <RailSidebar
-      homeTo="/app/home"
-      homeLabel="Community Health Media, app home"
+      homeTo={MARKETING_SITE_URL}
+      homeLabel="Community Health Media, home"
       items={[DASHBOARD_ITEM, ...getAppNavItems()]}
       storageKey="chm-app-sidebar-collapsed"
     />

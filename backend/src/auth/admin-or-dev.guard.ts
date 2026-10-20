@@ -4,16 +4,16 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import type { Request } from 'express';
 import type { AuthUser } from './auth.service';
 import { isProductionEnv } from '../utils/is-production-env';
+import { isPlatformAdmin } from '../common/roles';
 
 const DEV_USER_HEADER = 'x-dev-user-id';
 
 /**
- * Allows access when user is ADMIN, or when X-Dev-User-Id is present (for local/testing).
- * Use for endpoints that are admin-only in production but need a dev bypass (e.g. Bill.com test-connection).
+ * Allows access when user is ADMIN/SUPER_ADMIN, or when X-Dev-User-Id is present (for local/testing).
+ * Use for endpoints that are admin-only in production but need a dev bypass.
  */
 @Injectable()
 export class AdminOrDevGuard implements CanActivate {
@@ -23,7 +23,7 @@ export class AdminOrDevGuard implements CanActivate {
       .getRequest<Request & { user?: AuthUser }>();
     const user = request.user;
 
-    if (user?.role === UserRole.ADMIN) {
+    if (isPlatformAdmin(user?.role)) {
       return true;
     }
 

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import type { Program, ProgramRegistrationState } from '../../api/programs';
+import { surveysApi } from '../../api/surveys';
 import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
 import { StripeMark } from '../branding/StripeMark';
@@ -56,6 +58,7 @@ export default function PostEventParticipantFlow(props: {
 }) {
   const { program, userId, userSummary, enrolled, myRegistration, onPostEventNavLockChange } = props;
   const queryClient = useQueryClient();
+  const location = useLocation();
   const [phase, setPhase] = useState<Phase>('intro');
   const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
   const [nativeSurveySubmitting, setNativeSurveySubmitting] = useState(false);
@@ -65,6 +68,15 @@ export default function PostEventParticipantFlow(props: {
     program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
   const hasHonorarium = programHasHonorarium(program);
+  const feedbackSurveyId = program.feedbackSurveyId;
+  const paymentsReturnTo = `${location.pathname}${location.search}`;
+
+  const { data: mySurveyResponse } = useQuery({
+    queryKey: ['survey', feedbackSurveyId, 'my-response'],
+    queryFn: () => surveysApi.getMyResponse(feedbackSurveyId!),
+    enabled: Boolean(feedbackSurveyId && userId && hasSurvey),
+  });
+  const hasSurveyDraft = !!mySurveyResponse?.draft;
   const timeUnlocked = isPostEventSurveyUnlocked(program);
   const att = myRegistration?.postEventAttendanceStatus;
   const attendancePending = att === 'PENDING_VERIFICATION';
@@ -109,13 +121,17 @@ export default function PostEventParticipantFlow(props: {
     if (phase !== 'intro') return;
     const ack = !!myRegistration.postEventSurveyAcknowledgedAt;
     const req = !!myRegistration.honorariumRequestedAt;
-    // Jotform submission recorded server-side → user already filled the form; drop into survey phase
-    // so they can click "Complete survey" even if localStorage was cleared (new device, incognito, etc.)
+    // Jotform / final submission on file, or a saved draft after Continue.
     const jotformSubmitted = surveySubmitted;
 
     if (hasSurvey && !ack) {
+      if (hasSurveyDraft && hasHonorarium) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- resume payout after draft save / payment setup return
+        setPhase('payout');
+        return;
+      }
       // eslint-disable-next-line react-hooks/set-state-in-effect -- resume the flow from server registration state
-      if (flowStarted || jotformSubmitted) setPhase('survey');
+      if (flowStarted || jotformSubmitted || hasSurveyDraft) setPhase('survey');
       return;
     }
 
@@ -128,17 +144,32 @@ export default function PostEventParticipantFlow(props: {
     } else if (ack) {
       setPhase('done');
     }
-  }, [myRegistration, showFlow, hasSurvey, hasHonorarium, phase, program.id, flowStarted, surveySubmitted]);
+  }, [
+    myRegistration,
+    showFlow,
+    hasSurvey,
+    hasHonorarium,
+    phase,
+    program.id,
+    flowStarted,
+    surveySubmitted,
+    hasSurveyDraft,
+  ]);
 
-  /** Refresh mid-flow: survey already saved server-side → advance to payout or done. */
+  /** Refresh mid-flow: survey finalized → advance to payout or done. Draft → payout when honorarium. */
   useEffect(() => {
     if (!myRegistration || !showFlow || phase !== 'survey' || !hasSurvey) return;
-    if (!myRegistration.postEventSurveyAcknowledgedAt) return;
-    if (hasHonorarium && !myRegistration.honorariumRequestedAt && !myRegistration.honorariumPayment) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- advance when the server reports the survey was saved
+    if (myRegistration.postEventSurveyAcknowledgedAt) {
+      if (hasHonorarium && !myRegistration.honorariumRequestedAt && !myRegistration.honorariumPayment) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- advance when the server reports the survey was saved
+        setPhase('payout');
+      } else {
+        setPhase('done');
+      }
+      return;
+    }
+    if (hasSurveyDraft && hasHonorarium) {
       setPhase('payout');
-    } else {
-      setPhase('done');
     }
   }, [
     myRegistration,
@@ -146,6 +177,7 @@ export default function PostEventParticipantFlow(props: {
     phase,
     hasSurvey,
     hasHonorarium,
+    hasSurveyDraft,
     program.id,
     myRegistration?.postEventSurveyAcknowledgedAt,
     myRegistration?.honorariumRequestedAt,
@@ -219,7 +251,15 @@ export default function PostEventParticipantFlow(props: {
 
   const handleCompleteNativeSurvey = () => {
     setNativeSurveyError(null);
-    if (surveySubmitted || surveyAcked) {
+    if (surveyAcked) {
+      advanceAfterSurvey();
+      return;
+    }
+    if (hasSurveyDraft && hasHonorarium) {
+      setPhase('payout');
+      return;
+    }
+    if (surveySubmitted && !hasHonorarium) {
       advanceAfterSurvey();
       return;
     }
@@ -229,7 +269,7 @@ export default function PostEventParticipantFlow(props: {
       return;
     }
     if (!form.reportValidity()) {
-      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      setNativeSurveyError('Complete all required fields before continuing.');
       return;
     }
     form.dataset.chtExplicitSubmit = '1';
@@ -282,14 +322,14 @@ export default function PostEventParticipantFlow(props: {
           <p className="text-sm text-muted-foreground">
             {hasSurvey ? (
               <>
-                Complete the post-event survey in the next step to save your responses.
+                Complete the post-event survey in the next step. Your answers are saved as a draft first
                 {hasHonorarium ? (
                   <>
-                    {' '}
-                    Payout steps are shown there after you submit.
+                    ; then you confirm payout (or set up payments) and finish survey + payment request in one
+                    click
                   </>
-                ) : null}{' '}
-                You cannot return to a previous step after you continue.
+                ) : null}
+                . You cannot return to a previous step after you continue.
               </>
             ) : hasHonorarium ? (
               <>
@@ -321,8 +361,10 @@ export default function PostEventParticipantFlow(props: {
           surveyFormSubmitting={nativeSurveySubmitting}
           surveySubmitError={nativeSurveyError}
           onCompleteSurveyNative={handleCompleteNativeSurvey}
+          feedbackSurveyId={feedbackSurveyId}
+          paymentsReturnTo={paymentsReturnTo}
           betweenAckHelpAndButton={
-            surveySubmitted && !nativePostEventSurvey ? null : program.feedbackSurveyId ? (
+            surveySubmitted && !nativePostEventSurvey && !hasSurveyDraft ? null : program.feedbackSurveyId ? (
               <ProgramSurveyPanel
                 surveyId={program.feedbackSurveyId}
                 userId={userId}
@@ -331,16 +373,21 @@ export default function PostEventParticipantFlow(props: {
                 userSummary={userSummary}
                 hideSubmitButton={nativePostEventSurvey}
                 formId={nativePostEventSurvey ? POST_EVENT_NATIVE_FORM_ID : undefined}
+                submitAsDraft={nativePostEventSurvey && hasHonorarium}
                 onSubmittingChange={setNativeSurveySubmitting}
                 onSubmitError={() => {
                   setNativeSurveySubmitting(false);
                   setNativeSurveyError('Could not save survey. Check your connection and try again.');
                 }}
-                onSubmitted={() => {
+                onSubmitted={(_id, meta) => {
                   setNativeSurveySubmitting(false);
                   setNativeSurveyError(null);
                   queryClient.invalidateQueries({ queryKey: ['program', program.id, 'registration'] });
                   queryClient.invalidateQueries({ queryKey: ['survey', program.feedbackSurveyId, 'my-response'] });
+                  if (meta?.draft && hasHonorarium) {
+                    setPhase('payout');
+                    return;
+                  }
                   advanceAfterSurvey();
                 }}
               />
@@ -364,6 +411,10 @@ export default function PostEventParticipantFlow(props: {
           myRegistration={myRegistration}
           hasHonorarium={hasHonorarium}
           surveyReadyForAck={false}
+          payoutStepOnly
+          nativeSurveyMode={nativePostEventSurvey}
+          feedbackSurveyId={feedbackSurveyId}
+          paymentsReturnTo={paymentsReturnTo}
           onHonorariumRequestSubmitted={() => setPhase('done')}
         />
       ) : null}

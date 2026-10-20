@@ -1,3 +1,5 @@
+import { isPlatformAdmin } from './roles';
+
 /**
  * Pick where to send the user after a successful login.
  * Without this, signing out from /app then logging in as admin on /login still had
@@ -14,8 +16,7 @@ export function getPostLoginPath(
       ? fromPathname
       : undefined;
 
-  const isAdmin = role === 'ADMIN';
-  if (isAdmin) {
+  if (isPlatformAdmin(role)) {
     if (from && from.startsWith('/admin')) return from;
     return '/admin';
   }

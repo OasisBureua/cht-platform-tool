@@ -6,6 +6,7 @@ import { googleOAuthEnabled, googleOAuthMigrationMessage } from '../../lib/auth-
 import { GOOGLE_OAUTH_DISCLAIMER } from '../../lib/auth-branding';
 import { Shield } from 'lucide-react';
 import { getPostLoginPath } from '../../utils/postLoginRedirect';
+import { isPlatformAdmin } from '../../utils/roles';
 import { AuthMigrationNotice } from '../../components/auth/AuthMigrationNotice';
 
 export default function AdminLogin() {
@@ -36,7 +37,7 @@ export default function AdminLogin() {
   };
 
   if (isAuthenticated && !isLoading) {
-    if (user?.role === 'ADMIN') {
+    if (isPlatformAdmin(user?.role)) {
       return <Navigate to={getPostLoginPath(user.role, from)} replace />;
     }
     return <Navigate to="/app/home" replace />;

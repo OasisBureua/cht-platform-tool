@@ -16,7 +16,6 @@ describe('PaymentsService payNow Stripe gates', () => {
     },
   };
 
-  const billService = {};
   const stripeService = {
     isConfigured: jest.fn(),
     retrieveAccount: jest.fn(),
@@ -33,10 +32,17 @@ describe('PaymentsService payNow Stripe gates', () => {
     jest.clearAllMocks();
     service = new PaymentsService(
       prisma as never,
-      billService as never,
       stripeService as never,
       configService as never,
     );
+  });
+
+  it('blocks payNow when Stripe not configured', async () => {
+    stripeService.isConfigured.mockReturnValue(false);
+    await expect(service.payNow('pay_1')).rejects.toBeInstanceOf(
+      BadRequestException,
+    );
+    await expect(service.payNow('pay_1')).rejects.toThrow(/Stripe Connect is not configured/);
   });
 
   it('blocks payNow when Stripe configured but no Connect account', async () => {

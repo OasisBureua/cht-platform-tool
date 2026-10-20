@@ -219,38 +219,6 @@ resource "aws_ecs_task_definition" "backend" {
               valueFrom = "${var.app_secrets_arn}:jotform_webinar_post_event_shared_form_id::"
             },
             {
-              name      = "BILL_DEV_KEY"
-              valueFrom = "${var.app_secrets_arn}:bill_dev_key::"
-            },
-            {
-              name      = "BILL_USERNAME"
-              valueFrom = "${var.app_secrets_arn}:bill_username::"
-            },
-            {
-              name      = "BILL_PASSWORD"
-              valueFrom = "${var.app_secrets_arn}:bill_password::"
-            },
-            {
-              name      = "BILL_ORG_ID"
-              valueFrom = "${var.app_secrets_arn}:bill_org_id::"
-            },
-            {
-              name      = "BILL_FUNDING_ACCOUNT_ID"
-              valueFrom = "${var.app_secrets_arn}:bill_funding_account_id::"
-            },
-            {
-              name      = "BILL_WEBHOOK_SECRET"
-              valueFrom = "${var.app_secrets_arn}:bill_webhook_secret::"
-            },
-            {
-              name      = "BILL_MFA_REMEMBER_ME_ID"
-              valueFrom = "${var.app_secrets_arn}:bill_mfa_remember_me_id::"
-            },
-            {
-              name      = "BILL_MFA_DEVICE_NAME"
-              valueFrom = "${var.app_secrets_arn}:bill_mfa_device_name::"
-            },
-            {
               name      = "STRIPE_SECRET_KEY"
               valueFrom = "${var.app_secrets_arn}:stripe_secret_key::"
             },

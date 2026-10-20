@@ -1,6 +1,7 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import TermsAcceptanceModal from './TermsAcceptanceModal';
+import { isPlatformAdmin } from '../utils/roles';
 
 const DISABLE_AUTH = import.meta.env.VITE_DISABLE_AUTH === 'true';
 
@@ -36,7 +37,7 @@ export default function ProtectedRoute({ children, requireAdmin, loginPath }: Pr
     return <Navigate to={to} state={{ from: location }} replace />;
   }
 
-  if (requireAdmin && user.role !== 'ADMIN') {
+  if (requireAdmin && !isPlatformAdmin(user.role)) {
     return <Navigate to="/app/home" replace />;
   }
 

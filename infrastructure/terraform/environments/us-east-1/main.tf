@@ -317,14 +317,6 @@ module "secrets" {
   jotform_api_key                           = var.jotform_api_key
   jotform_webinar_default_intake_url        = var.jotform_webinar_default_intake_url
   jotform_webinar_post_event_shared_form_id = var.jotform_webinar_post_event_shared_form_id
-  bill_dev_key                              = var.bill_dev_key
-  bill_username                             = var.bill_username
-  bill_password                             = var.bill_password
-  bill_org_id                               = var.bill_org_id
-  bill_funding_account_id                   = var.bill_funding_account_id
-  bill_webhook_secret                       = var.bill_webhook_secret
-  bill_mfa_remember_me_id                   = var.bill_mfa_remember_me_id
-  bill_mfa_device_name                      = var.bill_mfa_device_name
   stripe_secret_key                         = var.stripe_secret_key
   stripe_publishable_key                    = var.stripe_publishable_key
   stripe_webhook_secret                     = var.stripe_webhook_secret

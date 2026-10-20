@@ -4,12 +4,12 @@ import {
   ExecutionContext,
   ForbiddenException,
 } from '@nestjs/common';
-import { UserRole } from '@prisma/client';
 import type { Request } from 'express';
 import type { AuthUser } from './auth.service';
+import { isPlatformAdmin } from '../common/roles';
 
 /**
- * Ensures the :userId param matches the authenticated user (or user is ADMIN).
+ * Ensures the :userId param matches the authenticated user (or user is ADMIN / SUPER_ADMIN).
  * Place after JwtAuthGuard. Use on routes with :userId param.
  */
 @Injectable()
@@ -24,7 +24,7 @@ export class CheckUserGuard implements CanActivate {
 
     if (!paramUserId) return true; // No userId in params
 
-    if (user.role === UserRole.ADMIN) return true;
+    if (isPlatformAdmin(user.role)) return true;
 
     if (user.userId !== paramUserId) {
       throw new ForbiddenException("Cannot access another user's resources");
