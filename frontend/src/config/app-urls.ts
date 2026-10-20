@@ -22,6 +22,16 @@ export function isTestappHost(
   return isSameOriginApiHost(hostname);
 }
 
+/** Production branded app host (`app.communityhealth.media`). */
+export function isProdAppHost(
+  hostname = typeof window !== 'undefined' ? window.location.hostname : '',
+): boolean {
+  return (
+    hostname === 'app.communityhealth.media' ||
+    hostname.endsWith('.app.communityhealth.media')
+  );
+}
+
 /** Dev environment host (Companion nav/UI gated here for now). */
 export function isDevappHost(
   hostname = typeof window !== 'undefined' ? window.location.hostname : '',

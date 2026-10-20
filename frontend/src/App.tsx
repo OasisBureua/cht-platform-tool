@@ -10,6 +10,7 @@ import PublicLayout from './layouts/PublicLayout';
 import Layout from './components/layout/Layout';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import HoldPlatformPublicSite from './components/HoldPlatformPublicSite';
 import HoldTestappPublicHome from './components/HoldTestappPublicHome';
 import { APP_CATALOG_CONVERSATIONS_HUB } from './components/navigation/appNavItems';
 import { isCompanionEnabled } from './config/app-urls';
@@ -149,7 +150,13 @@ function App() {
             {/* =======================
                 PUBLIC ROUTES
                 ======================= */}
-            <Route element={<PublicLayout />}>
+            <Route
+              element={
+                <HoldPlatformPublicSite>
+                  <PublicLayout />
+                </HoldPlatformPublicSite>
+              }
+            >
               {/* Homepage at `/`; `/home` kept as a legacy alias. */}
               <Route
                 path="/"
