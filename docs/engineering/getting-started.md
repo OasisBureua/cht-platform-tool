@@ -27,7 +27,7 @@ npx prisma migrate dev
 npm run start:dev
 ```
 
-Fill in `.env` for any integrations you need locally (Zoom, JotForm, Bill.com, MediaHub). Auth and database are enough for most UI work.
+Fill in `.env` for any integrations you need locally (Zoom, JotForm, Stripe, MediaHub). Auth and database are enough for most UI work.
 
 | Variable | Purpose |
 |----------|---------|
@@ -38,7 +38,7 @@ Fill in `.env` for any integrations you need locally (Zoom, JotForm, Bill.com, M
 | `SESSION_ABSOLUTE_TTL_SECONDS` | Absolute max from login (default 28800); see `docs/engineering/session-lifetime.md` |
 | `ZOOM_*` | Webinar creation and webhooks |
 | `JOTFORM_API_KEY` | Survey clone / webhook verification |
-| `BILL_*` | Honorarium payouts (worker) |
+| `STRIPE_*` | Honorarium payouts (Stripe Connect) |
 | `MEDIAHUB_API_KEY` | Content catalog |
 | `SQS_*_QUEUE_URL` | Async jobs (worker) |
 | `AWS_*`, `EMAIL_FROM` | SES email (worker) |

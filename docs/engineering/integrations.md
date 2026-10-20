@@ -76,17 +76,9 @@ POST /api/admin/surveys/from-jotform-template
 
 The Webinar Scheduler can auto-clone the template when creating a program.
 
-## Bill.com
+## Stripe (HCP honorarium payouts)
 
-Honorarium payouts via the Python payment worker.
-
-| Variable | Purpose |
-|----------|---------|
-| `BILL_DEV_KEY` | API dev key |
-| `BILL_USERNAME`, `BILL_PASSWORD` | Login |
-| `BILL_ORG_ID`, `BILL_FUNDING_ACCOUNT_ID` | Org and funding account |
-
-Bill.com sessions expire after ~35 minutes of inactivity; the worker re-authenticates as needed.
+Honorarium payouts use Stripe Connect. Keys (`STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, webhook secrets) live in AWS Secrets Manager and are injected into ECS; production CI passes `TF_VAR_stripe_*` from GitHub Environment secrets. See [stripe-migration.md](./stripe-migration.md).
 
 ## MediaHub
 

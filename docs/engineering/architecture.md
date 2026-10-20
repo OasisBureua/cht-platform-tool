@@ -88,7 +88,7 @@ Source: [`diagrams/cht-platform-auth.mmd`](./diagrams/cht-platform-auth.mmd) · 
 | Auth | **Amazon Cognito** | User pool, Hosted UI, Google federation, MFA |
 | Queue | SQS + DLQs | Async email, payment, CME jobs |
 | Email | Amazon SES | Transactional mail (`noreply@communityhealth.media`) |
-| Secrets | Secrets Manager | DB URL, API keys, Bill.com, Zoom, etc. |
+| Secrets | Secrets Manager | DB URL, API keys, Stripe, Zoom, etc. |
 | Content | Content Hub public + admin API (Cognito M2M Bearer) | Catalog clips, playlists, KOLs, HCP upsert, campaigns (`devhub.communityhealth.media` on dev) |
 
 ---
@@ -100,7 +100,7 @@ Source: [`diagrams/cht-platform-auth.mmd`](./diagrams/cht-platform-auth.mmd) · 
 1. HCP attends a live session; Zoom webhooks record join/leave events.
 2. HCP submits a JotForm post-event survey; webhook creates a `SurveyResponse`.
 3. When attendance + survey criteria pass, backend queues a payment job on SQS.
-4. Python worker calls Bill.com; honorarium is paid and status is updated in Aurora.
+4. NestJS creates a Stripe Connect transfer; honorarium is paid and status is updated in Aurora.
 5. CME certificate PDF is generated and emailed via SES when applicable.
 
 ### Admin program scheduling

@@ -40,7 +40,7 @@ export class AccountStatusDto {
   @IsBoolean()
   detailsSubmitted: boolean;
 
-  /** True when this env settles via Stripe Connect (Bill W-9 / vendor tax unused). */
+  /** True when Stripe Connect is the active payment rail for this environment. */
   @IsBoolean()
   @IsOptional()
   usesStripeConnect?: boolean;

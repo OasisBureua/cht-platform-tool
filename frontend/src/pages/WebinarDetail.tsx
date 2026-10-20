@@ -33,6 +33,7 @@ import {
 } from '../utils/live-session-list-query';
 import { getApiErrorMessage } from '../api/client';
 import { programHasHonorarium } from '../utils/program-has-honorarium';
+import { isPlatformAdmin } from '../utils/roles';
 
 function formatEventDate(iso?: string | null) {
   if (!iso) return null;
@@ -63,7 +64,7 @@ export default function WebinarDetail() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isPlatformAdmin(user?.role);
   const [postEventNavLock, setPostEventNavLock] = useState(false);
   const isZoomWebinar = id?.startsWith('zoom-') ?? false;
   /** Intake often redirects to the session page; forward submission id to the registration wizard. */

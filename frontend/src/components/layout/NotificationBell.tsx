@@ -8,6 +8,7 @@ import {
   formatMissingProfileFields,
   listMissingProfileFields,
 } from '../../utils/profile-completeness';
+import { isPlatformAdmin } from '../../utils/roles';
 
 export function NotificationBell() {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export function NotificationBell() {
   const profileIncomplete = missingProfile.length > 0;
   const mfaNeeded =
     !user?.mfaEnabled && Boolean(user?.mfaFeature?.enabled);
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isPlatformAdmin(user?.role);
   const missingLabel = formatMissingProfileFields(missingProfile);
 
   const { data: items = [] } = useQuery({

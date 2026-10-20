@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router-dom';
 import { ChmMark } from '../brand/ChmMark';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
+import { isTestappHost, MARKETING_SITE_URL } from '../../config/app-urls';
 import { waveBars } from './waveBars';
 import './HomeSkin.css';
 
@@ -315,9 +316,19 @@ export function ClosingBand({ columns }: { columns: SkinFooterColumn[] }) {
           <div className="rail">
             <div className="foot-top" tabIndex={0} role="group" aria-label="Site links, scroll for more">
               <div className="foot-about">
-                <Link className="site-bar__mark" to="/" aria-label="Community Health Media, home">
-                  <ChmWordmarkOption2 className="h-auto w-[5rem]" />
-                </Link>
+                {isTestappHost() ? (
+                  <a
+                    className="site-bar__mark"
+                    href={MARKETING_SITE_URL}
+                    aria-label="Community Health Media, home"
+                  >
+                    <ChmWordmarkOption2 className="h-auto w-[5rem]" />
+                  </a>
+                ) : (
+                  <Link className="site-bar__mark" to="/" aria-label="Community Health Media, home">
+                    <ChmWordmarkOption2 className="h-auto w-[5rem]" />
+                  </Link>
+                )}
                 <p>Community Health Media. Peer-led oncology education, organised the way clinicians actually work.</p>
                 <address>
                   2471 18th St NW&nbsp; Second Floor&nbsp; Washington, DC 20009

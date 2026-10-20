@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,8 +30,10 @@ function typeLabel(type?: Survey['type']) {
 export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
+  const location = useLocation();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
+  const paymentsReturnTo = `${location.pathname}${location.search}`;
 
   const [started, setStarted] = useState(false);
   const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
@@ -63,13 +65,20 @@ export default function SurveyDetail() {
     enabled: Boolean(id && userId && survey),
   });
   const surveySaved = Boolean(myResponse?.submitted);
+  const surveyDraft = Boolean(myResponse?.draft);
+  const hasHonorarium = programHasHonorarium(survey?.program);
   const surveyAcked = isPostEventFeedback && !!programRegistration?.postEventSurveyAcknowledgedAt;
   // For FEEDBACK surveys, once acknowledged the form is permanently locked, no resubmission.
   const formLocked = surveyAcked;
+  const showPayoutStep =
+    isPostEventFeedback && hasHonorarium && (surveyDraft || surveyAcked) && !programRegistration?.honorariumRequestedAt;
 
   const submitMutation = useMutation({
     mutationFn: async (answers: Record<string, unknown>) =>
-      surveysApi.submitResponse(id!, { answers }),
+      surveysApi.submitResponse(id!, {
+        answers,
+        ...(isPostEventFeedback && hasHonorarium ? { draft: true } : {}),
+      }),
     onSuccess: () => {
       setNativeSurveyError(null);
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
@@ -86,10 +95,11 @@ export default function SurveyDetail() {
   const handleCompleteNativeSurvey = () => {
     setNativeSurveyError(null);
     if (surveySaved || surveyAcked) return;
+    if (surveyDraft && hasHonorarium) return;
     const form = document.getElementById(SURVEY_DETAIL_NATIVE_FORM_ID) as HTMLFormElement | null;
     if (!form) return;
     if (!form.reportValidity()) {
-      setNativeSurveyError('Complete all required fields before tapping Complete survey.');
+      setNativeSurveyError('Complete all required fields before continuing.');
       return;
     }
     // Gate: NativeSurveyForm ignores Enter/implicit submits unless this flag is set.
@@ -185,6 +195,11 @@ export default function SurveyDetail() {
                   ? 'Your post-event survey response has been recorded. This survey can no longer be resubmitted.'
                   : 'Your responses are saved. Thank you for completing this survey.'}
               </p>
+            ) : showPayoutStep && surveyDraft ? (
+              <p className="text-sm font-medium text-foreground bg-muted border border-border rounded-card px-4 py-3">
+                Your answers are saved as a draft. Finish payout setup below, then submit survey and payment
+                request in one click.
+              </p>
             ) : !started ? (
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-foreground">Ready to complete the survey?</p>
@@ -211,7 +226,8 @@ export default function SurveyDetail() {
                 submitting={submitMutation.isPending}
                 hideSubmitButton={isPostEventFeedback}
                 formId={isPostEventFeedback ? SURVEY_DETAIL_NATIVE_FORM_ID : undefined}
-                showPayoutNotice={isPostEventFeedback}
+                showPayoutNotice={isPostEventFeedback && !hasHonorarium}
+                initialAnswers={myResponse?.draft ? myResponse.answers : undefined}
                 onSubmit={(answers) => submitMutation.mutate(answers)}
               />
             ) : (
@@ -231,13 +247,16 @@ export default function SurveyDetail() {
                     programId={survey.programId}
                     userId={userId}
                     myRegistration={programRegistration}
-                    hasHonorarium={programHasHonorarium(survey.program)}
+                    hasHonorarium={hasHonorarium}
                     surveyReadyForAck={surveySaved && !useNativeRenderer}
                     nativeSurveyMode={isPostEventFeedback && useNativeRenderer}
                     surveyFormSubmitting={submitMutation.isPending}
                     surveySubmitError={nativeSurveyError}
                     onCompleteSurveyNative={handleCompleteNativeSurvey}
                     surveyDetailId={id}
+                    feedbackSurveyId={survey.id}
+                    paymentsReturnTo={paymentsReturnTo}
+                    payoutStepOnly={showPayoutStep}
                   />
                 </div>
               ) : null}

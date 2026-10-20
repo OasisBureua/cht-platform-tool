@@ -2,7 +2,13 @@ import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { programsApi, type ProgramRegistrationState } from '../../api/programs';
+import { surveysApi } from '../../api/surveys';
 import { StripeMark } from '../branding/StripeMark';
+
+function paymentsHref(returnTo?: string) {
+  if (!returnTo) return '/app/payments';
+  return `/app/payments?returnTo=${encodeURIComponent(returnTo)}`;
+}
 
 export function PostEventAttendanceMessage(props: {
   myRegistration: ProgramRegistrationState | null | undefined;
@@ -34,7 +40,8 @@ export function PostEventAttendanceMessage(props: {
 }
 
 /**
- * Acknowledge post-event Jotform + optional honorarium confirmation (shared by program page and Surveys tab).
+ * Post-event survey + optional honorarium confirmation (program page and Surveys tab).
+ * Native path: draft-save answers first, then one final click completes survey + honorarium.
  */
 export function PostEventFeedbackLearnerActions(props: {
   programId: string;
@@ -47,17 +54,26 @@ export function PostEventFeedbackLearnerActions(props: {
   surveyDetailId?: string;
   /** Jotform flows need a separate acknowledge step after embed submit. */
   manualSurveyAckRequired?: boolean;
-  /** Native in-app survey: Complete survey submits the form (no orange Submit on the form). */
+  /** Native in-app survey: parent owns form submit (draft or final). */
   nativeSurveyMode?: boolean;
   surveyFormSubmitting?: boolean;
   surveySubmitError?: string | null;
   onCompleteSurveyNative?: () => void;
-  /** e.g. program page: render the Jotform iframe between help text and the Complete survey button. */
+  /** e.g. program page: render the survey form between help text and the Continue button. */
   betweenAckHelpAndButton?: ReactNode;
-  /** Program page: advance wizard after successful acknowledge (e.g. hide iframe for payout step). */
+  /** Program page: advance wizard after draft/ack (e.g. to payout). */
   onSurveyAcknowledged?: (opts: { hasHonorarium: boolean }) => void;
   /** Program page: advance to final step after honorarium request is created. */
   onHonorariumRequestSubmitted?: () => void;
+  /**
+   * When true, only render the payout / final-submit step (survey already draft-saved).
+   * Final CTA stamps survey complete + honorarium request together.
+   */
+  payoutStepOnly?: boolean;
+  /** Native feedback survey id — required to finalize a draft on the last click. */
+  feedbackSurveyId?: string;
+  /** After payment setup, return here (e.g. `/app/live/:id`). */
+  paymentsReturnTo?: string;
 }) {
   const {
     programId,
@@ -74,8 +90,12 @@ export function PostEventFeedbackLearnerActions(props: {
     betweenAckHelpAndButton,
     onSurveyAcknowledged,
     onHonorariumRequestSubmitted,
+    payoutStepOnly = false,
+    feedbackSurveyId,
+    paymentsReturnTo,
   } = props;
   const queryClient = useQueryClient();
+  const payLink = paymentsHref(paymentsReturnTo);
 
   const approved = myRegistration?.status === 'APPROVED';
   const att = myRegistration?.postEventAttendanceStatus;
@@ -84,35 +104,70 @@ export function PostEventFeedbackLearnerActions(props: {
   const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
   const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
 
-  const showPayoutBlock = surveyAcked && hasHonorarium && !honorariumDone && attendanceOk && approved;
-  const showDoneBlock = surveyAcked && (!hasHonorarium || honorariumDone) && attendanceOk && approved;
+  const showPayoutBlock =
+    (payoutStepOnly || surveyAcked) &&
+    hasHonorarium &&
+    !honorariumDone &&
+    attendanceOk &&
+    approved;
+  const showDoneBlock =
+    surveyAcked && (!hasHonorarium || honorariumDone) && attendanceOk && approved;
   const showAckBlock =
-    !surveyAcked && attendanceOk && approved && (manualSurveyAckRequired || nativeSurveyMode);
+    !payoutStepOnly &&
+    !surveyAcked &&
+    attendanceOk &&
+    approved &&
+    (manualSurveyAckRequired || nativeSurveyMode);
+
+  const invalidateAfterSurvey = () => {
+    queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
+    queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
+    queryClient.invalidateQueries({ queryKey: ['payments', userId, 'summary'] });
+    queryClient.invalidateQueries({ queryKey: ['surveys'] });
+    if (surveyDetailId) {
+      queryClient.invalidateQueries({ queryKey: ['survey', surveyDetailId] });
+      queryClient.invalidateQueries({ queryKey: ['survey', surveyDetailId, 'my-response'] });
+    }
+    if (feedbackSurveyId) {
+      queryClient.invalidateQueries({ queryKey: ['survey', feedbackSurveyId, 'my-response'] });
+    }
+  };
 
   const ackMut = useMutation({
     mutationFn: () => programsApi.acknowledgePostEventSurvey(programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
-      queryClient.invalidateQueries({ queryKey: ['programs', 'live-action-items'] });
-      queryClient.invalidateQueries({ queryKey: ['payments', userId, 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['surveys'] });
-      if (surveyDetailId) {
-        queryClient.invalidateQueries({ queryKey: ['survey', surveyDetailId] });
-        queryClient.invalidateQueries({ queryKey: ['survey', surveyDetailId, 'my-response'] });
-      }
+      invalidateAfterSurvey();
       onSurveyAcknowledged?.({ hasHonorarium });
+    },
+  });
+
+  const finalizeMut = useMutation({
+    mutationFn: async () => {
+      if (feedbackSurveyId && !surveyAcked) {
+        const mine = await surveysApi.getMyResponse(feedbackSurveyId);
+        const answers = mine.answers ?? {};
+        if (!mine.submitted) {
+          await surveysApi.submitResponse(feedbackSurveyId, {
+            answers,
+            draft: false,
+          });
+        }
+      } else if (!surveyAcked && !nativeSurveyMode) {
+        await programsApi.acknowledgePostEventSurvey(programId);
+      }
+      return programsApi.requestPostEventHonorarium(programId);
+    },
+    onSuccess: () => {
+      invalidateAfterSurvey();
+      queryClient.invalidateQueries({ queryKey: ['programs', programId, 'honorarium-preview'] });
+      onHonorariumRequestSubmitted?.();
     },
   });
 
   const payMut = useMutation({
     mutationFn: () => programsApi.requestPostEventHonorarium(programId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
-      queryClient.invalidateQueries({ queryKey: ['payments', userId, 'summary'] });
-      queryClient.invalidateQueries({ queryKey: ['surveys'] });
-      if (surveyDetailId) {
-        queryClient.invalidateQueries({ queryKey: ['survey', surveyDetailId] });
-      }
+      invalidateAfterSurvey();
       onHonorariumRequestSubmitted?.();
     },
   });
@@ -123,6 +178,9 @@ export function PostEventFeedbackLearnerActions(props: {
     enabled: showPayoutBlock,
     retry: false,
   });
+
+  const hasPayoutAccount = !!preview?.hasPayoutAccount;
+  const payoutReady = hasPayoutAccount && !!preview?.w9Submitted && !previewError;
 
   const completeSurveyDisabled = nativeSurveyMode
     ? surveyFormSubmitting || ackMut.isPending || surveyAcked || ackMut.isSuccess
@@ -149,8 +207,10 @@ export function PostEventFeedbackLearnerActions(props: {
         <div className="space-y-3">
           {nativeSurveyMode ? (
             <p className="text-sm text-muted-foreground">
-              Please complete the survey below, then tap <strong>Complete survey</strong> to save your responses
-              {hasHonorarium ? ' before continuing to payout' : ''}.
+              Complete the survey below, then tap <strong>Continue</strong> to save your answers
+              {hasHonorarium
+                ? '. Next you will confirm payout (or set up payments if needed) and finish in one click.'
+                : '.'}
             </p>
           ) : surveyReadyForAck ? (
             <p className="text-sm text-muted-foreground">
@@ -194,10 +254,12 @@ export function PostEventFeedbackLearnerActions(props: {
             {nativeSurveyMode && surveyFormSubmitting
               ? 'Saving…'
               : ackMut.isPending
-              ? 'Saving…'
-              : myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess
-                ? 'Survey recorded'
-                : 'Complete survey'}
+                ? 'Saving…'
+                : myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess
+                  ? 'Survey recorded'
+                  : nativeSurveyMode
+                    ? 'Continue'
+                    : 'Complete survey'}
           </button>
           {!nativeSurveyMode && ackMut.isError ? (
             <p className="text-sm text-destructive">Could not save progress. Check your connection and try again.</p>
@@ -208,13 +270,18 @@ export function PostEventFeedbackLearnerActions(props: {
       {showPayoutBlock ? (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-            Review the payout details we will use for your honorarium. Add your{' '}
-            <StripeMark size="sm" className="translate-y-px" /> bank and tax details under{' '}
-            <Link to="/app/payments" className="font-semibold underline">
-              Payments
-            </Link>{' '}
-            if needed. When you continue, we queue an honorarium for processing; a <strong>pending</strong> payment appears
-            for an administrator to approve and pay shortly after the job runs.
+            Your survey answers are saved as a draft. Review the payout details for your honorarium
+            {payoutReady ? (
+              <>
+                , then tap <strong>Submit survey &amp; request payment</strong> to finish both in one step.
+              </>
+            ) : (
+              <>
+                . Set up your{' '}
+                <StripeMark size="sm" className="translate-y-px" /> bank and tax details under Payments, then
+                return here to finish in one click.
+              </>
+            )}
           </p>
           {previewError ? (
             <p className="text-sm text-destructive">
@@ -244,7 +311,7 @@ export function PostEventFeedbackLearnerActions(props: {
               ) : (
                 <li className="text-amber-900">
                   Bank account on file could not be displayed. Confirm your details under{' '}
-                  <Link to="/app/payments" className="font-semibold underline">
+                  <Link to={payLink} className="font-semibold underline">
                     Payments
                   </Link>
                   .
@@ -256,55 +323,79 @@ export function PostEventFeedbackLearnerActions(props: {
                   {preview.addressSummary}
                 </li>
               ) : null}
-              {!preview.hasBillVendor ? (
+              {!hasPayoutAccount ? (
                 <li className="text-amber-900 flex flex-wrap items-center gap-x-1 gap-y-1">
                   Connect your{' '}
                   <StripeMark size="xs" className="translate-y-px" /> payout account under{' '}
-                  <Link to="/app/payments" className="font-semibold underline">
+                  <Link to={payLink} className="font-semibold underline">
                     Payments
                   </Link>{' '}
-                  before continuing.
+                  before finishing.
                 </li>
               ) : null}
               {!preview.w9Submitted ? (
                 <li className="text-amber-900">
                   Finish tax details in your{' '}
                   <StripeMark size="xs" className="translate-y-px" /> onboarding under{' '}
-                  <Link to="/app/payments" className="font-semibold underline">
+                  <Link to={payLink} className="font-semibold underline">
                     Payments
                   </Link>{' '}
-                  before continuing.
+                  before finishing.
                 </li>
               ) : null}
             </ul>
           )}
-          <button
-            type="button"
-            disabled={
-              payMut.isPending ||
-              payMut.isSuccess ||
-              !!myRegistration.honorariumRequestedAt ||
-              !!myRegistration.honorariumPayment ||
-              !preview ||
-              !preview.hasBillVendor ||
-              !preview.w9Submitted ||
-              previewError
-            }
-            onClick={() => {
-              payMut.mutateAsync().catch(() => {});
-            }}
-            className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
-          >
-            {payMut.isPending
-              ? 'Submitting…'
-              : myRegistration.honorariumRequestedAt || myRegistration.honorariumPayment || payMut.isSuccess
-                ? 'Request submitted'
-                : 'Continue'}
-          </button>
-          {payMut.isError ? (
-            <p className="text-sm text-destructive">Could not submit payment request. Fix any issues above and try again.</p>
+
+          {!payoutReady && preview ? (
+            <Link
+              to={payLink}
+              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+            >
+              Set up payments
+            </Link>
           ) : null}
-          {payMut.isSuccess || myRegistration.honorariumRequestedAt || myRegistration.honorariumPayment ? (
+
+          {payoutReady ? (
+            <button
+              type="button"
+              disabled={
+                finalizeMut.isPending ||
+                finalizeMut.isSuccess ||
+                payMut.isPending ||
+                !!myRegistration.honorariumRequestedAt ||
+                !!myRegistration.honorariumPayment
+              }
+              onClick={() => {
+                if (nativeSurveyMode || feedbackSurveyId) {
+                  finalizeMut.mutateAsync().catch(() => {});
+                } else if (surveyAcked) {
+                  payMut.mutateAsync().catch(() => {});
+                } else {
+                  finalizeMut.mutateAsync().catch(() => {});
+                }
+              }}
+              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+            >
+              {finalizeMut.isPending || payMut.isPending
+                ? 'Submitting…'
+                : myRegistration.honorariumRequestedAt ||
+                    myRegistration.honorariumPayment ||
+                    finalizeMut.isSuccess ||
+                    payMut.isSuccess
+                  ? 'Request submitted'
+                  : 'Submit survey & request payment'}
+            </button>
+          ) : null}
+
+          {finalizeMut.isError || payMut.isError ? (
+            <p className="text-sm text-destructive">
+              Could not submit. Fix any payment issues above and try again.
+            </p>
+          ) : null}
+          {finalizeMut.isSuccess ||
+          payMut.isSuccess ||
+          myRegistration.honorariumRequestedAt ||
+          myRegistration.honorariumPayment ? (
             <p className="text-sm text-muted-foreground">
               Request received. Payouts are typically sent within{' '}
               <strong className="font-semibold text-foreground">14 calendar days</strong> after submission via ACH

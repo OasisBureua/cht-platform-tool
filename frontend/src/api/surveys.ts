@@ -107,17 +107,33 @@ export const surveysApi = {
     }
   },
 
-  submitResponse: async (id: string, payload: { answers: Record<string, unknown> }) => {
+  submitResponse: async (
+    id: string,
+    payload: { answers: Record<string, unknown>; draft?: boolean },
+  ) => {
     const { data } = await apiClient.post(`/surveys/${id}/responses`, {
       answers: payload.answers,
+      ...(payload.draft ? { draft: true } : {}),
     });
-    return data as { id: string; submissionId?: string; submittedAt: string };
+    return data as {
+      id: string;
+      submissionId?: string;
+      submittedAt: string;
+      draft?: boolean;
+    };
   },
 
   /** Auth required. Reflects webhook-created rows as well as native submit. */
   getMyResponse: async (
     id: string,
-  ): Promise<{ submitted: boolean; responseId?: string; submissionId?: string; submittedAt?: string }> => {
+  ): Promise<{
+    submitted: boolean;
+    draft?: boolean;
+    responseId?: string;
+    submissionId?: string;
+    submittedAt?: string;
+    answers?: Record<string, unknown>;
+  }> => {
     const { data } = await apiClient.get(`/surveys/${id}/my-response`);
     return data;
   },

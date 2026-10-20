@@ -10,6 +10,7 @@ import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { getApiErrorMessage } from '../api/client';
 import { ProgramSurveyPanel } from '../components/surveys/ProgramSurveyPanel';
 import { isRegistrationClosed, isSessionExpired } from '../utils/live-session-timing';
+import { listMissingProfileNameFields } from '../utils/profile-completeness';
 
 import {
   clearMultiRegisterState,
@@ -329,6 +330,27 @@ export default function LiveMultiRegister() {
             Create account
           </Link>
         </div>
+      </div>
+    );
+  }
+
+  const missingNames = listMissingProfileNameFields({
+    firstName: user.firstName,
+    lastName: user.lastName,
+  });
+  if (missingNames.length > 0) {
+    return (
+      <div className="rounded-card border border-border bg-muted p-8 text-center space-y-3">
+        <p className="font-semibold text-foreground">Complete your profile to register</p>
+        <p className="text-sm text-muted-foreground">
+          Add your first and last name under Settings before registering for webinars.
+        </p>
+        <Link
+          to="/app/settings?tab=general"
+          className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+        >
+          Open Settings
+        </Link>
       </div>
     );
   }

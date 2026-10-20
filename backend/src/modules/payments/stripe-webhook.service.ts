@@ -78,7 +78,7 @@ export class StripeWebhookService {
         stripePayoutsEnabled: summary.payoutsEnabled,
         paymentEnabled: summary.payoutsEnabled && taxComplete,
         preferredPaymentMethod: 'ACH',
-        // PAY-4: always mirror Stripe taxComplete (clears legacy Bill W-9 flags).
+        // Always mirror Stripe taxComplete into w9Submitted for consistent eligibility checks.
         w9Submitted: taxComplete,
         w9SubmittedAt: taxComplete ? (user.w9SubmittedAt ?? new Date()) : null,
         ...(summary.bankAccountLast4

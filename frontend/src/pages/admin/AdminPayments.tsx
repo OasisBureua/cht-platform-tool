@@ -1273,8 +1273,7 @@ function FailedRow({
   isRetrying: boolean;
   isDeleting: boolean;
 }) {
-  const canRetry =
-    !!payment.user.stripeAccountId || !!payment.user.billVendorId;
+  const canRetry = !!payment.user.stripeAccountId;
 
   return (
     <tr className="bg-white/70 hover:bg-white">
@@ -1410,7 +1409,7 @@ function PendingRow({
 }) {
   const hasStripe =
     !!payment.user.stripeAccountId && payment.user.stripePayoutsEnabled !== false;
-  const hasPayoutAccount = hasStripe || !!payment.user.billVendorId;
+  const hasPayoutAccount = hasStripe;
   const hasW9 = payment.user.w9Submitted !== false;
   const canPay = hasPayoutAccount && hasW9;
   const blockReason = !hasPayoutAccount

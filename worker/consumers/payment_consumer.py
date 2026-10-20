@@ -12,7 +12,7 @@ logger = setup_logger(__name__)
 
 
 class PaymentConsumer(SQSBaseConsumer):
-    """Process payment messages from SQS. Records as PENDING for admin review; does not create Bill.com payments."""
+    """Process payment messages from SQS. Records as PENDING for admin review; NestJS/Stripe Connect pays out."""
 
     def __init__(self):
         queue_url = os.getenv("SQS_PAYMENT_QUEUE_URL")

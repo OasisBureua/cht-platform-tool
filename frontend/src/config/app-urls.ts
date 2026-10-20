@@ -46,6 +46,9 @@ export function isCompanionEnabled(
   return false;
 }
 
+/** Corporate marketing site (logo from the app shell links here). */
+export const MARKETING_SITE_URL = 'https://communityhealth.media';
+
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/$/, '');
 }

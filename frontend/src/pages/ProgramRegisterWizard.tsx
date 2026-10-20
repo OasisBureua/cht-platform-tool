@@ -14,6 +14,7 @@ import { getSessionCoverUrl } from '../utils/session-cover-url';
 import { getApiErrorMessage } from '../api/client';
 import { isRegistrationClosed } from '../utils/live-session-timing';
 import { cameFromSessionDetail } from '../utils/intake-return';
+import { listMissingProfileNameFields } from '../utils/profile-completeness';
 
 // SCRUM-178: removed 'submit' step; last-step button fires submitRegistration directly.
 type StepKey = 'intake' | 'slot';
@@ -237,6 +238,35 @@ export default function ProgramRegisterWizard() {
         >
           Back to sessions
         </Link>
+      </div>
+    );
+  }
+
+  const missingNames = listMissingProfileNameFields({
+    firstName: user?.firstName,
+    lastName: user?.lastName,
+  });
+  if (userId && missingNames.length > 0) {
+    return (
+      <div className="rounded-card border border-border bg-muted p-10 text-center space-y-3">
+        <p className="font-semibold text-foreground">Complete your profile to register</p>
+        <p className="text-sm text-muted-foreground">
+          Add your first and last name under Settings before registering for webinars.
+        </p>
+        <div className="flex flex-wrap justify-center gap-3 pt-2">
+          <Link
+            to="/app/settings?tab=general"
+            className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+          >
+            Open Settings
+          </Link>
+          <Link
+            to={backHref}
+            className="inline-flex rounded-[6px] border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-background"
+          >
+            Back
+          </Link>
+        </div>
       </div>
     );
   }

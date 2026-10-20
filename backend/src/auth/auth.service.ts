@@ -1,4 +1,12 @@
-import { Inject, Injectable, Logger, forwardRef } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  forwardRef,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
@@ -7,6 +15,7 @@ import { isProfileCompleteForPayments } from '../common/profile-payment-eligibil
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { sessionCacheKey, termsCacheKey } from '../cache/cache-keys';
 import { hasAcceptedCurrentTerms } from '../common/terms';
+import { isPlatformAdmin } from '../common/roles';
 
 const TERMS_CACHE_TTL_SECONDS = 300;
 import { UserRole } from '@prisma/client';
@@ -758,5 +767,81 @@ export class AuthService {
       user.email;
     authUser.role = user.role;
     return authUser;
+  }
+
+  /**
+   * Permanently delete an account and cascaded app data, then remove the
+   * Cognito pool user when configured. ADMIN / SUPER_ADMIN targets require
+   * `allowAdminTarget` (super-admin deleting elevated accounts).
+   */
+  async deleteUserAccount(
+    userId: string,
+    opts?: { allowAdminTarget?: boolean },
+  ): Promise<{ deleted: true; id: string; email: string }> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, role: true, email: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (isPlatformAdmin(target.role) && !opts?.allowAdminTarget) {
+      throw new ForbiddenException(
+        'Admin accounts can only be deleted by a super admin.',
+      );
+    }
+
+    await this.invalidateAuthCache(userId);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.programRegistration.updateMany({
+        where: { reviewedByUserId: userId },
+        data: { reviewedByUserId: null },
+      });
+      await tx.webinarParticipantEvent.updateMany({
+        where: { userId },
+        data: { userId: null },
+      });
+      await tx.user.delete({ where: { id: userId } });
+    });
+
+    try {
+      await this.cognitoService.adminDeleteUserByEmail(target.email);
+    } catch (err) {
+      this.logger.error(
+        `[Auth] Cognito delete failed after DB delete for ${target.email}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    this.logger.log(`Deleted user account ${userId} (${target.email})`);
+    return { deleted: true, id: userId, email: target.email };
+  }
+
+  /**
+   * Self-service account deletion. Confirm by typing the account email.
+   */
+  async deleteOwnAccount(
+    userId: string,
+    confirmEmail: string,
+  ): Promise<{ deleted: true; id: string }> {
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, email: true, role: true },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (isPlatformAdmin(target.role)) {
+      throw new ForbiddenException(
+        'Admin accounts cannot be deleted from Settings.',
+      );
+    }
+    const expected = target.email.trim().toLowerCase();
+    const got = (confirmEmail || '').trim().toLowerCase();
+    if (!got || got !== expected) {
+      throw new BadRequestException(
+        'Confirmation email does not match your account email.',
+      );
+    }
+    const result = await this.deleteUserAccount(userId);
+    return { deleted: true, id: result.id };
   }
 }

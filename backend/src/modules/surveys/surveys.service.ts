@@ -13,6 +13,7 @@ import {
   ProgramRegistrationStatus,
   type SurveyResponse,
 } from '@prisma/client';
+import { isPlatformAdmin } from '../../common/roles';
 import { PrismaService } from '../../prisma/prisma.service';
 import { QueueService } from '../../queue/queue.service';
 import { OutboundSyncService } from '../outbound-sync/outbound-sync.service';
@@ -152,7 +153,7 @@ export class SurveysService {
     });
     const mapped = surveys.map((s) => {
       const program =
-        role === UserRole.ADMIN
+        isPlatformAdmin(role)
           ? s.program
           : s.program
             ? {
@@ -176,7 +177,7 @@ export class SurveysService {
         required: s.required,
         isCustomized: s.isCustomized,
         schemaVersion: s.schemaVersion,
-        ...(role === UserRole.ADMIN
+        ...(isPlatformAdmin(role)
           ? { responseCount: s._count.responses }
           : {}),
         jotformFormId: s.jotformFormId,
@@ -188,7 +189,7 @@ export class SurveysService {
         program,
       };
     });
-    if (role === UserRole.ADMIN) {
+    if (isPlatformAdmin(role)) {
       return { active: mapped, completed: [] };
     }
 
@@ -223,10 +224,12 @@ export class SurveysService {
 
       const existing = await this.prisma.surveyResponse.findUnique({
         where: { userId_surveyId: { userId, surveyId: s.id } },
-        select: { id: true, submittedAt: true },
+        select: { id: true, submittedAt: true, isDraft: true },
       });
 
-      const isCompleted = !!existing || !!reg?.postEventSurveyAcknowledgedAt;
+      const isCompleted =
+        (!!existing && !existing.isDraft) ||
+        !!reg?.postEventSurveyAcknowledgedAt;
 
       if (isCompleted) {
         const completedAt =
@@ -279,7 +282,7 @@ export class SurveysService {
     if (!survey.program) {
       throw new NotFoundException('Survey program no longer exists');
     }
-    if (role !== UserRole.ADMIN) {
+    if (!isPlatformAdmin(role)) {
       await this.assertUserCanAccessFeedbackSurvey(
         survey.type,
         survey.programId,
@@ -303,7 +306,7 @@ export class SurveysService {
       jotformFormUrl,
       createdAt: survey.createdAt.toISOString(),
       updatedAt: survey.updatedAt.toISOString(),
-      ...(role === UserRole.ADMIN
+      ...(isPlatformAdmin(role)
         ? { responseCount: survey._count.responses }
         : {}),
       program: survey.program,
@@ -338,7 +341,7 @@ export class SurveysService {
     userId: string,
     role: UserRole,
   ): Promise<void> {
-    if (role === UserRole.ADMIN) {
+    if (isPlatformAdmin(role)) {
       return;
     }
     const survey = await this.prisma.survey.findUnique({
@@ -364,24 +367,48 @@ export class SurveysService {
     role: UserRole,
   ): Promise<{
     submitted: boolean;
+    draft?: boolean;
     responseId?: string;
     submissionId?: string;
     submittedAt?: string;
+    answers?: Record<string, unknown>;
   }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
 
     const row = await this.prisma.surveyResponse.findUnique({
       where: { userId_surveyId: { userId, surveyId } },
-      select: { id: true, submittedAt: true, submissionId: true },
+      select: {
+        id: true,
+        submittedAt: true,
+        submissionId: true,
+        isDraft: true,
+        answers: true,
+      },
     });
     if (!row) {
       return { submitted: false };
     }
+    const answers =
+      row.answers && typeof row.answers === 'object' && !Array.isArray(row.answers)
+        ? (row.answers as Record<string, unknown>)
+        : undefined;
+    if (row.isDraft) {
+      return {
+        submitted: false,
+        draft: true,
+        responseId: row.id,
+        submissionId: row.submissionId ?? undefined,
+        submittedAt: row.submittedAt.toISOString(),
+        answers,
+      };
+    }
     return {
       submitted: true,
+      draft: false,
       responseId: row.id,
       submissionId: row.submissionId ?? undefined,
       submittedAt: row.submittedAt.toISOString(),
+      answers,
     };
   }
 
@@ -1248,17 +1275,24 @@ export class SurveysService {
 
   /**
    * Submit a survey response.
-   * Creates SurveyResponse in DB and sends SURVEY_BONUS payment message if configured.
+   * When `draft` is true, upserts answers only (no acknowledge / bonus).
+   * Final submit creates SurveyResponse (or finalizes a draft) and may queue SURVEY_BONUS.
    */
   async submitResponse(
     surveyId: string,
     userId: string,
     role: UserRole,
     dto: SubmitSurveyResponseDto,
-  ): Promise<{ id: string; submissionId?: string; submittedAt: string }> {
+  ): Promise<{
+    id: string;
+    submissionId?: string;
+    submittedAt: string;
+    draft?: boolean;
+  }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
     assertNoIdentityFieldsInSurveyAnswers(dto.answers);
     const answers = stripIdentityFieldsFromSurveyAnswers(dto.answers);
+    const asDraft = dto.draft === true;
 
     const survey = await this.prisma.survey.findUnique({
       where: { id: surveyId },
@@ -1278,14 +1312,22 @@ export class SurveysService {
       },
     });
 
-    if (existing && survey.type === SurveyType.FEEDBACK) {
+    // Final FEEDBACK already complete — idempotent no-op.
+    if (
+      existing &&
+      !existing.isDraft &&
+      survey.type === SurveyType.FEEDBACK &&
+      !asDraft
+    ) {
       return {
         id: existing.id,
         submissionId: existing.submissionId ?? undefined,
         submittedAt: existing.submittedAt.toISOString(),
+        draft: false,
       };
     }
 
+    const wasDraftOrNew = !existing || existing.isDraft;
     let response: SurveyResponse;
     if (existing) {
       response = await this.prisma.surveyResponse.update({
@@ -1295,20 +1337,12 @@ export class SurveysService {
           score: dto.score,
           schemaVersion: survey.schemaVersion,
           submittedAt: new Date(),
+          isDraft: asDraft,
           ...(!existing.submissionId ? { submissionId: randomUUID() } : {}),
         },
       });
-      await this.formJotformProgress
-        .clear(userId, FormJotformScope.SURVEY, surveyId)
-        .catch(() => {});
-      await this.writeProfileFromSurveyAnswers(
-        userId,
-        surveyId,
-        survey.questions,
-        answers,
-      );
       this.logger.log(
-        `Survey ${surveyId} re-submitted by user ${userId} (native); updated submittedAt schemaVersion=${survey.schemaVersion}`,
+        `Survey ${surveyId} ${asDraft ? 'draft-saved' : 're-submitted'} by user ${userId}; schemaVersion=${survey.schemaVersion}`,
       );
     } else {
       response = await this.prisma.surveyResponse.create({
@@ -1320,13 +1354,18 @@ export class SurveysService {
           schemaVersion: survey.schemaVersion,
           submittedAt: new Date(),
           submissionId: randomUUID(),
+          isDraft: asDraft,
         },
       });
+      this.logger.log(
+        `Survey ${surveyId} ${asDraft ? 'draft-created' : 'submitted'} by user ${userId}`,
+      );
+    }
 
+    if (!asDraft) {
       await this.formJotformProgress
         .clear(userId, FormJotformScope.SURVEY, surveyId)
         .catch(() => {});
-
       await this.writeProfileFromSurveyAnswers(
         userId,
         surveyId,
@@ -1334,63 +1373,63 @@ export class SurveysService {
         answers,
       );
 
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: {
-          email: true,
-          firstName: true,
-          lastName: true,
-          specialty: true,
-          institution: true,
-          city: true,
-          state: true,
-          zipCode: true,
-          npiNumber: true,
-        },
-      });
-      if (user) {
-        this.outboundSync
-          .syncUser({
-            email: user.email,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            npiNumber: user.npiNumber,
-            specialty: user.specialty,
-            institution: user.institution,
-            city: user.city,
-            state: user.state,
-            zipCode: user.zipCode,
-          })
-          .catch((err) =>
-            this.logger.error('[Surveys] outbound-sync error:', err),
-          );
-      }
+      if (wasDraftOrNew) {
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+            specialty: true,
+            institution: true,
+            city: true,
+            state: true,
+            zipCode: true,
+            npiNumber: true,
+          },
+        });
+        if (user) {
+          this.outboundSync
+            .syncUser({
+              email: user.email,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              npiNumber: user.npiNumber,
+              specialty: user.specialty,
+              institution: user.institution,
+              city: user.city,
+              state: user.state,
+              zipCode: user.zipCode,
+            })
+            .catch((err) =>
+              this.logger.error('[Surveys] outbound-sync error:', err),
+            );
+        }
 
-      this.logger.log(`Survey ${surveyId} submitted by user ${userId}`);
-
-      const surveyBonusAmount = this.configService.get<number>(
-        'surveys.bonusAmountCents',
-      );
-      if (surveyBonusAmount && surveyBonusAmount > 0) {
-        const queued = await this.queueService.processPayment(
-          userId,
-          surveyBonusAmount,
-          'SURVEY_BONUS',
-          survey.programId,
-          `survey_bonus:${userId}:${surveyId}`,
+        const surveyBonusAmount = this.configService.get<number>(
+          'surveys.bonusAmountCents',
         );
-        if (!queued) {
-          this.logger.warn(
-            `SURVEY_BONUS queue not sent for user ${userId} survey ${surveyId} (queue unavailable)`,
+        if (surveyBonusAmount && surveyBonusAmount > 0) {
+          const queued = await this.queueService.processPayment(
+            userId,
+            surveyBonusAmount,
+            'SURVEY_BONUS',
+            survey.programId,
+            `survey_bonus:${userId}:${surveyId}`,
+          );
+          if (!queued) {
+            this.logger.warn(
+              `SURVEY_BONUS queue not sent for user ${userId} survey ${surveyId} (queue unavailable)`,
+            );
+          }
+          this.logger.log(
+            `Queued SURVEY_BONUS payment for user ${userId}: $${surveyBonusAmount / 100}`,
           );
         }
-        this.logger.log(
-          `Queued SURVEY_BONUS payment for user ${userId}: $${surveyBonusAmount / 100}`,
-        );
       }
     }
 
-    if (survey.type === SurveyType.FEEDBACK) {
+    if (survey.type === SurveyType.FEEDBACK && !asDraft) {
       const npiRaw = answers.npi ?? answers.npi_number;
       const npi =
         typeof npiRaw === 'string' && npiRaw.trim()
@@ -1416,7 +1455,7 @@ export class SurveysService {
         });
     }
 
-    if (survey.type === SurveyType.INTAKE) {
+    if (survey.type === SurveyType.INTAKE && !asDraft) {
       // Persist NPI from intake answers. Mark registration SURVEY_SUBMITTED —
       // the wizard's explicit "Submit registration" (or Jotform path) moves to
       // PENDING/APPROVED. Do not auto-approve here.
@@ -1451,6 +1490,7 @@ export class SurveysService {
       id: response.id,
       submissionId: response.submissionId ?? undefined,
       submittedAt: response.submittedAt.toISOString(),
+      draft: asDraft,
     };
   }
 

@@ -9,8 +9,8 @@ Operational docs for the CHT Platform. Start here:
 | [engineering/chmbot-migration-architecture.md](./engineering/chmbot-migration-architecture.md) | CHT Companion (cht-companion) on ECS Service Connect + cht-companion-db/pgvector |
 | [engineering/platform-cost-reduction.md](./engineering/platform-cost-reduction.md) | Cost cuts: MediaHub EC2 off, dev lightswitch, right-sizing |
 | [engineering/deployment.md](./engineering/deployment.md) | Staging and production deploys |
-| [engineering/integrations.md](./engineering/integrations.md) | Auth, Zoom, JotForm, Bill.com, MediaHub |
-| [engineering/stripe-migration.md](./engineering/stripe-migration.md) | Bill.com → Stripe Connect migration plan |
+| [engineering/integrations.md](./engineering/integrations.md) | Auth, Zoom, JotForm, Stripe Connect, MediaHub |
+| [engineering/stripe-migration.md](./engineering/stripe-migration.md) | Historical notes: Bill.com → Stripe Connect cutover |
 | [engineering/zoom-recordings-pull-guide.md](./engineering/zoom-recordings-pull-guide.md) | Zoom cloud recording download + reports (Sebastien/Syed) |
 | [engineering/content-hub-cht-proxy.md](./engineering/content-hub-cht-proxy.md) | Content Hub admin UI → CHT proxy → Hub |
 | [engineering/content-hub-report-api-contract.md](./engineering/content-hub-report-api-contract.md) | Campaign & report API contract |

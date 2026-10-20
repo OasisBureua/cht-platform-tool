@@ -7,6 +7,7 @@ import { webinarsApi } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
+import { isPlatformAdmin } from '../utils/roles';
 
 /**
  * Full-viewport Zoom Meeting SDK session (participant or admin host).
@@ -25,7 +26,7 @@ export default function ZoomSessionPage({
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const isAdmin = user?.role === 'ADMIN';
+  const isAdmin = isPlatformAdmin(user?.role);
   const hostRequested = asHost && isAdmin;
 
   const defaultBack =

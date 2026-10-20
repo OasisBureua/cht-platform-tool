@@ -11,13 +11,13 @@ import {
   Req,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { UserRole } from '@prisma/client';
 import { FormJotformScope } from './form-jotform-scope';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { OptionalJwtAuthGuard } from '../../auth/optional-jwt-auth.guard';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthUser } from '../../auth/auth.service';
+import { isPlatformAdmin } from '../../common/roles';
 import { ProgramsService } from './programs.service';
 import { ProgramRegistrationsService } from './program-registrations.service';
 import { FormJotformProgressService } from './form-jotform-progress.service';
@@ -228,8 +228,8 @@ export class ProgramsController {
     @Req() req: Request & { user?: AuthUser },
   ): Promise<ProgramResponseDto> {
     this.logger.log(`Getting program: ${id}`);
-    const includeZoomHostLink = req.user?.role === UserRole.ADMIN;
-    const learnerView = req.user?.role !== UserRole.ADMIN;
+    const includeZoomHostLink = isPlatformAdmin(req.user?.role);
+    const learnerView = !isPlatformAdmin(req.user?.role);
     return this.programsService.getProgramById(id, {
       includeZoomHostLink,
       learnerView,
