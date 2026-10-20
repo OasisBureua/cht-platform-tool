@@ -23,6 +23,12 @@ hits cht-reports or the Hub packet.
   `edit_attempts >= 3`. Sets `status=queued`, `attempt_count=0`, `edit_instructions`,
   `edit_attempts + 1`, then sends the same `{ reportId, campaignId }`. cht-reports writes the
   regenerated report as the next version (`v{edit_attempts + 1}.pdf`); earlier versions stay in S3.
+- Caps (CPR-21): each admin gets 5 Generate + Regenerate an hour and 20 a day, counted together
+  in fixed UTC windows (`REPORTS_GENERATE_PER_HOUR`, `REPORTS_GENERATE_PER_DAY`). Over a cap the
+  API returns 429 with a message saying when to retry. Only accepted requests count: a request
+  takes its slot (INCR) before it runs and gives it back (DECR) if refused, so parallel requests
+  cannot overrun a cap. Counters live in Redis (`cht:reports:generate:*`), or in the process when
+  Redis is off.
 - `GET /api/reports/:id/download` → Platform streams the PDF from S3 (`s3_key_pdf`). No S3 or
   presigned URL is ever returned. The key must be under `reports/` and end in `.pdf`, the object
   content type must be PDF (or unset/octet-stream), and the file must start with `%PDF-`;
