@@ -83,23 +83,20 @@ export class ContentHubCampaignService {
     );
   }
 
-  /** Not cached: the card should show the latest sync. */
+  /**
+   * Every source (the Hub default when `sources` is omitted). Not cached:
+   * the card should show the latest sync.
+   */
   getReportInputs(
     id: number | string,
-    query: {
-      windowStart: string | null;
-      windowEnd: string;
-      sources?: string[];
-    },
+    query: { windowStart: string | null; windowEnd: string },
   ): Promise<ReportInputs> {
-    // getAdmin params are scalar; sources repeats, as FastAPI list params expect.
-    const qs = new URLSearchParams();
-    if (query.windowStart) qs.set('windowStart', query.windowStart);
-    qs.set('windowEnd', query.windowEnd);
-    for (const source of query.sources ?? []) qs.append('sources', source);
     return this.client.getAdmin<ReportInputs>(
-      `/campaigns/${id}/report-inputs?${qs.toString()}`,
-      undefined,
+      `/campaigns/${id}/report-inputs`,
+      {
+        windowStart: query.windowStart ?? undefined,
+        windowEnd: query.windowEnd,
+      },
       { cache: false },
     );
   }

@@ -42,12 +42,11 @@ const inputs = (overrides: Partial<ReportInputs> = {}): ReportInputs => ({
 describe('report inputs (CPR-51)', () => {
   beforeEach(() => get.mockReset());
 
-  it('requests the campaign inputs with repeated sources', async () => {
+  it('requests every source for the date range', async () => {
     get.mockResolvedValueOnce({ data: inputs() });
-    await reportInputsApi.get('35', { dateRangeDays: 30, sources: ['sessions', 'surveys'] });
+    await reportInputsApi.get('35', { dateRangeDays: 30 });
     expect(get).toHaveBeenCalledWith('/admin/content-hub/campaigns/35/report-inputs', {
-      params: { dateRangeDays: 30, sources: ['sessions', 'surveys'] },
-      paramsSerializer: { indexes: null },
+      params: { dateRangeDays: 30 },
     });
   });
 
@@ -69,34 +68,42 @@ describe('report inputs (CPR-51)', () => {
       withData: 3,
       total: 4,
       missing: ['Hub KOLs'],
+      transcriptsMissing: false,
     });
   });
 
-  it('counts a missing transcript as missing even when sessions exist', () => {
+  it('flags missing transcripts apart from the sources when sessions exist', () => {
     const data = inputs();
     data.inputCompleteness.transcripts = { fetchedAt: null, rowCount: 0, status: 'missing' };
-    expect(summarizeReportInputs(data, sources).missing).toEqual(['Transcripts', 'Hub KOLs']);
+    expect(summarizeReportInputs(data, sources)).toEqual({
+      withData: 3,
+      total: 4,
+      missing: ['Hub KOLs'],
+      transcriptsMissing: true,
+    });
     const transcript = describeReportInputs(data, sources).find((r) => r.key === 'transcripts');
     expect(transcript).toMatchObject({ detail: 'Not pulled from Zoom yet', fix: 'pull-transcript' });
   });
 
-  it('skips transcripts when there are no sessions, and reports failed syncs', () => {
-    const rows = describeReportInputs(
-      inputs({
-        inputCompleteness: {
-          sessions: { fetchedAt: null, rowCount: 0, status: 'missing' },
-          transcripts: { fetchedAt: null, rowCount: 0, status: 'missing' },
-          youtube: { fetchedAt: null, rowCount: 0, status: 'error' },
-        },
-      }),
-      [
-        { value: 'sessions', label: 'Zoom sessions' },
-        { value: 'youtube', label: 'YouTube' },
-      ],
-    );
-    expect(rows.map((r) => [r.key, r.detail, r.fix])).toEqual([
+  it('skips transcripts when there are no sessions, and offers a retry for failed syncs', () => {
+    const data = inputs({
+      inputCompleteness: {
+        sessions: { fetchedAt: null, rowCount: 0, status: 'missing' },
+        transcripts: { fetchedAt: null, rowCount: 0, status: 'missing' },
+        youtube: { fetchedAt: null, rowCount: 0, status: 'error' },
+        linkedin: { fetchedAt: null, rowCount: 0, status: 'missing' },
+      },
+    });
+    const options = [
+      { value: 'sessions', label: 'Zoom sessions' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'linkedin', label: 'LinkedIn' },
+    ];
+    expect(describeReportInputs(data, options).map((r) => [r.key, r.detail, r.fix])).toEqual([
       ['sessions', 'No sessions in this window', 'link-programs'],
-      ['youtube', 'Last sync failed', 'upload-csv'],
+      ['youtube', 'Last sync failed', 'sync-platform'],
+      ['linkedin', 'No data in this window', 'upload-csv'],
     ]);
+    expect(summarizeReportInputs(data, options).transcriptsMissing).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ export type ReportInputFix =
   | 'pull-transcript'
   | 'attach-kols'
   | 'sync-hubspot'
+  | 'sync-platform'
   | 'upload-csv';
 
 export type ReportInputRow = {
@@ -21,17 +22,8 @@ export type ReportInputRow = {
 
 type SourceOption = { value: string; label: string };
 
-/** Hub completeness key for each Generate toggle. */
-const COMPLETENESS_KEY: Record<string, string> = {
-  hubspot: 'hubspot',
-  linkedin: 'linkedin',
-  meta: 'meta',
-  youtube: 'youtube',
-  sessions: 'sessions',
-  attendance: 'attendance',
-  kols: 'kols',
-  surveys: 'surveyResponses',
-};
+/** Hub completeness key for a Generate toggle; only surveys differs. */
+const completenessKey = (source: string) => (source === 'surveys' ? 'surveyResponses' : source);
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -70,7 +62,15 @@ export function describeReportInputs(inputs: ReportInputs, sources: SourceOption
       case 'linkedin':
       case 'meta':
       case 'youtube':
-        add(value, value, label, c[value], (e) => count(e.rowCount, 'row'), 'No data in this window', 'upload-csv');
+        add(
+          value,
+          value,
+          label,
+          c[value],
+          (e) => count(e.rowCount, 'row'),
+          'No data in this window',
+          c[value]?.status === 'error' ? 'sync-platform' : 'upload-csv',
+        );
         break;
       case 'sessions':
         add(
@@ -136,20 +136,20 @@ export function describeReportInputs(inputs: ReportInputs, sources: SourceOption
 /** Toggles whose main source has data. */
 export function sourcesWithData(inputs: ReportInputs, sources: SourceOption[]): string[] {
   return sources
-    .filter(({ value }) => inputs.inputCompleteness[COMPLETENESS_KEY[value] ?? value]?.status === 'ok')
+    .filter(({ value }) => inputs.inputCompleteness[completenessKey(value)]?.status === 'ok')
     .map(({ value }) => value);
 }
 
-/** The collapsed one-line summary. */
+/** The collapsed one-line summary, counted in Generate toggles. */
 export function summarizeReportInputs(
   inputs: ReportInputs,
   sources: SourceOption[],
-): { withData: number; total: number; missing: string[] } {
-  const known = sources.filter(({ value }) => inputs.inputCompleteness[COMPLETENESS_KEY[value] ?? value]);
+): { withData: number; total: number; missing: string[]; transcriptsMissing: boolean } {
+  const known = sources.filter(({ value }) => inputs.inputCompleteness[completenessKey(value)]);
   const withData = sourcesWithData(inputs, known);
   const missing = known.filter(({ value }) => !withData.includes(value)).map(({ label }) => label);
-  if (withData.includes('sessions') && inputs.inputCompleteness.transcripts?.status !== 'ok') {
-    missing.unshift('Transcripts');
-  }
-  return { withData: withData.length, total: known.length, missing };
+  // Sessions without transcripts still count as data; the line says so separately.
+  const transcriptsMissing =
+    withData.includes('sessions') && inputs.inputCompleteness.transcripts?.status !== 'ok';
+  return { withData: withData.length, total: known.length, missing, transcriptsMissing };
 }

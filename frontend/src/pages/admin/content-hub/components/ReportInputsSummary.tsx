@@ -62,9 +62,9 @@ export function ReportInputsSummary({
     );
   }
 
-  const { withData, total, missing } = summarizeReportInputs(inputs, sourceOptions);
+  const { withData, total, missing, transcriptsMissing } = summarizeReportInputs(inputs, sourceOptions);
   const rows = describeReportInputs(inputs, sourceOptions);
-  const allThere = missing.length === 0;
+  const allThere = missing.length === 0 && !transcriptsMissing;
   const Toggle = open ? ChevronDown : ChevronRight;
 
   const fixLink = (fix: ReportInputFix) => {
@@ -103,6 +103,12 @@ export function ReportInputsSummary({
             Sync HubSpot
           </Link>
         );
+      case 'sync-platform':
+        return (
+          <Link to={{ search: '?tab=sources' }} className={fixLinkClass}>
+            Retry sync
+          </Link>
+        );
       case 'upload-csv':
         return (
           <Link to={`/admin/reports/campaigns/${campaignId}/upload`} className={fixLinkClass}>
@@ -131,6 +137,9 @@ export function ReportInputsSummary({
           </span>
           {missing.length > 0 ? (
             <span className="text-muted-foreground"> · missing: {missing.join(', ')}</span>
+          ) : null}
+          {transcriptsMissing ? (
+            <span className="text-muted-foreground"> · transcripts not pulled</span>
           ) : null}
         </span>
         <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-brand-600">

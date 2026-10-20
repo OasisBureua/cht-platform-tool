@@ -183,7 +183,6 @@ export class AdminContentHubController {
       this.campaigns.getReportInputs(id, {
         windowStart: windowStart?.slice(0, 10) ?? null,
         windowEnd: windowEnd.slice(0, 10),
-        sources: query.sources,
       }),
     );
   }

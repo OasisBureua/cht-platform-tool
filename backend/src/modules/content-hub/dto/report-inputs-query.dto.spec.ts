@@ -8,20 +8,20 @@ const parse = (query: Record<string, unknown>) => {
 };
 
 describe('ReportInputsQueryDto', () => {
-  it('accepts a single source and a numeric range from the query string', () => {
-    const { dto, errors } = parse({ dateRangeDays: '30', sources: 'sessions' });
+  it('reads a numeric range from the query string', () => {
+    const { dto, errors } = parse({ dateRangeDays: '30' });
     expect(errors).toHaveLength(0);
     expect(dto.dateRangeDays).toBe(30);
-    expect(dto.sources).toEqual(['sessions']);
   });
 
-  it('accepts repeated sources', () => {
-    const { dto, errors } = parse({ sources: ['sessions', 'surveys'] });
+  it('allows the range to be omitted', () => {
+    const { dto, errors } = parse({});
     expect(errors).toHaveLength(0);
-    expect(dto.sources).toEqual(['sessions', 'surveys']);
+    expect(dto.dateRangeDays).toBeUndefined();
   });
 
   it('rejects a range Generate does not offer', () => {
     expect(parse({ dateRangeDays: '45' }).errors).not.toHaveLength(0);
+    expect(parse({ dateRangeDays: 'abc' }).errors).not.toHaveLength(0);
   });
 });

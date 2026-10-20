@@ -240,12 +240,12 @@ export type ReportInputs = {
 export const reportInputsApi = {
   get: async (
     campaignId: string,
-    params: { dateRangeDays: DateRangeDays; sources: string[] },
+    params: { dateRangeDays: DateRangeDays },
   ): Promise<ReportInputs> => {
+    // Every source; the Generate toggles do not change the check.
     const { data } = await apiClient.get<ReportInputs>(
       `/admin/content-hub/campaigns/${campaignId}/report-inputs`,
-      // sources=a&sources=b, as the Hub expects.
-      { params, paramsSerializer: { indexes: null } },
+      { params },
     );
     return data;
   },

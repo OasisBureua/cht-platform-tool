@@ -28,7 +28,6 @@ import {
   type ReportStatus,
 } from '../../../../api/reports';
 import {
-  useCampaignLinkPrograms,
   useCampaignReports,
   useCreateReport,
   useDownloadReport,
@@ -124,53 +123,39 @@ function StatusBadge({ status }: { status: ReportStatus }) {
 function GenerateCard({
   campaignId,
   linkedProgramCount,
+  programHubPath,
   busy,
   onGoToPrograms,
 }: {
   campaignId: string;
   linkedProgramCount: number;
+  programHubPath: string | null;
   busy: boolean;
   onGoToPrograms: () => void;
 }) {
   const { toast } = useToast();
   const [range, setRange] = useState<`${DateRangeDays}`>('30');
-  const [sources, setSourcesState] = useState<string[]>(REPORT_SOURCES.map((s) => s.value));
-  // Once the admin picks sources, data checks never change them.
-  const [sourcesTouched, setSourcesTouched] = useState(false);
-  const [autoOff, setAutoOff] = useState<string[]>([]);
+  // Sources the admin picked by hand; once set, data checks never change them.
+  const [pickedSources, setSources] = useState<string[] | null>(null);
   const [notify, setNotify] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const recipients = useReportRecipients();
   const create = useCreateReport(campaignId);
   const refreshData = useRefreshCampaignData(campaignId);
-  const { data: linkPrograms } = useCampaignLinkPrograms();
-  // CPR-51: every source's status, independent of the toggles.
-  const inputs = useReportInputs(
-    campaignId,
-    Number(range) as DateRangeDays,
-    REPORT_SOURCES.map((s) => s.value),
-  );
+  // CPR-51: every source's status for the chosen range, independent of the toggles.
+  const inputs = useReportInputs(campaignId, Number(range) as DateRangeDays);
 
-  const linked = (linkPrograms ?? []).filter((p) => p.campaignId === campaignId);
-  const programHubPath = linked.length === 1 ? `/admin/programs/${linked[0].id}/hub` : null;
-
-  const setSources = (next: string[] | ((prev: string[]) => string[])) => {
-    setSourcesTouched(true);
-    setAutoOff([]);
-    setSourcesState(next);
-  };
-
-  // Once the first data check arrives, keep only the sources that have data,
-  // so the deck has no empty sections. Set during render, not in an effect.
-  if (!sourcesTouched && inputs.data) {
-    const withData = sourcesWithData(inputs.data, REPORT_SOURCES);
-    setSourcesTouched(true);
-    if (withData.length > 0 && withData.length < REPORT_SOURCES.length) {
-      setSourcesState(withData);
-      setAutoOff(REPORT_SOURCES.filter((s) => !withData.includes(s.value)).map((s) => s.label));
-    }
-  }
+  // Until the admin picks by hand, turn off the sources with no data in the
+  // current range, so the deck has no empty sections. Only data for this
+  // range counts; while it loads, every source is on.
+  const checked = inputs.isPlaceholderData ? undefined : inputs.data;
+  const withData = checked ? sourcesWithData(checked, REPORT_SOURCES) : [];
+  const autoSources = withData.length > 0 ? withData : REPORT_SOURCES.map((s) => s.value);
+  const sources = pickedSources ?? autoSources;
+  const autoOff = pickedSources
+    ? []
+    : REPORT_SOURCES.filter((s) => !autoSources.includes(s.value)).map((s) => s.label);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -261,7 +246,7 @@ function GenerateCard({
               <ToggleChip
                 key={s.value}
                 on={sources.includes(s.value)}
-                onClick={() => setSources((prev) => toggle(prev, s.value))}
+                onClick={() => setSources(toggle(sources, s.value))}
               >
                 {s.label}
               </ToggleChip>
@@ -464,10 +449,13 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
 export default function ReportsPanel({
   campaignId,
   linkedProgramCount,
+  programHubPath,
   onGoToPrograms,
 }: {
   campaignId: string;
   linkedProgramCount: number;
+  /** The only linked program's hub; null when there are none or several. */
+  programHubPath: string | null;
   onGoToPrograms: () => void;
 }) {
   const { data: reports, isLoading, isError, error, refetch } = useCampaignReports(campaignId);
@@ -494,6 +482,7 @@ export default function ReportsPanel({
       <GenerateCard
         campaignId={campaignId}
         linkedProgramCount={linkedProgramCount}
+        programHubPath={programHubPath}
         busy={inFlight.length > 0}
         onGoToPrograms={onGoToPrograms}
       />

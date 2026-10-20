@@ -90,13 +90,12 @@ export function useRefreshCampaignData(campaignId: string) {
   });
 }
 
-/** CPR-51 — per-source counts for the current Generate selection. */
-export function useReportInputs(campaignId: string, dateRangeDays: DateRangeDays, sources: string[]) {
-  const sorted = [...sources].sort();
+/** CPR-51 — per-source counts for every source over the Generate range. */
+export function useReportInputs(campaignId: string, dateRangeDays: DateRangeDays) {
   return useQuery({
-    queryKey: [...reportKeys.reportInputs(campaignId), dateRangeDays, sorted] as const,
-    queryFn: () => reportInputsApi.get(campaignId, { dateRangeDays, sources: sorted }),
-    enabled: !!campaignId && sorted.length > 0,
+    queryKey: [...reportKeys.reportInputs(campaignId), dateRangeDays] as const,
+    queryFn: () => reportInputsApi.get(campaignId, { dateRangeDays }),
+    enabled: !!campaignId,
     staleTime: 30_000,
   });
 }
@@ -129,9 +128,7 @@ export function useSetProgramCampaign() {
         (prev: Awaited<ReturnType<typeof campaignLinksApi.listPrograms>> | undefined) =>
           prev?.map((p) => (p.id === updated.id ? updated : p)),
       );
-      // Linking starts a Hub sync in the background; check again once it has had time to land.
       void qc.invalidateQueries({ queryKey: reportKeys.allReportInputs() });
-      setTimeout(() => void qc.invalidateQueries({ queryKey: reportKeys.allReportInputs() }), 15_000);
     },
   });
 }
