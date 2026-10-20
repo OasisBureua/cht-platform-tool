@@ -34,7 +34,7 @@ flowchart TB
   subgraph Integrations["External integrations"]
     Zoom["Zoom<br/>webinars · webhooks"]
     JotForm["JotForm<br/>surveys"]
-    Bill["Bill.com<br/>honorarium payouts"]
+    Stripe["Stripe Connect<br/>honorarium payouts"]
     MH["MediaHub public API<br/>catalog · KOL · HCP upsert"]
     ContentHub["contenthub.communityhealth.media<br/>(planned rename)"]
     HubSpot["HubSpot<br/>CRM sync"]
@@ -52,12 +52,11 @@ flowchart TB
   ECSB --> SQS
   ECSB --> Zoom
   ECSB --> JotForm
-  ECSB --> Bill
+  ECSB --> Stripe
   ECSB --> MH
   ECSB --> HubSpot
   ECSW --> SQS
   ECSW --> AuroraP
-  ECSW --> Bill
   ECSW --> SES
 
   AuroraP ==>|"Global Database<br/>replication"| AuroraS
@@ -70,5 +69,5 @@ flowchart TB
 
   class AuroraP,ECSB,ALB1,Cognito primary
   class AuroraS,ECSB2,ALB2 dr
-  class Zoom,JotForm,Bill,MH,HubSpot,SES external
+  class Zoom,JotForm,Stripe,MH,HubSpot,SES external
   class ContentHub future

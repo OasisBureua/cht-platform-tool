@@ -337,11 +337,6 @@ jobs:
           ZOOM_SDK_KEY: ${{ secrets.ZOOM_SDK_KEY }}
           ZOOM_SDK_SECRET: ${{ secrets.ZOOM_SDK_SECRET }}
           JOTFORM_API_KEY: ${{ secrets.JOTFORM_API_KEY }}
-          BILL_DEV_KEY: ${{ secrets.BILL_DEV_KEY }}
-          BILL_USERNAME: ${{ secrets.BILL_USERNAME }}
-          BILL_PASSWORD: ${{ secrets.BILL_PASSWORD }}
-          BILL_ORG_ID: ${{ secrets.BILL_ORG_ID }}
-          BILL_FUNDING_ACCOUNT_ID: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
           HUBSPOT_ACCESS_TOKEN: ${{ secrets.HUBSPOT_ACCESS_TOKEN }}
           COGNITO_GOOGLE_CLIENT_ID: ${{ secrets.COGNITO_GOOGLE_CLIENT_ID }}
           COGNITO_GOOGLE_CLIENT_SECRET: ${{ secrets.COGNITO_GOOGLE_CLIENT_SECRET }}
@@ -393,14 +388,6 @@ jobs:
           TF_VAR_jotform_api_key: ${{ secrets.JOTFORM_API_KEY }}
           TF_VAR_jotform_webinar_default_intake_url: ${{ secrets.JOTFORM_WEBINAR_DEFAULT_INTAKE_URL }}
           TF_VAR_jotform_webinar_post_event_shared_form_id: ${{ secrets.JOTFORM_WEBINAR_POST_EVENT_SHARED_FORM_ID }}
-          TF_VAR_bill_dev_key: ${{ secrets.BILL_DEV_KEY }}
-          TF_VAR_bill_username: ${{ secrets.BILL_USERNAME }}
-          TF_VAR_bill_password: ${{ secrets.BILL_PASSWORD }}
-          TF_VAR_bill_org_id: ${{ secrets.BILL_ORG_ID }}
-          TF_VAR_bill_funding_account_id: ${{ secrets.BILL_FUNDING_ACCOUNT_ID }}
-          TF_VAR_bill_webhook_secret: ${{ secrets.BILL_WEBHOOK_SECRET }}
-          TF_VAR_bill_mfa_remember_me_id: ${{ secrets.BILL_MFA_REMEMBER_ME_ID }}
-          TF_VAR_bill_mfa_device_name: ${{ secrets.BILL_MFA_DEVICE_NAME }}
           TF_VAR_stripe_secret_key: ${{ secrets.STRIPE_SECRET_KEY }}
           TF_VAR_stripe_publishable_key: ${{ secrets.STRIPE_PUBLISHABLE_KEY }}
           TF_VAR_stripe_webhook_secret: ${{ secrets.STRIPE_WEBHOOK_SECRET }}

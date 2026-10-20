@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Delete,
   Body,
   Query,
   UseGuards,
@@ -1566,6 +1567,34 @@ export class AuthController {
       role: actor?.role,
     });
     return { ok: true };
+  }
+
+  /**
+   * DELETE /api/auth/account
+   * Self-service permanent account deletion. Requires confirmEmail matching
+   * the authenticated user's email. Clears the session cookie on success.
+   */
+  @Delete('account')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(200)
+  async deleteAccount(
+    @CurrentUser() user: AuthUser,
+    @Body() body: { confirmEmail?: string },
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: ExpressResponse,
+  ) {
+    const result = await this.authService.deleteOwnAccount(
+      user.userId,
+      body?.confirmEmail ?? '',
+    );
+    clearSessionCookie(res, this.configService.get<string>('nodeEnv'));
+    this.auditAuthEvent(
+      req,
+      'auth.account_deleted',
+      { userId: user.userId, email: user.email, role: user.role },
+      { deletedUserId: result.id },
+    );
+    return { deleted: true };
   }
 
   /**

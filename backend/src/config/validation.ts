@@ -42,22 +42,7 @@ export const validationSchema = Joi.object({
   RECAPTCHA_SECRET_KEY: Joi.string().allow('').optional(),
   RECAPTCHA_MIN_SCORE: Joi.number().min(0).max(1).optional(),
 
-  // Bill.com (optional - empty strings allowed)
-  BILL_DEV_KEY: Joi.string().allow('').optional(),
-  BILL_SESSION_ID: Joi.string().allow('').optional(),
-  BILL_USERNAME: Joi.string().allow('').optional(),
-  BILL_PASSWORD: Joi.string().allow('').optional(),
-  BILL_ORG_ID: Joi.string().allow('').optional(),
-  BILL_FUNDING_ACCOUNT_ID: Joi.string().allow('').optional(),
-  BILL_API_URL: Joi.string().allow('').optional(),
-  BILL_MFA_REMEMBER_ME_ID: Joi.string().allow('').optional(),
-  BILL_MFA_DEVICE_NAME: Joi.string().allow('').optional(),
-  BILL_ALLOW_UNTRUSTED_PAYMENTS: Joi.string()
-    .valid('true', 'false', '1', '0', '')
-    .optional(),
-  BILL_PAY_SESSION_CACHE_MS: Joi.string().allow('').optional(),
-
-  // Stripe Connect (optional until env cut over)
+  // Stripe Connect
   STRIPE_SECRET_KEY: Joi.string().allow('').optional(),
   STRIPE_PUBLISHABLE_KEY: Joi.string().allow('').optional(),
   STRIPE_WEBHOOK_SECRET: Joi.string().allow('').optional(),

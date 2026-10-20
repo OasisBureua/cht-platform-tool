@@ -80,7 +80,7 @@ export interface CreateWebinarPayload {
   zoomSessionType?: ZoomSessionType;
   status?: 'DRAFT' | 'PUBLISHED';
   /**
-   * Optional. Honorarium in USD for learners (paid via Bill.com after post-event flow). WEBINAR only.
+   * Optional. Honorarium in USD for learners (paid via Stripe Connect after post-event flow). WEBINAR only.
    */
   honorariumAmount?: number;
   /** Primary speaker / KOL display name. */
@@ -169,7 +169,7 @@ export interface AdminUser {
   email: string;
   firstName: string;
   lastName: string;
-  role: 'HCP' | 'KOL' | 'ADMIN';
+  role: 'HCP' | 'KOL' | 'ADMIN' | 'SUPER_ADMIN';
   status: string;
   /** US state or region when captured on profile */
   state?: string | null;
@@ -210,7 +210,6 @@ export interface PendingPayment {
     email: string;
     firstName: string;
     lastName: string;
-    billVendorId: string | null;
     stripeAccountId?: string | null;
     stripePayoutsEnabled?: boolean;
     w9Submitted?: boolean;
@@ -2010,12 +2009,15 @@ export const adminApi = {
     return data;
   },
 
-  updateUserRole: async (userId: string, role: 'HCP' | 'KOL' | 'ADMIN') => {
+  updateUserRole: async (
+    userId: string,
+    role: 'HCP' | 'KOL' | 'ADMIN' | 'SUPER_ADMIN',
+  ) => {
     const { data } = await apiClient.patch(`/admin/users/${userId}/role`, { role });
     return data;
   },
 
-  /** HCP/KOL only; backend rejects ADMIN and self-delete. */
+  /** HCP/KOL for any admin; ADMIN/SUPER_ADMIN only for super admins (not self). */
   deleteUser: async (userId: string): Promise<{ deleted: boolean; id: string }> => {
     const { data } = await apiClient.delete(`/admin/users/${encodeURIComponent(userId)}`);
     return data;
@@ -2118,7 +2120,7 @@ export const adminApi = {
       attendanceOk: boolean;
       surveyRequired: boolean;
       surveyAcknowledged: boolean;
-      hasBillVendor: boolean;
+      hasPayoutAccount: boolean;
       w9Submitted: boolean;
       programEligibilityOk: boolean;
       payNowReady: boolean;

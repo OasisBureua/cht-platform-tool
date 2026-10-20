@@ -18,6 +18,7 @@ import {
   VerifyUserAttributeCommand,
   AdminAddUserToGroupCommand,
   AdminRemoveUserFromGroupCommand,
+  AdminDeleteUserCommand,
   AdminGetUserCommand,
   ListUsersCommand,
   type AuthenticationResultType,
@@ -833,7 +834,8 @@ export class CognitoService {
   }
 
   /**
-   * Keep Cognito groups aligned with Postgres User.role (HCP/KOL → cht-hcp, ADMIN → cht-admin).
+   * Keep Cognito groups aligned with Postgres User.role
+   * (HCP/KOL → cht-hcp, ADMIN/SUPER_ADMIN → cht-admin).
    * @param preferredUsername Optional pool Username from the ID token (`cognito:username`).
    */
   async syncGroupsForRole(
@@ -854,13 +856,48 @@ export class CognitoService {
       return;
     }
 
-    const addGroup =
-      role === UserRole.ADMIN ? COGNITO_GROUP_ADMIN : COGNITO_GROUP_HCP;
-    const removeGroup =
-      role === UserRole.ADMIN ? COGNITO_GROUP_HCP : COGNITO_GROUP_ADMIN;
+    const isAdminRole =
+      role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN;
+    const addGroup = isAdminRole ? COGNITO_GROUP_ADMIN : COGNITO_GROUP_HCP;
+    const removeGroup = isAdminRole ? COGNITO_GROUP_HCP : COGNITO_GROUP_ADMIN;
 
     await this.addUserToGroup(username, addGroup);
     await this.removeUserFromGroup(username, removeGroup);
+  }
+
+  /**
+   * Permanently delete a Cognito user by email (native or federated).
+   * No-ops when Cognito is not configured or the user is already gone.
+   */
+  async adminDeleteUserByEmail(email: string): Promise<boolean> {
+    if (!this.userPoolId) return false;
+    const username = await this.resolveUsername(email);
+    if (!username) {
+      this.logger.warn(
+        `[Cognito] adminDeleteUserByEmail: no pool user for ${email.trim().toLowerCase()}`,
+      );
+      return false;
+    }
+    try {
+      await this.client.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: this.userPoolId,
+          Username: username,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      this.logger.log(`[Cognito] Deleted pool user ${username}`);
+      return true;
+    } catch (err) {
+      const msg = this.cognitoErrorMessage(err);
+      if (/UserNotFoundException|user does not exist/i.test(msg)) {
+        return false;
+      }
+      this.logger.error(
+        `[Cognito] Failed to delete pool user ${username}: ${msg}`,
+      );
+      throw err;
+    }
   }
 
   /**

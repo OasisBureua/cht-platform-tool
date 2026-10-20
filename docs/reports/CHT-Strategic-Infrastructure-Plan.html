@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>CHT Strategic Plan: AWS Accounts, Repos, Mobile &amp; Video</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  @page {
+    size: Letter;
+    margin: 0.7in 0.65in 0.75in;
+    @bottom-left { content: "CHT Strategic Plan  |  v1.0  |  Confidential"; font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+    @bottom-right { content: "Page " counter(page) " of " counter(pages); font: 8pt/1 "Helvetica Neue", Arial, sans-serif; color: #7a8594; }
+  }
+  @page :first { @bottom-left { content: none; } @bottom-right { content: none; } }
+
+  :root {
+    --ink: #14202e;
+    --muted: #5b6878;
+    --line: #dfe4ea;
+    --soft: #f4f6f9;
+    --brand: #0f6f7a;
+    --brand-soft: #e6f3f4;
+    --warn: #a16207;
+    --warn-soft: #fdf6e3;
+    --ok: #15803d;
+    --ok-soft: #e8f5ec;
+    --plan: #4338ca;
+    --plan-soft: #eef0fd;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body { margin: 0; color: var(--ink); font: 10pt/1.55 "Helvetica Neue", Helvetica, Arial, sans-serif; background: #fff; }
+  main { max-width: 7.1in; margin: 0 auto; }
+  @media screen { body { background: #eef1f4; } main { background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.08); padding: 56px 64px 96px; margin: 32px auto; } }
+
+  h1, h2, h3, h4 { color: var(--ink); line-height: 1.25; margin: 0; }
+  h2 { font-size: 15pt; margin: 28px 0 10px; padding-top: 8px; border-top: 2px solid var(--brand); break-after: avoid; }
+  h2 .num { color: var(--brand); margin-right: 8px; }
+  h3 { font-size: 11.5pt; margin: 18px 0 6px; break-after: avoid; }
+  h4 { font-size: 9.5pt; margin: 12px 0 4px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; break-after: avoid; }
+  p { margin: 6px 0 10px; }
+  ul, ol { margin: 6px 0 12px; padding-left: 20px; }
+  li { margin: 3px 0; }
+  strong { font-weight: 600; }
+
+  table { width: 100%; border-collapse: collapse; margin: 8px 0 16px; font-size: 9pt; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+  th, td { text-align: left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { background: var(--soft); font-weight: 600; border-bottom: 1px solid #c9d1da; }
+  td.k { font-weight: 600; white-space: nowrap; width: 1%; }
+
+  .cover { min-height: 9in; display: flex; flex-direction: column; break-after: page; }
+  .cover .eyebrow { color: var(--brand); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; font-size: 9pt; }
+  .cover h1 { font-size: 28pt; margin: 14px 0 8px; letter-spacing: -.01em; max-width: 6.2in; }
+  .cover .sub { font-size: 12pt; color: var(--muted); max-width: 5.8in; line-height: 1.45; }
+  .cover .bar { height: 6px; width: 72px; background: var(--brand); border-radius: 3px; margin: 24px 0 28px; }
+  .cover .meta { margin-top: auto; }
+  .cover .meta table { font-size: 9.5pt; }
+  .cover .meta td:first-child { color: var(--muted); width: 1.7in; }
+
+  .callout { border-left: 3px solid var(--brand); background: var(--brand-soft); padding: 10px 14px; margin: 12px 0 16px; border-radius: 0 6px 6px 0; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: var(--warn-soft); }
+  .callout .t { font-weight: 600; margin-bottom: 2px; }
+
+  .pill { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: 7.8pt; font-weight: 600; white-space: nowrap; }
+  .pill.now { background: var(--warn-soft); color: var(--warn); }
+  .pill.next { background: var(--plan-soft); color: var(--plan); }
+  .pill.later { background: var(--soft); color: var(--muted); }
+  .pill.ok { background: var(--ok-soft); color: var(--ok); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 16px; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; break-inside: avoid; }
+  .card h4 { margin-top: 0; color: var(--brand); text-transform: none; letter-spacing: 0; font-size: 10pt; }
+  .card ul, .card p { margin-bottom: 0; }
+
+  .toc ol { list-style: none; padding: 0; }
+  .toc li { margin: 5px 0; }
+  .toc .num { color: var(--brand); font-weight: 600; display: inline-block; width: 26px; }
+
+  .phase { display: flex; gap: 10px; margin: 8px 0 14px; break-inside: avoid; }
+  .phase .badge { flex: 0 0 72px; text-align: center; padding: 8px 4px; border-radius: 6px; background: var(--brand-soft); color: var(--brand); font-weight: 700; font-size: 9pt; line-height: 1.2; }
+  .phase .body { flex: 1; }
+  .phase .body strong { display: block; margin-bottom: 2px; }
+
+  .footer-note { margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 8.5pt; color: var(--muted); }
+  .avoid { break-inside: avoid; }
+</style>
+</head>
+<body>
+<main>
+
+<!-- ═══════════════ COVER ═══════════════ -->
+<section class="cover">
+  <div class="eyebrow">Community Health Technology &nbsp;·&nbsp; Leadership Brief</div>
+  <h1>Strategic Plan: Safer AWS Accounts, Cleaner Repos, Mobile &amp; Self-Hosted Video</h1>
+  <p class="sub">A plain-language plan for safer AWS accounts, cleaner repos, mobile, and self-hosted video — and how that model <strong>lowers cost</strong> by scaling each environment to what it needs, while giving teams more autonomy to build robust technology products for the company.</p>
+  <div class="bar"></div>
+  <div class="meta">
+    <table>
+      <tr><td>Audience</td><td>CHM / CHT leadership, product, operations, compliance (non-technical and technical)</td></tr>
+      <tr><td>Scope</td><td>All CHT product systems: Platform, Content Hub, Companion, Reports</td></tr>
+      <tr><td>Status</td><td>Draft for discussion &nbsp;<span class="pill next">v1.2</span></td></tr>
+      <tr><td>Date</td><td>October 2026</td></tr>
+      <tr><td>Classification</td><td>Confidential — internal use</td></tr>
+    </table>
+  </div>
+</section>
+
+<!-- ═══════════════ TOC + WHY THIS MATTERS ═══════════════ -->
+<h2><span class="num">01</span> Why this document exists</h2>
+<p>Today, our products run well enough for beta and early production use. The choices below determine whether we can grow without outages, surprise bills, or blocked product work — and whether teams can move fast with clear ownership:</p>
+<ol>
+  <li><strong>Where we run experiments</strong> — today, development and production share one AWS account.</li>
+  <li><strong>How our code is organized</strong> — we will split each service into separate application and infrastructure repositories, plus a shared foundations repo.</li>
+  <li><strong>How people will use CHT on phones</strong> — we are web-first today; mobile needs a deliberate plan.</li>
+  <li><strong>Where video lives and how we measure it</strong> — we rely heavily on YouTube today; next we add a dedicated video upload / ingest service, a transcript–summary–tags pipeline, and keep Content Hub focused on metadata and analytics.</li>
+  <li><strong>How we spend and how teams work</strong> — scale each environment down to what it needs, and give product teams autonomy to own and ship robust technology.</li>
+</ol>
+<div class="callout">
+  <div class="t">How to read this</div>
+  Each section answers three questions: <em>What is true today?</em> · <em>Why does it matter?</em> · <em>What do we recommend, in what order?</em>
+  Technical detail is intentionally light. Implementation specs can follow once leadership agrees on direction.
+</div>
+
+<nav class="toc avoid">
+  <h3>Contents</h3>
+  <ol>
+    <li><span class="num">02</span> Separate AWS accounts (Dev, Test / UAT, Production)</li>
+    <li><span class="num">03</span> Mobile app plan</li>
+    <li><span class="num">04</span> Splitting every service into app + infra repos (plus shared foundations)</li>
+    <li><span class="num">05</span> Video services: upload / ingest, transcripts &amp; tags, Content Hub analytics</li>
+    <li><span class="num">06</span> Lower cost, more autonomy, stronger products</li>
+    <li><span class="num">07</span> Suggested sequence &amp; decisions needed</li>
+  </ol>
+</nav>
+
+<!-- ═══════════════ SECTION 2: AWS ACCOUNTS ═══════════════ -->
+<h2><span class="num">02</span> Why we need separate AWS accounts (Dev, Test / UAT, Production)</h2>
+
+<h3>What is true today</h3>
+<p>We only have two live environments — developer testing (<strong>devapp</strong>) and production (<strong>app</strong>) — and they both run inside <strong>one AWS account</strong>. Cost controls, security alarms, container images, and permissions for every product (Platform, Content Hub, Companion, Reports) share that same account. We are <strong>not</strong> bringing back a “staging” environment; the standard going forward is exactly three names: <strong>Dev</strong>, <strong>Test / UAT</strong>, and <strong>Production</strong>.</p>
+
+<div class="grid2">
+  <div class="card">
+    <h4>What that feels like day to day</h4>
+    <ul>
+      <li>A mistaken change in “dev” can affect production resources more easily.</li>
+      <li>Developers share the same billing and permission boundary as live users.</li>
+      <li>Turning things off overnight to save money is harder and riskier.</li>
+      <li>There is no safe place for stakeholders to sign off before a production release.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Analogy</h4>
+    <p>It is like using the same house key for the workshop, the dress rehearsal room, and the patient’s real clinic. You can be careful — but one wrong turn still opens the wrong door.</p>
+  </div>
+</div>
+
+<h3>Our three environments (no staging)</h3>
+<table>
+  <thead><tr><th>Environment</th><th>Purpose</th><th>Who uses it</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">Dev</td>
+      <td>Day-to-day builds, automated tests, demos, experiments. Safe to break and rebuild. Overnight shutdown OK.</td>
+      <td>Engineering</td>
+    </tr>
+    <tr>
+      <td class="k">Test / UAT</td>
+      <td>Production-like dress rehearsal for stakeholder sign-off before releases. Scrubbed or synthetic data. Not for live patients / learners.</td>
+      <td>Product, clinical, compliance, sponsors reviewing a release</td>
+    </tr>
+    <tr>
+      <td class="k">Production</td>
+      <td>Live Platform, Content Hub, Companion, Reports serving real users.</td>
+      <td>Ops + limited engineers; change via approved pipelines only</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="t">Naming rule</div>
+  Use only <strong>dev</strong>, <strong>test</strong> (or <strong>uat</strong>), and <strong>production</strong> in docs, DNS, AWS tags, and GitHub environments. Do not reintroduce “staging.”
+</div>
+
+<h3>Why separate AWS accounts matter</h3>
+<table>
+  <thead><tr><th>Risk</th><th>Plain-language impact</th></tr></thead>
+  <tbody>
+    <tr><td class="k">Safety</td><td>A bad deploy, a deleted database, or a mis-tagged “turn everything off” script can hit production if it shares an account with Dev / Test.</td></tr>
+    <tr><td class="k">Cost</td><td>Dev, Test / UAT, and Production bills stay mixed. Hard to prove savings from shutting down unused systems.</td></tr>
+    <tr><td class="k">Compliance</td><td>SOC 2 / HIPAA reviews expect clear separation between production and everything else.</td></tr>
+    <tr><td class="k">Speed</td><td>Teams hesitate to experiment when Dev sits next door to live traffic, and reviewers have nowhere safe to UAT.</td></tr>
+  </tbody>
+</table>
+
+<h3>Recommendation</h3>
+<p>Keep <strong>Production</strong> in the current AWS account. Create AWS account separation so <strong>Dev</strong> and <strong>Test / UAT</strong> cannot accidentally touch production. Practical options: one shared “non-production” account holding both Dev and Test / UAT stacks, or separate accounts for Dev and Test / UAT if compliance wants a harder wall. Either way, the environments remain only those three names.</p>
+
+<div class="phase">
+  <div class="badge">Phase A<br/>0–30 days</div>
+  <div class="body">
+    <strong>Decide &amp; open account(s)</strong>
+    AWS Organizations, billing alerts, SSO roles (Engineer / ReadOnly / BreakGlass). Freeze tags and GitHub environments as <em>dev</em>, <em>test</em> (or <em>uat</em>), and <em>production</em> — never staging.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase B<br/>30–90 days</div>
+  <div class="body">
+    <strong>Move Dev out of the production account</strong>
+    Redeploy Platform + Content Hub + Companion + Reports for <em>dev</em>. Point <code>devapp</code> DNS at the new account. Overnight shutdown for Dev only.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase C<br/>Next</div>
+  <div class="body">
+    <strong>Stand up Test / UAT</strong>
+    Production-like stacks for stakeholder sign-off. Scrubbed data refresh. Same three-name model — still no staging.
+  </div>
+</div>
+
+<!-- ═══════════════ SECTION 3: MOBILE ═══════════════ -->
+<h2><span class="num">03</span> Plan for a mobile app</h2>
+
+<h3>What is true today</h3>
+<p>CHT is a <strong>responsive website</strong>. Learners and KOLs use phones in the browser. There is no native iOS or Android app in the beta scope. Authentication, sessions, catalogs, and Companion chat all assume a web browser.</p>
+
+<h3>Why mobile matters</h3>
+<ul>
+  <li>HCPs often watch short clinical clips and complete surveys between clinics — phone-first.</li>
+  <li>Push notifications (session reminders, report ready, Companion replies) need a real app or a carefully designed PWA.</li>
+  <li>App Store / Play Store presence builds trust for sponsored education programs.</li>
+</ul>
+
+<h3>Recommendation — three steps, not a big rewrite</h3>
+<table>
+  <thead><tr><th>Step</th><th>What we ship</th><th>Outcome</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">1 · Mobile web polish <span class="pill now">Now</span></td>
+      <td>Fix the highest-friction phone flows (login, register, watch, survey). Add “Add to Home Screen” guidance. Measure drop-off on small screens.</td>
+      <td>Better experience without an App Store review cycle.</td>
+    </tr>
+    <tr>
+      <td class="k">2 · Progressive Web App (PWA) <span class="pill next">Next</span></td>
+      <td>Installable icon, offline shell for key pages, basic push where browsers allow. Same codebase as the website.</td>
+      <td>App-like feel; validates demand before native spend.</td>
+    </tr>
+    <tr>
+      <td class="k">3 · Native shells (if needed) <span class="pill later">Later</span></td>
+      <td>React Native or Capacitor wrappers around the same APIs. Push, biometric unlock, store listing. Content Hub and Cognito remain the backends.</td>
+      <td>Full store presence only after usage justifies cost.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="t">Decision rule</div>
+  Do <strong>not</strong> fund a full native app until (a) mobile web + PWA conversion is healthy, and (b) we have a clear need that only native can meet (reliable push, offline video download, store distribution for a sponsor).
+</div>
+
+<h3>What stays the same either way</h3>
+<ul>
+  <li><strong>One login</strong> — Amazon Cognito (already CHT-owned).</li>
+  <li><strong>One catalog &amp; analytics brain</strong> — Content Hub.</li>
+  <li><strong>One set of APIs</strong> — Platform and Content Hub; mobile is another client, not a new product stack.</li>
+</ul>
+
+<!-- ═══════════════ SECTION 4: REPOS ═══════════════ -->
+<h2><span class="num">04</span> Splitting every service into app + infra repos (plus shared foundations)</h2>
+
+<h3>What is true today</h3>
+<p>We have several product repositories (Platform, Content Hub, Companion, Reports). Inside many of them, <strong>application code and Terraform (cloud blueprints) live together</strong>. Shared pieces — networking ideas, Cognito patterns, “how we talk to each other” — are copied or re-agreed per repo. That worked for a small team; it will not scale as more people and services touch the system.</p>
+
+<div class="callout">
+  <div class="t">Decision (this plan)</div>
+  We <strong>will</strong> split <em>every</em> service into <strong>two repositories</strong>: one for application code, one for that service’s infrastructure — and we will add one <strong>shared infrastructure</strong> repository for common cloud foundations. This is the target operating model, not an optional later phase.
+</div>
+
+<div class="grid2">
+  <div class="card">
+    <h4>Problems this solves</h4>
+    <ul>
+      <li>App teams no longer wait on infra reviews in the same pull request.</li>
+      <li>A cloud change cannot accidentally ship with an unrelated feature.</li>
+      <li>Clear ownership for product engineers vs. platform / DevOps.</li>
+      <li>Easier for non-engineers to see who owns what, and what a release means.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>What we want instead</h4>
+    <ul>
+      <li>Product teams own application repos (features, APIs, UI).</li>
+      <li>Each service owns its own deploy / infra repo (how that service runs in AWS).</li>
+      <li>Platform / DevOps owns shared foundations everyone reuses.</li>
+      <li>Smaller, safer changes that are easier to explain and audit.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>Target repo map</h3>
+<table>
+  <thead><tr><th>Repository</th><th>What lives there</th><th>Who owns it</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">cht-shared-infra <span class="pill next">New</span></td>
+      <td>AWS Organizations / account bootstrap, shared networking patterns, Cognito standards, logging &amp; monitoring baselines, reusable modules (ECS, secrets, queues, Service Connect). No product business logic.</td>
+      <td>Platform / DevOps</td>
+    </tr>
+    <tr>
+      <td class="k">cht-platform-app</td>
+      <td>Learner &amp; admin web app, APIs, Zoom, payments, surveys — application code only.</td>
+      <td>Platform product team</td>
+    </tr>
+    <tr>
+      <td class="k">cht-platform-infra</td>
+      <td>How Platform is deployed (ECS, ALB, queues, env wiring). Calls modules from shared-infra.</td>
+      <td>Platform + DevOps</td>
+    </tr>
+    <tr>
+      <td class="k">cht-content-hub-app</td>
+      <td>Catalog, campaigns, KOLs, analytics warehouse, connectors (YouTube, LinkedIn, HubSpot, etc.).</td>
+      <td>Content / data team</td>
+    </tr>
+    <tr>
+      <td class="k">cht-content-hub-infra</td>
+      <td>Content Hub deploy (API, sync jobs, databases, warehouse). Calls shared modules.</td>
+      <td>Content + DevOps</td>
+    </tr>
+    <tr>
+      <td class="k">cht-companion-app</td>
+      <td>Chat / generate services and knowledge-base application code.</td>
+      <td>Companion team</td>
+    </tr>
+    <tr>
+      <td class="k">cht-companion-infra</td>
+      <td>Companion deploy (ECS, Service Connect, Bedrock permissions, KB jobs).</td>
+      <td>Companion + DevOps</td>
+    </tr>
+    <tr>
+      <td class="k">cht-reports-app</td>
+      <td>On-demand report generation service and jobs — application code.</td>
+      <td>Reports team</td>
+    </tr>
+    <tr>
+      <td class="k">cht-reports-infra</td>
+      <td>Reports deploy (queues, tables, buckets, Lambdas). Calls shared modules.</td>
+      <td>Reports + DevOps</td>
+    </tr>
+    <tr>
+      <td class="k">cht-video-app / -infra <span class="pill next">Next</span></td>
+      <td>Upload, ingest, store, stream / download of owned video files. Not metadata warehouse — that stays in Content Hub.</td>
+      <td>Video / media team</td>
+    </tr>
+    <tr>
+      <td class="k">cht-media-pipeline-app / -infra <span class="pill next">Next</span></td>
+      <td>Transcripts, summaries, and auto-tags / topics from video (and related media). Writes results back to Content Hub as metadata.</td>
+      <td>Media / AI pipeline team</td>
+    </tr>
+  </tbody>
+</table>
+
+<p>Every service — including the new video and media-pipeline services — follows the same rule from day one: <strong>app repo + infra repo</strong>, consuming <strong>cht-shared-infra</strong>.</p>
+
+<div class="phase">
+  <div class="badge">Phase 1</div>
+  <div class="body">
+    <strong>Create cht-shared-infra</strong>
+    Move reusable Terraform modules and account-bootstrap docs. Establish the standard every service-infra repo will call.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase 2</div>
+  <div class="body">
+    <strong>Split each existing service</strong>
+    For Platform, Content Hub, Companion, and Reports: extract infrastructure into <em>-infra</em> repos and leave application code in <em>-app</em> repos (or rename current repos accordingly). Pipelines deploy from the infra repo using images / artifacts published by the app repo.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase 3</div>
+  <div class="body">
+    <strong>Make it the default</strong>
+    Document the pattern; any new service cannot land as a combined app+infra mono-repo. Shared modules remain the single source of truth for “the CHT way.”
+  </div>
+</div>
+
+<div class="callout">
+  <div class="t">For non-technical readers</div>
+  Think of <strong>shared infrastructure</strong> as the building’s plumbing and electrical standards. Each service is a floor with <strong>two rooms</strong>: one for the furniture (the application) and one for that floor’s utilities panel (how it is wired in AWS). Floors should not invent their own fire codes — and furniture changes should never require rewiring the whole building.
+</div>
+
+<!-- ═══════════════ SECTION 5: VIDEO ═══════════════ -->
+<h2><span class="num">05</span> Video services: upload / ingest, transcripts &amp; tags, Content Hub analytics</h2>
+
+<h3>What is true today</h3>
+<ul>
+  <li>Most public clips and podcasts play through <strong>YouTube</strong> embeds.</li>
+  <li><strong>Google Analytics (GA4)</strong> records views, video start / progress / complete, and share clicks in the browser. Those numbers live in Google, not in our databases.</li>
+  <li><strong>Content Hub</strong> already stores campaign and catalog <strong>metadata</strong> and can hold per-platform <strong>analytics</strong> (YouTube views, LinkedIn ads, HubSpot snapshots). That remains its job.</li>
+  <li>Zoom session recordings live in Platform storage for admin use; that is different from a learner-facing owned-video library.</li>
+</ul>
+
+<div class="callout warn">
+  <div class="t">The gap</div>
+  We do not own the upload → store → stream / download path for catalog video, and we do not have a dedicated pipeline that turns video into transcripts, summaries, and tags. Without those, we cannot fully control the player, branding, or <strong>platform analytics</strong> — and Content Hub cannot become the complete metadata + analytics home for our own files.
+</div>
+
+<h3>Target picture — three clear jobs</h3>
+<table>
+  <thead><tr><th>Service</th><th>What it does</th><th>What it does <em>not</em> do</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">Content Hub</td>
+      <td><strong>Metadata and analytics.</strong> Catalog records (title, KOLs, topics, campaign, rights, pointers to files), performance warehouse (views, completion, campaign metrics), and what Reports / Companion are allowed to read.</td>
+      <td>Does not store large video files or run the upload / encode pipeline.</td>
+    </tr>
+    <tr>
+      <td class="k">Video service <span class="pill next">Next</span></td>
+      <td><strong>Upload, ingest, store, stream, and download.</strong> Accepts files from editors / ops, processes them for playback, serves secure watch / download URLs to Platform (and later mobile).</td>
+      <td>Does not own the catalog of record or the analytics warehouse — it tells Content Hub where the file lives.</td>
+    </tr>
+    <tr>
+      <td class="k">Media pipeline <span class="pill next">Next</span></td>
+      <td><strong>Transcripts, summaries, and tags.</strong> Listens for new (or updated) video, runs speech-to-text, produces summaries and topic / tag suggestions, writes those results back to Content Hub as metadata.</td>
+      <td>Does not host the player or collect click / watch analytics.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="t">For non-technical readers</div>
+  Content Hub is the <strong>library card catalog and the scoreboard</strong>. The video service is the <strong>vault and the projector</strong>. The media pipeline is the <strong>clerk who watches each new tape and writes the transcript, a short summary, and the subject tags on the card</strong>. Platform is the <strong>theater</strong> where learners sit — and where we can finally measure how the show went.
+</div>
+
+<h3>Why self-hosting unlocks platform analytics</h3>
+<p>When video plays through <strong>our</strong> video service (on our domain, under our control), Platform can reliably capture first-party events: play, pause, progress milestones, complete, share, and which clip / program / campaign the learner came from. Those events become <strong>platform analytics</strong> we own — not a best-effort read of YouTube or GA4. The same events are then stored in Content Hub so official reports stay consistent.</p>
+
+<div class="grid2">
+  <div class="card">
+    <h4>Platform analytics (once we self-host)</h4>
+    <ul>
+      <li>Watch funnels per clip, playlist, program, and campaign.</li>
+      <li>Completion and drop-off curves we define (e.g. 25% / 50% / 75% / 95%).</li>
+      <li>Share and chapter clicks tied to logged-in users (where allowed).</li>
+      <li>Admin dashboards that do not depend on Google’s UI.</li>
+      <li>Clean handoff of the same events into Content Hub.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>What Content Hub then holds</h4>
+    <ul>
+      <li>Catalog metadata (including tags and summaries from the media pipeline).</li>
+      <li>Pointers to files in the video service (not the heavy files themselves).</li>
+      <li>Transcripts (or links to them) for search, Companion, and reports.</li>
+      <li>Performance analytics warehouse for campaigns and clips.</li>
+    </ul>
+  </div>
+</div>
+
+<h3>How a new video moves through the system</h3>
+<ol>
+  <li>Editor / ops <strong>uploads</strong> a file to the <strong>video service</strong>.</li>
+  <li>Video service <strong>ingests</strong> it (validate, encode / package, store) and is ready to <strong>stream or download</strong>.</li>
+  <li>Video service registers the asset with <strong>Content Hub</strong> (metadata stub + storage pointer).</li>
+  <li><strong>Media pipeline</strong> picks up the new asset → transcript → summary → tags / topics → writes those fields back to Content Hub.</li>
+  <li><strong>Platform</strong> (and later mobile) lists the clip from Content Hub and plays / downloads via the video service.</li>
+  <li>Watch and share events flow: Platform analytics → Content Hub warehouse → Reports / Companion.</li>
+</ol>
+
+<h3>Self-hosting options (decision later, direction now)</h3>
+<table>
+  <thead><tr><th>Approach</th><th>In plain terms</th><th>Fit</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">Managed video platform</td>
+      <td>Specialist (e.g. Mux, Cloudflare Stream, AWS Media) encodes and streams; our video service wraps upload, auth, and URLs.</td>
+      <td>Fastest reliable path; pay per usage.</td>
+    </tr>
+    <tr>
+      <td class="k">DIY on AWS</td>
+      <td>S3 + CloudFront + our player; encoding pipeline we operate inside the video service.</td>
+      <td>More control, more ops ownership.</td>
+    </tr>
+    <tr>
+      <td class="k">Hybrid</td>
+      <td>Keep YouTube for discovery / SEO where sponsors want it; owned clinical library goes through our video service first — with platform analytics on that library.</td>
+      <td>Pragmatic transition.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="phase">
+  <div class="badge">Phase 1</div>
+  <div class="body">
+    <strong>Define contracts</strong>
+    Content Hub = metadata + analytics only. Agree IDs, what “a view / complete” means, and how the video service and media pipeline register results with Hub.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase 2</div>
+  <div class="body">
+    <strong>Video service (upload / ingest / download)</strong>
+    New app + infra repos. Pilot a small set of clips; Platform plays from our URLs; turn on first-party <strong>platform analytics</strong>.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase 3</div>
+  <div class="body">
+    <strong>Media pipeline (transcript / summary / tags)</strong>
+    New app + infra repos. Auto-enrich Content Hub metadata so search, Companion, and reports can use transcripts and tags.
+  </div>
+</div>
+<div class="phase">
+  <div class="badge">Phase 4</div>
+  <div class="body">
+    <strong>Scale &amp; hybrid</strong>
+    Expand owned library; keep YouTube only where marketing still needs it. Platform analytics and Hub reporting stay aligned.
+  </div>
+</div>
+
+<!-- ═══════════════ SECTION 6: COST + AUTONOMY ═══════════════ -->
+<h2><span class="num">06</span> Lower cost, more autonomy, stronger products</h2>
+
+<p>The account split, repo split, and clearer service boundaries are not only about neatness. They are how we <strong>spend less on idle infrastructure</strong> and how we give teams the <strong>control to build serious products</strong> for Community Health Media — without stepping on each other or on Production.</p>
+
+<h3>How cost decreases: scale each environment to what it needs</h3>
+<p>Today, Dev and Production share one AWS account, so it is hard to turn “test” systems down aggressively without fear of touching live. With <strong>Dev</strong>, <strong>Test / UAT</strong>, and <strong>Production</strong> clearly separated, we can right-size each one:</p>
+
+<table>
+  <thead><tr><th>Environment</th><th>How we scale it</th><th>Cost effect</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">Dev</td>
+      <td>Smaller databases and fewer running services. Overnight and weekend <strong>scale-down / shut-off</strong> when no one is working. Rebuild cheaply when needed.</td>
+      <td>Largest savings opportunity — Dev should not look like Production 24/7.</td>
+    </tr>
+    <tr>
+      <td class="k">Test / UAT</td>
+      <td>On when a release is being reviewed; scaled down or off between cycles. Production-like shape, not Production-like spend every hour of the month.</td>
+      <td>Pay for dress rehearsal when we need it — not idle UAT all month.</td>
+    </tr>
+    <tr>
+      <td class="k">Production</td>
+      <td>Sized for real users and reliability. Scale <strong>up</strong> with demand; avoid over-buying “just in case” because Dev/Test are no longer mixed into the same bill and risk.</td>
+      <td>Spend where learners and sponsors feel it; stop subsidizing unused test capacity.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="grid2">
+  <div class="card">
+    <h4>Concrete levers</h4>
+    <ul>
+      <li>Fewer running containers in Dev / Test when idle.</li>
+      <li>Stop or pause non-production databases overnight.</li>
+      <li>Right-size each <em>service</em> (Platform, Hub, Companion, Reports, video) independently — no “one size for the whole account.”</li>
+      <li>Clear bills per environment and per service → budgets and alerts that mean something.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Why this only works after we separate</h4>
+    <ul>
+      <li>Shared accounts make “turn it off” dangerous.</li>
+      <li>Combined app + infra repos make ownership fuzzy — nobody owns the waste.</li>
+      <li>Separate accounts + per-service infra repos make scale-down a normal, safe habit.</li>
+    </ul>
+  </div>
+</div>
+
+<div class="callout">
+  <div class="t">Plain-language takeaway</div>
+  We stop paying Production prices for workshop and dress-rehearsal rooms. Each environment gets only the power it needs, when it needs it.
+</div>
+
+<h3>How teams get more autonomy and control</h3>
+<p>Splitting application and infrastructure per service — with shared foundations everyone reuses — changes how people work:</p>
+
+<table>
+  <thead><tr><th>Today</th><th>With this model</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Feature work and cloud changes compete in the same pull request.</td>
+      <td>Product teams ship application changes; infra repos change on their own cadence with clear review.</td>
+    </tr>
+    <tr>
+      <td>One shared account means everyone is afraid to experiment.</td>
+      <td>Dev (and Test / UAT) are safe places to try, break, and learn — Production stays protected.</td>
+    </tr>
+    <tr>
+      <td>Ownership is fuzzy across Platform / Hub / Companion / Reports.</td>
+      <td>Each service team owns its app and its deploy. Shared-infra owns the standards, not every ticket.</td>
+    </tr>
+    <tr>
+      <td>New capabilities (video, media pipeline, mobile) risk becoming “another folder in the mono-repo.”</td>
+      <td>New products start as first-class services with their own repos and cost line — easier to fund, staff, and measure.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Ability to build robust technology products for the company</h3>
+<p>Autonomy without standards creates chaos. This plan pairs freedom with a shared foundation so teams can build <strong>robust</strong> products:</p>
+<ul>
+  <li><strong>Clear product boundaries</strong> — Platform for the learner experience; Content Hub for metadata and analytics; video for files; media pipeline for transcripts / summaries / tags; Reports and Companion as consumers of Hub.</li>
+  <li><strong>Reusable “CHT way”</strong> — networking, login, logging, and deploy patterns live in shared-infra so every new service starts strong instead of reinventing plumbing.</li>
+  <li><strong>Safer change</strong> — smaller repos, smaller blast radius, environment-appropriate scale → fewer production incidents and faster recovery.</li>
+  <li><strong>Room to innovate</strong> — mobile, self-hosted video, and platform analytics become deliberate products we can invest in, not side projects squeezed into a shared pile.</li>
+  <li><strong>Accountability</strong> — each team can see its own cost, its own uptime, and its own roadmap — which is how a technology organization scales with the company’s ambition.</li>
+</ul>
+
+<div class="callout">
+  <div class="t">For leadership</div>
+  This is an investment in <strong>operating leverage</strong>: lower ongoing cloud waste, clearer ownership, and a structure where CHT can keep shipping durable products — not only features — as Community Health Media grows.
+</div>
+
+<!-- ═══════════════ SECTION 7: SEQUENCE ═══════════════ -->
+<h2><span class="num">07</span> Suggested sequence &amp; decisions needed</h2>
+
+<p>Do these in order so each step makes the next safer:</p>
+<ol>
+  <li><strong>Approve AWS account separation for Dev and Test / UAT</strong> — keep Production isolated; never reintroduce staging.</li>
+  <li><strong>Stand up cht-shared-infra, then split every service into app + infra repos</strong> — this is the committed operating model.</li>
+  <li><strong>Turn on per-environment scale-down</strong> — Dev (and Test / UAT between cycles) should not run at Production size 24/7.</li>
+  <li><strong>Mobile web + PWA path</strong> — serve phone users without a native bet yet.</li>
+  <li><strong>Video service</strong> — upload, ingest, stream / download; unlocks platform analytics on our player.</li>
+  <li><strong>Media pipeline</strong> — transcripts, summaries, tags written into Content Hub metadata.</li>
+  <li><strong>Content Hub stays metadata + analytics</strong> — official numbers for Reports and Companion.</li>
+  <li><strong>Native mobile (only if needed)</strong> — after web/PWA demand is proven.</li>
+</ol>
+
+<table>
+  <thead><tr><th>Decision for leadership</th><th>Options</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr>
+      <td class="k">AWS accounts / envs?</td>
+      <td>Stay shared · Separate Dev · Dev + Test / UAT + Production</td>
+      <td><strong>Three environments only</strong>: Dev, Test / UAT, Production (no staging). Separate accounts so Production cannot be hit by mistake.</td>
+    </tr>
+    <tr>
+      <td class="k">Repo structure?</td>
+      <td>Keep combined · Shared modules only · Full app + infra per service</td>
+      <td><strong>Full split</strong>: shared-infra + app repo and infra repo for every service (including video and media pipeline).</td>
+    </tr>
+    <tr>
+      <td class="k">Cost posture?</td>
+      <td>Leave running 24/7 · Ad-hoc cuts · Scale per environment by design</td>
+      <td><strong>Scale Dev / Test down by default</strong>; Production sized for real demand; budgets per env and per service.</td>
+    </tr>
+    <tr>
+      <td class="k">Mobile</td>
+      <td>Web only · PWA · Native now</td>
+      <td><strong>Polish web → PWA</strong>; native only with clear demand.</td>
+    </tr>
+    <tr>
+      <td class="k">Video architecture</td>
+      <td>YouTube only · Hub does everything · Separate video + pipeline + Hub</td>
+      <td><strong>Separate video service + media pipeline</strong>; Content Hub = metadata &amp; analytics only; Platform analytics on our player.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <div class="t">Bottom line</div>
+  Keep only three environments — <strong>Dev</strong>, <strong>Test / UAT</strong>, and <strong>Production</strong> — with Production isolated. Split every service into app + infra repos on shared foundations. <strong>Scale each environment down to what it needs</strong> so cloud cost falls. Give teams clear ownership so they can build robust products with autonomy — video, media pipeline, mobile, and analytics included — while Content Hub stays the home for <strong>metadata and analytics</strong>.
+</div>
+
+<p class="footer-note">
+  Related internal materials: CHT Platform Architecture, Data Dictionary, Data Flow, Beta PRD, Platform Assessment Report.
+  This brief intentionally avoids implementation tickets; engineering can produce detailed specs once the decisions above are approved.
+</p>
+
+</main>
+</body>
+</html>

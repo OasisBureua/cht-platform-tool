@@ -336,63 +336,6 @@ variable "jotform_webinar_post_event_shared_form_id" {
   default     = ""
 }
 
-# Bill.com (payment processing - set via TF_VAR_* or dev.tfvars)
-variable "bill_dev_key" {
-  description = "Bill.com developer key"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_username" {
-  description = "Bill.com account email"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_password" {
-  description = "Bill.com account password"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_org_id" {
-  description = "Bill.com organization ID"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_funding_account_id" {
-  description = "Bill.com funding account ID"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_webhook_secret" {
-  description = "Bill.com webhook signing secret for validating payment events"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_remember_me_id" {
-  description = "Bill MFA remember-me id (~30d); from /v3/mfa/challenge/validate with rememberMe true"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_device_name" {
-  description = "Must match the device string used when obtaining rememberMeId"
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "stripe_secret_key" {
   description = "Stripe secret API key (sk_test_ / sk_live_). Empty keeps existing Secrets Manager value (dev)."
   type        = string

@@ -31,6 +31,8 @@ type Props = {
    * user can overwrite values before submit.
    */
   profilePrefill?: Record<string, string>;
+  /** Server-side draft answers (wins over empty session draft fields). */
+  initialAnswers?: Record<string, unknown>;
 };
 
 function draftAnswersKey(surveyId: string) {
@@ -79,6 +81,7 @@ export function NativeSurveyForm({
   w9ProfileHref = '/app/profile',
   showPayoutNotice = false,
   profilePrefill,
+  initialAnswers,
 }: Props) {
   const visibleQuestions = useMemo(() => {
     const all = listNativeSurveyQuestions(questions);
@@ -86,9 +89,10 @@ export function NativeSurveyForm({
     return all.filter((q) => !isIdentitySurveyQuestion(q));
   }, [questions, authenticated]);
 
-  const [answers, setAnswers] = useState<Record<string, unknown>>(() =>
-    readDraftAnswers(surveyId),
-  );
+  const [answers, setAnswers] = useState<Record<string, unknown>>(() => ({
+    ...(initialAnswers ?? {}),
+    ...readDraftAnswers(surveyId),
+  }));
 
   // SCRUM-186: merge profile pre-fill into answers once, only for fields the
   // user hasn't already touched (draft or manual override wins). Runs when

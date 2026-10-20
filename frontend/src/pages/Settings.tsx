@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { User, LogOut, CreditCard, CheckCircle2, ArrowRight, BookOpen } from 'lucide-react';
+import { User, LogOut, CreditCard, CheckCircle2, ArrowRight, BookOpen, Loader2, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { dashboardApi } from '../api/dashboard';
 import { paymentsApi } from '../api/payments';
+import { authApi } from '../api/auth';
 import { getApiErrorMessage } from '../api/client';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import {
@@ -28,6 +29,7 @@ import {
 } from '../utils/profile-completeness';
 import { ContactNoteForm } from '../components/contact/ContactNoteForm';
 import { Button } from '../components/ui';
+import { isPlatformAdmin } from '../utils/roles';
 
 const SETTINGS_TABS = [
   { id: 'general', label: 'General' },
@@ -76,6 +78,9 @@ export default function Settings() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveOk, setSaveOk] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTab = (): SettingsTab | null => {
     const s =
@@ -132,6 +137,16 @@ export default function Settings() {
     setSaveOk(false);
     setSaving(true);
     try {
+      if (!firstName.trim() || /^user$/i.test(firstName.trim())) {
+        setSaveError('First name is required.');
+        setSaving(false);
+        return;
+      }
+      if (!lastName.trim()) {
+        setSaveError('Last name is required.');
+        setSaving(false);
+        return;
+      }
       if (!specialty.trim()) {
         setSaveError('Please select your profession.');
         setSaving(false);
@@ -187,6 +202,26 @@ export default function Settings() {
     logout();
     navigate('/login');
   };
+
+  const accountEmail = (profile?.email ?? user?.email ?? '').trim();
+  const isAdminUser = isPlatformAdmin(user?.role);
+
+  const deleteAccount = useMutation({
+    mutationFn: () => authApi.deleteAccount(deleteConfirmEmail.trim()),
+    onSuccess: () => {
+      try {
+        localStorage.removeItem('cht-dev-user-id');
+        sessionStorage.removeItem('cht-profile-reminder-seen');
+      } catch {
+        /* ignore */
+      }
+      queryClient.clear();
+      window.location.href = '/login';
+    },
+    onError: (err) => {
+      setDeleteError(getApiErrorMessage(err, 'Could not delete your account.'));
+    },
+  });
 
   if (authLoading || isLoading) return <LoadingSpinner />;
 
@@ -466,6 +501,33 @@ export default function Settings() {
                     </Link>
                   )}
                 </div>
+                <div className="border-t border-gray-100 pt-4">
+                  <p className="font-medium text-foreground">Delete account</p>
+                  {isAdminUser ? (
+                    <p className="mt-1">
+                      Admin and super admin accounts cannot be deleted from Settings. Ask a super
+                      admin if this account must be removed.
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-1">
+                        Permanently remove your profile, enrollments, survey responses, payment records,
+                        and sign-in credentials. This cannot be undone.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteError(null);
+                          setDeleteConfirmEmail('');
+                          setDeleteOpen(true);
+                        }}
+                        className="mt-3 inline-flex rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100"
+                      >
+                        Delete my account
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ) : settingsTab === 'help' ? (
               <div className="mt-6 max-w-xl space-y-8">
@@ -606,6 +668,91 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {deleteOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-title"
+        >
+          <div className="w-full max-w-md rounded-card bg-card p-6 shadow-card-hover space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 id="delete-account-title" className="font-semibold text-foreground">
+                  Delete your account?
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  This permanently deletes your profile and everything tied to it — enrollments,
+                  registrations, surveys, payments, and CME records. You will not be able to sign in
+                  again with this email.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => !deleteAccount.isPending && setDeleteOpen(false)}
+                disabled={deleteAccount.isPending}
+                className="shrink-0 text-muted-foreground hover:text-foreground disabled:opacity-50"
+                aria-label="Close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <label className="block space-y-1.5">
+              <span className="text-sm font-medium text-foreground">
+                Type your email to confirm
+                {accountEmail ? (
+                  <>
+                    {' '}
+                    (<span className="font-semibold text-foreground">{accountEmail}</span>)
+                  </>
+                ) : null}
+              </span>
+              <input
+                type="email"
+                autoComplete="off"
+                value={deleteConfirmEmail}
+                onChange={(e) => {
+                  setDeleteConfirmEmail(e.target.value);
+                  setDeleteError(null);
+                }}
+                disabled={deleteAccount.isPending}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-red-500/40 disabled:opacity-50"
+                placeholder={accountEmail || 'you@example.com'}
+              />
+            </label>
+            {deleteError && <p className="text-sm text-destructive">{deleteError}</p>}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleteAccount.isPending}
+                className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteError(null);
+                  deleteAccount.mutate();
+                }}
+                disabled={
+                  deleteAccount.isPending ||
+                  !deleteConfirmEmail.trim() ||
+                  deleteConfirmEmail.trim().toLowerCase() !== accountEmail.toLowerCase()
+                }
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteAccount.isPending && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                )}
+                Permanently delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,9 +18,11 @@ type Props = {
   submitLabel?: string;
   hideSubmitButton?: boolean;
   formId?: string;
+  /** Save answers without completing the survey (post-event payout handoff). */
+  submitAsDraft?: boolean;
   onSubmittingChange?: (submitting: boolean) => void;
   onSubmitError?: () => void;
-  onSubmitted?: (submissionId: string) => void;
+  onSubmitted?: (submissionId: string, meta?: { draft?: boolean }) => void;
 };
 
 /**
@@ -36,6 +38,7 @@ export function ProgramSurveyPanel({
   submitLabel,
   hideSubmitButton,
   formId,
+  submitAsDraft = false,
   onSubmittingChange,
   onSubmitError,
   onSubmitted,
@@ -62,12 +65,15 @@ export function ProgramSurveyPanel({
 
   const submitMut = useMutation({
     mutationFn: (answers: Record<string, unknown>) =>
-      surveysApi.submitResponse(surveyId, { answers }),
+      surveysApi.submitResponse(surveyId, {
+        answers,
+        ...(submitAsDraft ? { draft: true } : {}),
+      }),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', surveyId, 'my-response'] });
       queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
-      onSubmitted?.(data.submissionId ?? data.id);
+      onSubmitted?.(data.submissionId ?? data.id, { draft: !!data.draft });
     },
     onError: () => {
       onSubmittingChange?.(false);
@@ -115,8 +121,9 @@ export function ProgramSurveyPanel({
       submitLabel={submitLabel}
       hideSubmitButton={hideSubmitButton}
       formId={formId}
-      showPayoutNotice={survey.type === 'FEEDBACK'}
+      showPayoutNotice={survey.type === 'FEEDBACK' && !submitAsDraft}
       profilePrefill={profilePrefill}
+      initialAnswers={myResponse?.draft ? myResponse.answers : undefined}
       onSubmit={(answers) => submitMut.mutate(answers)}
     />
   );

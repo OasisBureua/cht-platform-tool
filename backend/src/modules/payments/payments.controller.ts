@@ -9,7 +9,6 @@ import {
   Logger,
   UseGuards,
   Res,
-  BadRequestException,
 } from '@nestjs/common';
 import type { Response } from 'express';
 import {
@@ -26,18 +25,14 @@ import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
 import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
-import { BillService } from './bill.service';
-import { StripeService } from './stripe.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
 import {
   CreateConnectAccountResponseDto,
   AccountLinkResponseDto,
 } from './dto/create-connect-account.dto';
-import { CreateVendorDto } from './dto/create-vendor.dto';
 import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
-import { BillFundingAccountsResponseDto } from './dto/bill-funding-accounts.dto';
 import { ProgramPaymentSummaryResponseDto } from './dto/program-payment-summary.dto';
 
 @Controller('payments')
@@ -46,43 +41,24 @@ export class PaymentsController {
 
   constructor(
     private readonly paymentsService: PaymentsService,
-    private readonly billService: BillService,
-    private readonly stripeService: StripeService,
   ) {}
-
-  private assertBillEndpointsAllowed(): void {
-    if (this.stripeService.isConfigured()) {
-      throw new BadRequestException(
-        'This environment uses Stripe Connect. Bill.com payment endpoints are disabled.',
-      );
-    }
-  }
 
   /**
    * POST /api/payments/:userId/connect-account
-   * Stripe: creates Connect recipient + returns hosted Account Link URL.
-   * Bill: creates/updates vendor (body required). Bill DTO is not validated when Stripe is on.
+   * Stripe Connect: creates Express recipient + returns hosted Account Link URL.
    */
   @Post(':userId/connect-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
   async createConnectAccount(
     @Param('userId') userId: string,
-    @Body() body?: Record<string, unknown>,
   ): Promise<CreateConnectAccountResponseDto> {
-    if (this.stripeService.isConfigured()) {
-      this.logger.log(`Creating Stripe Connect account for user: ${userId}`);
-      return this.paymentsService.createConnectAccount(userId);
-    }
-    this.logger.log(`Creating Bill.com vendor for user: ${userId}`);
-    return this.paymentsService.createConnectAccount(
-      userId,
-      body as CreateVendorDto | undefined,
-    );
+    this.logger.log(`Creating Stripe Connect account for user: ${userId}`);
+    return this.paymentsService.createConnectAccount(userId);
   }
 
   /**
    * POST /api/payments/:userId/account-link
-   * Stripe Account Link (hosted) or Bill settings URL.
+   * Stripe Account Link (hosted onboarding URL).
    */
   @Post(':userId/account-link')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -105,61 +81,6 @@ export class PaymentsController {
   async createAccountSession(@Param('userId') userId: string) {
     this.logger.log(`Creating Stripe account session for user: ${userId}`);
     return this.paymentsService.createStripeAccountSession(userId);
-  }
-
-  /**
-   * GET /api/payments/test-connection
-   * Test Bill.com API connection (login). Admin only in prod; X-Dev-User-Id bypass for local testing.
-   */
-  @Get('test-connection')
-  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
-  async testConnection() {
-    this.assertBillEndpointsAllowed();
-    return this.paymentsService.testBillConnection();
-  }
-
-  /**
-   * GET /api/payments/bill-funding-accounts
-   * Lists Bill.com org bank funding accounts (GET /v3/funding-accounts/banks). Use an account `id` (often `bac*`) for BILL_FUNDING_ACCOUNT_ID.
-   */
-  @Get('bill-funding-accounts')
-  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
-  @ApiBearerAuth('session-token')
-  @ApiOperation({
-    summary:
-      'List Bill.com funding bank accounts (recommended BILL_FUNDING_ACCOUNT_ID)',
-    description:
-      'Uses server env Bill.com credentials to call GET /v3/funding-accounts/banks. Returns `recommendedFundingAccountId` when Bill marks an account as default for payables. Does not return passwords, dev keys, or session IDs.',
-  })
-  @ApiOkResponse({ type: BillFundingAccountsResponseDto })
-  async listBillFundingAccounts(): Promise<BillFundingAccountsResponseDto> {
-    this.assertBillEndpointsAllowed();
-    return this.billService.listBankFundingAccountsWithRecommendation();
-  }
-
-  /**
-   * GET /api/payments/bill-element-session
-   * Returns Bill.com Elements SDK credentials (sessionId, userId, orgId, devKey).
-   * Frontend uses these to initialize the embedded vendorSetupApp Element.
-   */
-  @Get('bill-element-session')
-  @UseGuards(JwtAuthGuard)
-  async getBillElementSession() {
-    this.assertBillEndpointsAllowed();
-    return this.billService.getElementSession();
-  }
-
-  /**
-   * POST /api/payments/:userId/save-vendor-id
-   * Called by frontend after vendorSetupSuccess event to persist the Bill.com vendorId.
-   */
-  @Post(':userId/save-vendor-id')
-  @UseGuards(JwtAuthGuard, CheckUserGuard)
-  async saveVendorId(
-    @Param('userId') userId: string,
-    @Body('vendorId') vendorId: string,
-  ) {
-    return this.paymentsService.saveVendorId(userId, vendorId);
   }
 
   /**
@@ -317,7 +238,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:paymentId/retry
-   * Retry a FAILED payment by resetting it to PENDING and re-attempting via Bill.com (admin only)
+   * Retry a FAILED payment by resetting it to PENDING and re-attempting via Stripe Connect (admin only).
    */
   @Post(':paymentId/retry')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -341,7 +262,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:paymentId/pay-now
-   * Pay a PENDING payment via Bill.com (admin only)
+   * Pay a PENDING payment via Stripe Connect (admin only).
    */
   @Post(':paymentId/pay-now')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -352,7 +273,7 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/:userId/account-status
-   * Get user's payment account status (auth required)
+   * Get user's payment account status (auth required).
    */
   @Get(':userId/account-status')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -365,7 +286,7 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/:userId/summary
-   * Get payment summary (auth required)
+   * Get payment summary (auth required).
    */
   @Get(':userId/summary')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -375,7 +296,7 @@ export class PaymentsController {
 
   /**
    * GET /api/payments/:userId/history
-   * Get payment history (auth required)
+   * Get payment history (auth required).
    */
   @Get(':userId/history')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -408,7 +329,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/manual
-   * Queue a manual PENDING payment for admin pay-now flow (no immediate Bill.com call).
+   * Queue a manual PENDING payment for admin pay-now flow.
    */
   @Post('manual')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -421,7 +342,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/payout
-   * Create payout to user (admin only). Admins choose ACH or check and verify W-9 in Bill.com.
+   * Create payout to user via Stripe Connect (admin only).
    */
   @Post('payout')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -433,8 +354,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/w9
-   * Bill env: push tax ID to Bill vendor.
-   * Stripe env (PAY-4): Bill path unused — syncs w9Submitted from Connect requirements only (no TIN body used).
+   * Stripe Connect: syncs w9Submitted from Connect requirements.
    */
   @Post(':userId/w9')
   @UseGuards(JwtAuthGuard, CheckUserGuard)
@@ -444,7 +364,7 @@ export class PaymentsController {
 
   /**
    * POST /api/payments/:userId/sync-account
-   * Sync account status from Bill.com (auth required)
+   * Sync Stripe Connect account status (auth required).
    */
   @Post(':userId/sync-account')
   @UseGuards(JwtAuthGuard, CheckUserGuard)

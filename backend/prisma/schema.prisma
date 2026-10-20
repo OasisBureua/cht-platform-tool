@@ -38,9 +38,7 @@ model User {
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)
   
-  // Bill.com (Payment system) — historical; Stripe is the active rail when configured
-  billVendorId     String?
-  billVendorStatus String?  // onboarding_incomplete, pending, active, rejected
+  // Payment status
   paymentEnabled   Boolean @default(false)
   w9Submitted     Boolean @default(false)
   w9SubmittedAt   DateTime?
@@ -82,7 +80,6 @@ model User {
 
   @@index([email])
   @@index([authId])
-  @@index([billVendorId])
   @@index([stripeAccountId])
   @@index([totalEarnings])
   @@map("User")
@@ -114,6 +111,7 @@ enum UserRole {
   HCP          // Healthcare Professional
   KOL          // Key Opinion Leader
   ADMIN        // Platform Administrator
+  SUPER_ADMIN  // Full platform authority (promotes admins, deletes admins)
 }
 
 enum UserStatus {
@@ -657,6 +655,8 @@ model SurveyResponse {
   score       Float?   // Score if applicable
   /// Survey.schemaVersion at the time this response was submitted (answer-key snapshot).
   schemaVersion Int @default(1)
+  /// True until the learner's final submit (post-event: with honorarium request).
+  isDraft     Boolean  @default(false)
   
   // External submission id (UUID for native submit; Jotform id for legacy webhooks)
   submissionId String? @unique
@@ -690,10 +690,6 @@ model Payment {
   status      PaymentStatus
   description String?
   
-  // Bill.com integration (historical audit rows)
-  billPaymentIntentId String? @unique
-  billPaymentId       String? @unique
-
   // Stripe Connect transfers / payouts
   stripeTransferId String? @unique
   stripePayoutId   String?
@@ -741,7 +737,7 @@ enum PaymentType {
 
 enum PaymentStatus {
   PENDING      // Payment created but not processed
-  PROCESSING   // Being processed by Bill.com
+  PROCESSING   // Being processed by Stripe Connect
   PAID         // Successfully paid
   FAILED       // Payment failed
   CANCELLED    // Cancelled by admin

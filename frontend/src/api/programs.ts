@@ -109,7 +109,8 @@ export type HonorariumProgramPreview = {
   payeeDisplayName: string;
   maskedBankLast4: string | null;
   addressSummary: string | null;
-  hasBillVendor: boolean;
+  /** True when the learner has a Stripe Connect payout account. */
+  hasPayoutAccount: boolean;
   w9Submitted: boolean;
 };
 

@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import ChmWordmarkOption2 from '../brand/ChmWordmarkOption2';
 import ThemeToggle from '../ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import { MARKETING_SITE_URL } from '../../config/app-urls';
 
 export default function Layout() {
   const location = useLocation();
@@ -91,14 +92,14 @@ export default function Layout() {
           className="absolute inset-y-0 left-0 z-0 flex w-[78%] max-w-[220px] flex-col overflow-y-auto overflow-x-hidden bg-gradient-to-b from-card to-muted pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[inset_-8px_0_24px_-16px_rgba(0,0,0,0.06)] md:hidden dark:from-zinc-950 dark:to-zinc-950 dark:shadow-[inset_-8px_0_28px_-18px_rgba(0,0,0,0.5)]"
           aria-label="Primary navigation"
         >
-          <Link
-            to="/app/home"
+          <a
+            href={MARKETING_SITE_URL}
             onClick={() => setMobileDrawerOpen(false)}
             className="mx-auto mb-3 flex shrink-0 items-center justify-center px-4 text-steel-600 transition-[opacity,transform] duration-200 hover:text-steel-700 active:scale-[0.98] dark:text-steel-400 dark:hover:text-steel-300"
-            aria-label="Community Health Media, app home"
+            aria-label="Community Health Media, home"
           >
             <ChmWordmarkOption2 className="h-auto w-[4.5rem]" />
-          </Link>
+          </a>
           <ul className="flex flex-col gap-0.5 px-2 pb-2">
             {navItems.map(({ to, label, icon: Icon, iconTone, end, title }) => (
               <li key={to}>

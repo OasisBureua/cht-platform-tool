@@ -174,62 +174,6 @@ variable "jotform_webinar_post_event_shared_form_id" {
   default     = ""
 }
 
-variable "bill_dev_key" {
-  description = "Primary only: Bill.com developer key."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_username" {
-  description = "Primary only: Bill.com username."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_password" {
-  description = "Primary only: Bill.com password."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_org_id" {
-  description = "Primary only: Bill.com org ID."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_funding_account_id" {
-  description = "Primary only: Bill.com funding account ID."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_webhook_secret" {
-  description = "Primary only: Bill.com webhook secret."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_remember_me_id" {
-  description = "Primary only: Bill.com MFA remember-me ID."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
-variable "bill_mfa_device_name" {
-  description = "Primary only: Bill.com MFA device name."
-  type        = string
-  sensitive   = true
-  default     = ""
-}
-
 variable "admin_bootstrap_secret" {
   description = "Primary only: admin bootstrap secret."
   type        = string

@@ -246,17 +246,31 @@ export default function RailSidebar({
       ].join(' ')}
     >
       <div className={['flex h-16 w-full shrink-0 items-center sm:h-[72px]', collapsed ? 'justify-center' : 'px-5'].join(' ')}>
-        <Link
-          to={homeTo}
-          className="flex items-center rounded-[6px] text-text transition-[opacity,transform] duration-150 hover:opacity-80 active:scale-[0.97]"
-          aria-label={homeLabel}
-        >
-          {collapsed ? (
-            <ChmMark className="size-8 text-[hsl(var(--signature))]" />
-          ) : (
-            <ChmWordmarkOption2 className="h-auto w-[5.25rem]" />
-          )}
-        </Link>
+        {/^https?:\/\//i.test(homeTo) ? (
+          <a
+            href={homeTo}
+            className="flex items-center rounded-[6px] text-text transition-[opacity,transform] duration-150 hover:opacity-80 active:scale-[0.97]"
+            aria-label={homeLabel}
+          >
+            {collapsed ? (
+              <ChmMark className="size-8 text-[hsl(var(--signature))]" />
+            ) : (
+              <ChmWordmarkOption2 className="h-auto w-[5.25rem]" />
+            )}
+          </a>
+        ) : (
+          <Link
+            to={homeTo}
+            className="flex items-center rounded-[6px] text-text transition-[opacity,transform] duration-150 hover:opacity-80 active:scale-[0.97]"
+            aria-label={homeLabel}
+          >
+            {collapsed ? (
+              <ChmMark className="size-8 text-[hsl(var(--signature))]" />
+            ) : (
+              <ChmWordmarkOption2 className="h-auto w-[5.25rem]" />
+            )}
+          </Link>
+        )}
       </div>
 
       <nav

@@ -34,7 +34,7 @@ export const paymentsApi = {
     }
   },
 
-  /** Stripe hosted Account Link (or Bill settings URL when Stripe is off). */
+  /** Stripe Connect hosted Account Link. */
   createAccountLink: async (userId: string): Promise<{ url: string }> => {
     const { data } = await apiClient.post(`/payments/${userId}/account-link`);
     return { url: data.url || '/settings?tab=payment' };
@@ -58,55 +58,7 @@ export const paymentsApi = {
     return data;
   },
 
-  /**
-   * Bill.com vendor create only. Do not call when Stripe is configured —
-   * use createAccountLink / createAccountSession instead.
-   */
-  createBillVendor: async (
-    userId: string,
-    bankData: {
-      payeeName: string;
-      addressLine1: string;
-      city: string;
-      state: string;
-      zipCode: string;
-      paymentMethod: 'ACH' | 'CHECK';
-      nameOnAccount?: string;
-      accountNumber?: string;
-      routingNumber?: string;
-    },
-  ) => {
-    const { data } = await apiClient.post(`/payments/${userId}/connect-account`, {
-      payeeName: bankData.payeeName,
-      addressLine1: bankData.addressLine1,
-      city: bankData.city,
-      state: bankData.state,
-      zipCode: bankData.zipCode,
-      paymentMethod: bankData.paymentMethod,
-      ...(bankData.paymentMethod === 'ACH'
-        ? {
-            bankAccount: {
-              nameOnAccount: bankData.nameOnAccount,
-              accountNumber: bankData.accountNumber,
-              routingNumber: bankData.routingNumber,
-            },
-          }
-        : {}),
-    });
-    return data;
-  },
-
-  getBillElementSession: async (): Promise<{ sessionId: string; userId: string; orgId: string; devKey: string }> => {
-    const { data } = await apiClient.get('/payments/bill-element-session');
-    return data;
-  },
-
-  saveVendorId: async (userId: string, vendorId: string) => {
-    const { data } = await apiClient.post(`/payments/${userId}/save-vendor-id`, { vendorId });
-    return data;
-  },
-
-  /** Re-fetch Connect / vendor state and update local user flags. */
+  /** Re-fetch Stripe Connect state and update local user flags. */
   syncAccountStatus: async (userId: string) => {
     const { data } = await apiClient.post(`/payments/${userId}/sync-account`);
     return data;

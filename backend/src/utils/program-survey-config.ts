@@ -169,15 +169,20 @@ export async function userHasPostEventSurveyResponse(
     surveyResponse: {
       findUnique(args: {
         where: { userId_surveyId: { userId: string; surveyId: string } };
-      }): Promise<{ id: string } | null>;
+        select?: { id: true; isDraft: true };
+      }): Promise<{ id: string; isDraft?: boolean } | null>;
     };
   },
   userId: string,
   feedbackSurveyId?: string,
+  opts?: { includeDraft?: boolean },
 ): Promise<boolean> {
   if (!feedbackSurveyId) return false;
   const row = await prisma.surveyResponse.findUnique({
     where: { userId_surveyId: { userId, surveyId: feedbackSurveyId } },
+    select: { id: true, isDraft: true },
   });
-  return !!row;
+  if (!row) return false;
+  if (opts?.includeDraft) return true;
+  return row.isDraft !== true;
 }

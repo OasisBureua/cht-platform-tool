@@ -153,7 +153,7 @@ From `infrastructure/terraform`, the helper script passes the same var file when
 Sensitive values can be set via environment variables:
 ```bash
 export TF_VAR_gotrue_jwt_secret="..."
-export TF_VAR_bill_dev_key="..."
+# Stripe keys: AWS Secrets Manager (cht-*-app-secrets) or TF_VAR_stripe_* for prod CI
 # Email via Amazon SES - worker uses IAM role, verify domain in SES
 ```
 
@@ -261,7 +261,7 @@ cp -r environments/dev environments/prod
 ### Secrets hygiene
 - Never commit `.env`, `platform.tfvars`, or credential files (they are gitignored).
 - Store deploy secrets in **GitHub Environments** (`production`, `staging`), not repository-level secrets where possible.
-- Rotate third-party API keys (Zoom, Bill.com, Jotform, Supabase) on a schedule and after personnel changes.
+- Rotate third-party API keys (Zoom, Stripe, Jotform, Supabase) on a schedule and after personnel changes.
 - Use `scripts/verify-github-env-secrets.sh` before deploys.
 
 ### Audit logging

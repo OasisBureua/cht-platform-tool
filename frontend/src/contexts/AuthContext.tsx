@@ -65,7 +65,11 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
   const profileMissingFields = Array.isArray(missingRaw)
     ? (missingRaw.filter(
         (f): f is ProfileMissingField =>
-          f === 'phone' || f === 'profession' || f === 'npi',
+          f === 'firstName' ||
+          f === 'lastName' ||
+          f === 'phone' ||
+          f === 'profession' ||
+          f === 'npi',
       ) as ProfileMissingField[])
     : undefined;
   return {

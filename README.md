@@ -2,7 +2,7 @@
 
 **Community Health Technologies**: healthcare education and honorarium platform connecting medical professionals with CME programs, live webinars, office hours, podcast content, and honorarium payments.
 
-The platform is used by oncology KOLs, HCPs, and pharma partners. It delivers live CME sessions (via Zoom), post-event surveys, honorarium payouts (via Bill.com), a content catalog of clinical conversations (via MediaHub), and a podcast library, all in one place.
+The platform is used by oncology KOLs, HCPs, and pharma partners. It delivers live CME sessions (via Zoom), post-event surveys, honorarium payouts (via Stripe Connect), a content catalog of clinical conversations (via MediaHub), and a podcast library, all in one place.
 
 ---
 
@@ -12,7 +12,7 @@ The platform is used by oncology KOLs, HCPs, and pharma partners. It delivers li
 |---|---|
 | **Live sessions** | Zoom-powered webinars and CHM Office Hours with registration, approval workflows, and post-event flows |
 | **Surveys** | JotForm-integrated post-session surveys that gate honorarium eligibility |
-| **Payments** | Automated honorarium payouts via Bill.com ACH/check, triggered on survey + attendance completion |
+| **Payments** | Automated honorarium payouts via Stripe Connect ACH, triggered on survey + attendance completion |
 | **Content library** | MediaHub-integrated video catalog with disease-area playlists, KOL clips, and biomarker rows |
 | **Podcasts** | In-app podcast catalog (Breast Friends, CHM audio) with show pages and episode listings |
 | **KOL Network** | DOL / digital opinion leader directory with region filtering, profile pages, and catalog content links |
@@ -49,7 +49,7 @@ cht-platform/
 - **AWS SQS**: job queuing (email, payments, CME certificates)
 - **Zoom**: webinar and meeting creation + webhook handling
 - **JotForm**: survey intake and webhook processing
-- **Bill.com**: honorarium payouts (ACH / check)
+- **Stripe Connect**: honorarium payouts (ACH)
 - **Amazon SES**: transactional email (reminders, access links, missed-session notifications)
 
 ### Worker (Python 3.11)
@@ -100,7 +100,7 @@ npm run start:dev
 ```bash
 cd worker
 pip install -r requirements.txt
-# Set DATABASE_URL, SQS_*_QUEUE_URL, BILL_* in environment or .env
+# Set DATABASE_URL, SQS_*_QUEUE_URL, STRIPE_* in environment or .env
 python start_workers.py
 ```
 
@@ -136,7 +136,7 @@ Access points once running:
 
 1. HCP attends live session (Zoom webhook confirms attendance).
 2. JotForm post-event survey submitted → backend marks enrollment eligible.
-3. SQS: payment job queued → Python worker calls Bill.com → honorarium paid.
+3. SQS: payment job queued → NestJS / Stripe Connect transfer → honorarium paid.
 4. CME certificate generated (PDF) and emailed via SES.
 
 ### Webinar / Office Hours scheduling
@@ -220,6 +220,6 @@ Both scripts are optional. GitHub Actions remain the source of truth.
 | [docs/engineering/getting-started.md](docs/engineering/getting-started.md) | Local dev setup + env variables |
 | [docs/engineering/architecture.md](docs/engineering/architecture.md) | System architecture |
 | [docs/engineering/deployment.md](docs/engineering/deployment.md) | Staging and production deploys |
-| [docs/engineering/integrations.md](docs/engineering/integrations.md) | Auth, Zoom, JotForm, Bill.com, MediaHub |
+| [docs/engineering/integrations.md](docs/engineering/integrations.md) | Auth, Zoom, JotForm, Stripe Connect, MediaHub |
 | [docs/compliance/](./docs/compliance/) | Incident response and disaster recovery runbooks |
 | [.github/CI_CD.md](.github/CI_CD.md) | GitHub Actions workflows |
