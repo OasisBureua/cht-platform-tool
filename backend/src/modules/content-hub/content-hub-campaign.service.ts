@@ -18,6 +18,24 @@ export type CampaignKol = {
 
 export type CampaignKolList = { items: CampaignKol[] };
 
+export type ReportSourceInput = {
+  fetchedAt: string | null;
+  rowCount: number;
+  status: 'ok' | 'missing' | 'error';
+};
+
+/** CPR-51: what Generate would find per source (Hub report-inputs). */
+export type ReportInputs = {
+  campaignId: number;
+  windowStart: string | null;
+  windowEnd: string | null;
+  sources: string[];
+  inputCompleteness: Record<string, ReportSourceInput>;
+  registeredCount: number | null;
+  attendedCount: number | null;
+  attendeesWithProfile: number | null;
+};
+
 export type CampaignListResponse = {
   items: unknown[];
   total: number;
@@ -61,6 +79,24 @@ export class ContentHubCampaignService {
     return this.client.getAdmin<CampaignKolList>(
       `/campaigns/${id}/kols`,
       undefined,
+      { cache: false },
+    );
+  }
+
+  /**
+   * Every source (the Hub default when `sources` is omitted). Not cached:
+   * the card should show the latest sync.
+   */
+  getReportInputs(
+    id: number | string,
+    query: { windowStart: string | null; windowEnd: string },
+  ): Promise<ReportInputs> {
+    return this.client.getAdmin<ReportInputs>(
+      `/campaigns/${id}/report-inputs`,
+      {
+        windowStart: query.windowStart ?? undefined,
+        windowEnd: query.windowEnd,
+      },
       { cache: false },
     );
   }

@@ -7,7 +7,9 @@ import {
   REPORT_IN_FLIGHT,
   campaignKolsApi,
   campaignLinksApi,
+  reportInputsApi,
   reportsApi,
+  type DateRangeDays,
   type CreateReportInput,
   type Report,
 } from '../../../../api/reports';
@@ -20,6 +22,8 @@ export const reportKeys = {
   recipients: () => [KEY, 'report-recipients'] as const,
   linkPrograms: () => [KEY, 'campaign-link-programs'] as const,
   campaignKols: (campaignId: string) => [KEY, 'campaign-kols', campaignId] as const,
+  allReportInputs: () => [KEY, 'report-inputs'] as const,
+  reportInputs: (campaignId: string) => [KEY, 'report-inputs', campaignId] as const,
   kolRoster: () => [KEY, 'kol-roster'] as const,
 };
 
@@ -53,6 +57,8 @@ export function useCreateReport(campaignId: string) {
       qc.setQueryData<Report[]>(reportKeys.list(campaignId), (prev) =>
         upsert(prev, report),
       );
+      // Generate syncs Hub data first.
+      void qc.invalidateQueries({ queryKey: reportKeys.reportInputs(campaignId) });
     },
   });
 }
@@ -77,8 +83,20 @@ export function useDownloadReport() {
 
 /** CPR-41 — pull platform data into Hub without generating a report. */
 export function useRefreshCampaignData(campaignId: string) {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: () => reportsApi.refreshData(campaignId),
+    onSuccess: () => qc.invalidateQueries({ queryKey: reportKeys.reportInputs(campaignId) }),
+  });
+}
+
+/** CPR-51 — per-source counts for every source over the Generate range. */
+export function useReportInputs(campaignId: string, dateRangeDays: DateRangeDays) {
+  return useQuery({
+    queryKey: [...reportKeys.reportInputs(campaignId), dateRangeDays] as const,
+    queryFn: () => reportInputsApi.get(campaignId, { dateRangeDays }),
+    enabled: !!campaignId,
+    staleTime: 30_000,
   });
 }
 
@@ -110,6 +128,7 @@ export function useSetProgramCampaign() {
         (prev: Awaited<ReturnType<typeof campaignLinksApi.listPrograms>> | undefined) =>
           prev?.map((p) => (p.id === updated.id ? updated : p)),
       );
+      void qc.invalidateQueries({ queryKey: reportKeys.allReportInputs() });
     },
   });
 }
@@ -126,7 +145,10 @@ export function useSetCampaignKols(campaignId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (kolIds: string[]) => campaignKolsApi.set(campaignId, kolIds),
-    onSuccess: (kols) => qc.setQueryData(reportKeys.campaignKols(campaignId), kols),
+    onSuccess: (kols) => {
+      qc.setQueryData(reportKeys.campaignKols(campaignId), kols);
+      void qc.invalidateQueries({ queryKey: reportKeys.reportInputs(campaignId) });
+    },
   });
 }
 

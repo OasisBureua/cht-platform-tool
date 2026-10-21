@@ -33,10 +33,13 @@ import {
   useDownloadReport,
   useRefreshCampaignData,
   useRegenerateReport,
+  useReportInputs,
   useReportRecipients,
 } from '../lib/reportHooks';
+import { sourcesWithData } from '../lib/reportInputs';
 import { CampaignKolsCard } from './CampaignKolsCard';
 import { RecipientPicker } from './RecipientPicker';
+import { ReportInputsSummary } from './ReportInputsSummary';
 import { ToggleChip } from './ToggleChip';
 import { useToast } from './Toaster';
 
@@ -120,23 +123,39 @@ function StatusBadge({ status }: { status: ReportStatus }) {
 function GenerateCard({
   campaignId,
   linkedProgramCount,
+  programHubPath,
   busy,
   onGoToPrograms,
 }: {
   campaignId: string;
   linkedProgramCount: number;
+  programHubPath: string | null;
   busy: boolean;
   onGoToPrograms: () => void;
 }) {
   const { toast } = useToast();
   const [range, setRange] = useState<`${DateRangeDays}`>('30');
-  const [sources, setSources] = useState<string[]>(REPORT_SOURCES.map((s) => s.value));
+  // Sources the admin picked by hand; once set, data checks never change them.
+  const [pickedSources, setSources] = useState<string[] | null>(null);
   const [notify, setNotify] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const recipients = useReportRecipients();
   const create = useCreateReport(campaignId);
   const refreshData = useRefreshCampaignData(campaignId);
+  // CPR-51: every source's status for the chosen range, independent of the toggles.
+  const inputs = useReportInputs(campaignId, Number(range) as DateRangeDays);
+
+  // Until the admin picks by hand, turn off the sources with no data in the
+  // current range, so the deck has no empty sections. Only data for this
+  // range counts; while it loads, every source is on.
+  const checked = inputs.isPlaceholderData ? undefined : inputs.data;
+  const withData = checked ? sourcesWithData(checked, REPORT_SOURCES) : [];
+  const autoSources = withData.length > 0 ? withData : REPORT_SOURCES.map((s) => s.value);
+  const sources = pickedSources ?? autoSources;
+  const autoOff = pickedSources
+    ? []
+    : REPORT_SOURCES.filter((s) => !autoSources.includes(s.value)).map((s) => s.label);
 
   const toggle = (list: string[], value: string) =>
     list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -227,7 +246,7 @@ function GenerateCard({
               <ToggleChip
                 key={s.value}
                 on={sources.includes(s.value)}
-                onClick={() => setSources((prev) => toggle(prev, s.value))}
+                onClick={() => setSources(toggle(sources, s.value))}
               >
                 {s.label}
               </ToggleChip>
@@ -237,6 +256,17 @@ function GenerateCard({
             <p className="mt-2 text-sm text-destructive">Pick at least one source.</p>
           ) : null}
         </div>
+
+        <ReportInputsSummary
+          campaignId={campaignId}
+          inputs={inputs.data}
+          isLoading={inputs.isLoading}
+          isError={inputs.isError}
+          sourceOptions={REPORT_SOURCES}
+          selected={sources}
+          autoOff={autoOff}
+          programHubPath={programHubPath}
+        />
 
         {recipients.isLoading ? (
           <p className="text-sm text-muted-foreground">Loading admins…</p>
@@ -419,10 +449,13 @@ function ReportRow({ report, blocked }: { report: Report; blocked: boolean }) {
 export default function ReportsPanel({
   campaignId,
   linkedProgramCount,
+  programHubPath,
   onGoToPrograms,
 }: {
   campaignId: string;
   linkedProgramCount: number;
+  /** The only linked program's hub; null when there are none or several. */
+  programHubPath: string | null;
   onGoToPrograms: () => void;
 }) {
   const { data: reports, isLoading, isError, error, refetch } = useCampaignReports(campaignId);
@@ -449,11 +482,14 @@ export default function ReportsPanel({
       <GenerateCard
         campaignId={campaignId}
         linkedProgramCount={linkedProgramCount}
+        programHubPath={programHubPath}
         busy={inFlight.length > 0}
         onGoToPrograms={onGoToPrograms}
       />
 
-      <CampaignKolsCard campaignId={campaignId} />
+      <div id="campaign-kols" className="scroll-mt-6">
+        <CampaignKolsCard campaignId={campaignId} />
+      </div>
 
       <ZoomSectionCard
         title="Report history"
