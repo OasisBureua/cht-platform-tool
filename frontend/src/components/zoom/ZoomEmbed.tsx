@@ -349,7 +349,7 @@ export function ZoomEmbed({
           }
         >
           Click <strong>Enter session</strong> in the Zoom panel below to start audio and video (browsers require a
-          click inside the embed).
+          click inside the embed). If you hear echo, use headphones or keep yourself muted until you speak.
         </p>
       )}
 

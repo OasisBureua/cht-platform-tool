@@ -31,6 +31,30 @@ describe('ContentHubCampaignService campaign KOLs', () => {
     );
   });
 
+  it('requests report inputs for every source, uncached', async () => {
+    await service.getReportInputs(42, {
+      windowStart: '2026-09-16',
+      windowEnd: '2026-10-16',
+    });
+    expect(client.getAdmin).toHaveBeenCalledWith(
+      '/campaigns/42/report-inputs',
+      { windowStart: '2026-09-16', windowEnd: '2026-10-16' },
+      { cache: false },
+    );
+  });
+
+  it('omits windowStart when not set', async () => {
+    await service.getReportInputs('42', {
+      windowStart: null,
+      windowEnd: '2026-10-16',
+    });
+    expect(client.getAdmin).toHaveBeenCalledWith(
+      '/campaigns/42/report-inputs',
+      { windowStart: undefined, windowEnd: '2026-10-16' },
+      { cache: false },
+    );
+  });
+
   it('replaces attached KOLs with a PUT', async () => {
     await service.setCampaignKols('42', [kol.id]);
     expect(client.putAdmin).toHaveBeenCalledWith('/campaigns/42/kols', {

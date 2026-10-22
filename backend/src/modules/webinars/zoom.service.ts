@@ -829,7 +829,7 @@ export class ZoomService implements OnModuleInit {
    * Scheduled Zoom Meeting (type 2) tuned for real-world office hours:
    * - Join before host: attendees can open the link early; with waiting room on they wait until the host admits them
    * - Waiting room: set here via API (see settings.waiting_room); account-level Zoom settings can still enforce stricter rules
-   * - Mic/camera not forced off on entry (conversational Q&A)
+   * - Mute upon entry: reduces laptop speaker/mic echo; participants unmute when speaking
    * - VoIP + phone; multiple devices allowed
    */
   async createMeetingForOfficeHours(params: {
@@ -861,7 +861,7 @@ export class ZoomService implements OnModuleInit {
             join_before_host: true,
             jbh_time: 0,
             waiting_room: true,
-            mute_upon_entry: false,
+            mute_upon_entry: true,
             participant_video: true,
             audio: 'both',
             allow_multiple_devices: true,
