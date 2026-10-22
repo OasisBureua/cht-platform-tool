@@ -124,14 +124,14 @@ export default function Payments() {
           <p className="font-semibold">Finish your post-event survey</p>
           <p className="mt-1 text-steel-800 dark:text-steel-200">
             {payoutsReady
-              ? 'Your payout account looks ready. Return to submit your survey and request honorarium in one click.'
-              : 'Connect your bank and tax details below, then return to complete your survey and payment request.'}
+              ? 'Your payout account looks ready. Return to submit your survey.'
+              : 'Connect your bank and tax details below, then return to submit your survey.'}
           </p>
           <Link
             to={returnTo}
             className="mt-3 inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
           >
-            {payoutsReady ? 'Return to submit survey & request payment' : 'Return when payments are set up'}
+            {payoutsReady ? 'Return to submit survey' : 'Return when payments are set up'}
           </Link>
         </div>
       ) : null}

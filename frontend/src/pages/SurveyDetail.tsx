@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,6 +19,10 @@ import { programHasHonorarium } from '../utils/program-has-honorarium';
 
 const SURVEY_DETAIL_NATIVE_FORM_ID = 'survey-detail-native-form';
 
+function paymentsHref(returnTo: string) {
+  return `/app/payments?returnTo=${encodeURIComponent(returnTo)}`;
+}
+
 function typeLabel(type?: Survey['type']) {
   if (!type) return 'Survey';
   if (type === 'PRE_TEST') return 'Pre-test';
@@ -31,6 +35,7 @@ export default function SurveyDetail() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.userId ?? '';
   const paymentsReturnTo = `${location.pathname}${location.search}`;
@@ -70,8 +75,59 @@ export default function SurveyDetail() {
   const surveyAcked = isPostEventFeedback && !!programRegistration?.postEventSurveyAcknowledgedAt;
   // For FEEDBACK surveys, once acknowledged the form is permanently locked, no resubmission.
   const formLocked = surveyAcked;
+  const honorariumDone = !!(
+    programRegistration?.honorariumRequestedAt || programRegistration?.honorariumPayment
+  );
+  const {
+    data: honorariumPreview,
+    isError: honorariumPreviewError,
+    isFetched: honorariumPreviewFetched,
+  } = useQuery({
+    queryKey: ['programs', survey?.programId, 'honorarium-preview'],
+    queryFn: () => programsApi.getHonorariumPreview(survey!.programId),
+    enabled: Boolean(
+      userId &&
+        isPostEventFeedback &&
+        hasHonorarium &&
+        survey?.programId &&
+        registrationApproved &&
+        attendanceOkForPostEvent &&
+        !honorariumDone,
+    ),
+    retry: false,
+  });
+  const payoutReady = !!honorariumPreview?.hasPayoutAccount && !!honorariumPreview?.w9Submitted;
+  const payoutReadyOverride =
+    hasHonorarium && (honorariumPreviewFetched || honorariumPreviewError) ? payoutReady : null;
+
+  /**
+   * Separate payout step only when Stripe is not ready (draft → setup → return).
+   * Connected learners stay on the survey step with a single combined submit CTA.
+   */
   const showPayoutStep =
-    isPostEventFeedback && hasHonorarium && (surveyDraft || surveyAcked) && !programRegistration?.honorariumRequestedAt;
+    isPostEventFeedback &&
+    hasHonorarium &&
+    !honorariumDone &&
+    (surveyAcked || surveyDraft) &&
+    payoutReadyOverride !== true;
+
+  useEffect(() => {
+    if (surveyDraft || surveyAcked) setStarted(true);
+  }, [surveyDraft, surveyAcked]);
+
+  const finalizeSurveyAndHonorarium = async () => {
+    if (!id || !survey?.programId) return;
+    const mine = await surveysApi.getMyResponse(id);
+    const answers = mine.answers ?? {};
+    if (!mine.submitted) {
+      await surveysApi.submitResponse(id, { answers, draft: false });
+    }
+    await programsApi.requestPostEventHonorarium(survey.programId);
+    queryClient.invalidateQueries({ queryKey: ['surveys'] });
+    queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
+    queryClient.invalidateQueries({ queryKey: ['program', survey.programId, 'registration'] });
+    queryClient.invalidateQueries({ queryKey: ['programs', survey.programId, 'honorarium-preview'] });
+  };
 
   const submitMutation = useMutation({
     mutationFn: async (answers: Record<string, unknown>) =>
@@ -79,12 +135,27 @@ export default function SurveyDetail() {
         answers,
         ...(isPostEventFeedback && hasHonorarium ? { draft: true } : {}),
       }),
-    onSuccess: () => {
+    onSuccess: async (data) => {
       setNativeSurveyError(null);
       queryClient.invalidateQueries({ queryKey: ['surveys'] });
       queryClient.invalidateQueries({ queryKey: ['survey', id, 'my-response'] });
       if (survey?.programId) {
         queryClient.invalidateQueries({ queryKey: ['program', survey.programId, 'registration'] });
+      }
+      if (isPostEventFeedback && hasHonorarium && data?.draft) {
+        if (payoutReadyOverride === null) {
+          setNativeSurveyError('Still checking payout account. Try again in a moment.');
+          return;
+        }
+        if (payoutReadyOverride) {
+          try {
+            await finalizeSurveyAndHonorarium();
+          } catch {
+            setNativeSurveyError('Could not submit survey and payment request. Try again.');
+          }
+          return;
+        }
+        navigate(paymentsHref(paymentsReturnTo));
       }
     },
     onError: () => {
@@ -95,7 +166,14 @@ export default function SurveyDetail() {
   const handleCompleteNativeSurvey = () => {
     setNativeSurveyError(null);
     if (surveySaved || surveyAcked) return;
-    if (surveyDraft && hasHonorarium) return;
+    if (surveyDraft && hasHonorarium) {
+      if (payoutReadyOverride) {
+        void finalizeSurveyAndHonorarium().catch(() => {
+          setNativeSurveyError('Could not submit survey and payment request. Try again.');
+        });
+      }
+      return;
+    }
     const form = document.getElementById(SURVEY_DETAIL_NATIVE_FORM_ID) as HTMLFormElement | null;
     if (!form) return;
     if (!form.reportValidity()) {
@@ -197,8 +275,9 @@ export default function SurveyDetail() {
               </p>
             ) : showPayoutStep && surveyDraft ? (
               <p className="text-sm font-medium text-foreground bg-muted border border-border rounded-card px-4 py-3">
-                Your answers are saved as a draft. Finish payout setup below, then submit survey and payment
-                request in one click.
+                {payoutReadyOverride
+                  ? 'Your answers are saved as a draft. Account connected via Stripe — submit your survey below.'
+                  : 'Your answers are saved as a draft. Set up payments, then return here to submit your survey.'}
               </p>
             ) : !started ? (
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -257,6 +336,7 @@ export default function SurveyDetail() {
                     feedbackSurveyId={survey.id}
                     paymentsReturnTo={paymentsReturnTo}
                     payoutStepOnly={showPayoutStep}
+                    payoutReadyOverride={payoutReadyOverride}
                   />
                 </div>
               ) : null}
