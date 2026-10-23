@@ -7,6 +7,7 @@ import {
   InternalReportsController,
   ReportsNotifyM2mGuard,
 } from './internal-reports.controller';
+import { ReportGenerationLimitService } from './report-generation-limit.service';
 import { ReportReadyService } from './report-ready.service';
 import { ReportRecipientsService } from './report-recipients.service';
 import { ReportsAwsClients } from './reports-aws.clients';
@@ -26,6 +27,7 @@ import { ReportsService } from './reports.service';
     ReportsService,
     ReportReadyService,
     ReportsNotifyM2mGuard,
+    ReportGenerationLimitService,
   ],
 })
 export class ReportsModule {}

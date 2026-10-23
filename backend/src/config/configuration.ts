@@ -183,6 +183,15 @@ export default () => ({
       const parsed = parseInt(process.env.REPORTS_STALE_MINUTES || '', 10);
       return Number.isNaN(parsed) || parsed < 5 ? 20 : parsed;
     })(),
+    /** CPR-21: per-admin caps on Generate + Regenerate together. */
+    generatePerHour: (() => {
+      const parsed = parseInt(process.env.REPORTS_GENERATE_PER_HOUR || '', 10);
+      return Number.isNaN(parsed) || parsed < 1 ? 5 : parsed;
+    })(),
+    generatePerDay: (() => {
+      const parsed = parseInt(process.env.REPORTS_GENERATE_PER_DAY || '', 10);
+      return Number.isNaN(parsed) || parsed < 1 ? 20 : parsed;
+    })(),
   },
 
   // Surveys (optional survey bonus payment in cents, 0 = disabled)
