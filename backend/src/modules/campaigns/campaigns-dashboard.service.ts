@@ -9,6 +9,7 @@ import {
 import { ContentHubCampaignService } from '../content-hub/content-hub-campaign.service';
 import {
   accumulateMetricsFromUnknown,
+  applySocialClicksFromPosts,
   campaignNameFromDetail,
   countAssetsByType,
   EMPTY_CAMPAIGN_METRIC_TOTALS,
@@ -607,6 +608,8 @@ export class CampaignsDashboardService {
       },
       {
         includeEmailStatistics: marketingAccess.canReadEmailStats,
+        // Dashboard fetches the asset bundle itself below — skip duplicate.
+        includeAssetBundle: false,
         // Reuse dashboard-period fetch only when this row uses the same window.
         ...(sharedEmailStatistics &&
         periodStart === defaultStart &&
@@ -642,6 +645,8 @@ export class CampaignsDashboardService {
     const socialPosts = parseSocialPostsFromAssets(
       assetsByType.SOCIAL_BROADCAST ?? null,
     );
+    // Campaign object + SOCIAL_BROADCAST both carry the same click counters.
+    Object.assign(metrics, applySocialClicksFromPosts(metrics, socialPosts));
 
     const liveHasData = hasAnyMetricData(metrics);
     if (!liveHasData && ch?.hubspotRawData) {
