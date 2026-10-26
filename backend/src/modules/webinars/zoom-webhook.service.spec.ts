@@ -102,6 +102,8 @@ describe('ZoomWebhookService', () => {
         data: expect.objectContaining({
           title: 'Imported Oncology Webinar',
           description: 'Agenda text',
+          // Program.speakers is a required list; omitting it fails the insert.
+          speakers: [],
           status: 'DRAFT',
           zoomSessionType: 'WEBINAR',
           zoomMeetingId: '81517150352',
