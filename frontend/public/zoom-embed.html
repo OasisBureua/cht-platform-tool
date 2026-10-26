@@ -202,6 +202,40 @@
           sdkReady = true;
         }
 
+        /**
+         * Acoustic feedback (echo) is common when laptop speakers + mic are both open.
+         * Mute non-hosts on join; they can unmute from the Zoom toolbar when speaking.
+         * Hosts (role 1) stay unmuted so they can start the session immediately.
+         */
+        function muteSelfIfParticipant(creds) {
+          if (!window.ZoomMtg) return;
+          if (Number(creds && creds.role) === 1) return;
+          try {
+            ZoomMtg.getCurrentUser({
+              success: function (data) {
+                var user =
+                  data &&
+                  data.result &&
+                  (data.result.currentUser || data.result);
+                var userId = user && user.userId;
+                if (userId == null || typeof ZoomMtg.mute !== 'function') return;
+                ZoomMtg.mute({
+                  userId: userId,
+                  mute: true,
+                  error: function () {
+                    /* non-fatal — Zoom webinar attendees may already lack mic */
+                  },
+                });
+              },
+              error: function () {
+                /* ignore */
+              },
+            });
+          } catch (e) {
+            /* ignore */
+          }
+        }
+
         function join(creds) {
           setStatus('Connecting to Zoom…');
           showGate(false);
@@ -212,6 +246,8 @@
             patchJsMedia: true,
             // Prefer full client chrome (speaker view / gallery / share) like Zoom web.
             disableCORP: !window.crossOriginIsolated,
+            // Skip A/V preview so participants don't accidentally join with mic hot.
+            disablePreview: true,
             success: function () {
               ZoomMtg.join({
                 signature: creds.signature,
@@ -225,6 +261,7 @@
                 success: function () {
                   joined = true;
                   setStatus('');
+                  muteSelfIfParticipant(creds);
                   post({
                     type: 'cht-zoom-joined',
                     crossOriginIsolated: !!window.crossOriginIsolated,
@@ -275,7 +312,11 @@
         function armJoin(creds) {
           pendingCreds = creds;
           setStatus('');
-          if (GATE_META) GATE_META.textContent = isolationMeta();
+          if (GATE_META) {
+            GATE_META.textContent =
+              isolationMeta() +
+              ' Tip: headphones (or staying muted until you speak) help avoid echo from laptop speakers.';
+          }
           showGate(true);
           post({
             type: 'cht-zoom-armed',

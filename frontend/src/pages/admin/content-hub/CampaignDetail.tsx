@@ -404,10 +404,10 @@ export default function CampaignDetail() {
 
   const { data: campaign, isLoading, isError, error } = useCampaign(id);
   const { data: programs } = useCampaignLinkPrograms();
-  const linkedCount = useMemo(
-    () => (programs ?? []).filter((p) => p.campaignId === id).length,
-    [programs, id],
-  );
+  const linked = useMemo(() => (programs ?? []).filter((p) => p.campaignId === id), [programs, id]);
+  const linkedCount = linked.length;
+  // Where "Pull from Zoom" goes: the only linked program's hub.
+  const programHubPath = linked.length === 1 ? `/admin/programs/${linked[0].id}/hub` : null;
 
   const segments = [
     { value: 'reports' as const, label: 'Reports' },
@@ -484,6 +484,7 @@ export default function CampaignDetail() {
           <ReportsPanel
             campaignId={id}
             linkedProgramCount={linkedCount}
+            programHubPath={programHubPath}
             onGoToPrograms={() => setTab('programs')}
           />
         )}

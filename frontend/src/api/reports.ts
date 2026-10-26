@@ -218,3 +218,35 @@ export const campaignKolsApi = {
     return data?.items ?? [];
   },
 };
+
+export type ReportSourceInput = {
+  fetchedAt: string | null;
+  rowCount: number;
+  status: 'ok' | 'missing' | 'error';
+};
+
+/** CPR-51 — what Generate would find per source, as of the Hub's last sync. */
+export type ReportInputs = {
+  campaignId: number;
+  windowStart: string | null;
+  windowEnd: string | null;
+  sources: string[];
+  inputCompleteness: Record<string, ReportSourceInput>;
+  registeredCount: number | null;
+  attendedCount: number | null;
+  attendeesWithProfile: number | null;
+};
+
+export const reportInputsApi = {
+  get: async (
+    campaignId: string,
+    params: { dateRangeDays: DateRangeDays },
+  ): Promise<ReportInputs> => {
+    // Every source; the Generate toggles do not change the check.
+    const { data } = await apiClient.get<ReportInputs>(
+      `/admin/content-hub/campaigns/${campaignId}/report-inputs`,
+      { params },
+    );
+    return data;
+  },
+};

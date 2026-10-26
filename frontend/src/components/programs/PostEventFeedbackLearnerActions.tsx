@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
+import { CheckCircle2 } from 'lucide-react';
 import { programsApi, type ProgramRegistrationState } from '../../api/programs';
 import { surveysApi } from '../../api/surveys';
 import { StripeMark } from '../branding/StripeMark';
@@ -41,7 +42,9 @@ export function PostEventAttendanceMessage(props: {
 
 /**
  * Post-event survey + optional honorarium confirmation (program page and Surveys tab).
- * Native path: draft-save answers first, then one final click completes survey + honorarium.
+ *
+ * Connected Stripe: one CTA submits survey + payment request.
+ * Not connected: draft-save → Payments setup (returnTo) → same final CTA.
  */
 export function PostEventFeedbackLearnerActions(props: {
   programId: string;
@@ -74,6 +77,11 @@ export function PostEventFeedbackLearnerActions(props: {
   feedbackSurveyId?: string;
   /** After payment setup, return here (e.g. `/app/live/:id`). */
   paymentsReturnTo?: string;
+  /**
+   * Optional override for payout readiness (parent may already have fetched preview).
+   * When omitted, this component loads honorarium preview itself.
+   */
+  payoutReadyOverride?: boolean | null;
 }) {
   const {
     programId,
@@ -93,6 +101,7 @@ export function PostEventFeedbackLearnerActions(props: {
     payoutStepOnly = false,
     feedbackSurveyId,
     paymentsReturnTo,
+    payoutReadyOverride = null,
   } = props;
   const queryClient = useQueryClient();
   const payLink = paymentsHref(paymentsReturnTo);
@@ -118,6 +127,13 @@ export function PostEventFeedbackLearnerActions(props: {
     attendanceOk &&
     approved &&
     (manualSurveyAckRequired || nativeSurveyMode);
+
+  const needsPayoutPreview =
+    hasHonorarium &&
+    approved &&
+    attendanceOk &&
+    !honorariumDone &&
+    (showAckBlock || showPayoutBlock);
 
   const invalidateAfterSurvey = () => {
     queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
@@ -172,18 +188,27 @@ export function PostEventFeedbackLearnerActions(props: {
     },
   });
 
-  const { data: preview, isError: previewError } = useQuery({
+  const { data: preview, isError: previewError, isLoading: previewLoading } = useQuery({
     queryKey: ['programs', programId, 'honorarium-preview'],
     queryFn: () => programsApi.getHonorariumPreview(programId),
-    enabled: showPayoutBlock,
+    enabled: needsPayoutPreview && payoutReadyOverride === null,
     retry: false,
   });
 
   const hasPayoutAccount = !!preview?.hasPayoutAccount;
-  const payoutReady = hasPayoutAccount && !!preview?.w9Submitted && !previewError;
+  const previewPayoutReady = hasPayoutAccount && !!preview?.w9Submitted && !previewError;
+  const payoutReady =
+    payoutReadyOverride !== null ? payoutReadyOverride : previewPayoutReady;
+  const waitingOnPayoutStatus =
+    hasHonorarium && payoutReadyOverride === null && (previewLoading || (!preview && !previewError));
 
   const completeSurveyDisabled = nativeSurveyMode
-    ? surveyFormSubmitting || ackMut.isPending || surveyAcked || ackMut.isSuccess
+    ? surveyFormSubmitting ||
+      ackMut.isPending ||
+      finalizeMut.isPending ||
+      surveyAcked ||
+      ackMut.isSuccess ||
+      waitingOnPayoutStatus
     : !surveyReadyForAck ||
       ackMut.isPending ||
       !!myRegistration?.postEventSurveyAcknowledgedAt ||
@@ -197,21 +222,74 @@ export function PostEventFeedbackLearnerActions(props: {
     ackMut.mutateAsync().catch(() => {});
   };
 
+  const handleFinalSubmit = () => {
+    if (nativeSurveyMode || feedbackSurveyId) {
+      finalizeMut.mutateAsync().catch(() => {});
+    } else if (surveyAcked) {
+      payMut.mutateAsync().catch(() => {});
+    } else {
+      finalizeMut.mutateAsync().catch(() => {});
+    }
+  };
+
+  const finalSubmitBusy =
+    finalizeMut.isPending ||
+    payMut.isPending ||
+    !!myRegistration?.honorariumRequestedAt ||
+    !!myRegistration?.honorariumPayment ||
+    finalizeMut.isSuccess ||
+    payMut.isSuccess;
+
+  const finalSubmitLabel =
+    finalizeMut.isPending || payMut.isPending
+      ? 'Submitting…'
+      : myRegistration?.honorariumRequestedAt ||
+          myRegistration?.honorariumPayment ||
+          finalizeMut.isSuccess ||
+          payMut.isSuccess
+        ? 'Request submitted'
+        : 'Submit survey';
+
   if (!myRegistration || !approved) {
     return null;
   }
+
+  const connectedStatus = (
+    <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
+      <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+      <span className="inline-flex flex-wrap items-center gap-1.5">
+        Account connected via <StripeMark size="xs" className="translate-y-px" />
+      </span>
+    </p>
+  );
 
   return (
     <div className="space-y-4">
       {showAckBlock ? (
         <div className="space-y-3">
           {nativeSurveyMode ? (
-            <p className="text-sm text-muted-foreground">
-              Complete the survey below, then tap <strong>Continue</strong> to save your answers
-              {hasHonorarium
-                ? '. Next you will confirm payout (or set up payments if needed) and finish in one click.'
-                : '.'}
-            </p>
+            hasHonorarium ? (
+              waitingOnPayoutStatus ? (
+                <p className="text-sm text-muted-foreground">Checking payout account…</p>
+              ) : payoutReady ? (
+                <>
+                  {connectedStatus}
+                  <p className="text-sm text-muted-foreground">
+                    Complete the survey below, then tap <strong>Submit survey</strong> to finish.
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Complete the survey below, then tap <strong>Continue</strong> to save a draft and set up your{' '}
+                  <StripeMark size="sm" className="translate-y-px" /> payout account. You will return here to
+                  submit the survey and payment request together.
+                </p>
+              )
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Complete the survey below, then tap <strong>Continue</strong> to save your answers.
+              </p>
+            )
           ) : surveyReadyForAck ? (
             <p className="text-sm text-muted-foreground">
               {betweenAckHelpAndButton ? (
@@ -252,14 +330,18 @@ export function PostEventFeedbackLearnerActions(props: {
             className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
           >
             {nativeSurveyMode && surveyFormSubmitting
-              ? 'Saving…'
+              ? hasHonorarium && payoutReady
+                ? 'Submitting…'
+                : 'Saving…'
               : ackMut.isPending
                 ? 'Saving…'
                 : myRegistration.postEventSurveyAcknowledgedAt || ackMut.isSuccess
                   ? 'Survey recorded'
-                  : nativeSurveyMode
-                    ? 'Continue'
-                    : 'Complete survey'}
+                  : nativeSurveyMode && hasHonorarium && payoutReady
+                    ? 'Submit survey'
+                    : nativeSurveyMode
+                      ? 'Continue'
+                      : 'Complete survey'}
           </button>
           {!nativeSurveyMode && ackMut.isError ? (
             <p className="text-sm text-destructive">Could not save progress. Check your connection and try again.</p>
@@ -269,123 +351,49 @@ export function PostEventFeedbackLearnerActions(props: {
 
       {showPayoutBlock ? (
         <div className="space-y-4">
-          <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-            Your survey answers are saved as a draft. Review the payout details for your honorarium
-            {payoutReady ? (
-              <>
-                , then tap <strong>Submit survey &amp; request payment</strong> to finish both in one step.
-              </>
-            ) : (
-              <>
-                . Set up your{' '}
-                <StripeMark size="sm" className="translate-y-px" /> bank and tax details under Payments, then
-                return here to finish in one click.
-              </>
-            )}
-          </p>
-          {previewError ? (
-            <p className="text-sm text-destructive">
-              Could not load payout preview. Open Payments to finish setup, then try again.
-            </p>
-          ) : !preview ? (
-            <p className="text-sm text-muted-foreground">Loading payout summary…</p>
+          {waitingOnPayoutStatus ? (
+            <p className="text-sm text-muted-foreground">Loading payout status…</p>
+          ) : payoutReady ? (
+            <>
+              {connectedStatus}
+              <p className="text-sm text-muted-foreground">
+                Your survey answers are saved as a draft. Tap <strong>Submit survey</strong> to finish.
+              </p>
+              {preview?.programTitle ? (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-medium text-foreground">Program: </span>
+                  {preview.programTitle}
+                </p>
+              ) : null}
+              <button
+                type="button"
+                disabled={finalSubmitBusy}
+                onClick={handleFinalSubmit}
+                className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
+              >
+                {finalSubmitLabel}
+              </button>
+            </>
           ) : (
-            <ul className="rounded-[6px] border border-border bg-muted px-4 py-3 text-sm text-foreground space-y-2">
-              <li>
-                <span className="font-medium text-foreground">Program: </span>
-                {preview.programTitle}
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Honorarium: </span>
-                Eligible (amount set by admin)
-              </li>
-              <li>
-                <span className="font-medium text-foreground">Legal name / business: </span>
-                {preview.payeeDisplayName}
-              </li>
-              {preview.maskedBankLast4 ? (
-                <li>
-                  <span className="font-medium text-foreground">Bank account: </span>
-                  {preview.maskedBankLast4}
-                </li>
-              ) : (
-                <li className="text-amber-900">
-                  Bank account on file could not be displayed. Confirm your details under{' '}
-                  <Link to={payLink} className="font-semibold underline">
-                    Payments
-                  </Link>
-                  .
-                </li>
-              )}
-              {preview.addressSummary ? (
-                <li>
-                  <span className="font-medium text-foreground">Address on profile: </span>
-                  {preview.addressSummary}
-                </li>
+            <>
+              <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
+                Your survey answers are saved as a draft. Set up your{' '}
+                <StripeMark size="sm" className="translate-y-px" /> bank and tax details, then return here to
+                submit the survey and payment request together.
+              </p>
+              {previewError ? (
+                <p className="text-sm text-destructive">
+                  Could not load payout status. Open Payments to finish setup, then try again.
+                </p>
               ) : null}
-              {!hasPayoutAccount ? (
-                <li className="text-amber-900 flex flex-wrap items-center gap-x-1 gap-y-1">
-                  Connect your{' '}
-                  <StripeMark size="xs" className="translate-y-px" /> payout account under{' '}
-                  <Link to={payLink} className="font-semibold underline">
-                    Payments
-                  </Link>{' '}
-                  before finishing.
-                </li>
-              ) : null}
-              {!preview.w9Submitted ? (
-                <li className="text-amber-900">
-                  Finish tax details in your{' '}
-                  <StripeMark size="xs" className="translate-y-px" /> onboarding under{' '}
-                  <Link to={payLink} className="font-semibold underline">
-                    Payments
-                  </Link>{' '}
-                  before finishing.
-                </li>
-              ) : null}
-            </ul>
+              <Link
+                to={payLink}
+                className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
+              >
+                Set up payments
+              </Link>
+            </>
           )}
-
-          {!payoutReady && preview ? (
-            <Link
-              to={payLink}
-              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
-            >
-              Set up payments
-            </Link>
-          ) : null}
-
-          {payoutReady ? (
-            <button
-              type="button"
-              disabled={
-                finalizeMut.isPending ||
-                finalizeMut.isSuccess ||
-                payMut.isPending ||
-                !!myRegistration.honorariumRequestedAt ||
-                !!myRegistration.honorariumPayment
-              }
-              onClick={() => {
-                if (nativeSurveyMode || feedbackSurveyId) {
-                  finalizeMut.mutateAsync().catch(() => {});
-                } else if (surveyAcked) {
-                  payMut.mutateAsync().catch(() => {});
-                } else {
-                  finalizeMut.mutateAsync().catch(() => {});
-                }
-              }}
-              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
-            >
-              {finalizeMut.isPending || payMut.isPending
-                ? 'Submitting…'
-                : myRegistration.honorariumRequestedAt ||
-                    myRegistration.honorariumPayment ||
-                    finalizeMut.isSuccess ||
-                    payMut.isSuccess
-                  ? 'Request submitted'
-                  : 'Submit survey & request payment'}
-            </button>
-          ) : null}
 
           {finalizeMut.isError || payMut.isError ? (
             <p className="text-sm text-destructive">

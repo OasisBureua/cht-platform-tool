@@ -303,6 +303,8 @@ export class ZoomWebhookService {
         description,
         sponsorName: '',
         creditAmount: 0,
+        // Required list; admins add speakers when they review the draft.
+        speakers: [],
         status: 'DRAFT',
         zoomSessionType: sessionType,
         zoomMeetingId,
