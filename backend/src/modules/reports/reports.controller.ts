@@ -22,6 +22,7 @@ import { CurrentUser } from '../../auth/current-user.decorator';
 import type { AuthUser } from '../../auth/auth.service';
 import { CreateReportDto } from './dto/create-report.dto';
 import { RegenerateReportDto } from './dto/regenerate-report.dto';
+import { ReportGenerationLimitService } from './report-generation-limit.service';
 import { ReportsService } from './reports.service';
 import {
   ReportRecipientsService,
@@ -38,6 +39,7 @@ export class ReportsController {
   constructor(
     private readonly reports: ReportsService,
     private readonly recipients: ReportRecipientsService,
+    private readonly limits: ReportGenerationLimitService,
   ) {}
 
   @Get('notify-recipients')
@@ -52,13 +54,19 @@ export class ReportsController {
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary:
-      'Queue a report: syncs Hub warehouse, freezes the window, takes the campaign/template lock, enqueues for cht-reports',
+      'Queue a report: syncs Hub warehouse, freezes the window, takes the campaign/template lock, enqueues for cht-reports. 429 over the per-admin Generate/Regenerate caps.',
   })
-  create(
+  async create(
     @Body() dto: CreateReportDto,
     @CurrentUser() user: AuthUser,
   ): Promise<ReportView> {
-    return this.reports.create(dto, user.userId);
+    const release = await this.limits.reserve(user.userId);
+    try {
+      return await this.reports.create(dto, user.userId);
+    } catch (err) {
+      await release();
+      throw err;
+    }
   }
 
   @Post('campaigns/:campaignId/refresh-data')
@@ -95,18 +103,25 @@ export class ReportsController {
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary:
-      'Regenerate a completed report. 409 if not complete or the edit limit is reached.',
+      'Regenerate a completed report. 409 if not complete or the edit limit is reached; 429 over the per-admin Generate/Regenerate caps.',
   })
-  regenerate(
+  async regenerate(
     @Param('id', new ParseUUIDPipe()) id: string,
     @Body() body: RegenerateReportDto,
+    @CurrentUser() user: AuthUser,
     @Query('campaignId') campaignId?: string,
   ): Promise<ReportView> {
-    return this.reports.regenerate(
-      id,
-      campaignId?.trim() || undefined,
-      body?.editInstructions,
-    );
+    const release = await this.limits.reserve(user.userId);
+    try {
+      return await this.reports.regenerate(
+        id,
+        campaignId?.trim() || undefined,
+        body?.editInstructions,
+      );
+    } catch (err) {
+      await release();
+      throw err;
+    }
   }
 
   @Get(':id/download')
