@@ -1054,7 +1054,12 @@ export class CampaignsFunnelService {
                 reportingPeriodStart: input.reportingPeriodStart,
                 reportingPeriodEnd: input.reportingPeriodEnd,
               },
-              { includeEmailStatistics: false },
+              {
+                includeEmailStatistics: false,
+                // Keep funnel live calls lean; social clicks come from cached
+                // hubspotRawData after Content Hub sync (assetsByType).
+                includeAssetBundle: false,
+              },
             );
             metrics = mergeMetricTotals(
               accumulateMetricsFromUnknown(snapshot.metrics),

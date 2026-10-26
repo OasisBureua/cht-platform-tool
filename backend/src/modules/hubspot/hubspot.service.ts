@@ -4,7 +4,9 @@ import { isTestAccountEmail } from '../../common/test-accounts';
 
 import {
   parseHubSpotCampaignList,
+  parseSocialPostsFromAssets,
   type HubSpotCampaignListItem,
+  type HubSpotSocialPost,
 } from './hubspot-campaign-metrics.util';
 import {
   dedupeStrings,
@@ -12,6 +14,11 @@ import {
   humanizeHubSpotPermissionError,
   parseHubSpotApiError,
 } from './hubspot-error.util';
+import {
+  applyBroadcastEnrichment,
+  HUBSPOT_SOCIAL_BROADCAST_SCOPE,
+  parseBroadcastEnrichment,
+} from './hubspot-social-broadcast.util';
 
 const HUBSPOT_API_BASE = 'https://api.hubapi.com';
 const ACCOUNT_META_TTL_MS = 5 * 60 * 1000;
@@ -31,6 +38,35 @@ export const HUBSPOT_CAMPAIGN_ASSET_TYPES = [
 
 export type HubSpotCampaignAssetType =
   (typeof HUBSPOT_CAMPAIGN_ASSET_TYPES)[number];
+
+/** HubSpot assets page size (API allows 1–100). */
+const CAMPAIGN_ASSET_PAGE_LIMIT = 100;
+/** Safety cap: 10 pages × 100 = 1000 assets per type. */
+const CAMPAIGN_ASSET_MAX_PAGES = 10;
+
+export type HubSpotCampaignAssetsResult = {
+  results: unknown[];
+  /** True when more pages existed beyond CAMPAIGN_ASSET_MAX_PAGES. */
+  truncated?: boolean;
+};
+
+function assetsPagingAfter(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const paging = (raw as Record<string, unknown>).paging;
+  if (!paging || typeof paging !== 'object') return null;
+  const next = (paging as Record<string, unknown>).next;
+  if (!next || typeof next !== 'object') return null;
+  const after = (next as Record<string, unknown>).after;
+  return typeof after === 'string' && after.trim() ? after.trim() : null;
+}
+
+function isTruncatedAssetsPayload(raw: unknown): boolean {
+  return Boolean(
+    raw &&
+      typeof raw === 'object' &&
+      (raw as HubSpotCampaignAssetsResult).truncated === true,
+  );
+}
 
 export interface HubSpotContactProperties {
   email: string;
@@ -121,7 +157,20 @@ export interface HubSpotCampaignAnalyticsSnapshot {
   accountName: string | null;
   campaign: unknown;
   metrics: unknown;
+  /** Legacy MARKETING_EMAIL asset list (unchanged for older Hub readers). */
   assets: unknown;
+  /**
+   * Extra campaign asset buckets (SOCIAL_BROADCAST, LANDING_PAGE, …).
+   * MARKETING_EMAIL stays in `assets` only — not duplicated here.
+   */
+  assetsByType?: Record<string, unknown>;
+  /** Normalized SOCIAL_BROADCAST posts (clicks per network). */
+  socialPosts?: HubSpotSocialPost[];
+  /**
+   * Raw legacy broadcast payloads keyed by broadcast id (Social API).
+   * Omitted when enrich is skipped or the `social` scope is missing.
+   */
+  socialBroadcastDetails?: Record<string, unknown>;
   emailStatistics: unknown;
   warnings: string[];
   errors: string[];
@@ -146,7 +195,21 @@ export type HubSpotCampaignAnalyticsOptions = {
     data: unknown;
     warning?: string;
   };
+  /**
+   * Fetch non-email asset types (incl. SOCIAL_BROADCAST) into `assetsByType`.
+   * Defaults to true so Content Hub sync stores social posts. Dashboard / funnel
+   * live paths that already call `getCampaignAssetsBundle` should pass false.
+   */
+  includeAssetBundle?: boolean;
+  /**
+   * Soft-enrich social posts via legacy GET /broadcast/v1/broadcasts/{id}
+   * (channel, URL, publishedAt). Requires private-app scope `social`.
+   * Defaults to true when the asset bundle is included; failures are warnings only.
+   */
+  includeSocialBroadcastDetails?: boolean;
 };
+
+const SOCIAL_BROADCAST_ENRICH_CONCURRENCY = 4;
 
 /** Reject blank / placeholder secrets that would only produce HubSpot 401 noise. */
 function normalizeHubSpotToken(raw: string | undefined | null): string | null {
@@ -166,6 +229,18 @@ function toIsoDate(value: string | null | undefined): string | null {
   // Accept YYYY-MM-DD or full ISO; normalize to YYYY-MM-DD for campaign metrics.
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
   return match?.[1] ?? null;
+}
+
+/** Same 90-day window the Campaigns dashboard uses when period is unset. */
+function defaultAssetMetricsWindow(now = new Date()): {
+  startDate: string;
+  endDate: string;
+} {
+  const end = new Date(now);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - 90);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { startDate: fmt(start), endDate: fmt(end) };
 }
 
 function dayBoundsMs(
@@ -748,18 +823,34 @@ export class HubSpotService {
   ): Promise<HubSpotCampaignAnalyticsSnapshot> {
     const syncedAt = new Date().toISOString();
     const hubspotCampaignId = input.hubspotCampaignId?.trim() ?? '';
-    const reportingPeriodStart = toIsoDate(input.reportingPeriodStart) ?? '';
-    const reportingPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
     const warnings: string[] = [];
     const errors: string[] = [];
     const includeEmailStatistics = options.includeEmailStatistics !== false;
+    const includeAssetBundle = options.includeAssetBundle !== false;
+    const includeSocialBroadcastDetails =
+      options.includeSocialBroadcastDetails ?? includeAssetBundle;
     const emailPrefetch = options.emailStatisticsPrefetch;
+
+    let reportingPeriodStart = toIsoDate(input.reportingPeriodStart) ?? '';
+    let reportingPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
+    // HubSpot asset metrics (incl. SOCIAL_BROADCAST clicks) require dates.
+    if (!reportingPeriodStart || !reportingPeriodEnd) {
+      const fallback = defaultAssetMetricsWindow();
+      if (!reportingPeriodStart) reportingPeriodStart = fallback.startDate;
+      if (!reportingPeriodEnd) reportingPeriodEnd = fallback.endDate;
+      warnings.push(
+        'Reporting period missing or incomplete; using last-90-days window for HubSpot metrics and assets.',
+      );
+    }
 
     const account = await this.getAccountMetadata();
 
     let campaign: unknown = null;
     let metrics: unknown = null;
     let assets: unknown = null;
+    let assetsByType: Record<string, unknown> | undefined;
+    let socialPosts: HubSpotSocialPost[] | undefined;
+    let socialBroadcastDetails: Record<string, unknown> | undefined;
     let emailStatistics: unknown = null;
 
     if (!hubspotCampaignId) {
@@ -778,20 +869,18 @@ export class HubSpotService {
           'hs_notes',
         ].join(','),
       );
-      if (reportingPeriodStart)
-        campaignQs.set('startDate', reportingPeriodStart);
-      if (reportingPeriodEnd) campaignQs.set('endDate', reportingPeriodEnd);
+      campaignQs.set('startDate', reportingPeriodStart);
+      campaignQs.set('endDate', reportingPeriodEnd);
       const campaignPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}` +
         `?${campaignQs}`;
 
       const metricsQs = new URLSearchParams();
-      if (reportingPeriodStart)
-        metricsQs.set('startDate', reportingPeriodStart);
-      if (reportingPeriodEnd) metricsQs.set('endDate', reportingPeriodEnd);
+      metricsQs.set('startDate', reportingPeriodStart);
+      metricsQs.set('endDate', reportingPeriodEnd);
       const metricsPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/reports/metrics` +
-        (metricsQs.toString() ? `?${metricsQs}` : '');
+        `?${metricsQs}`;
 
       const [campaignResult, metricsResult, assetsResult] = await Promise.all([
         this.requestJson(campaignPath, { method: 'GET' })
@@ -801,8 +890,8 @@ export class HubSpotService {
           .then((value) => ({ ok: true as const, value }))
           .catch((err: unknown) => ({ ok: false as const, err })),
         this.getCampaignAssets(hubspotCampaignId, 'MARKETING_EMAIL', {
-          startDate: reportingPeriodStart || undefined,
-          endDate: reportingPeriodEnd || undefined,
+          startDate: reportingPeriodStart,
+          endDate: reportingPeriodEnd,
         })
           .then((value) => ({ ok: true as const, value }))
           .catch((err: unknown) => ({ ok: false as const, err })),
@@ -834,6 +923,11 @@ export class HubSpotService {
 
       if (assetsResult.ok) {
         assets = assetsResult.value;
+        if (isTruncatedAssetsPayload(assets)) {
+          warnings.push(
+            `assets: MARKETING_EMAIL truncated at ${CAMPAIGN_ASSET_MAX_PAGES} pages (${CAMPAIGN_ASSET_PAGE_LIMIT}/page).`,
+          );
+        }
       } else {
         warnings.push(
           `assets: ${
@@ -842,6 +936,52 @@ export class HubSpotService {
               : String(assetsResult.err)
           }`,
         );
+      }
+
+      if (includeAssetBundle) {
+        const bundle = await this.getCampaignAssetsBundle(hubspotCampaignId, {
+          startDate: reportingPeriodStart,
+          endDate: reportingPeriodEnd,
+        });
+        assetsByType = {};
+        let softFails = 0;
+        const truncatedTypes: string[] = [];
+        for (const [assetType, payload] of Object.entries(bundle)) {
+          if (payload == null) {
+            softFails += 1;
+            continue;
+          }
+          assetsByType[assetType] = payload;
+          if (isTruncatedAssetsPayload(payload)) {
+            truncatedTypes.push(assetType);
+          }
+        }
+        if (softFails > 0) {
+          warnings.push(
+            `assetsByType: ${softFails} asset type(s) unavailable (soft-fail).`,
+          );
+        }
+        if (truncatedTypes.length > 0) {
+          warnings.push(
+            `assetsByType truncated (max ${CAMPAIGN_ASSET_MAX_PAGES} pages): ${truncatedTypes.join(', ')}.`,
+          );
+        }
+        socialPosts = parseSocialPostsFromAssets(
+          assetsByType.SOCIAL_BROADCAST ?? null,
+        );
+
+        if (
+          includeSocialBroadcastDetails &&
+          socialPosts.length > 0 &&
+          !this.authDisabled
+        ) {
+          const enrich = await this.enrichSocialPostsWithBroadcasts(socialPosts);
+          socialPosts = enrich.posts;
+          if (Object.keys(enrich.details).length > 0) {
+            socialBroadcastDetails = enrich.details;
+          }
+          if (enrich.warning) warnings.push(enrich.warning);
+        }
       }
     }
 
@@ -871,10 +1011,101 @@ export class HubSpotService {
       campaign,
       metrics,
       assets,
+      ...(assetsByType ? { assetsByType } : {}),
+      ...(socialPosts ? { socialPosts } : {}),
+      ...(socialBroadcastDetails ? { socialBroadcastDetails } : {}),
       emailStatistics,
       warnings,
       errors,
     };
+  }
+
+  /**
+   * Legacy Social Media API — one broadcast (soft; caller handles errors).
+   * Requires private-app scope `social`.
+   */
+  async getBroadcastById(broadcastGuid: string): Promise<unknown> {
+    const id = broadcastGuid.trim();
+    if (!id) throw new Error('broadcastGuid is required');
+    return this.requestJson(
+      `/broadcast/v1/broadcasts/${encodeURIComponent(id)}`,
+      { method: 'GET' },
+    );
+  }
+
+  /**
+   * Soft-enrich SOCIAL_BROADCAST posts with channel / URL / publish time.
+   * Missing `social` scope or per-id failures never throw — warning only.
+   */
+  async enrichSocialPostsWithBroadcasts(
+    posts: HubSpotSocialPost[],
+  ): Promise<{
+    posts: HubSpotSocialPost[];
+    details: Record<string, unknown>;
+    warning?: string;
+  }> {
+    if (!posts.length) {
+      return { posts, details: {} };
+    }
+
+    const details: Record<string, unknown> = {};
+    const enriched = posts.map((p) => ({ ...p }));
+    let scopeMissing = false;
+    let hardFailures = 0;
+    let cursor = 0;
+
+    const workers = Array.from(
+      {
+        length: Math.min(SOCIAL_BROADCAST_ENRICH_CONCURRENCY, posts.length),
+      },
+      async () => {
+        while (cursor < posts.length) {
+          if (scopeMissing || this.authDisabled) return;
+          const index = cursor++;
+          const post = posts[index];
+          try {
+            const raw = await this.getBroadcastById(post.id);
+            details[post.id] = raw;
+            const parsed = parseBroadcastEnrichment(raw);
+            if (parsed) {
+              enriched[index] = applyBroadcastEnrichment(post, parsed);
+            }
+          } catch (err: unknown) {
+            const parsedErr = parseHubSpotApiError(err);
+            const msg = err instanceof Error ? err.message : String(err);
+            const missingSocial =
+              parsedErr.missingScopes.includes(HUBSPOT_SOCIAL_BROADCAST_SCOPE) ||
+              parsedErr.category === 'MISSING_SCOPES' ||
+              /MISSING_SCOPES|missing scope|social/i.test(msg);
+
+            if (parsedErr.status === 403 || missingSocial) {
+              // Stop further enrich calls — same token won't gain the scope mid-run.
+              scopeMissing = true;
+              return;
+            }
+            hardFailures += 1;
+            this.logger.debug(
+              `[HubSpot] broadcast enrich failed for ${post.id}: ${msg}`,
+            );
+          }
+        }
+      },
+    );
+
+    await Promise.all(workers);
+
+    let warning: string | undefined;
+    if (scopeMissing) {
+      warning =
+        `socialBroadcastDetails: HubSpot token missing \`${HUBSPOT_SOCIAL_BROADCAST_SCOPE}\` scope ` +
+        `(or Social API forbidden). Add it to the private app for channel/URL/publish time; sync continues without enrich.`;
+    } else if (hardFailures > 0 && Object.keys(details).length === 0) {
+      warning = `socialBroadcastDetails: all ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
+    } else if (hardFailures > 0) {
+      warning = `socialBroadcastDetails: ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
+    }
+
+    return { posts: enriched, details, warning };
   }
 
   /**
@@ -1114,20 +1345,61 @@ export class HubSpotService {
     return out;
   }
 
-  /** Fetch assets for a single campaign asset type. */
+  /**
+   * Fetch all assets for a campaign asset type (paginated).
+   * Follows `paging.next.after` until exhausted or the safety page cap.
+   */
   async getCampaignAssets(
     hubspotCampaignId: string,
     assetType: HubSpotCampaignAssetType,
-    options: { limit?: number; startDate?: string; endDate?: string } = {},
-  ): Promise<unknown> {
-    const limit = options.limit ?? 50;
-    const qs = new URLSearchParams({ limit: String(limit) });
-    if (options.startDate) qs.set('startDate', options.startDate);
-    if (options.endDate) qs.set('endDate', options.endDate);
-    return this.requestJson(
-      `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/${assetType}?${qs}`,
-      { method: 'GET' },
+    options: {
+      limit?: number;
+      startDate?: string;
+      endDate?: string;
+      maxPages?: number;
+    } = {},
+  ): Promise<HubSpotCampaignAssetsResult> {
+    const pageLimit = Math.min(
+      Math.max(options.limit ?? CAMPAIGN_ASSET_PAGE_LIMIT, 1),
+      CAMPAIGN_ASSET_PAGE_LIMIT,
     );
+    const maxPages = Math.min(
+      Math.max(options.maxPages ?? CAMPAIGN_ASSET_MAX_PAGES, 1),
+      CAMPAIGN_ASSET_MAX_PAGES,
+    );
+
+    const results: unknown[] = [];
+    let after: string | null = null;
+    let truncated = false;
+
+    for (let page = 0; page < maxPages; page += 1) {
+      const qs = new URLSearchParams({ limit: String(pageLimit) });
+      if (options.startDate) qs.set('startDate', options.startDate);
+      if (options.endDate) qs.set('endDate', options.endDate);
+      if (after) qs.set('after', after);
+
+      const raw = await this.requestJson<Record<string, unknown>>(
+        `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/${assetType}?${qs}`,
+        { method: 'GET' },
+      );
+
+      const pageResults = Array.isArray(raw?.results) ? raw.results : [];
+      results.push(...pageResults);
+
+      after = assetsPagingAfter(raw);
+      if (!after || pageResults.length === 0) {
+        after = null;
+        break;
+      }
+
+      // More pages remain but we are about to hit the cap on the next loop.
+      if (page + 1 >= maxPages) {
+        truncated = true;
+        break;
+      }
+    }
+
+    return truncated ? { results, truncated: true } : { results };
   }
 
   /**
