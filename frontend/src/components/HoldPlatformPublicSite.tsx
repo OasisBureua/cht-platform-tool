@@ -16,7 +16,9 @@ function isProdAppPublicAllowed(pathname: string): boolean {
   if (pathname === '/mfa/setup') return true;
   if (pathname === '/verify-email') return true;
   if (pathname === '/complete-profile') return true;
-  if (pathname === '/privacy' || pathname === '/terms') return true;
+  if (pathname === '/privacy' || pathname === '/terms' || pathname === '/beta-terms') {
+    return true;
+  }
   return false;
 }
 

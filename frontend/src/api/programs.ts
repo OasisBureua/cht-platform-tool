@@ -98,8 +98,18 @@ export interface ProgramRegistrationState {
   feedbackSurveyId?: string;
   intakeSurveyId?: string;
   honorariumRequestedAt?: string;
+  /** When the learner confirmed Stripe payout details for this program. */
+  payoutDetailsConfirmedAt?: string | null;
+  /** REUSED = existing Connect details; NEWLY_ENTERED = set up/edited in this flow. */
+  payoutDetailsEntryKind?: 'REUSED' | 'NEWLY_ENTERED' | null;
   honorariumPayment?: { id: string; status: string } | null;
 }
+
+export type HonorariumMissingRequirement =
+  | 'STRIPE_ACCOUNT'
+  | 'BANK_ACCOUNT'
+  | 'TAX_DETAILS'
+  | 'PAYOUTS_ENABLED';
 
 export type HonorariumProgramPreview = {
   programTitle: string;
@@ -112,6 +122,13 @@ export type HonorariumProgramPreview = {
   /** True when the learner has a Stripe Connect payout account. */
   hasPayoutAccount: boolean;
   w9Submitted: boolean;
+  stripePayoutsEnabled?: boolean;
+  methodLabel?: string;
+  /** ISO timestamp when Connect/tax details were first completed (masked display only). */
+  detailsAddedAt?: string | null;
+  missingRequirements?: HonorariumMissingRequirement[];
+  /** True when account + tax + payouts are ready to confirm. */
+  payoutReady?: boolean;
 };
 
 export type LiveWebinarActionItem = {
@@ -310,16 +327,21 @@ export const programsApi = {
 
   requestPostEventHonorarium: async (
     programId: string,
+    opts?: { entryKind?: 'REUSED' | 'NEWLY_ENTERED' },
   ): Promise<{
     paymentId: string | null;
     created: boolean;
     alreadyRequested?: true;
+    entryKind?: 'REUSED' | 'NEWLY_ENTERED';
   }> => {
     const { data } = await apiClient.post<{
       paymentId: string | null;
       created: boolean;
       alreadyRequested?: true;
-    }>(`/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`);
+      entryKind?: 'REUSED' | 'NEWLY_ENTERED';
+    }>(`/programs/${encodeURIComponent(programId)}/post-event/request-honorarium`, {
+      ...(opts?.entryKind ? { entryKind: opts.entryKind } : {}),
+    });
     return data;
   },
 

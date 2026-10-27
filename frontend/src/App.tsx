@@ -33,6 +33,7 @@ const AuthCallback          = lazy(() => import('./pages/public/AuthCallback'));
 const CompleteProfile       = lazy(() => import('./pages/public/CompleteProfile'));
 const Privacy               = lazy(() => import('./pages/public/Privacy'));
 const Terms                 = lazy(() => import('./pages/public/Terms'));
+const BetaTerms             = lazy(() => import('./pages/public/BetaTerms'));
 const DiseaseDetail         = lazy(() => import('./pages/public/DiseaseDetail'));
 const VideosPage            = lazy(() => import('./pages/public/VideosPage'));
 const Search                = lazy(() => import('./pages/public/Search'));
@@ -197,6 +198,7 @@ function App() {
               <Route path="/complete-profile" element={<CompleteProfile />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />
+              <Route path="/beta-terms" element={<BetaTerms />} />
 
               <Route path="/search" element={<Search />} />
               <Route path="/watch/:videoId" element={<WatchVideoRedirect />} />

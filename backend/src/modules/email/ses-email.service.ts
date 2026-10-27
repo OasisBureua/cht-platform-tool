@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { ProgramZoomSessionType } from '@prisma/client';
+import {
+  OutboundEmailStatus,
+  OutboundEmailType,
+  ProgramZoomSessionType,
+} from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
 import {
   buildApprovalEmailMimeBuffer,
@@ -26,6 +30,20 @@ import { buildRegistrationRevokedEmail } from './templates/registration-revoked-
 import { buildOperationalEmail } from './templates/operational-email';
 import { buildPublicRegistrationSurveyEmail } from './templates/public-registration-survey-email';
 import { buildReportReadyEmail } from './templates/report-ready-email';
+import { OutboundEmailLogService } from './outbound-email-log.service';
+
+export type OutboundEmailTrackMeta = {
+  emailType: OutboundEmailType;
+  programId?: string | null;
+  programIds?: string[];
+  userId?: string | null;
+  registrationId?: string | null;
+  inviteId?: string | null;
+  toName?: string | null;
+  /** Null/omit = system/automatic; set for admin-triggered sends. */
+  sentByUserId?: string | null;
+  resentFromId?: string | null;
+};
 
 /**
  * Transactional email via [Amazon SES](https://docs.aws.amazon.com/ses/) (SESv2 `SendEmail` with Simple content).
@@ -42,7 +60,10 @@ export class SesEmailService {
   private readonly appBase: string;
   private readonly enabled: boolean;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    private readonly outboundLog: OutboundEmailLogService,
+  ) {
     const region = this.config.get<string>('aws.region') || 'us-east-1';
     const accessKeyId = this.config.get<string>('aws.accessKeyId');
     const secretAccessKey = this.config.get<string>('aws.secretAccessKey');
@@ -82,6 +103,9 @@ export class SesEmailService {
       zoomJoinUrl?: string | null;
     };
     sessionKind: ProgramZoomSessionType;
+    sentByUserId?: string | null;
+    registrationId?: string | null;
+    userId?: string | null;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip registration-approved email');
@@ -135,7 +159,14 @@ export class SesEmailService {
     try {
       if (!program.startDate) {
         const { subject, text, html } = buildApproved(false);
-        await this.sendSimpleEmail(to, subject, text, html);
+        await this.sendSimpleEmail(to, subject, text, html, {
+          emailType: OutboundEmailType.REGISTRATION_APPROVED,
+          programId: program.id,
+          toName: firstName,
+          userId: opts.userId,
+          registrationId: opts.registrationId,
+          sentByUserId: opts.sentByUserId,
+        });
         this.logger.log(
           `Sent registration-approved email to ${to} for program ${program.id}`,
         );
@@ -163,13 +194,25 @@ export class SesEmailService {
           icsFilename: 'live-session.ics',
           icsBody: ics,
         });
-        await this.client.send(
+        const mimeResult = await this.client.send(
           new SendEmailCommand({
             FromEmailAddress: this.from,
             Destination: { ToAddresses: [to] },
             Content: { Raw: { Data: raw } },
           }),
         );
+        this.outboundLog.record({
+          toEmail: to,
+          toName: firstName,
+          emailType: OutboundEmailType.REGISTRATION_APPROVED,
+          status: OutboundEmailStatus.SENT,
+          programId: program.id,
+          userId: opts.userId,
+          registrationId: opts.registrationId,
+          sentByUserId: opts.sentByUserId,
+          sesMessageId: mimeResult.MessageId ?? null,
+          subject: withInvite.subject,
+        });
         this.logger.log(
           `Sent registration-approved email (with calendar invite) to ${to} for program ${program.id}`,
         );
@@ -186,6 +229,12 @@ export class SesEmailService {
         fallback.subject,
         fallback.text,
         fallback.html,
+        {
+          emailType: OutboundEmailType.REGISTRATION_APPROVED,
+          programId: program.id,
+          toName: firstName,
+          sentByUserId: opts.sentByUserId,
+        },
       );
       this.logger.log(
         `Sent registration-approved email (simple) to ${to} for program ${program.id}`,
@@ -227,7 +276,11 @@ export class SesEmailService {
       escapeHtml,
     );
     try {
-      await this.sendSimpleEmail(to, subject, text, html);
+      await this.sendSimpleEmail(to, subject, text, html, {
+        emailType: OutboundEmailType.REGISTRATION_SUBMITTED,
+        programId: program.id,
+        toName: firstName,
+      });
       this.logger.log(
         `Sent registration-submitted email to ${to} for program ${program.id}`,
       );
@@ -273,7 +326,12 @@ export class SesEmailService {
       escapeHtml,
     );
     try {
-      await this.sendSimpleEmail(to, subject, text, html);
+      await this.sendSimpleEmail(to, subject, text, html, {
+        emailType: OutboundEmailType.REGISTRATION_REJECTED,
+        programId: program.id,
+        toName: firstName,
+        sentByUserId: undefined,
+      });
       this.logger.log(
         `Sent registration-rejected email to ${to} for program ${program.id} (${reason})`,
       );
@@ -515,6 +573,9 @@ export class SesEmailService {
       sponsorName: string;
       zoomSessionType: ProgramZoomSessionType;
     };
+    /** Admin who triggered a re-send; null/omit for automatic reminders. */
+    sentByUserId?: string | null;
+    resentFromId?: string | null;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip pre-webinar-reminder email');
@@ -544,7 +605,13 @@ export class SesEmailService {
       escapeHtml,
     );
     try {
-      await this.sendSimpleEmail(to, subject, text, html);
+      await this.sendSimpleEmail(to, subject, text, html, {
+        emailType: OutboundEmailType.PRE_SESSION_REMINDER,
+        programId: program.id,
+        toName: firstName,
+        sentByUserId: opts.sentByUserId ?? null,
+        resentFromId: opts.resentFromId,
+      });
       this.logger.log(
         `Sent pre-webinar-reminder email to ${to} for program ${program.id} (${hoursUntilStart}h out)`,
       );
@@ -561,6 +628,11 @@ export class SesEmailService {
     firstName: string;
     sessions: InviteSession[];
     registerUrl: string;
+    programIds?: string[];
+    userId?: string | null;
+    inviteId?: string | null;
+    sentByUserId?: string | null;
+    resentFromId?: string | null;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip registration-invite email');
@@ -579,7 +651,15 @@ export class SesEmailService {
       },
       escapeHtml,
     );
-    await this.sendSimpleEmail(to, subject, text, html);
+    await this.sendSimpleEmail(to, subject, text, html, {
+      emailType: OutboundEmailType.REGISTRATION_INVITE,
+      programIds: opts.programIds,
+      userId: opts.userId,
+      inviteId: opts.inviteId,
+      toName: firstName || null,
+      sentByUserId: opts.sentByUserId,
+      resentFromId: opts.resentFromId,
+    });
     this.logger.log(
       `Sent registration-invite email to ${to} (${sessions.length} program(s))`,
     );
@@ -618,7 +698,11 @@ export class SesEmailService {
       },
       escapeHtml,
     );
-    await this.sendSimpleEmail(opts.to, subject, text, html);
+    await this.sendSimpleEmail(opts.to, subject, text, html, {
+      emailType: OutboundEmailType.PUBLIC_REGISTRATION,
+      programId: opts.program.id,
+      toName: opts.firstName,
+    });
     this.logger.log(
       `Sent public-registration-survey email for program ${opts.program.id}`,
     );
@@ -630,6 +714,9 @@ export class SesEmailService {
     subject: string;
     textBody: string;
     programTitle?: string;
+    programId?: string | null;
+    userId?: string | null;
+    sentByUserId?: string | null;
   }): Promise<void> {
     if (!this.enabled) {
       this.logger.debug('EMAIL disabled: skip operational email');
@@ -650,7 +737,12 @@ export class SesEmailService {
       },
       escapeHtml,
     );
-    await this.sendSimpleEmail(to, subject, text, html);
+    await this.sendSimpleEmail(to, subject, text, html, {
+      emailType: OutboundEmailType.OPERATIONAL,
+      programId: opts.programId,
+      userId: opts.userId,
+      sentByUserId: opts.sentByUserId,
+    });
     this.logger.log(`Sent operational email to ${to}: ${subject.slice(0, 80)}`);
   }
 
@@ -686,22 +778,61 @@ export class SesEmailService {
     subject: string,
     text: string,
     html: string,
+    track?: OutboundEmailTrackMeta,
   ): Promise<void> {
-    await this.client.send(
-      new SendEmailCommand({
-        FromEmailAddress: this.from,
-        Destination: { ToAddresses: [to] },
-        Content: {
-          Simple: {
-            Subject: { Data: subject, Charset: 'UTF-8' },
-            Body: {
-              Text: { Data: text, Charset: 'UTF-8' },
-              Html: { Data: html, Charset: 'UTF-8' },
+    try {
+      const result = await this.client.send(
+        new SendEmailCommand({
+          FromEmailAddress: this.from,
+          Destination: { ToAddresses: [to] },
+          Content: {
+            Simple: {
+              Subject: { Data: subject, Charset: 'UTF-8' },
+              Body: {
+                Text: { Data: text, Charset: 'UTF-8' },
+                Html: { Data: html, Charset: 'UTF-8' },
+              },
             },
           },
-        },
-      }),
-    );
+        }),
+      );
+      if (track) {
+        this.outboundLog.record({
+          toEmail: to,
+          toName: track.toName,
+          emailType: track.emailType,
+          status: OutboundEmailStatus.SENT,
+          programId: track.programId,
+          programIds: track.programIds,
+          userId: track.userId,
+          registrationId: track.registrationId,
+          inviteId: track.inviteId,
+          sentByUserId: track.sentByUserId,
+          sesMessageId: result.MessageId ?? null,
+          subject,
+          resentFromId: track.resentFromId,
+        });
+      }
+    } catch (err) {
+      if (track) {
+        this.outboundLog.record({
+          toEmail: to,
+          toName: track.toName,
+          emailType: track.emailType,
+          status: OutboundEmailStatus.FAILED,
+          programId: track.programId,
+          programIds: track.programIds,
+          userId: track.userId,
+          registrationId: track.registrationId,
+          inviteId: track.inviteId,
+          sentByUserId: track.sentByUserId,
+          subject,
+          errorMessage: err instanceof Error ? err.message : String(err),
+          resentFromId: track.resentFromId,
+        });
+      }
+      throw err;
+    }
   }
 }
 
