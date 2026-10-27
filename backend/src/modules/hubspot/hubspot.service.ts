@@ -1,10 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { isTestAccountEmail } from '../../common/test-accounts';
+import {
+  defaultReportingWindow,
+  mapPool,
+} from '../campaigns/campaigns-funnel.util';
 
 import {
   parseHubSpotCampaignList,
   parseSocialPostsFromAssets,
+  slimCampaignAssetPayload,
   type HubSpotCampaignListItem,
   type HubSpotSocialPost,
 } from './hubspot-campaign-metrics.util';
@@ -46,7 +51,11 @@ const CAMPAIGN_ASSET_MAX_PAGES = 10;
 
 export type HubSpotCampaignAssetsResult = {
   results: unknown[];
-  /** True when more pages existed beyond CAMPAIGN_ASSET_MAX_PAGES. */
+  /**
+   * True when the result set is incomplete: more pages existed beyond
+   * CAMPAIGN_ASSET_MAX_PAGES, or a later page failed after earlier pages
+   * were already fetched.
+   */
   truncated?: boolean;
 };
 
@@ -164,13 +173,8 @@ export interface HubSpotCampaignAnalyticsSnapshot {
    * MARKETING_EMAIL stays in `assets` only — not duplicated here.
    */
   assetsByType?: Record<string, unknown>;
-  /** Normalized SOCIAL_BROADCAST posts (clicks per network). */
+  /** Normalized SOCIAL_BROADCAST posts (clicks per network; enrich fills URL/time). */
   socialPosts?: HubSpotSocialPost[];
-  /**
-   * Raw legacy broadcast payloads keyed by broadcast id (Social API).
-   * Omitted when enrich is skipped or the `social` scope is missing.
-   */
-  socialBroadcastDetails?: Record<string, unknown>;
   emailStatistics: unknown;
   warnings: string[];
   errors: string[];
@@ -202,14 +206,38 @@ export type HubSpotCampaignAnalyticsOptions = {
    */
   includeAssetBundle?: boolean;
   /**
-   * Soft-enrich social posts via legacy GET /broadcast/v1/broadcasts/{id}
-   * (channel, URL, publishedAt). Requires private-app scope `social`.
+   * Soft-enrich `socialPosts` via legacy GET /broadcast/v1/broadcasts/{id}
+   * (channel, URL, publishedAt on each post). Requires private-app scope `social`.
+   * Raw broadcast bodies are not stored on the snapshot (report prompt size).
    * Defaults to true when the asset bundle is included; failures are warnings only.
    */
   includeSocialBroadcastDetails?: boolean;
 };
 
 const SOCIAL_BROADCAST_ENRICH_CONCURRENCY = 4;
+/** HubSpot ~100–190 req / 10s — brief backoff before giving up on 429. */
+const HUBSPOT_429_MAX_ATTEMPTS = 4;
+const HUBSPOT_429_BASE_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function retryAfterMs(res: Response, attempt: number): number {
+  const header = res.headers.get('Retry-After');
+  if (header) {
+    const asSeconds = Number(header);
+    if (Number.isFinite(asSeconds) && asSeconds >= 0) {
+      return Math.min(asSeconds * 1000, 10_000);
+    }
+  }
+  return Math.min(HUBSPOT_429_BASE_DELAY_MS * 2 ** attempt, 8_000);
+}
+
+/** Skip broadcast lookup when channel/URL/time already present (e.g. re-sync). */
+function isSocialPostAlreadyEnriched(post: HubSpotSocialPost): boolean {
+  return Boolean(post.contentUrl || post.publishedAt || post.channelKey);
+}
 
 /** Reject blank / placeholder secrets that would only produce HubSpot 401 noise. */
 function normalizeHubSpotToken(raw: string | undefined | null): string | null {
@@ -229,18 +257,6 @@ function toIsoDate(value: string | null | undefined): string | null {
   // Accept YYYY-MM-DD or full ISO; normalize to YYYY-MM-DD for campaign metrics.
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
   return match?.[1] ?? null;
-}
-
-/** Same 90-day window the Campaigns dashboard uses when period is unset. */
-function defaultAssetMetricsWindow(now = new Date()): {
-  startDate: string;
-  endDate: string;
-} {
-  const end = new Date(now);
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 90);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { startDate: fmt(start), endDate: fmt(end) };
 }
 
 function dayBoundsMs(
@@ -831,17 +847,39 @@ export class HubSpotService {
       options.includeSocialBroadcastDetails ?? includeAssetBundle;
     const emailPrefetch = options.emailStatisticsPrefetch;
 
-    let reportingPeriodStart = toIsoDate(input.reportingPeriodStart) ?? '';
-    let reportingPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
-    // HubSpot asset metrics (incl. SOCIAL_BROADCAST clicks) require dates.
-    if (!reportingPeriodStart || !reportingPeriodEnd) {
-      const fallback = defaultAssetMetricsWindow();
-      if (!reportingPeriodStart) reportingPeriodStart = fallback.startDate;
-      if (!reportingPeriodEnd) reportingPeriodEnd = fallback.endDate;
+    // Campaign-declared dates (email + campaign/metrics; never invent one side).
+    const campaignPeriodStart = toIsoDate(input.reportingPeriodStart) ?? '';
+    const campaignPeriodEnd = toIsoDate(input.reportingPeriodEnd) ?? '';
+
+    // Asset calls need both dates for SOCIAL_BROADCAST clicks. Fallback only when
+    // *both* are missing — never fill one side alone (avoids startDate > endDate)
+    // and never apply the fallback to campaign/metrics (preserves all-time).
+    let assetPeriodStart = '';
+    let assetPeriodEnd = '';
+    let fetchDatedAssets = false;
+    if (campaignPeriodStart && campaignPeriodEnd) {
+      assetPeriodStart = campaignPeriodStart;
+      assetPeriodEnd = campaignPeriodEnd;
+      fetchDatedAssets = true;
+    } else if (!campaignPeriodStart && !campaignPeriodEnd) {
+      const fallback = defaultReportingWindow();
+      assetPeriodStart = fallback.startDate;
+      assetPeriodEnd = fallback.endDate;
+      fetchDatedAssets = true;
       warnings.push(
-        'Reporting period missing or incomplete; using last-90-days window for HubSpot metrics and assets.',
+        'Reporting period missing; using last-90-days window for dated asset metrics (SOCIAL_BROADCAST) only. Campaign/metrics requests stay undated (all-time).',
+      );
+    } else {
+      warnings.push(
+        'Reporting period incomplete (only one of start/end set); dated asset metrics skipped to avoid an inverted HubSpot date range.',
       );
     }
+
+    // Snapshot dates: campaign's own when present; else the asset window used.
+    const reportingPeriodStart =
+      campaignPeriodStart || (fetchDatedAssets ? assetPeriodStart : '');
+    const reportingPeriodEnd =
+      campaignPeriodEnd || (fetchDatedAssets ? assetPeriodEnd : '');
 
     const account = await this.getAccountMetadata();
 
@@ -850,7 +888,6 @@ export class HubSpotService {
     let assets: unknown = null;
     let assetsByType: Record<string, unknown> | undefined;
     let socialPosts: HubSpotSocialPost[] | undefined;
-    let socialBroadcastDetails: Record<string, unknown> | undefined;
     let emailStatistics: unknown = null;
 
     if (!hubspotCampaignId) {
@@ -869,18 +906,24 @@ export class HubSpotService {
           'hs_notes',
         ].join(','),
       );
-      campaignQs.set('startDate', reportingPeriodStart);
-      campaignQs.set('endDate', reportingPeriodEnd);
+      // Only pass dates the campaign actually declared (omit = all-time).
+      if (campaignPeriodStart) campaignQs.set('startDate', campaignPeriodStart);
+      if (campaignPeriodEnd) campaignQs.set('endDate', campaignPeriodEnd);
       const campaignPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}` +
         `?${campaignQs}`;
 
       const metricsQs = new URLSearchParams();
-      metricsQs.set('startDate', reportingPeriodStart);
-      metricsQs.set('endDate', reportingPeriodEnd);
+      if (campaignPeriodStart) metricsQs.set('startDate', campaignPeriodStart);
+      if (campaignPeriodEnd) metricsQs.set('endDate', campaignPeriodEnd);
+      const metricsQsString = metricsQs.toString();
       const metricsPath =
         `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/reports/metrics` +
-        `?${metricsQs}`;
+        (metricsQsString ? `?${metricsQsString}` : '');
+
+      const emailAssetOpts = fetchDatedAssets
+        ? { startDate: assetPeriodStart, endDate: assetPeriodEnd }
+        : {};
 
       const [campaignResult, metricsResult, assetsResult] = await Promise.all([
         this.requestJson(campaignPath, { method: 'GET' })
@@ -889,10 +932,7 @@ export class HubSpotService {
         this.requestJson(metricsPath, { method: 'GET' })
           .then((value) => ({ ok: true as const, value }))
           .catch((err: unknown) => ({ ok: false as const, err })),
-        this.getCampaignAssets(hubspotCampaignId, 'MARKETING_EMAIL', {
-          startDate: reportingPeriodStart,
-          endDate: reportingPeriodEnd,
-        })
+        this.getCampaignAssets(hubspotCampaignId, 'MARKETING_EMAIL', emailAssetOpts)
           .then((value) => ({ ok: true as const, value }))
           .catch((err: unknown) => ({ ok: false as const, err })),
       ]);
@@ -938,10 +978,10 @@ export class HubSpotService {
         );
       }
 
-      if (includeAssetBundle) {
+      if (includeAssetBundle && fetchDatedAssets) {
         const bundle = await this.getCampaignAssetsBundle(hubspotCampaignId, {
-          startDate: reportingPeriodStart,
-          endDate: reportingPeriodEnd,
+          startDate: assetPeriodStart,
+          endDate: assetPeriodEnd,
         });
         assetsByType = {};
         let softFails = 0;
@@ -951,7 +991,8 @@ export class HubSpotService {
             softFails += 1;
             continue;
           }
-          assetsByType[assetType] = payload;
+          // Store only id/name/metrics — full HubSpot rows bloat report prompts.
+          assetsByType[assetType] = slimCampaignAssetPayload(payload);
           if (isTruncatedAssetsPayload(payload)) {
             truncatedTypes.push(assetType);
           }
@@ -977,9 +1018,6 @@ export class HubSpotService {
         ) {
           const enrich = await this.enrichSocialPostsWithBroadcasts(socialPosts);
           socialPosts = enrich.posts;
-          if (Object.keys(enrich.details).length > 0) {
-            socialBroadcastDetails = enrich.details;
-          }
           if (enrich.warning) warnings.push(enrich.warning);
         }
       }
@@ -991,9 +1029,11 @@ export class HubSpotService {
         warnings.push(emailPrefetch.warning);
       }
     } else if (includeEmailStatistics) {
+      // Do not pass the asset-metrics fallback window — portal-wide email
+      // stats for "last 90 days" would inflate the campaign with other traffic.
       const emailStats = await this.getEmailStatisticsForPeriod(
-        reportingPeriodStart,
-        reportingPeriodEnd,
+        campaignPeriodStart,
+        campaignPeriodEnd,
       );
       emailStatistics = emailStats.data;
       if (emailStats.warning) warnings.push(emailStats.warning);
@@ -1013,7 +1053,6 @@ export class HubSpotService {
       assets,
       ...(assetsByType ? { assetsByType } : {}),
       ...(socialPosts ? { socialPosts } : {}),
-      ...(socialBroadcastDetails ? { socialBroadcastDetails } : {}),
       emailStatistics,
       warnings,
       errors,
@@ -1041,71 +1080,69 @@ export class HubSpotService {
     posts: HubSpotSocialPost[],
   ): Promise<{
     posts: HubSpotSocialPost[];
-    details: Record<string, unknown>;
     warning?: string;
   }> {
     if (!posts.length) {
-      return { posts, details: {} };
+      return { posts };
     }
 
-    const details: Record<string, unknown> = {};
     const enriched = posts.map((p) => ({ ...p }));
     let scopeMissing = false;
     let hardFailures = 0;
-    let cursor = 0;
+    let enrichedCount = 0;
+    let skippedAlreadyEnriched = 0;
 
-    const workers = Array.from(
-      {
-        length: Math.min(SOCIAL_BROADCAST_ENRICH_CONCURRENCY, posts.length),
-      },
-      async () => {
-        while (cursor < posts.length) {
-          if (scopeMissing || this.authDisabled) return;
-          const index = cursor++;
-          const post = posts[index];
-          try {
-            const raw = await this.getBroadcastById(post.id);
-            details[post.id] = raw;
-            const parsed = parseBroadcastEnrichment(raw);
-            if (parsed) {
-              enriched[index] = applyBroadcastEnrichment(post, parsed);
-            }
-          } catch (err: unknown) {
-            const parsedErr = parseHubSpotApiError(err);
-            const msg = err instanceof Error ? err.message : String(err);
-            const missingSocial =
-              parsedErr.missingScopes.includes(HUBSPOT_SOCIAL_BROADCAST_SCOPE) ||
-              parsedErr.category === 'MISSING_SCOPES' ||
-              /MISSING_SCOPES|missing scope|social/i.test(msg);
-
-            if (parsedErr.status === 403 || missingSocial) {
-              // Stop further enrich calls — same token won't gain the scope mid-run.
-              scopeMissing = true;
-              return;
-            }
-            hardFailures += 1;
-            this.logger.debug(
-              `[HubSpot] broadcast enrich failed for ${post.id}: ${msg}`,
-            );
+    await mapPool(
+      posts,
+      SOCIAL_BROADCAST_ENRICH_CONCURRENCY,
+      async (post, index) => {
+        if (scopeMissing || this.authDisabled) {
+          return;
+        }
+        if (isSocialPostAlreadyEnriched(post)) {
+          skippedAlreadyEnriched += 1;
+          return;
+        }
+        try {
+          const raw = await this.getBroadcastById(post.id);
+          const parsed = parseBroadcastEnrichment(raw);
+          if (parsed) {
+            enriched[index] = applyBroadcastEnrichment(post, parsed);
+            enrichedCount += 1;
           }
+        } catch (err: unknown) {
+          const parsedErr = parseHubSpotApiError(err);
+          const msg = err instanceof Error ? err.message : String(err);
+          // Abort the whole enrich only on explicit scope signals — not every
+          // 403 / not a loose "social" match in the error text (per-post otherwise).
+          const missingSocialScope =
+            parsedErr.missingScopes.includes(HUBSPOT_SOCIAL_BROADCAST_SCOPE) ||
+            parsedErr.category === 'MISSING_SCOPES';
+
+          if (missingSocialScope) {
+            scopeMissing = true;
+            return;
+          }
+          hardFailures += 1;
+          this.logger.debug(
+            `[HubSpot] broadcast enrich failed for ${post.id}: ${msg}`,
+          );
         }
       },
     );
 
-    await Promise.all(workers);
-
     let warning: string | undefined;
     if (scopeMissing) {
       warning =
-        `socialBroadcastDetails: HubSpot token missing \`${HUBSPOT_SOCIAL_BROADCAST_SCOPE}\` scope ` +
+        `socialPostEnrich: HubSpot token missing \`${HUBSPOT_SOCIAL_BROADCAST_SCOPE}\` scope ` +
         `(or Social API forbidden). Add it to the private app for channel/URL/publish time; sync continues without enrich.`;
-    } else if (hardFailures > 0 && Object.keys(details).length === 0) {
-      warning = `socialBroadcastDetails: all ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
+    } else if (hardFailures > 0 && enrichedCount === 0 && skippedAlreadyEnriched === 0) {
+      warning = `socialPostEnrich: all ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
     } else if (hardFailures > 0) {
-      warning = `socialBroadcastDetails: ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
+      warning = `socialPostEnrich: ${hardFailures} broadcast lookup(s) failed (soft-fail).`;
     }
 
-    return { posts: enriched, details, warning };
+    return { posts: enriched, warning };
   }
 
   /**
@@ -1378,10 +1415,26 @@ export class HubSpotService {
       if (options.endDate) qs.set('endDate', options.endDate);
       if (after) qs.set('after', after);
 
-      const raw = await this.requestJson<Record<string, unknown>>(
-        `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/${assetType}?${qs}`,
-        { method: 'GET' },
-      );
+      let raw: Record<string, unknown>;
+      try {
+        raw = await this.requestJson<Record<string, unknown>>(
+          `/marketing/v3/campaigns/${encodeURIComponent(hubspotCampaignId)}/assets/${assetType}?${qs}`,
+          { method: 'GET' },
+        );
+      } catch (err) {
+        // Keep pages already fetched; mark truncated so callers don't treat
+        // this as a total miss (bundle used to store null and drop them).
+        if (results.length > 0) {
+          this.logger.debug(
+            `[HubSpot] assets ${assetType} page ${page + 1} failed after ` +
+              `${results.length} item(s); returning partial: ${
+                err instanceof Error ? err.message : String(err)
+              }`,
+          );
+          return { results, truncated: true };
+        }
+        throw err;
+      }
 
       const pageResults = Array.isArray(raw?.results) ? raw.results : [];
       results.push(...pageResults);
@@ -1404,7 +1457,8 @@ export class HubSpotService {
 
   /**
    * Pull additional asset buckets for dashboard enrichment.
-   * Failures are soft — returns null per asset type.
+   * Total failures are soft (null per type). Partial page failures return
+   * the fetched rows with `truncated: true` from `getCampaignAssets`.
    */
   async getCampaignAssetsBundle(
     hubspotCampaignId: string,
@@ -1445,37 +1499,50 @@ export class HubSpotService {
       throw new Error('HUBSPOT_ACCESS_TOKEN not configured');
     }
 
-    const res = await fetch(`${HUBSPOT_API_BASE}${path}`, {
-      method: init.method,
-      headers: {
-        Authorization: `Bearer ${this.accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
-    });
+    for (let attempt = 0; attempt < HUBSPOT_429_MAX_ATTEMPTS; attempt += 1) {
+      const res = await fetch(`${HUBSPOT_API_BASE}${path}`, {
+        method: init.method,
+        headers: {
+          Authorization: `Bearer ${this.accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      });
 
-    if (!res.ok) {
-      const errText = await res.text();
-      if (res.status === 401) {
-        this.authDisabled = true;
-        this.accountMetaCache = null;
-        if (!this.authFailureLogged) {
-          this.authFailureLogged = true;
-          this.logger.warn(
-            `[HubSpot] Auth failed (401): disabling HubSpot calls for this process. Set a valid private-app token in Secrets Manager (hubspot_access_token), or clear it to silence sync. Detail: ${errText}`,
-          );
-        }
-        if (opts.swallowAuth) {
-          throw new Error(`HubSpot auth failed (401)`);
-        }
-        throw new Error(`HubSpot auth failed (401): ${errText}`);
+      if (res.status === 429 && attempt < HUBSPOT_429_MAX_ATTEMPTS - 1) {
+        const delay = retryAfterMs(res, attempt);
+        this.logger.debug(
+          `[HubSpot] 429 on ${init.method} ${path}; retry ${attempt + 1}/${HUBSPOT_429_MAX_ATTEMPTS - 1} in ${delay}ms`,
+        );
+        await sleep(delay);
+        continue;
       }
-      throw new Error(`HubSpot ${res.status} ${res.statusText}: ${errText}`);
+
+      if (!res.ok) {
+        const errText = await res.text();
+        if (res.status === 401) {
+          this.authDisabled = true;
+          this.accountMetaCache = null;
+          if (!this.authFailureLogged) {
+            this.authFailureLogged = true;
+            this.logger.warn(
+              `[HubSpot] Auth failed (401): disabling HubSpot calls for this process. Set a valid private-app token in Secrets Manager (hubspot_access_token), or clear it to silence sync. Detail: ${errText}`,
+            );
+          }
+          if (opts.swallowAuth) {
+            throw new Error(`HubSpot auth failed (401)`);
+          }
+          throw new Error(`HubSpot auth failed (401): ${errText}`);
+        }
+        throw new Error(`HubSpot ${res.status} ${res.statusText}: ${errText}`);
+      }
+
+      if (res.status === 204) {
+        return undefined as T;
+      }
+      return (await res.json()) as T;
     }
 
-    if (res.status === 204) {
-      return undefined as T;
-    }
-    return (await res.json()) as T;
+    throw new Error(`HubSpot request failed after retries: ${init.method} ${path}`);
   }
 }

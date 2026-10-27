@@ -262,6 +262,32 @@ function inferSocialNetwork(
   return null;
 }
 
+/**
+ * Shrink a campaign asset-type payload for storage on `hubspot_raw_data`.
+ * Keeps id / name / metrics (what dashboard + Hub ingest read) and drops
+ * bulky unused HubSpot fields so the report prompt stays within limits.
+ */
+export function slimCampaignAssetPayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== 'object') return payload;
+  const record = payload as Record<string, unknown>;
+  const results = Array.isArray(record.results) ? record.results : [];
+  const slimResults = results.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const row = entry as Record<string, unknown>;
+    const slim: Record<string, unknown> = {};
+    if (row.id != null) slim.id = row.id;
+    else if (row.broadcastGuid != null) slim.id = row.broadcastGuid;
+    if (typeof row.name === 'string') slim.name = row.name;
+    if (row.metrics != null && typeof row.metrics === 'object') {
+      slim.metrics = row.metrics;
+    }
+    return slim;
+  });
+  const out: Record<string, unknown> = { results: slimResults };
+  if (record.truncated === true) out.truncated = true;
+  return out;
+}
+
 /** Parse HubSpot SOCIAL_BROADCAST campaign assets into social posts. */
 export function parseSocialPostsFromAssets(raw: unknown): HubSpotSocialPost[] {
   if (!raw || typeof raw !== 'object') return [];
@@ -330,12 +356,8 @@ function socialPostsFromSnapshot(
   snap: Record<string, unknown>,
   assetsByType: Record<string, unknown>,
 ): HubSpotSocialPost[] {
-  const socialRaw = assetsByType.SOCIAL_BROADCAST;
-  if (socialRaw != null) {
-    return parseSocialPostsFromAssets(socialRaw);
-  }
-
-  // Prefer already-normalized posts (avoid re-parsing a parsed array as assets).
+  // Prefer enriched/normalized `socialPosts` from sync (channel/URL/publish time).
+  // Raw SOCIAL_BROADCAST is a fallback for older snapshots that only stored assets.
   if (Array.isArray(snap.socialPosts)) {
     if (snap.socialPosts.length === 0) return [];
     if (snap.socialPosts.every(isParsedSocialPost)) {
@@ -344,7 +366,12 @@ function socialPostsFromSnapshot(
     return parseSocialPostsFromAssets({ results: snap.socialPosts });
   }
 
-  return parseSocialPostsFromAssets(snap.socialPosts ?? null);
+  const socialRaw = assetsByType.SOCIAL_BROADCAST;
+  if (socialRaw != null) {
+    return parseSocialPostsFromAssets(socialRaw);
+  }
+
+  return [];
 }
 
 /** Sum per-post click totals (source of truth when SOCIAL_BROADCAST is present). */

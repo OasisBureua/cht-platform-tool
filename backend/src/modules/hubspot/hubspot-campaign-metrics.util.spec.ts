@@ -4,9 +4,32 @@ import {
   mergeMetricTotals,
   metricsFromHubspotSnapshot,
   parseSocialPostsFromAssets,
+  slimCampaignAssetPayload,
 } from './hubspot-campaign-metrics.util';
 
 describe('hubspot-campaign-metrics.util (CPR-56 chunk 1)', () => {
+  describe('slimCampaignAssetPayload', () => {
+    it('keeps id/name/metrics and drops extras', () => {
+      const slim = slimCampaignAssetPayload({
+        results: [
+          {
+            id: 'a1',
+            name: 'Post',
+            metrics: { LINKEDIN_CLICKS: 2 },
+            unused: 'drop-me',
+            body: 'huge',
+          },
+        ],
+        truncated: true,
+      }) as { results: Record<string, unknown>[]; truncated?: boolean };
+
+      expect(slim.truncated).toBe(true);
+      expect(slim.results).toEqual([
+        { id: 'a1', name: 'Post', metrics: { LINKEDIN_CLICKS: 2 } },
+      ]);
+    });
+  });
+
   describe('accumulateMetricsFromUnknown — social click keys', () => {
     it('maps HubSpot FACEBOOK_CLICKS / LINKEDIN_CLICKS / TWITTER_CLICKS to socialClicks', () => {
       const totals = accumulateMetricsFromUnknown({
@@ -294,6 +317,42 @@ describe('metricsFromHubspotSnapshot (CPR-56 chunk 2)', () => {
     expect(socialPosts[0].id).toBe('parsed-1');
     expect(socialPosts[0].totalClicks).toBe(2);
     expect(metrics.socialClicks).toBe(2);
+  });
+
+  it('prefers enriched socialPosts over raw SOCIAL_BROADCAST assets', () => {
+    const { socialPosts, metrics } = metricsFromHubspotSnapshot({
+      socialPosts: [
+        {
+          id: 'soc-1',
+          name: 'Enriched caption',
+          network: 'LinkedIn',
+          facebookClicks: 0,
+          linkedinClicks: 5,
+          twitterClicks: 0,
+          totalClicks: 5,
+          contentUrl: 'https://www.linkedin.com/feed/update/urn:li:share:1',
+          publishedAt: '2026-10-14T16:24:04.342Z',
+          channelKey: 'LinkedInCompanyPage:1',
+        },
+      ],
+      assetsByType: {
+        SOCIAL_BROADCAST: {
+          results: [
+            {
+              id: 'soc-1',
+              name: 'Raw caption only',
+              metrics: { LINKEDIN_CLICKS: 5 },
+            },
+          ],
+        },
+      },
+    });
+
+    expect(socialPosts).toHaveLength(1);
+    expect(socialPosts[0].contentUrl).toContain('linkedin.com');
+    expect(socialPosts[0].publishedAt).toBeTruthy();
+    expect(socialPosts[0].channelKey).toBe('LinkedInCompanyPage:1');
+    expect(metrics.socialClicks).toBe(5);
   });
 
   it('returns empty totals for null / non-object input', () => {

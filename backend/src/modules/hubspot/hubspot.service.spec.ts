@@ -6,6 +6,8 @@ function jsonResponse(body: unknown, status = 200) {
   return {
     ok: status >= 200 && status < 300,
     status,
+    statusText: status === 200 ? 'OK' : `Status ${status}`,
+    headers: { get: (_name: string) => null as string | null },
     json: async () => body,
     text: async () => JSON.stringify(body),
   };
@@ -179,7 +181,7 @@ describe('HubSpotService.getCampaignAnalytics (CPR-56 chunk 3)', () => {
     ).toBe(true);
   });
 
-  it('falls back to a 90-day window when reporting period is empty', async () => {
+  it('falls back to a 90-day window for assets only when both dates are empty', async () => {
     const snapshot = await service.getCampaignAnalytics(
       { hubspotCampaignId: campaignId },
       { includeEmailStatistics: false },
@@ -196,6 +198,76 @@ describe('HubSpotService.getCampaignAnalytics (CPR-56 chunk 3)', () => {
       .filter((u: string) => u.includes('SOCIAL_BROADCAST'));
     expect(socialCalls[0]).toContain('startDate=');
     expect(socialCalls[0]).toContain('endDate=');
+
+    // Campaign + metrics stay undated (all-time), not forced into 90 days.
+    const metricsCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter(
+        (u: string) =>
+          u.includes(`/campaigns/${campaignId}/reports/metrics`) ||
+          (u.includes(`/campaigns/${campaignId}?`) && !u.includes('/assets/')),
+      );
+    expect(metricsCalls.length).toBeGreaterThanOrEqual(1);
+    for (const url of metricsCalls) {
+      expect(url).not.toContain('startDate=');
+      expect(url).not.toContain('endDate=');
+    }
+  });
+
+  it('does not invent the missing side of a partial reporting period', async () => {
+    const snapshot = await service.getCampaignAnalytics(
+      {
+        hubspotCampaignId: campaignId,
+        reportingPeriodEnd: '2026-03-31',
+      },
+      { includeEmailStatistics: false },
+    );
+
+    expect(snapshot.assetsByType).toBeUndefined();
+    expect(snapshot.socialPosts).toBeUndefined();
+    expect(
+      snapshot.warnings.some((w) => w.includes('incomplete')),
+    ).toBe(true);
+
+    const socialCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter((u: string) => u.includes('SOCIAL_BROADCAST'));
+    expect(socialCalls).toHaveLength(0);
+
+    const campaignCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter(
+        (u: string) =>
+          u.includes(`/campaigns/${campaignId}?`) && !u.includes('/assets/'),
+      );
+    expect(campaignCalls.some((u: string) => u.includes('endDate=2026-03-31'))).toBe(
+      true,
+    );
+    expect(campaignCalls.some((u: string) => u.includes('startDate='))).toBe(false);
+  });
+
+  it('does not fetch portal email stats with the asset fallback window', async () => {
+    const snapshot = await service.getCampaignAnalytics(
+      { hubspotCampaignId: campaignId },
+      { includeEmailStatistics: true },
+    );
+
+    expect(snapshot.emailStatistics).toBeNull();
+    expect(
+      snapshot.warnings.some((w) => w.includes('email statistics skipped')),
+    ).toBe(true);
+
+    const emailCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter((u: string) => u.includes('/marketing/v3/emails/statistics'));
+    expect(emailCalls).toHaveLength(0);
+
+    // Assets still use the fallback dates.
+    const socialCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter((u: string) => u.includes('SOCIAL_BROADCAST'));
+    expect(socialCalls.length).toBeGreaterThanOrEqual(1);
+    expect(socialCalls[0]).toContain('startDate=');
   });
 
   it('skips asset bundle when includeAssetBundle is false', async () => {
@@ -332,6 +404,50 @@ describe('HubSpotService.getCampaignAssets pagination (CPR-56 chunk 4)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps earlier pages and marks truncated when a later page fails', async () => {
+    fetchMock.mockImplementation(async (url: string) => {
+      const path = String(url);
+      if (!path.includes('SOCIAL_BROADCAST')) {
+        return jsonResponse({ results: [] });
+      }
+      if (path.includes('after=page1')) {
+        return jsonResponse({ message: 'temporary error' }, 500);
+      }
+      return jsonResponse({
+        results: [
+          {
+            id: 'soc-1',
+            name: 'page0',
+            metrics: { LINKEDIN_CLICKS: 4 },
+          },
+        ],
+        paging: { next: { after: 'page1' } },
+      });
+    });
+
+    const payload = await service.getCampaignAssets(
+      campaignId,
+      'SOCIAL_BROADCAST',
+      { startDate: '2026-07-01', endDate: '2026-09-30' },
+    );
+
+    expect(payload.truncated).toBe(true);
+    expect(payload.results).toHaveLength(1);
+    expect((payload.results[0] as { id: string }).id).toBe('soc-1');
+
+    const bundle = await service.getCampaignAssetsBundle(campaignId, {
+      startDate: '2026-07-01',
+      endDate: '2026-09-30',
+    });
+    const social = bundle.SOCIAL_BROADCAST as {
+      results: unknown[];
+      truncated?: boolean;
+    } | null;
+    expect(social).not.toBeNull();
+    expect(social?.truncated).toBe(true);
+    expect(social?.results).toHaveLength(1);
+  });
+
   it('surfaces truncation warning on getCampaignAnalytics snapshot', async () => {
     // Default maxPages=10: always return a next cursor so the cap triggers.
     let socialPage = 0;
@@ -461,7 +577,7 @@ describe('HubSpotService social broadcast enrich (CPR-56 chunk 5)', () => {
     });
   }
 
-  it('enriches socialPosts and stores socialBroadcastDetails when social API works', async () => {
+  it('enriches socialPosts fields without storing raw socialBroadcastDetails', async () => {
     mockAnalyticsBase({});
 
     const snapshot = await service.getCampaignAnalytics(
@@ -481,10 +597,13 @@ describe('HubSpotService social broadcast enrich (CPR-56 chunk 5)', () => {
       broadcastStatus: 'SUCCESS',
     });
     expect(snapshot.socialPosts?.[0].publishedAt).toBeTruthy();
-    expect(snapshot.socialBroadcastDetails?.['soc-1']).toBeTruthy();
+    // Raw broadcast bodies must not land on the sync snapshot (report prompt size).
+    expect(
+      Object.prototype.hasOwnProperty.call(snapshot, 'socialBroadcastDetails'),
+    ).toBe(false);
   });
 
-  it('warns and continues when social scope is missing (403)', async () => {
+  it('warns and continues when social scope is missing (MISSING_SCOPES)', async () => {
     mockAnalyticsBase({
       broadcast: () =>
         jsonResponse(
@@ -514,10 +633,69 @@ describe('HubSpotService social broadcast enrich (CPR-56 chunk 5)', () => {
     expect(snapshot.socialPosts).toHaveLength(1);
     expect(snapshot.socialPosts?.[0].totalClicks).toBe(2);
     expect(snapshot.socialPosts?.[0].contentUrl).toBeUndefined();
-    expect(snapshot.socialBroadcastDetails).toBeUndefined();
+    expect(
+      Object.prototype.hasOwnProperty.call(snapshot, 'socialBroadcastDetails'),
+    ).toBe(false);
     expect(
       snapshot.warnings.some((w) => w.includes('social') && w.includes('scope')),
     ).toBe(true);
+  });
+
+  it('treats a plain 403 without MISSING_SCOPES as a per-post failure', async () => {
+    mockAnalyticsBase({
+      socialAsset: {
+        results: [
+          {
+            id: 'soc-1',
+            name: 'A',
+            metrics: { LINKEDIN_CLICKS: 1 },
+          },
+          {
+            id: 'soc-2',
+            name: 'B',
+            metrics: { LINKEDIN_CLICKS: 2 },
+          },
+        ],
+      },
+      broadcast: (id) => {
+        if (id === 'soc-1') {
+          return jsonResponse(
+            { status: 'error', message: 'Forbidden for this social asset' },
+            403,
+          );
+        }
+        return jsonResponse({
+          broadcastGuid: id,
+          channelKey: 'LinkedIn-channel',
+          status: 'SUCCESS',
+          finishedAt: 1_724_000_000_000,
+          content: {
+            originalLink: 'https://www.linkedin.com/feed/update/urn:li:share:2',
+          },
+        });
+      },
+    });
+
+    const snapshot = await service.getCampaignAnalytics(
+      {
+        hubspotCampaignId: campaignId,
+        reportingPeriodStart: '2026-07-01',
+        reportingPeriodEnd: '2026-09-30',
+      },
+      { includeEmailStatistics: false },
+    );
+
+    expect(
+      snapshot.warnings.some((w) => w.includes('scope')),
+    ).toBe(false);
+    expect(
+      snapshot.warnings.some((w) => w.includes('broadcast lookup')),
+    ).toBe(true);
+    const byId = Object.fromEntries(
+      (snapshot.socialPosts ?? []).map((p) => [p.id, p]),
+    );
+    expect(byId['soc-1']?.contentUrl).toBeUndefined();
+    expect(byId['soc-2']?.contentUrl).toContain('linkedin.com');
   });
 
   it('skips enrich when includeSocialBroadcastDetails is false', async () => {
@@ -536,10 +714,106 @@ describe('HubSpotService social broadcast enrich (CPR-56 chunk 5)', () => {
     );
 
     expect(snapshot.socialPosts?.[0].contentUrl).toBeUndefined();
-    expect(snapshot.socialBroadcastDetails).toBeUndefined();
+    expect(
+      Object.prototype.hasOwnProperty.call(snapshot, 'socialBroadcastDetails'),
+    ).toBe(false);
     const broadcastCalls = fetchMock.mock.calls
       .map((c: unknown[]) => String(c[0]))
       .filter((u: string) => u.includes('/broadcast/v1/broadcasts/'));
     expect(broadcastCalls).toHaveLength(0);
+  });
+
+  it('skips broadcast lookup when the post is already enriched', async () => {
+    mockAnalyticsBase({});
+    const result = await service.enrichSocialPostsWithBroadcasts([
+      {
+        id: 'soc-1',
+        name: 'Already',
+        network: 'LinkedIn',
+        facebookClicks: 0,
+        linkedinClicks: 1,
+        twitterClicks: 0,
+        totalClicks: 1,
+        contentUrl: 'https://www.linkedin.com/feed/update/urn:li:share:already',
+        publishedAt: '2026-01-01T00:00:00.000Z',
+        channelKey: 'LinkedInCompanyPage:1',
+      },
+    ]);
+
+    expect(result.posts[0].contentUrl).toContain('already');
+    const broadcastCalls = fetchMock.mock.calls
+      .map((c: unknown[]) => String(c[0]))
+      .filter((u: string) => u.includes('/broadcast/v1/broadcasts/'));
+    expect(broadcastCalls).toHaveLength(0);
+  });
+
+  it('retries broadcast enrich after HubSpot 429', async () => {
+    let broadcastHits = 0;
+    mockAnalyticsBase({
+      broadcast: () => {
+        broadcastHits += 1;
+        if (broadcastHits === 1) {
+          return jsonResponse({ message: 'Rate limit' }, 429);
+        }
+        return jsonResponse({
+          broadcastGuid: 'soc-1',
+          channelKey: 'LinkedIn-channel',
+          status: 'SUCCESS',
+          finishedAt: 1_724_000_000_000,
+          content: {
+            originalLink: 'https://www.linkedin.com/feed/update/urn:li:share:9',
+          },
+        });
+      },
+    });
+
+    const snapshot = await service.getCampaignAnalytics(
+      {
+        hubspotCampaignId: campaignId,
+        reportingPeriodStart: '2026-07-01',
+        reportingPeriodEnd: '2026-09-30',
+      },
+      { includeEmailStatistics: false },
+    );
+
+    expect(broadcastHits).toBeGreaterThanOrEqual(2);
+    expect(snapshot.socialPosts?.[0].contentUrl).toContain('linkedin.com');
+  }, 15_000);
+
+  it('stores slim assetsByType rows (id/name/metrics only)', async () => {
+    mockAnalyticsBase({
+      socialAsset: {
+        results: [
+          {
+            id: 'soc-1',
+            name: 'Caption',
+            metrics: { LINKEDIN_CLICKS: 3 },
+            hugeUnusedField: 'x'.repeat(5000),
+            nestedBlob: { a: 1, b: 2 },
+          },
+        ],
+      },
+    });
+
+    const snapshot = await service.getCampaignAnalytics(
+      {
+        hubspotCampaignId: campaignId,
+        reportingPeriodStart: '2026-07-01',
+        reportingPeriodEnd: '2026-09-30',
+      },
+      { includeEmailStatistics: false, includeSocialBroadcastDetails: false },
+    );
+
+    const row = (
+      snapshot.assetsByType?.SOCIAL_BROADCAST as {
+        results: Record<string, unknown>[];
+      }
+    ).results[0];
+    expect(row).toEqual({
+      id: 'soc-1',
+      name: 'Caption',
+      metrics: { LINKEDIN_CLICKS: 3 },
+    });
+    expect(row.hugeUnusedField).toBeUndefined();
   });
 });

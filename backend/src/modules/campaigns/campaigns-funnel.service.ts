@@ -16,6 +16,7 @@ import {
 import { ContentHubCampaignService } from '../content-hub/content-hub-campaign.service';
 import {
   accumulateMetricsFromUnknown,
+  applySocialClicksFromPosts,
   EMPTY_CAMPAIGN_METRIC_TOTALS,
   mergeMetricTotals,
   metricsFromHubspotSnapshot,
@@ -1056,8 +1057,9 @@ export class CampaignsFunnelService {
               },
               {
                 includeEmailStatistics: false,
-                // Keep funnel live calls lean; social clicks come from cached
-                // hubspotRawData after Content Hub sync (assetsByType).
+                // Keep funnel live calls lean (no SOCIAL_BROADCAST asset pages).
+                // Post-level socialClicks are overlaid from cached hubspotRawData
+                // below when Content Hub sync has stored socialPosts.
                 includeAssetBundle: false,
               },
             );
@@ -1076,18 +1078,31 @@ export class CampaignsFunnelService {
           }
         }
 
-        // Use Content Hub cache only when live metrics were unavailable
+        // Full snapshot cache only when live metrics were unavailable
         // (missing scopes / live fetch failed) — never overwrite a legitimate period zero.
+        // Always prefer post-level socialClicks from cache when posts exist so live
+        // campaign counters and cache path stay aligned with dashboard/sync.
+        const cachedCampaign = cacheByHubspotId.get(hubspotCampaignId);
+        const cachedSnapshot = cachedCampaign?.hubspotRawData
+          ? metricsFromHubspotSnapshot(cachedCampaign.hubspotRawData)
+          : null;
+
         const useCache =
           (liveAttempted && !liveSucceeded) ||
           (!liveAttempted && !input.marketingScopesGranted);
         let usedCache = false;
-        if (useCache) {
-          const cached = cacheByHubspotId.get(hubspotCampaignId);
-          if (cached?.hubspotRawData) {
-            metrics = metricsFromHubspotSnapshot(cached.hubspotRawData).metrics;
-            usedCache = true;
-          }
+        if (useCache && cachedSnapshot) {
+          metrics = cachedSnapshot.metrics;
+          usedCache = true;
+        } else if (
+          liveSucceeded &&
+          cachedSnapshot &&
+          cachedSnapshot.socialPosts.length > 0
+        ) {
+          metrics = applySocialClicksFromPosts(
+            metrics,
+            cachedSnapshot.socialPosts,
+          );
         }
 
         return { hubspotCampaignId, metrics, usedCache };
