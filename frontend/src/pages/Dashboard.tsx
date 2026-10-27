@@ -23,6 +23,7 @@ import {
 } from '../utils/live-session-list-query';
 import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { surveysApi } from '../api/surveys';
+import { programsApi } from '../api/programs';
 import { dashboardApi } from '../api/dashboard';
 import { useAuth } from '../contexts/AuthContext';
 import { catalogApi, type ContentHubClip, type ContentHubTags, type CatalogItem } from '../api/catalog';
@@ -37,6 +38,7 @@ import {
 import { BiomarkerConversationRow, BIOMARKER_CAROUSEL_IDS } from '../components/content/BiomarkerConversationRow';
 import { CalendarClockArt, SurveyClipboardArt } from '../components/dashboard/EmptyStateArt';
 import { PodcastNetworkRow } from '../components/dashboard/PodcastNetworkRow';
+import { PostEventProgressCard } from '../components/dashboard/PostEventProgressCard';
 import { FeatureCarousel, type FeatureSlide } from '../components/home/FeatureCarousel';
 
 const WEBINAR_PLACEHOLDER_IMAGES = [
@@ -192,6 +194,14 @@ export default function Dashboard() {
     staleTime: 5 * 60 * 1000,
   });
   const surveys = useMemo(() => surveyList?.active ?? [], [surveyList]);
+
+  /** Sessions with an unpaid honorarium: each gets a post-event step map card (SCRUM-288). */
+  const { data: postEventProgress = [] } = useQuery({
+    queryKey: ['programs', 'me', 'post-event-progress'],
+    queryFn: programsApi.getMyPostEventProgress,
+    enabled: !!userId,
+    retry: 1,
+  });
 
   const { data: officeHours = [], isLoading: officeHoursLoading } = useQuery({
     queryKey: OFFICE_HOURS_QUERY_KEY,
@@ -409,6 +419,14 @@ export default function Dashboard() {
             Your next live session, earnings, activity, and the surveys you still need to complete.
           </p>
         </div>
+
+        {postEventProgress.length > 0 ? (
+          <div className="space-y-3">
+            {postEventProgress.slice(0, 3).map((item) => (
+              <PostEventProgressCard key={item.programId} item={item} />
+            ))}
+          </div>
+        ) : null}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,1.25fr)] md:gap-4">
           <Link

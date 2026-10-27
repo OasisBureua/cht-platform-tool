@@ -238,4 +238,200 @@ describe('ProgramRegistrationsService', () => {
       );
     });
   });
+
+  describe('getMyPostEventProgress', () => {
+    const NOW = new Date('2026-10-30T12:00:00.000Z').getTime();
+    const ended = new Date('2026-10-30T00:21:00.000Z');
+
+    const reg = (
+      programId: string,
+      over: Record<string, unknown> = {},
+      program: Record<string, unknown> = {},
+    ) => ({
+      programId,
+      postEventAttendanceStatus: 'VERIFIED',
+      postEventSurveyAcknowledgedAt: null,
+      honorariumRequestedAt: null,
+      payoutDetailsConfirmedAt: null,
+      ...over,
+      program: {
+        id: programId,
+        title: `Session ${programId}`,
+        zoomSessionType: 'WEBINAR',
+        startDate: new Date('2026-10-30T00:00:00.000Z'),
+        duration: 15,
+        zoomSessionEndedAt: ended,
+        jotformSurveyUrl: null,
+        ...program,
+      },
+    });
+
+    function build(data: {
+      regs: unknown[];
+      surveys?: unknown[];
+      payments?: unknown[];
+      responses?: unknown[];
+      user?: unknown;
+    }) {
+      const rich = {
+        programRegistration: {
+          findMany: jest.fn().mockResolvedValue(data.regs),
+        },
+        survey: { findMany: jest.fn().mockResolvedValue(data.surveys ?? []) },
+        payment: { findMany: jest.fn().mockResolvedValue(data.payments ?? []) },
+        surveyResponse: {
+          findMany: jest.fn().mockResolvedValue(data.responses ?? []),
+        },
+        user: {
+          findUnique: jest.fn().mockResolvedValue(
+            data.user ?? {
+              stripeAccountId: 'acct_1',
+              stripePayoutsEnabled: true,
+              w9Submitted: true,
+            },
+          ),
+        },
+      };
+      const svc = new ProgramRegistrationsService(
+        rich as unknown as PrismaService,
+        {} as OutboundSyncService,
+        { get: jest.fn() } as unknown as ConfigService,
+        {} as QueueService,
+        {} as SesEmailService,
+        {} as import('../invites/invites.service').InvitesService,
+      );
+      return { svc, rich };
+    }
+
+    it('only asks for approved, non-denied registrations on paid live sessions', async () => {
+      const { svc, rich } = build({ regs: [] });
+      await expect(svc.getMyPostEventProgress('u1', NOW)).resolves.toEqual([]);
+      const [args] = rich.programRegistration.findMany.mock.calls[0] as [
+        { where: Record<string, unknown> },
+      ];
+      expect(args.where).toMatchObject({
+        userId: 'u1',
+        status: ProgramRegistrationStatus.APPROVED,
+        postEventAttendanceStatus: { not: 'DENIED' },
+        program: expect.objectContaining({
+          honorariumAmount: { gt: 0 },
+        }) as unknown,
+      });
+    });
+
+    it('returns the step facts for a session with a saved survey draft', async () => {
+      const { svc } = build({
+        regs: [reg('p1')],
+        surveys: [{ id: 's1', programId: 'p1' }],
+        responses: [{ surveyId: 's1', isDraft: true }],
+      });
+      const [item] = await svc.getMyPostEventProgress('u1', NOW);
+      expect(item).toEqual({
+        programId: 'p1',
+        title: 'Session p1',
+        zoomSessionType: 'WEBINAR',
+        startDate: '2026-10-30T00:00:00.000Z',
+        hasSurvey: true,
+        hasHonorarium: true,
+        nativeSurvey: true,
+        feedbackSurveyId: 's1',
+        attendance: 'VERIFIED',
+        surveyAcknowledged: false,
+        surveySubmitted: false,
+        surveyDraftSaved: true,
+        paymentInfoConfirmed: false,
+        paymentStatus: null,
+        payoutReady: true,
+      });
+    });
+
+    it('drops paid and cancelled honoraria but keeps pending and failed ones', async () => {
+      const { svc } = build({
+        regs: [reg('paid'), reg('cancelled'), reg('pending'), reg('failed')],
+        payments: [
+          { programId: 'paid', status: 'PAID' },
+          { programId: 'cancelled', status: 'CANCELLED' },
+          { programId: 'pending', status: 'PENDING' },
+          { programId: 'failed', status: 'FAILED' },
+        ],
+      });
+      const items = await svc.getMyPostEventProgress('u1', NOW);
+      expect(
+        items.map((i) => [
+          i.programId,
+          i.paymentStatus,
+          i.paymentInfoConfirmed,
+        ]),
+      ).toEqual([
+        ['pending', 'PENDING', true],
+        ['failed', 'FAILED', true],
+      ]);
+    });
+
+    it('uses the latest honorarium payment per session', async () => {
+      const { svc } = build({
+        regs: [reg('p1')],
+        payments: [
+          { programId: 'p1', status: 'PROCESSING' },
+          { programId: 'p1', status: 'FAILED' },
+        ],
+      });
+      const [item] = await svc.getMyPostEventProgress('u1', NOW);
+      expect(item.paymentStatus).toBe('PROCESSING');
+    });
+
+    it('skips sessions that have not ended yet', async () => {
+      const { svc } = build({
+        regs: [
+          reg(
+            'later',
+            {},
+            {
+              zoomSessionEndedAt: null,
+              startDate: new Date('2026-11-05T00:00:00.000Z'),
+            },
+          ),
+        ],
+      });
+      await expect(svc.getMyPostEventProgress('u1', NOW)).resolves.toEqual([]);
+    });
+
+    it('skips an untouched survey after its window closed, but keeps one already saved', async () => {
+      const longAgo = new Date('2026-10-01T00:00:00.000Z');
+      const { svc } = build({
+        regs: [
+          reg(
+            'closed',
+            {},
+            { zoomSessionEndedAt: longAgo, startDate: longAgo },
+          ),
+          reg('saved', {}, { zoomSessionEndedAt: longAgo, startDate: longAgo }),
+        ],
+        surveys: [
+          { id: 's-closed', programId: 'closed' },
+          { id: 's-saved', programId: 'saved' },
+        ],
+        responses: [{ surveyId: 's-saved', isDraft: false }],
+      });
+      const items = await svc.getMyPostEventProgress('u1', NOW);
+      expect(items.map((i) => [i.programId, i.surveySubmitted])).toEqual([
+        ['saved', true],
+      ]);
+    });
+
+    it('reports payout details as missing when Stripe is not ready', async () => {
+      const { svc } = build({
+        regs: [reg('p1', { postEventSurveyAcknowledgedAt: ended })],
+        user: {
+          stripeAccountId: 'acct_1',
+          stripePayoutsEnabled: false,
+          w9Submitted: true,
+        },
+      });
+      const [item] = await svc.getMyPostEventProgress('u1', NOW);
+      expect(item.payoutReady).toBe(false);
+      expect(item.surveyAcknowledged).toBe(true);
+      expect(item.hasSurvey).toBe(false);
+    });
+  });
 });

@@ -85,6 +85,15 @@ export class ProgramsController {
   }
 
   /**
+   * GET /api/programs/me/post-event-progress, sessions with an unpaid honorarium and the facts for the step map (auth).
+   */
+  @Get('me/post-event-progress')
+  @UseGuards(JwtAuthGuard)
+  async getMyPostEventProgress(@CurrentUser() user: AuthUser) {
+    return this.registrationsService.getMyPostEventProgress(user.userId);
+  }
+
+  /**
    * POST /api/programs/registrations/batch: register for multiple live webinars (approval when required).
    */
   @Post('registrations/batch')

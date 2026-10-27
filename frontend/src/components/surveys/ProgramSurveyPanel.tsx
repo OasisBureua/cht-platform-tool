@@ -55,7 +55,9 @@ export function ProgramSurveyPanel({
 }: Props) {
   const queryClient = useQueryClient();
   const onSubmittedRef = useRef(onSubmitted);
-  onSubmittedRef.current = onSubmitted;
+  useEffect(() => {
+    onSubmittedRef.current = onSubmitted;
+  }, [onSubmitted]);
 
   const [pendingSubmit, setPendingSubmit] = useState<PendingSubmit | null>(null);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Loader2 } from 'lucide-react';
@@ -69,10 +69,8 @@ export function PostEventPayoutStep(props: {
 
   const payoutReady = preview?.payoutReady ?? false;
   const blockers = hardBlockers(preview);
-
-  useEffect(() => {
-    if (!payoutReady) setEditing(false);
-  }, [payoutReady]);
+  /** Editing only applies to a ready account; an account that is not ready shows setup instead. */
+  const editingDetails = editing && payoutReady;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
@@ -99,7 +97,7 @@ export function PostEventPayoutStep(props: {
       } else if (!surveyAcked && !nativeSurveyMode) {
         await programsApi.acknowledgePostEventSurvey(programId);
       }
-      const entryKind = touchedSetup || editing ? 'NEWLY_ENTERED' : 'REUSED';
+      const entryKind = touchedSetup || editingDetails ? 'NEWLY_ENTERED' : 'REUSED';
       return programsApi.requestPostEventHonorarium(programId, { entryKind });
     },
     onSuccess: () => {
@@ -171,7 +169,7 @@ export function PostEventPayoutStep(props: {
     );
   }
 
-  const showInlineSetup = !payoutReady || editing;
+  const showInlineSetup = !payoutReady || editingDetails;
   const bankLabel = preview.maskedBankLast4
     ? `Bank account ending ${preview.maskedBankLast4}`
     : 'Bank account on file (last digits unavailable)';
@@ -184,7 +182,7 @@ export function PostEventPayoutStep(props: {
         we only keep a reference and a masked display value.
       </p>
 
-      {payoutReady && !editing ? (
+      {payoutReady && !editingDetails ? (
         <div className="rounded-[6px] border border-border bg-muted px-4 py-3 space-y-3">
           <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
             <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
@@ -258,7 +256,7 @@ export function PostEventPayoutStep(props: {
 
       {showInlineSetup ? (
         <div className="space-y-3">
-          {editing ? (
+          {editingDetails ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 Update your <StripeMark size="xs" className="translate-y-px" /> bank or tax details, then
@@ -281,7 +279,7 @@ export function PostEventPayoutStep(props: {
             </p>
           )}
           <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} />
-          {payoutReady && editing ? (
+          {payoutReady && editingDetails ? (
             <button
               type="button"
               disabled={finalizeMut.isPending}
