@@ -40,9 +40,16 @@ const METRIC_KEY_MAP: Record<string, keyof CampaignMetricTotals> = {
   views: 'landingPageViews',
   submissions: 'formSubmissions',
   registrations: 'marketingEventRegistrations',
+  // HubSpot SOCIAL_BROADCAST keys are FACEBOOK_CLICKS / LINKEDIN_CLICKS /
+  // TWITTER_CLICKS. normalizeMetricKey strips non-alphanumerics, so lookups
+  // must use the underscore-free form (facebookclicks). Keep underscore
+  // variants too in case a future payload already uses them.
   facebook_clicks: 'socialClicks',
   linkedin_clicks: 'socialClicks',
   twitter_clicks: 'socialClicks',
+  facebookclicks: 'socialClicks',
+  linkedinclicks: 'socialClicks',
+  twitterclicks: 'socialClicks',
 };
 
 function toNumber(value: unknown): number {
@@ -223,6 +230,11 @@ export type HubSpotSocialPost = {
   linkedinClicks: number;
   twitterClicks: number;
   totalClicks: number;
+  /** Legacy Social API enrich (CPR-56 chunk 5); absent when scope/API unavailable. */
+  contentUrl?: string | null;
+  publishedAt?: string | null;
+  channelKey?: string | null;
+  broadcastStatus?: string | null;
 };
 
 function toFiniteNumber(value: unknown): number {
@@ -248,6 +260,32 @@ function inferSocialNetwork(
   if (toFiniteNumber(metrics.FACEBOOK_CLICKS) > 0) return 'Facebook';
   if (toFiniteNumber(metrics.TWITTER_CLICKS) > 0) return 'X';
   return null;
+}
+
+/**
+ * Shrink a campaign asset-type payload for storage on `hubspot_raw_data`.
+ * Keeps id / name / metrics (what dashboard + Hub ingest read) and drops
+ * bulky unused HubSpot fields so the report prompt stays within limits.
+ */
+export function slimCampaignAssetPayload(payload: unknown): unknown {
+  if (!payload || typeof payload !== 'object') return payload;
+  const record = payload as Record<string, unknown>;
+  const results = Array.isArray(record.results) ? record.results : [];
+  const slimResults = results.map((entry) => {
+    if (!entry || typeof entry !== 'object') return entry;
+    const row = entry as Record<string, unknown>;
+    const slim: Record<string, unknown> = {};
+    if (row.id != null) slim.id = row.id;
+    else if (row.broadcastGuid != null) slim.id = row.broadcastGuid;
+    if (typeof row.name === 'string') slim.name = row.name;
+    if (row.metrics != null && typeof row.metrics === 'object') {
+      slim.metrics = row.metrics;
+    }
+    return slim;
+  });
+  const out: Record<string, unknown> = { results: slimResults };
+  if (record.truncated === true) out.truncated = true;
+  return out;
 }
 
 /** Parse HubSpot SOCIAL_BROADCAST campaign assets into social posts. */
@@ -302,6 +340,60 @@ export function countAssetsByType(
   return counts;
 }
 
+function isParsedSocialPost(value: unknown): value is HubSpotSocialPost {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as Record<string, unknown>;
+  return (
+    typeof row.id === 'string' &&
+    typeof row.totalClicks === 'number' &&
+    typeof row.facebookClicks === 'number' &&
+    typeof row.linkedinClicks === 'number' &&
+    typeof row.twitterClicks === 'number'
+  );
+}
+
+function socialPostsFromSnapshot(
+  snap: Record<string, unknown>,
+  assetsByType: Record<string, unknown>,
+): HubSpotSocialPost[] {
+  // Prefer enriched/normalized `socialPosts` from sync (channel/URL/publish time).
+  // Raw SOCIAL_BROADCAST is a fallback for older snapshots that only stored assets.
+  if (Array.isArray(snap.socialPosts)) {
+    if (snap.socialPosts.length === 0) return [];
+    if (snap.socialPosts.every(isParsedSocialPost)) {
+      return snap.socialPosts;
+    }
+    return parseSocialPostsFromAssets({ results: snap.socialPosts });
+  }
+
+  const socialRaw = assetsByType.SOCIAL_BROADCAST;
+  if (socialRaw != null) {
+    return parseSocialPostsFromAssets(socialRaw);
+  }
+
+  return [];
+}
+
+/** Sum per-post click totals (source of truth when SOCIAL_BROADCAST is present). */
+export function sumSocialPostClicks(posts: HubSpotSocialPost[]): number {
+  return posts.reduce((sum, post) => sum + (post.totalClicks || 0), 0);
+}
+
+/**
+ * HubSpot often repeats FACEBOOK_/LINKEDIN_/TWITTER_CLICKS on the campaign
+ * object and again on each SOCIAL_BROADCAST asset. Prefer post-level sums.
+ */
+export function applySocialClicksFromPosts(
+  metrics: CampaignMetricTotals,
+  socialPosts: HubSpotSocialPost[],
+): CampaignMetricTotals {
+  if (socialPosts.length === 0) return metrics;
+  return {
+    ...metrics,
+    socialClicks: sumSocialPostClicks(socialPosts),
+  };
+}
+
 /** Parse a stored HubSpot analytics snapshot (hubspotRawData) into dashboard metrics. */
 export function metricsFromHubspotSnapshot(raw: unknown): {
   metrics: CampaignMetricTotals;
@@ -317,27 +409,39 @@ export function metricsFromHubspotSnapshot(raw: unknown): {
   }
 
   const snap = raw as Record<string, unknown>;
-  const metrics = mergeMetricTotals(
-    accumulateMetricsFromUnknown(snap.metrics),
-    accumulateMetricsFromUnknown(snap.campaign),
-    accumulateMetricsFromUnknown(snap.assets),
-    accumulateMetricsFromUnknown(snap.emailStatistics),
-  );
-
-  const assetsByType: Record<string, unknown> = {};
-  if (snap.assets && typeof snap.assets === 'object') {
-    assetsByType.MARKETING_EMAIL = snap.assets;
-  }
   const extraAssets =
     snap.assetsByType && typeof snap.assetsByType === 'object'
       ? (snap.assetsByType as Record<string, unknown>)
       : {};
-  const socialRaw = extraAssets.SOCIAL_BROADCAST ?? snap.socialPosts ?? null;
+
+  // Fold legacy `assets` (MARKETING_EMAIL) into assetsByType once so email
+  // metrics are not double-counted when both fields are present.
+  const assetsByType: Record<string, unknown> = { ...extraAssets };
+  if (
+    snap.assets &&
+    typeof snap.assets === 'object' &&
+    assetsByType.MARKETING_EMAIL == null
+  ) {
+    assetsByType.MARKETING_EMAIL = snap.assets;
+  }
+
+  const socialPosts = socialPostsFromSnapshot(snap, assetsByType);
+  const metrics = applySocialClicksFromPosts(
+    mergeMetricTotals(
+      accumulateMetricsFromUnknown(snap.metrics),
+      accumulateMetricsFromUnknown(snap.campaign),
+      accumulateMetricsFromUnknown(snap.emailStatistics),
+      ...Object.values(assetsByType).map((payload) =>
+        accumulateMetricsFromUnknown(payload),
+      ),
+    ),
+    socialPosts,
+  );
 
   return {
     metrics,
-    assetCounts: countAssetsByType({ ...assetsByType, ...extraAssets }),
-    socialPosts: parseSocialPostsFromAssets(socialRaw),
+    assetCounts: countAssetsByType(assetsByType),
+    socialPosts,
   };
 }
 

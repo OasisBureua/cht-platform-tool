@@ -761,6 +761,11 @@ export type HubSpotSocialPost = {
   linkedinClicks: number;
   twitterClicks: number;
   totalClicks: number;
+  /** Present when HubSpot Social API enrich succeeded (optional `social` scope). */
+  contentUrl?: string | null;
+  publishedAt?: string | null;
+  channelKey?: string | null;
+  broadcastStatus?: string | null;
 };
 
 export type CampaignVideoStat = {

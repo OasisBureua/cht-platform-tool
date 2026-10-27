@@ -9,6 +9,7 @@ import {
 import { ContentHubCampaignService } from '../content-hub/content-hub-campaign.service';
 import {
   accumulateMetricsFromUnknown,
+  applySocialClicksFromPosts,
   campaignNameFromDetail,
   countAssetsByType,
   EMPTY_CAMPAIGN_METRIC_TOTALS,
@@ -31,6 +32,7 @@ import {
   HubSpotService,
   type HubSpotMarketingAccess,
 } from '../hubspot/hubspot.service';
+import { defaultReportingWindow } from './campaigns-funnel.util';
 
 export type CampaignsDashboardQuery = {
   startDate?: string;
@@ -141,14 +143,6 @@ function toIsoDate(value: string | null | undefined): string | null {
   if (!raw) return null;
   const match = /^(\d{4}-\d{2}-\d{2})/.exec(raw);
   return match?.[1] ?? null;
-}
-
-function defaultReportingWindow(): { startDate: string; endDate: string } {
-  const end = new Date();
-  const start = new Date(end);
-  start.setUTCDate(start.getUTCDate() - 90);
-  const fmt = (d: Date) => d.toISOString().slice(0, 10);
-  return { startDate: fmt(start), endDate: fmt(end) };
 }
 
 async function mapPool<T, R>(
@@ -607,6 +601,8 @@ export class CampaignsDashboardService {
       },
       {
         includeEmailStatistics: marketingAccess.canReadEmailStats,
+        // Dashboard fetches the asset bundle itself below — skip duplicate.
+        includeAssetBundle: false,
         // Reuse dashboard-period fetch only when this row uses the same window.
         ...(sharedEmailStatistics &&
         periodStart === defaultStart &&
@@ -642,6 +638,8 @@ export class CampaignsDashboardService {
     const socialPosts = parseSocialPostsFromAssets(
       assetsByType.SOCIAL_BROADCAST ?? null,
     );
+    // Campaign object + SOCIAL_BROADCAST both carry the same click counters.
+    Object.assign(metrics, applySocialClicksFromPosts(metrics, socialPosts));
 
     const liveHasData = hasAnyMetricData(metrics);
     if (!liveHasData && ch?.hubspotRawData) {
