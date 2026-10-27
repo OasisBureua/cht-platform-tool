@@ -77,8 +77,9 @@ import {
   type ProfileMissingField,
 } from '../common/profile-payment-eligibility';
 import {
+  CURRENT_BETA_TERMS_VERSION,
   CURRENT_TERMS_VERSION,
-  hasAcceptedCurrentTerms,
+  hasAcceptedRequiredConsent,
 } from '../common/terms';
 
 interface LoginSuccess {
@@ -101,6 +102,9 @@ interface LoginSuccess {
   mfaFeature?: MfaFeatureFlags;
   termsAccepted?: boolean;
   termsVersion?: string;
+  betaTermsRequired?: boolean;
+  betaTermsVersion?: string;
+  betaTermsAccepted?: boolean;
 }
 
 @Controller('auth')
@@ -171,6 +175,31 @@ export class AuthController {
 
   private mfaFeaturePayload(): MfaFeatureFlags {
     return this.featureFlags.getAuthFeatures().mfa;
+  }
+
+  /** Consent fields for login /me payloads (ToS + optional beta gate). */
+  private consentPayload(
+    dbUser:
+      | {
+          termsAcceptedAt?: Date | null;
+          termsVersion?: string | null;
+          betaTermsAcceptedAt?: Date | null;
+          betaTermsVersion?: string | null;
+        }
+      | null
+      | undefined,
+  ) {
+    const betaTermsRequired = this.featureFlags.isBetaTermsRequired();
+    return {
+      termsAccepted: hasAcceptedRequiredConsent(dbUser, betaTermsRequired),
+      termsVersion: CURRENT_TERMS_VERSION,
+      betaTermsRequired,
+      betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
+      betaTermsAccepted: Boolean(
+        dbUser?.betaTermsAcceptedAt &&
+          dbUser?.betaTermsVersion === CURRENT_BETA_TERMS_VERSION,
+      ),
+    };
   }
 
   private assertMfaEnrollmentAllowed(): void {
@@ -311,8 +340,7 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
-      termsAccepted: hasAcceptedCurrentTerms(dbUser),
-      termsVersion: CURRENT_TERMS_VERSION,
+      ...this.consentPayload(dbUser),
     };
   }
 
@@ -1062,8 +1090,7 @@ export class AuthController {
       name: user.name,
       role: user.role,
       profileComplete,
-      termsAccepted: hasAcceptedCurrentTerms(dbUser),
-      termsVersion: CURRENT_TERMS_VERSION,
+      ...this.consentPayload(dbUser),
     };
   }
 
@@ -1624,6 +1651,9 @@ export class AuthController {
         mfaFeature: MfaFeatureFlags;
         termsAccepted: boolean;
         termsVersion: string;
+        betaTermsRequired: boolean;
+        betaTermsVersion: string;
+        betaTermsAccepted: boolean;
       }
     | { authenticated: false }
   > {
@@ -1696,15 +1726,14 @@ export class AuthController {
       mfaEnabled,
       mfaEnrollmentRequired,
       mfaFeature: this.mfaFeaturePayload(),
-      termsAccepted: hasAcceptedCurrentTerms(dbUser),
-      termsVersion: CURRENT_TERMS_VERSION,
+      ...this.consentPayload(dbUser),
     };
   }
 
   /**
    * POST /api/auth/terms/accept
-   * Saves Terms of Service & Privacy Policy acceptance to the user's profile.
-   * The client must echo the version it displayed so stale tabs cannot accept an older text.
+   * Saves Terms of Service & Privacy Policy acceptance (and Beta Participant
+   * Terms when the beta gate is on). Client must echo the version(s) displayed.
    */
   @Post('terms/accept')
   @HttpCode(200)
@@ -1712,31 +1741,66 @@ export class AuthController {
   async acceptTerms(
     @CurrentUser() user: AuthUser,
     @Body('version') version: string,
+    @Body('betaAccepted') betaAccepted: boolean | undefined,
+    @Body('betaVersion') betaVersion: string | undefined,
     @Req() req: Request,
   ): Promise<{
     termsAccepted: true;
     termsVersion: string;
     termsAcceptedAt: string;
+    betaTermsAccepted: boolean;
+    betaTermsVersion: string | null;
+    betaTermsAcceptedAt: string | null;
   }> {
     if (version !== CURRENT_TERMS_VERSION) {
       throw new BadRequestException(
         'The Terms of Use have been updated. Please reload and review the latest version.',
       );
     }
+    const betaRequired = this.featureFlags.isBetaTermsRequired();
+    if (betaRequired) {
+      if (betaAccepted !== true) {
+        throw new BadRequestException(
+          'You must accept the Beta Participant Terms Agreement to continue.',
+        );
+      }
+      if (betaVersion !== CURRENT_BETA_TERMS_VERSION) {
+        throw new BadRequestException(
+          'The Beta Participant Terms have been updated. Please reload and review the latest version.',
+        );
+      }
+    }
     const saved = await this.authService.acceptTerms(
       user.userId,
       CURRENT_TERMS_VERSION,
+      {
+        acceptBetaTerms: betaRequired && betaAccepted === true,
+        ipAddress: this.clientIp(req),
+        userAgent:
+          typeof req.headers['user-agent'] === 'string'
+            ? req.headers['user-agent']
+            : null,
+      },
     );
     this.auditAuthEvent(
       req,
       'auth.terms_accepted',
       { userId: user.userId, email: user.email, role: user.role },
-      { termsVersion: saved.termsVersion },
+      {
+        termsVersion: saved.termsVersion,
+        betaTermsVersion: saved.betaTermsVersion,
+        betaAccepted: Boolean(saved.betaTermsAcceptedAt),
+      },
     );
     return {
       termsAccepted: true,
       termsVersion: saved.termsVersion,
       termsAcceptedAt: saved.termsAcceptedAt.toISOString(),
+      betaTermsAccepted: Boolean(saved.betaTermsAcceptedAt),
+      betaTermsVersion: saved.betaTermsVersion,
+      betaTermsAcceptedAt: saved.betaTermsAcceptedAt
+        ? saved.betaTermsAcceptedAt.toISOString()
+        : null,
     };
   }
 

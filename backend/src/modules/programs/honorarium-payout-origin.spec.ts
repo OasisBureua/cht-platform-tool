@@ -1,4 +1,4 @@
-import { PayoutDetailsOrigin, ProgramRegistrationStatus, PostEventAttendanceStatus } from '@prisma/client';
+import { PayoutDetailsEntryKind, ProgramRegistrationStatus, PostEventAttendanceStatus } from '@prisma/client';
 import { ProgramRegistrationsService } from './program-registrations.service';
 
 describe('ProgramRegistrationsService.requestPostEventHonorariumPayout origin', () => {
@@ -31,6 +31,7 @@ describe('ProgramRegistrationsService.requestPostEventHonorariumPayout origin', 
     postEventAttendanceStatus: PostEventAttendanceStatus.VERIFIED,
     postEventSurveyAcknowledgedAt: new Date('2026-10-01T00:00:00.000Z'),
     honorariumRequestedAt: null,
+    payoutDetailsEntryKind: null,
   };
   const user = {
     firstName: 'Ada',
@@ -49,8 +50,6 @@ describe('ProgramRegistrationsService.requestPostEventHonorariumPayout origin', 
     prisma.programRegistration.findUnique.mockResolvedValue(registration);
     prisma.user.findUnique.mockResolvedValue(user);
     prisma.survey.count.mockResolvedValue(0);
-    prisma.programRegistration.count.mockResolvedValue(0);
-    prisma.payment.count.mockResolvedValue(0);
     prisma.programRegistration.updateMany.mockResolvedValue({ count: 1 });
     queueService.processPayment.mockResolvedValue(true);
     service = new ProgramRegistrationsService(
@@ -63,59 +62,56 @@ describe('ProgramRegistrationsService.requestPostEventHonorariumPayout origin', 
     );
   });
 
-  it('stores new when this is the first honorarium confirmation', async () => {
+  it('stores reused when the learner confirms existing payout details', async () => {
     const result = await service.requestPostEventHonorariumPayout('user-1', 'prog-1');
-    expect(result).toEqual({ paymentId: null, created: true });
-    expect(prisma.payment.count).toHaveBeenCalled();
+    expect(result).toEqual({
+      paymentId: null,
+      created: true,
+      entryKind: PayoutDetailsEntryKind.REUSED,
+    });
     expect(prisma.programRegistration.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          payoutDetailsOrigin: PayoutDetailsOrigin.NEW,
+          payoutDetailsEntryKind: PayoutDetailsEntryKind.REUSED,
+          payoutDetailsConfirmedAt: expect.any(Date),
         }),
       }),
     );
   });
 
-  it('stores reused when a prior honorarium request already used the Stripe account', async () => {
-    prisma.programRegistration.count.mockResolvedValue(1);
-    await service.requestPostEventHonorariumPayout('user-1', 'prog-1');
-    expect(prisma.payment.count).not.toHaveBeenCalled();
+  it('stores newly entered when the learner updated payout details in this flow', async () => {
+    await service.requestPostEventHonorariumPayout('user-1', 'prog-1', {
+      entryKind: PayoutDetailsEntryKind.NEWLY_ENTERED,
+    });
     expect(prisma.programRegistration.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          payoutDetailsOrigin: PayoutDetailsOrigin.REUSED,
+          payoutDetailsEntryKind: PayoutDetailsEntryKind.NEWLY_ENTERED,
         }),
       }),
     );
   });
 
-  it('stores reused when a prior honorarium payment exists without a request timestamp', async () => {
-    prisma.payment.count.mockResolvedValue(1);
-    await service.requestPostEventHonorariumPayout('user-1', 'prog-1');
-    expect(prisma.programRegistration.updateMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          payoutDetailsOrigin: PayoutDetailsOrigin.REUSED,
-        }),
-      }),
-    );
-  });
-
-  it('clears the origin when the payout cannot be queued', async () => {
+  it('clears the confirmation when the payout cannot be queued', async () => {
     queueService.processPayment.mockResolvedValue(false);
     await expect(
       service.requestPostEventHonorariumPayout('user-1', 'prog-1'),
     ).rejects.toThrow('Could not queue honorarium');
     expect(prisma.programRegistration.update).toHaveBeenCalledWith({
       where: { id: 'reg-1' },
-      data: { honorariumRequestedAt: null, payoutDetailsOrigin: null },
+      data: {
+        honorariumRequestedAt: null,
+        payoutDetailsConfirmedAt: null,
+        payoutDetailsEntryKind: null,
+      },
     });
   });
 
-  it('does not overwrite origin when the honorarium was already requested', async () => {
+  it('does not overwrite the confirmation when the honorarium was already requested', async () => {
     prisma.programRegistration.findUnique.mockResolvedValue({
       ...registration,
       honorariumRequestedAt: new Date('2026-10-02T00:00:00.000Z'),
+      payoutDetailsEntryKind: PayoutDetailsEntryKind.NEWLY_ENTERED,
     });
     prisma.payment.findFirst.mockResolvedValue({ id: 'pay-1' });
     const result = await service.requestPostEventHonorariumPayout('user-1', 'prog-1');

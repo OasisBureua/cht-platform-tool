@@ -58,6 +58,10 @@ model User {
   termsAcceptedAt DateTime?
   termsVersion    String?
 
+  /// Beta Participant Terms Agreement (beta period only); version e.g. 2026-10-22.
+  betaTermsAcceptedAt DateTime?
+  betaTermsVersion    String?
+
   // Earnings tracking
   totalEarnings       Int @default(0)  // Total lifetime earnings in cents
   activitiesCompleted Int @default(0)  // Count of completed programs
@@ -77,12 +81,31 @@ model User {
   cmeCredits      CMECredit[]
   analyticsEvents AnalyticsEvent[]
   companionConversations CompanionConversation[]
+  betaTermsAcceptances BetaTermsAcceptance[]
 
   @@index([email])
   @@index([authId])
   @@index([stripeAccountId])
   @@index([totalEarnings])
+  @@index([betaTermsAcceptedAt])
   @@map("User")
+}
+
+/// Immutable audit row for each Beta Participant Terms acceptance (legal export).
+model BetaTermsAcceptance {
+  id           String   @id @default(cuid())
+  userId       String
+  termsVersion String
+  acceptedAt   DateTime @default(now())
+  ipAddress    String?
+  userAgent    String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([acceptedAt])
+  @@index([termsVersion])
+  @@map("BetaTermsAcceptance")
 }
 
 // ============================================================================
@@ -407,12 +430,12 @@ enum PostEventAttendanceStatus {
   DENIED
 }
 
-/// Snapshot taken when the learner requests an honorarium.
-/// NEW: first payout confirmation for this user.
-/// REUSED: a prior honorarium already used their Stripe account.
-enum PayoutDetailsOrigin {
-  NEW
+/// How the learner confirmed Stripe payout details for this program's honorarium.
+enum PayoutDetailsEntryKind {
+  /// Existing Connect details confirmed for this webinar/session.
   REUSED
+  /// Details were entered or updated during this post-event flow.
+  NEWLY_ENTERED
 }
 
 enum ProgramFormLinkKind {
@@ -440,8 +463,10 @@ model ProgramRegistration {
   postEventAttendanceReviewedByUserId  String?
   postEventSurveyAcknowledgedAt        DateTime?
   honorariumRequestedAt                DateTime?
-  /// Set only at honorarium request. Null on rows requested before this flag existed.
-  payoutDetailsOrigin                  PayoutDetailsOrigin?
+  /// When the learner confirmed Stripe payout details for this program (per-webinar).
+  payoutDetailsConfirmedAt             DateTime?
+  /// Whether they reused existing Connect details or entered/updated them in this flow.
+  payoutDetailsEntryKind               PayoutDetailsEntryKind?
   /// Set after the ~24h pre-session reminder email is sent. Reset to null when session time changes so a new reminder fires.
   reminder24hSentAt                    DateTime?
   createdAt                 DateTime                  @default(now())
@@ -854,6 +879,64 @@ model AnalyticsEvent {
   @@index([eventName])
   @@index([timestamp])
   @@map("AnalyticsEvent")
+}
+
+// ============================================================================
+// OUTBOUND EMAIL LOG (admin invitations / delivery trail)
+// ============================================================================
+enum OutboundEmailType {
+  REGISTRATION_INVITE
+  REGISTRATION_SUBMITTED
+  REGISTRATION_APPROVED
+  REGISTRATION_REJECTED
+  REGISTRATION_REVOKED
+  PRE_SESSION_REMINDER
+  POST_EVENT_SURVEY
+  MISSED_SESSION
+  OPERATIONAL
+  PUBLIC_REGISTRATION
+  WEBINAR_ACCESS
+  REPORT_READY
+  OTHER
+}
+
+enum OutboundEmailStatus {
+  SENT
+  DELIVERED
+  BOUNCED
+  FAILED
+  UNSUBSCRIBED
+}
+
+/// One row per platform-sent email (per program when multi-program invite).
+model OutboundEmailLog {
+  id               String              @id @default(cuid())
+  toEmail          String
+  toName           String?
+  emailType        OutboundEmailType
+  status           OutboundEmailStatus @default(SENT)
+  programId        String?
+  userId           String?
+  registrationId   String?
+  inviteId         String?
+  /// Null = automatic/system (worker, webhook); otherwise admin who triggered send.
+  sentByUserId     String?
+  sesMessageId     String?
+  subject          String?
+  errorMessage     String?
+  /// When SES (or webhook) last updated delivery status.
+  providerStatusAt DateTime?
+  /// If this send is a resend, points at the prior log row.
+  resentFromId     String?
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+
+  @@index([programId, createdAt])
+  @@index([toEmail])
+  @@index([status])
+  @@index([emailType])
+  @@index([sesMessageId])
+  @@map("OutboundEmailLog")
 }
 
 // ============================================================================

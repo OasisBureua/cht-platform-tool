@@ -24,4 +24,12 @@ export class SubmitSurveyResponseDto {
   @IsOptional()
   @IsBoolean()
   draft?: boolean;
+
+  /**
+   * Opt-in: write mapped answers back to the user's saved profile.
+   * Default false — never silently overwrite profile fields.
+   */
+  @IsOptional()
+  @IsBoolean()
+  updateProfile?: boolean;
 }

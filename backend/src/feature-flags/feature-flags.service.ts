@@ -79,6 +79,18 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
     return this.flags.mfa.enabled;
   }
 
+  /**
+   * Beta Participant Terms required for authenticated use.
+   * Env `BETA_TERMS_REQUIRED` overrides AppConfig when set.
+   */
+  isBetaTermsRequired(): boolean {
+    const envOverride = this.configService.get<boolean | null>(
+      'betaTermsRequired',
+    );
+    if (envOverride === true || envOverride === false) return envOverride;
+    return this.flags.betaTerms.required;
+  }
+
   private async pollOnce(): Promise<void> {
     if (!this.client || !this.pollingEnabled || this.pollInFlight) return;
 
@@ -120,7 +132,7 @@ export class FeatureFlagsService implements OnModuleInit, OnModuleDestroy {
       const parsed = JSON.parse(text) as unknown;
       this.flags = parseAuthFeaturesConfig(parsed);
       this.logger.debug(
-        `AppConfig auth-features refreshed: mfa.enabled=${this.flags.mfa.enabled} mfa.method=${this.flags.mfa.method}`,
+        `AppConfig auth-features refreshed: mfa.enabled=${this.flags.mfa.enabled} mfa.method=${this.flags.mfa.method} betaTerms.required=${this.flags.betaTerms.required}`,
       );
     } catch (err) {
       this.logger.warn(

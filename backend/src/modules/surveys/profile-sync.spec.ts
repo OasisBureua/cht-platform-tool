@@ -1,5 +1,6 @@
 import {
   buildProfilePrefill,
+  diffSuggestedProfileUpdates,
   extractProfileMappings,
   extractProfileUpdatesFromAnswers,
   inferSyncTargetFromQuestion,
@@ -15,6 +16,7 @@ const profile = {
   city: 'Boston',
   state: 'MA',
   zipCode: '02108',
+  phoneNumber: '6175550100',
 };
 
 describe('profile-sync', () => {
@@ -29,17 +31,18 @@ describe('profile-sync', () => {
       expect(inferSyncTargetFromQuestion({ id: 'postal_code' })).toBe(
         'zipCode',
       );
+      expect(inferSyncTargetFromQuestion({ id: 'phone' })).toBe('phoneNumber');
     });
 
-    it('does not map street / phone / website', () => {
+    it('maps phone; does not map street / website', () => {
+      expect(
+        inferSyncTargetFromQuestion({ id: 'phone', prompt: 'Phone number' }),
+      ).toBe('phoneNumber');
       expect(
         inferSyncTargetFromQuestion({
           id: 'address_street',
           prompt: 'Company address: street',
         }),
-      ).toBeNull();
-      expect(
-        inferSyncTargetFromQuestion({ id: 'phone', prompt: 'Phone number' }),
       ).toBeNull();
       expect(
         inferSyncTargetFromQuestion({
@@ -51,16 +54,24 @@ describe('profile-sync', () => {
   });
 
   describe('default webinar intake', () => {
-    it('prefills address and org fields from profile without relying on tags alone', () => {
+    it('prefills address, phone, and org fields from profile without relying on tags alone', () => {
       const questions = defaultWebinarIntakeQuestions();
       const mappings = extractProfileMappings(questions);
       const fields = mappings.map((m) => m.field).sort();
       expect(fields).toEqual(
-        ['city', 'institution', 'npiNumber', 'state', 'zipCode'].sort(),
+        [
+          'city',
+          'institution',
+          'npiNumber',
+          'phoneNumber',
+          'state',
+          'zipCode',
+        ].sort(),
       );
 
       const prefill = buildProfilePrefill(questions, profile);
       expect(prefill).toEqual({
+        phone: '6175550100',
         npi: '1234567890',
         organization: 'CHT Health',
         city: 'Boston',
@@ -77,6 +88,7 @@ describe('profile-sync', () => {
             id: 'intake',
             title: 'Registration details',
             questions: [
+              { id: 'phone', type: 'text', prompt: 'Phone number' },
               { id: 'npi', type: 'text', prompt: 'NPI number' },
               { id: 'organization', type: 'text', prompt: 'Organization' },
               { id: 'city', type: 'text', prompt: 'City' },
@@ -92,6 +104,7 @@ describe('profile-sync', () => {
         ],
       };
       expect(buildProfilePrefill(questions, profile)).toEqual({
+        phone: '6175550100',
         npi: '1234567890',
         organization: 'CHT Health',
         city: 'Boston',
@@ -100,7 +113,7 @@ describe('profile-sync', () => {
       });
     });
 
-    it('writes city/state/zip back to profile on submit', () => {
+    it('extracts city/state/zip/phone for opt-in profile write-back', () => {
       const questions = defaultWebinarIntakeQuestions();
       const updates = extractProfileUpdatesFromAnswers(questions, {
         organization: 'New Org',
@@ -108,6 +121,7 @@ describe('profile-sync', () => {
         state: 'MA',
         postal_code: '02139',
         npi: '0987654321',
+        phone: '6175550199',
       });
       expect(updates).toEqual({
         institution: 'New Org',
@@ -115,6 +129,21 @@ describe('profile-sync', () => {
         state: 'MA',
         zipCode: '02139',
         npiNumber: '0987654321',
+        phoneNumber: '6175550199',
+      });
+    });
+
+    it('diffSuggestedProfileUpdates only returns changed fields', () => {
+      const proposed = extractProfileUpdatesFromAnswers(
+        defaultWebinarIntakeQuestions(),
+        {
+          organization: 'CHT Health',
+          city: 'Cambridge',
+          phone: '6175550100',
+        },
+      );
+      expect(diffSuggestedProfileUpdates(profile, proposed)).toEqual({
+        city: 'Cambridge',
       });
     });
   });

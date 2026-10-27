@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -22,6 +22,14 @@ import ZoomWebinarSettingsFields, {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
 } from '../../components/admin/ZoomWebinarSettingsFields';
 import SendRegistrationInvitesModal from '../../components/admin/SendRegistrationInvitesModal';
+import { LiveSessionSortControl } from '../../components/live/LiveSessionSortControl';
+import { useLiveSessionListSort } from '../../hooks/useLiveSessionListSort';
+import {
+  ADMIN_OFFICE_HOURS_SORT_STORAGE_KEY,
+  ADMIN_WEBINARS_SORT_STORAGE_KEY,
+  type LiveSessionSortKey,
+  sortLiveSessions,
+} from '../../utils/live-session-list-sort';
 
 export default function AdminPrograms() {
   const location = useLocation();
@@ -35,6 +43,10 @@ export default function AdminPrograms() {
     locationState?.warning ?? locationState?.surveysWarning ?? locationState?.jotformFormsWarning;
   const isOfficeHours = location.pathname.includes('/office-hours');
   const zoomFilter: ZoomSessionType = isOfficeHours ? 'MEETING' : 'WEBINAR';
+  const sortStorageKey = isOfficeHours
+    ? ADMIN_OFFICE_HOURS_SORT_STORAGE_KEY
+    : ADMIN_WEBINARS_SORT_STORAGE_KEY;
+  const { sortKey, setSortKey } = useLiveSessionListSort(sortStorageKey);
 
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -63,6 +75,28 @@ export default function AdminPrograms() {
     },
   });
 
+  const items = useMemo(
+    () => sortLiveSessions(webinars ?? [], sortKey),
+    [webinars, sortKey],
+  );
+  const upcomingZoomOnly = items.filter(
+    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= renderedAt - 60 * 60 * 1000,
+  );
+
+  const toggleHeaderSort = (column: 'title' | 'date' | 'topic' | 'status') => {
+    const next: LiveSessionSortKey =
+      column === 'title'
+        ? 'title_asc'
+        : column === 'topic'
+          ? 'topic_asc'
+          : column === 'status'
+            ? 'status'
+            : sortKey === 'date_asc'
+              ? 'date_desc'
+              : 'date_asc';
+    setSortKey(next);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -78,11 +112,6 @@ export default function AdminPrograms() {
       </div>
     );
   }
-
-  const items = webinars ?? [];
-  const upcomingZoomOnly = items.filter(
-    (w) => w.unlinkedFromZoom && w.startDate && new Date(w.startDate).getTime() >= renderedAt - 60 * 60 * 1000,
-  );
 
   return (
     <div className="space-y-6">
@@ -115,6 +144,9 @@ export default function AdminPrograms() {
           </div>
         ) : null}
         <div className="flex flex-wrap items-center gap-2">
+          <div className="md:hidden">
+            <LiveSessionSortControl sortKey={sortKey} onChange={setSortKey} />
+          </div>
           {isOfficeHours ? (
             <Link
               to="/admin/programs"
@@ -274,11 +306,45 @@ export default function AdminPrograms() {
             <thead className="bg-muted border-b border-border">
               <tr>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
-                  {isOfficeHours ? 'Session' : 'Webinar'}
+                  <SortHeaderButton
+                    label={isOfficeHours ? 'Session' : 'Webinar'}
+                    active={sortKey === 'title_asc'}
+                    onClick={() => toggleHeaderSort('title')}
+                    className="hidden md:inline-flex"
+                  />
+                  <span className="md:hidden">{isOfficeHours ? 'Session' : 'Webinar'}</span>
                 </th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden sm:table-cell">Date & Time</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden md:table-cell">Sponsor</th>
-                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden sm:table-cell">
+                  <SortHeaderButton
+                    label={
+                      sortKey === 'date_desc'
+                        ? 'Date & Time ↓'
+                        : sortKey === 'date_asc'
+                          ? 'Date & Time ↑'
+                          : 'Date & Time'
+                    }
+                    active={sortKey === 'date_asc' || sortKey === 'date_desc'}
+                    onClick={() => toggleHeaderSort('date')}
+                    className="hidden md:inline-flex"
+                  />
+                  <span className="md:hidden">Date & Time</span>
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden md:table-cell">
+                  <SortHeaderButton
+                    label="Sponsor"
+                    active={sortKey === 'topic_asc'}
+                    onClick={() => toggleHeaderSort('topic')}
+                  />
+                </th>
+                <th className="px-4 py-3 text-left font-semibold text-muted-foreground">
+                  <SortHeaderButton
+                    label="Status"
+                    active={sortKey === 'status'}
+                    onClick={() => toggleHeaderSort('status')}
+                    className="hidden md:inline-flex"
+                  />
+                  <span className="md:hidden">Status</span>
+                </th>
                 <th className="px-4 py-3 text-left font-semibold text-muted-foreground hidden lg:table-cell">Zoom</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -979,6 +1045,34 @@ function EditWebinarModal({
 }
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
+
+function SortHeaderButton({
+  label,
+  active,
+  onClick,
+  className = '',
+}: {
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={[
+        'inline-flex items-center gap-1 rounded px-0.5 text-left font-semibold transition-colors hover:text-foreground',
+        active ? 'text-foreground' : 'text-muted-foreground',
+        className,
+      ].join(' ')}
+      aria-pressed={active}
+    >
+      {label}
+      {active ? <span aria-hidden className="text-[10px]">●</span> : null}
+    </button>
+  );
+}
 
 function StatusBadge({ status }: { status: AdminWebinar['status'] }) {
   const map: Record<AdminWebinar['status'], { label: string; cls: string }> = {

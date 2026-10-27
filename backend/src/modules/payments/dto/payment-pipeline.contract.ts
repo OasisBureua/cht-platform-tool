@@ -585,12 +585,16 @@ export function payoutDetailsOriginForRequest(
   return priorHonorariumUses > 0 ? 'reused' : 'new';
 }
 
-/** Accepts the stored enum (NEW / REUSED) or the API value. Anything else is null. */
+/**
+ * Accepts the learner's stored kind (NEWLY_ENTERED / REUSED), the older
+ * NEW label, or the API value. Anything else is null.
+ */
 export function normalizePayoutDetailsOrigin(
   value: string | null | undefined,
 ): PayoutDetailsOrigin | null {
   const raw = value?.trim().toLowerCase();
-  if (raw === 'new' || raw === 'reused') return raw;
+  if (raw === 'new' || raw === 'newly_entered') return 'new';
+  if (raw === 'reused') return 'reused';
   return null;
 }
 

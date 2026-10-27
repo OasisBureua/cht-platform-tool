@@ -1,5 +1,13 @@
 /**
- * Intake form open/embed URL. Native intake uses session auth, do not pass user_id/program_id unless legacy Jotform webhooks require it.
+ * Intake form open/embed URL. Native intake uses session auth, do not pass
+ * user_id/program_id unless legacy Jotform webhooks require it.
+ *
+ * Profile field prefill (name, email, NPI, org, etc.) via Jotform query
+ * params is **out of scope**: Jotform unique field names vary per form, and
+ * registration has moved to native surveys with server-side profile prefill.
+ * If a legacy embed must be kept, Jotform supports `?fieldName=value` only
+ * when the form’s unique names are known — do not put PII in URLs for
+ * signed-out users.
  */
 export function buildIntakeFormUrl(
   formUrl: string,

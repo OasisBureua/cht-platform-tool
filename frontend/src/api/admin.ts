@@ -191,6 +191,68 @@ export interface AdminUserPaidPayment {
   program: { title: string } | null;
 }
 
+export type ProgramInvitationDeliveryStatus =
+  | 'SENT'
+  | 'DELIVERED'
+  | 'BOUNCED'
+  | 'FAILED'
+  | 'UNSUBSCRIBED';
+
+export type ProgramInvitationEmailType =
+  | 'REGISTRATION_INVITE'
+  | 'REGISTRATION_SUBMITTED'
+  | 'REGISTRATION_APPROVED'
+  | 'REGISTRATION_REJECTED'
+  | 'REGISTRATION_REVOKED'
+  | 'PRE_SESSION_REMINDER'
+  | 'POST_EVENT_SURVEY'
+  | 'MISSED_SESSION'
+  | 'OPERATIONAL'
+  | 'PUBLIC_REGISTRATION'
+  | 'WEBINAR_ACCESS'
+  | 'REPORT_READY'
+  | 'OTHER';
+
+export type ProgramInvitationRegistrationOutcome =
+  | 'NONE'
+  | 'REGISTERED'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'ATTENDED';
+
+export interface ProgramInvitationRow {
+  id: string;
+  toEmail: string;
+  toName: string | null;
+  emailType: ProgramInvitationEmailType;
+  status: ProgramInvitationDeliveryStatus;
+  sentAt: string;
+  sentBy: 'ADMIN' | 'AUTOMATIC';
+  sentByUserId: string | null;
+  sesMessageId: string | null;
+  errorMessage: string | null;
+  registrationOutcome: ProgramInvitationRegistrationOutcome;
+  registrationId: string | null;
+  canResend: boolean;
+}
+
+export interface ProgramInvitationsResponse {
+  programId: string;
+  programTitle: string;
+  total: number;
+  rows: ProgramInvitationRow[];
+  totals: {
+    invited: number;
+    sent?: number;
+    delivered: number;
+    bounced: number;
+    failed?: number;
+    unsubscribed?: number;
+    registered: number;
+    attended: number;
+  };
+}
+
 export interface PendingPayment {
   id: string;
   userId: string;
@@ -205,6 +267,10 @@ export interface PendingPayment {
   checkMailedAt?: string | null;
   checkDeliveredAt?: string | null;
   checkTrackingInfo?: string | null;
+  /** From registration: learner confirmed Stripe details for this program. */
+  payoutDetailsConfirmedAt?: string | null;
+  /** REUSED = existing Connect details; NEWLY_ENTERED = set up/edited in post-event flow. */
+  payoutDetailsEntryKind?: 'REUSED' | 'NEWLY_ENTERED' | null;
   user: {
     id: string;
     email: string;
@@ -1662,6 +1728,15 @@ export const adminApi = {
 
   // ─── Webinar CRUD (Zoom-backed) ──────────────────────────────────────────
 
+  /** Legal export: Beta Participant Terms acceptances (user, timestamp, version). */
+  exportBetaTermsAcceptancesCsv: async () => {
+    const { data } = await apiClient.get<Blob>(
+      '/admin/beta-terms-acceptances/export.csv',
+      { responseType: 'blob' },
+    );
+    return data;
+  },
+
   getWebinars: async (params?: { zoomSessionType?: ZoomSessionType }): Promise<AdminWebinar[]> => {
     try {
       const { data } = await apiClient.get<AdminWebinar[]>('/admin/webinars', { params });
@@ -1988,6 +2063,40 @@ export const adminApi = {
       overallProgress: number;
       user: { id: string; email: string; firstName: string; lastName: string; specialty?: string | null };
     }>;
+  },
+
+  listProgramInvitations: async (
+    programId: string,
+    params?: { q?: string; status?: string; emailType?: string; skip?: number; take?: number },
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/programs/${encodeURIComponent(programId)}/invitations`,
+      { params },
+    );
+    return data as ProgramInvitationsResponse;
+  },
+
+  exportProgramInvitationsCsv: async (
+    programId: string,
+    params?: { q?: string; status?: string; emailType?: string },
+  ) => {
+    const { data } = await apiClient.get<Blob>(
+      `/admin/programs/${encodeURIComponent(programId)}/invitations/export.csv`,
+      { params, responseType: 'blob' },
+    );
+    return data;
+  },
+
+  resendProgramInvitation: async (
+    programId: string,
+    logId: string,
+    body?: { correctedEmail?: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/invitations/${encodeURIComponent(logId)}/resend`,
+      body ?? {},
+    );
+    return data as { ok: true };
   },
 
   listPaymentEligibleNotYetRequested: async () => {

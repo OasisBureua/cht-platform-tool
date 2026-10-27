@@ -371,6 +371,19 @@ export default () => ({
     profile: process.env.APPCONFIG_PROFILE?.trim() || '',
   },
 
+  /**
+   * Beta Participant Terms gate. When set, overrides AppConfig:
+   * - `true` / `1` / `yes` → required
+   * - `false` / `0` / `no` → off (post-beta)
+   * Unset → use AppConfig / default (required during beta).
+   */
+  betaTermsRequired:
+    process.env.BETA_TERMS_REQUIRED === undefined
+      ? null
+      : ['1', 'true', 'yes', 'on'].includes(
+          process.env.BETA_TERMS_REQUIRED.trim().toLowerCase(),
+        ),
+
   /** CHT Companion (SSE RAG chat) — BFF proxies browser → Service Connect. */
   companion: {
     baseUrl: (process.env.COMPANION_BASE_URL || '').replace(/\/$/, ''),

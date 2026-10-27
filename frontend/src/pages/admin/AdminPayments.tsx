@@ -1177,6 +1177,7 @@ export default function AdminPayments() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Amount</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Type</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Method</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Details source</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Campaign / ID</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-muted-foreground uppercase">Created</th>
@@ -2069,6 +2070,13 @@ function PendingRow({
       ? 'Check (legacy)'
       : `ACH${payment.user.bankAccountLast4 ? ` · ••••${payment.user.bankAccountLast4}` : ''}`;
 
+  const detailsSource =
+    payment.payoutDetailsEntryKind === 'REUSED'
+      ? 'Reused'
+      : payment.payoutDetailsEntryKind === 'NEWLY_ENTERED'
+        ? 'Newly entered'
+        : '—';
+
   return (
     <tr className="hover:bg-muted">
       <td className="px-4 py-3">
@@ -2088,6 +2096,14 @@ function PendingRow({
       <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.type.replace(/_/g, ' ')}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{methodLabel}</td>
+      <td className="px-4 py-3 text-sm text-muted-foreground">
+        <p>{detailsSource}</p>
+        {payment.payoutDetailsConfirmedAt ? (
+          <p className="text-xs text-muted-foreground">
+            {format(new Date(payment.payoutDetailsConfirmedAt), 'MMM d, yyyy')}
+          </p>
+        ) : null}
+      </td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.program?.title ?? '-'}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">
         <PaymentCampaignCell program={payment.program} />

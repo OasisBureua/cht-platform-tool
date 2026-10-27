@@ -14,8 +14,12 @@ import { CognitoService } from './cognito.service';
 import { isProfileCompleteForPayments } from '../common/profile-payment-eligibility';
 import { RedisCacheService } from '../cache/redis-cache.service';
 import { sessionCacheKey, termsCacheKey } from '../cache/cache-keys';
-import { hasAcceptedCurrentTerms } from '../common/terms';
+import {
+  CURRENT_BETA_TERMS_VERSION,
+  hasAcceptedRequiredConsent,
+} from '../common/terms';
 import { isPlatformAdmin } from '../common/roles';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 
 const TERMS_CACHE_TTL_SECONDS = 300;
 import { UserRole } from '@prisma/client';
@@ -58,6 +62,7 @@ export class AuthService {
     private outboundSync: OutboundSyncService,
     private cognitoService: CognitoService,
     private cache: RedisCacheService,
+    private featureFlags: FeatureFlagsService,
   ) {}
 
   /** Idle window (default 30 min). Slid forward on authenticated activity. */
@@ -654,6 +659,8 @@ export class AuthService {
     phoneNumber: string | null;
     termsAcceptedAt: Date | null;
     termsVersion: string | null;
+    betaTermsAcceptedAt: Date | null;
+    betaTermsVersion: string | null;
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -669,60 +676,138 @@ export class AuthService {
         phoneNumber: true,
         termsAcceptedAt: true,
         termsVersion: true,
+        betaTermsAcceptedAt: true,
+        betaTermsVersion: true,
       },
     });
     return user;
   }
 
-  /** Record Terms of Use & Privacy Policy acceptance on the user's profile. */
+  /**
+   * Record Terms of Use & Privacy Policy acceptance, and optionally Beta
+   * Participant Terms (when the beta gate is on).
+   */
   async acceptTerms(
     userId: string,
     version: string,
-  ): Promise<{ termsAcceptedAt: Date; termsVersion: string }> {
+    opts?: {
+      acceptBetaTerms?: boolean;
+      ipAddress?: string | null;
+      userAgent?: string | null;
+    },
+  ): Promise<{
+    termsAcceptedAt: Date;
+    termsVersion: string;
+    betaTermsAcceptedAt: Date | null;
+    betaTermsVersion: string | null;
+  }> {
+    const now = new Date();
+    const betaRequired = this.featureFlags.isBetaTermsRequired();
+    const acceptBeta = opts?.acceptBetaTerms === true;
+
     const updated = await this.prisma.user.update({
       where: { id: userId },
-      data: { termsAcceptedAt: new Date(), termsVersion: version },
-      select: { termsAcceptedAt: true, termsVersion: true },
+      data: {
+        termsAcceptedAt: now,
+        termsVersion: version,
+        ...(acceptBeta
+          ? {
+              betaTermsAcceptedAt: now,
+              betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
+            }
+          : {}),
+      },
+      select: {
+        termsAcceptedAt: true,
+        termsVersion: true,
+        betaTermsAcceptedAt: true,
+        betaTermsVersion: true,
+      },
     });
+
+    if (acceptBeta) {
+      await this.prisma.betaTermsAcceptance.create({
+        data: {
+          userId,
+          termsVersion: CURRENT_BETA_TERMS_VERSION,
+          acceptedAt: now,
+          ipAddress: opts?.ipAddress?.slice(0, 128) || null,
+          userAgent: opts?.userAgent?.slice(0, 512) || null,
+        },
+      });
+    }
+
     const saved = {
       termsAcceptedAt: updated.termsAcceptedAt as Date,
       termsVersion: updated.termsVersion as string,
+      betaTermsAcceptedAt: updated.betaTermsAcceptedAt,
+      betaTermsVersion: updated.betaTermsVersion,
     };
+    const accepted = hasAcceptedRequiredConsent(saved, betaRequired);
     await this.cache.setJson(
       termsCacheKey(userId),
-      { termsVersion: saved.termsVersion, accepted: true },
+      {
+        termsVersion: saved.termsVersion,
+        betaTermsVersion: saved.betaTermsVersion,
+        betaRequired,
+        accepted,
+      },
       TERMS_CACHE_TTL_SECONDS,
     );
     return saved;
   }
 
   /**
-   * Whether the user has accepted the current terms. Checked on every guarded request,
-   * so the answer is cached briefly per user (keyed by version so a bump re-prompts).
+   * Whether the user has accepted required consent (ToS + beta when gated).
+   * Checked on every guarded request; cached briefly per user.
    */
   async hasAcceptedTerms(userId: string): Promise<boolean> {
+    const betaRequired = this.featureFlags.isBetaTermsRequired();
     const key = termsCacheKey(userId);
     const cached = await this.cache.getJson<{
       termsVersion: string | null;
+      betaTermsVersion?: string | null;
+      betaRequired?: boolean;
       accepted: boolean;
     }>(key);
-    if (cached && typeof cached.accepted === 'boolean') {
+    if (
+      cached &&
+      typeof cached.accepted === 'boolean' &&
+      cached.betaRequired === betaRequired
+    ) {
       return (
         cached.accepted &&
-        hasAcceptedCurrentTerms({
-          termsAcceptedAt: new Date(0),
-          termsVersion: cached.termsVersion,
-        })
+        hasAcceptedRequiredConsent(
+          {
+            termsAcceptedAt: new Date(0),
+            termsVersion: cached.termsVersion,
+            betaTermsAcceptedAt: cached.betaTermsVersion
+              ? new Date(0)
+              : null,
+            betaTermsVersion: cached.betaTermsVersion ?? null,
+          },
+          betaRequired,
+        )
       );
     }
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { termsAcceptedAt: true, termsVersion: true },
+      select: {
+        termsAcceptedAt: true,
+        termsVersion: true,
+        betaTermsAcceptedAt: true,
+        betaTermsVersion: true,
+      },
     });
-    const accepted = hasAcceptedCurrentTerms(user);
+    const accepted = hasAcceptedRequiredConsent(user, betaRequired);
     await this.cache.setJson(
       key,
-      { termsVersion: user?.termsVersion ?? null, accepted },
+      {
+        termsVersion: user?.termsVersion ?? null,
+        betaTermsVersion: user?.betaTermsVersion ?? null,
+        betaRequired,
+        accepted,
+      },
       TERMS_CACHE_TTL_SECONDS,
     );
     return accepted;

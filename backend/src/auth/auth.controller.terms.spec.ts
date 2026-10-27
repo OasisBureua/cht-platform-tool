@@ -2,8 +2,10 @@ import { BadRequestException } from '@nestjs/common';
 import type { Response as ExpressResponse } from 'express';
 import { AuthController } from './auth.controller';
 import {
+  CURRENT_BETA_TERMS_VERSION,
   CURRENT_TERMS_VERSION,
   hasAcceptedCurrentTerms,
+  hasAcceptedRequiredConsent,
 } from '../common/terms';
 
 describe('AuthController terms acceptance', () => {
@@ -20,6 +22,14 @@ describe('AuthController terms acceptance', () => {
     revokeSession: jest.fn().mockResolvedValue(undefined),
   };
   const audit = { record: jest.fn() };
+  const featureFlags = {
+    isMfaEnrollmentEnabled: jest.fn().mockReturnValue(false),
+    getAuthFeatures: jest.fn().mockReturnValue({
+      mfa: { enabled: false, method: 'sms' },
+      betaTerms: { required: true },
+    }),
+    isBetaTermsRequired: jest.fn().mockReturnValue(true),
+  };
 
   const req = {
     ip: '10.0.0.1',
@@ -45,45 +55,75 @@ describe('AuthController terms acceptance', () => {
       {} as never,
       { get: jest.fn().mockReturnValue(undefined) } as never,
       audit as never,
-      {} as never,
+      featureFlags as never,
     );
 
   beforeEach(() => jest.clearAllMocks());
 
-  it('saves acceptance for the current version and audits it', async () => {
+  it('saves ToS + beta acceptance for the current versions and audits it', async () => {
     const acceptedAt = new Date('2026-09-29T12:00:00.000Z');
     authService.acceptTerms.mockResolvedValue({
       termsAcceptedAt: acceptedAt,
       termsVersion: CURRENT_TERMS_VERSION,
+      betaTermsAcceptedAt: acceptedAt,
+      betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
     });
 
     const result = await buildController().acceptTerms(
       user,
       CURRENT_TERMS_VERSION,
+      true,
+      CURRENT_BETA_TERMS_VERSION,
       req,
     );
 
     expect(authService.acceptTerms).toHaveBeenCalledWith(
       'user-1',
       CURRENT_TERMS_VERSION,
+      expect.objectContaining({ acceptBetaTerms: true }),
     );
     expect(result).toEqual({
       termsAccepted: true,
       termsVersion: CURRENT_TERMS_VERSION,
       termsAcceptedAt: acceptedAt.toISOString(),
+      betaTermsAccepted: true,
+      betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
+      betaTermsAcceptedAt: acceptedAt.toISOString(),
     });
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({
         action: 'auth.terms_accepted',
         actorId: 'user-1',
-        metadata: { termsVersion: CURRENT_TERMS_VERSION },
+        metadata: expect.objectContaining({
+          termsVersion: CURRENT_TERMS_VERSION,
+          betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
+        }),
       }),
     );
   });
 
+  it('rejects accept without beta checkbox when beta is required', async () => {
+    await expect(
+      buildController().acceptTerms(
+        user,
+        CURRENT_TERMS_VERSION,
+        false,
+        CURRENT_BETA_TERMS_VERSION,
+        req,
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
+    expect(authService.acceptTerms).not.toHaveBeenCalled();
+  });
+
   it('rejects a stale terms version without saving', async () => {
     await expect(
-      buildController().acceptTerms(user, '2020-01-01', req),
+      buildController().acceptTerms(
+        user,
+        '2020-01-01',
+        true,
+        CURRENT_BETA_TERMS_VERSION,
+        req,
+      ),
     ).rejects.toBeInstanceOf(BadRequestException);
     expect(authService.acceptTerms).not.toHaveBeenCalled();
   });
@@ -123,6 +163,27 @@ describe('AuthController terms acceptance', () => {
         termsAcceptedAt: new Date(),
         termsVersion: CURRENT_TERMS_VERSION,
       }),
+    ).toBe(true);
+  });
+
+  it('requires beta terms when the gate is on', () => {
+    const withTermsOnly = {
+      termsAcceptedAt: new Date(),
+      termsVersion: CURRENT_TERMS_VERSION,
+      betaTermsAcceptedAt: null,
+      betaTermsVersion: null,
+    };
+    expect(hasAcceptedRequiredConsent(withTermsOnly, true)).toBe(false);
+    expect(hasAcceptedRequiredConsent(withTermsOnly, false)).toBe(true);
+    expect(
+      hasAcceptedRequiredConsent(
+        {
+          ...withTermsOnly,
+          betaTermsAcceptedAt: new Date(),
+          betaTermsVersion: CURRENT_BETA_TERMS_VERSION,
+        },
+        true,
+      ),
     ).toBe(true);
   });
 });

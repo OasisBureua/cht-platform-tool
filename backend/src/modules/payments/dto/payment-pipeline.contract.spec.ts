@@ -435,6 +435,7 @@ describe('SCRUM-292 pipeline contract', () => {
     expect(payoutDetailsOriginForRequest(0)).toBe('new');
     expect(payoutDetailsOriginForRequest(1)).toBe('reused');
     expect(normalizePayoutDetailsOrigin('NEW')).toBe('new');
+    expect(normalizePayoutDetailsOrigin('NEWLY_ENTERED')).toBe('new');
     expect(normalizePayoutDetailsOrigin('REUSED')).toBe('reused');
     expect(normalizePayoutDetailsOrigin(null)).toBeNull();
     expect(normalizePayoutDetailsOrigin('unknown')).toBeNull();

@@ -390,15 +390,15 @@ describe('PaymentsService.listPipeline', () => {
 
   it('returns new, reused, and unrecorded payout origins', async () => {
     prisma.programRegistration.findMany.mockResolvedValue([
-      registration({ userId: 'first', payoutDetailsOrigin: 'NEW' }),
+      registration({ userId: 'first', payoutDetailsEntryKind: 'NEWLY_ENTERED' }),
       registration({
         userId: 'again',
-        payoutDetailsOrigin: 'REUSED',
+        payoutDetailsEntryKind: 'REUSED',
         user: { email: 'again@example.com' },
       }),
       registration({
         userId: 'old',
-        payoutDetailsOrigin: null,
+        payoutDetailsEntryKind: null,
         user: { email: 'old@example.com' },
       }),
     ]);
