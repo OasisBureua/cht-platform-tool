@@ -15,13 +15,16 @@ import {
 } from '../../utils/admin-survey-display';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { ZoomRecordingFilesTable } from '../../components/admin/ZoomRecordingFilesTable';
+import { ProgramInvitationsPanel } from '../../components/admin/ProgramInvitationsPanel';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import { getApiErrorMessage } from '../../api/client';
 
-type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys';
+type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys' | 'invitations';
 
 function parseHubTab(raw: string | null): WebinarHubTab {
-  if (raw === 'surveys' || raw === 'enrolled' || raw === 'approvals') return raw;
+  if (raw === 'surveys' || raw === 'enrolled' || raw === 'approvals' || raw === 'invitations') {
+    return raw;
+  }
   return 'approvals';
 }
 
@@ -919,6 +922,16 @@ export default function AdminProgramHub() {
             >
               Who is enrolled
             </button>
+            <button
+              type="button"
+              onClick={() => setWebinarHubTab('invitations')}
+              className={[
+                'rounded-lg px-3 py-1.5 text-sm font-semibold',
+                webinarHubTab === 'invitations' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
+              ].join(' ')}
+            >
+              Invitations
+            </button>
           </div>
           {webinarHubTab === 'approvals' ? (
             <>
@@ -1377,6 +1390,8 @@ export default function AdminProgramHub() {
                 </div>
               )}
             </>
+          ) : webinarHubTab === 'invitations' ? (
+            programId ? <ProgramInvitationsPanel programId={programId} /> : null
           ) : (
             <>
               <h2 className="text-lg font-semibold text-foreground">Who is enrolled</h2>
@@ -1605,6 +1620,12 @@ export default function AdminProgramHub() {
               </div>
             )}
           </section>
+
+          {programId ? (
+            <section className="rounded-card border border-border bg-card p-6">
+              <ProgramInvitationsPanel programId={programId} />
+            </section>
+          ) : null}
         </>
       )}
     </div>

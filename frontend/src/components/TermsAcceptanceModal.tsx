@@ -9,23 +9,31 @@ import { markTermsDeclined } from '../lib/terms-consent';
 /**
  * Blocking consent step shown before any authenticated area renders.
  * Closing counts as declining: the session ends and the user returns to the landing page.
+ * During beta, also requires acceptance of the Beta Participant Terms Agreement.
  */
 export default function TermsAcceptanceModal() {
   const { user, refreshProfile, logout } = useAuth();
   const titleId = useId();
   const bodyId = useId();
   const [agreed, setAgreed] = useState(false);
+  const [betaAgreed, setBetaAgreed] = useState(false);
   const [busy, setBusy] = useState<'accept' | 'decline' | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const version = user?.termsVersion ?? '';
+  const betaRequired = user?.betaTermsRequired === true;
+  const betaVersion = user?.betaTermsVersion ?? '';
+  const canAccept = agreed && (!betaRequired || betaAgreed);
 
   const handleAccept = async () => {
-    if (!agreed || busy) return;
+    if (!canAccept || busy) return;
     setBusy('accept');
     setError(null);
     try {
-      await termsApi.accept(version);
+      await termsApi.accept(version, {
+        betaAccepted: betaRequired ? true : undefined,
+        betaVersion: betaRequired ? betaVersion : undefined,
+      });
       await refreshProfile();
     } catch (err) {
       setError(getApiErrorMessage(err, 'We could not save your acceptance. Please try again.'));
@@ -78,15 +86,23 @@ export default function TermsAcceptanceModal() {
           <div id={bodyId} className="mt-4 space-y-3 text-sm text-muted-foreground">
             <p>
               Welcome to Community Health Media. Before you continue, please review our updated Terms of Use
-              and Privacy Policy. Using the site requires that you accept them.
+              and Privacy Policy
+              {betaRequired ? ', and the Beta Participant Terms Agreement' : ''}. Using the site
+              requires that you accept them.
             </p>
             <p>
               They explain how you may use the platform, how we collect and protect your information, and your rights
-              as a member.
+              as a member
+              {betaRequired ? ', plus the rules for participating in this beta evaluation' : ''}.
             </p>
           </div>
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+          <div
+            className={[
+              'mt-5 grid gap-2',
+              betaRequired ? 'sm:grid-cols-1' : 'sm:grid-cols-2',
+            ].join(' ')}
+          >
             <a
               href="/terms"
               target="_blank"
@@ -107,6 +123,18 @@ export default function TermsAcceptanceModal() {
               <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
               <span className="sr-only">(opens in a new tab)</span>
             </a>
+            {betaRequired ? (
+              <a
+                href="/beta-terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-2 rounded-[6px] bg-muted px-4 py-3 text-sm font-medium text-foreground hover:brightness-95"
+              >
+                Beta Participant Terms Agreement
+                <ExternalLink className="size-4 text-muted-foreground" aria-hidden />
+                <span className="sr-only">(opens in a new tab)</span>
+              </a>
+            ) : null}
           </div>
 
           <label className="mt-5 flex cursor-pointer items-start gap-3 rounded-[6px] border border-border p-4">
@@ -123,6 +151,22 @@ export default function TermsAcceptanceModal() {
             </span>
           </label>
 
+          {betaRequired ? (
+            <label className="mt-3 flex cursor-pointer items-start gap-3 rounded-[6px] border border-border p-4">
+              <input
+                type="checkbox"
+                checked={betaAgreed}
+                onChange={(e) => setBetaAgreed(e.target.checked)}
+                disabled={busy !== null}
+                className="mt-0.5 size-4 shrink-0 accent-brand-600"
+              />
+              <span className="text-sm text-foreground">
+                I have read and agree to the Beta Participant Terms Agreement
+                {betaVersion ? ` (version ${betaVersion})` : ''}.
+              </span>
+            </label>
+          ) : null}
+
           {error ? (
             <div role="alert" className="mt-4 rounded-[6px] bg-destructive/10 px-4 py-3 text-sm text-destructive">
               {error}
@@ -134,14 +178,14 @@ export default function TermsAcceptanceModal() {
               {busy === 'decline' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               Decline and sign out
             </Button>
-            <Button onClick={handleAccept} disabled={!agreed || busy !== null}>
+            <Button onClick={handleAccept} disabled={!canAccept || busy !== null}>
               {busy === 'accept' ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
               Accept and continue
             </Button>
           </div>
 
           <p className="mt-4 text-xs text-muted-foreground">
-            If you decline, you will be signed out and won't be able to use member areas until you accept.
+            If you decline, you will be signed out and won&apos;t be able to use member areas until you accept.
           </p>
         </div>
       </div>

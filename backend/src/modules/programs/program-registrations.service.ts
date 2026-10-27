@@ -9,6 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   PaymentType,
+  PayoutDetailsEntryKind,
   PostEventAttendanceStatus,
   ProgramRegistrationStatus,
   ProgramStatus,
@@ -561,6 +562,8 @@ export class ProgramRegistrationsService {
       feedbackSurveyId: surveyMeta.feedbackSurveyId,
       intakeSurveyId: surveyMeta.intakeSurveyId,
       honorariumRequestedAt: reg.honorariumRequestedAt?.toISOString(),
+      payoutDetailsConfirmedAt: reg.payoutDetailsConfirmedAt?.toISOString(),
+      payoutDetailsEntryKind: reg.payoutDetailsEntryKind ?? null,
       honorariumPayment: honorariumPayment
         ? { id: honorariumPayment.id, status: honorariumPayment.status }
         : null,
@@ -1554,6 +1557,8 @@ export class ProgramRegistrationsService {
     cities?: string[];
     states?: string[];
     institutions?: string[];
+    /** Admin who triggered the send (for invitations audit). */
+    sentByUserId?: string | null;
   }): Promise<{
     registerUrl: string;
     programs: { id: string; title: string }[];
@@ -1669,6 +1674,9 @@ export class ProgramRegistrationsService {
             duration: p.duration,
           })),
           registerUrl,
+          programIds: programs.map((p) => p.id),
+          userId: user.id,
+          sentByUserId: opts.sentByUserId ?? null,
         });
         emailed += 1;
       } catch (err) {
@@ -1685,9 +1693,10 @@ export class ProgramRegistrationsService {
     // expire links.
     for (const email of unregisteredEmails) {
       try {
-        const { token } = await this.invites.createInvite({
+        const { token, id: inviteId } = await this.invites.createInvite({
           email,
           programIds: programs.map((p) => p.id),
+          createdByAdminId: opts.sentByUserId ?? undefined,
         });
         const inviteUrl = `${base}/join?invite=${encodeURIComponent(token)}`;
         await this.sesEmail.sendRegistrationInviteEmail({
@@ -1699,6 +1708,9 @@ export class ProgramRegistrationsService {
             duration: p.duration,
           })),
           registerUrl: inviteUrl,
+          programIds: programs.map((p) => p.id),
+          inviteId,
+          sentByUserId: opts.sentByUserId ?? null,
         });
         emailed += 1;
       } catch (err) {
@@ -1792,6 +1804,8 @@ export class ProgramRegistrationsService {
             ? {
                 postEventSurveyAcknowledgedAt: null,
                 honorariumRequestedAt: null,
+                payoutDetailsConfirmedAt: null,
+                payoutDetailsEntryKind: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
               }
@@ -1803,6 +1817,8 @@ export class ProgramRegistrationsService {
                   PostEventAttendanceStatus.NOT_REQUIRED,
                 postEventSurveyAcknowledgedAt: null,
                 honorariumRequestedAt: null,
+                payoutDetailsConfirmedAt: null,
+                payoutDetailsEntryKind: null,
                 postEventAttendanceReviewedAt: null,
                 postEventAttendanceReviewedByUserId: null,
                 reviewedAt: null,
@@ -1980,6 +1996,8 @@ export class ProgramRegistrationsService {
             postEventAttendanceStatus: PostEventAttendanceStatus.NOT_REQUIRED,
             postEventSurveyAcknowledgedAt: null,
             honorariumRequestedAt: null,
+            payoutDetailsConfirmedAt: null,
+            payoutDetailsEntryKind: null,
             postEventAttendanceReviewedAt: null,
             postEventAttendanceReviewedByUserId: null,
             reviewedAt: new Date(),
@@ -2094,7 +2112,11 @@ export class ProgramRegistrationsService {
     });
   }
 
-  async requestPostEventHonorariumPayout(userId: string, programId: string) {
+  async requestPostEventHonorariumPayout(
+    userId: string,
+    programId: string,
+    opts?: { entryKind?: PayoutDetailsEntryKind },
+  ) {
     const program = await this.prisma.program.findUnique({
       where: { id: programId },
       select: {
@@ -2197,12 +2219,22 @@ export class ProgramRegistrationsService {
       );
     }
 
+    const now = new Date();
+    const entryKind =
+      opts?.entryKind === PayoutDetailsEntryKind.NEWLY_ENTERED
+        ? PayoutDetailsEntryKind.NEWLY_ENTERED
+        : PayoutDetailsEntryKind.REUSED;
+
     const claimed = await this.prisma.programRegistration.updateMany({
       where: {
         id: reg.id,
         honorariumRequestedAt: null,
       },
-      data: { honorariumRequestedAt: new Date() },
+      data: {
+        honorariumRequestedAt: now,
+        payoutDetailsConfirmedAt: now,
+        payoutDetailsEntryKind: entryKind,
+      },
     });
 
     if (claimed.count === 0) {
@@ -2219,6 +2251,7 @@ export class ProgramRegistrationsService {
         paymentId: existing?.id ?? null,
         created: false,
         alreadyRequested: true as const,
+        entryKind: reg.payoutDetailsEntryKind ?? entryKind,
       };
     }
 
@@ -2233,7 +2266,11 @@ export class ProgramRegistrationsService {
     if (!queued) {
       await this.prisma.programRegistration.update({
         where: { id: reg.id },
-        data: { honorariumRequestedAt: null },
+        data: {
+          honorariumRequestedAt: null,
+          payoutDetailsConfirmedAt: null,
+          payoutDetailsEntryKind: null,
+        },
       });
       throw new ServiceUnavailableException(
         'Could not queue honorarium. Check configuration or try again in a moment.',
@@ -2243,6 +2280,7 @@ export class ProgramRegistrationsService {
     return {
       paymentId: null,
       created: true,
+      entryKind,
     };
   }
 

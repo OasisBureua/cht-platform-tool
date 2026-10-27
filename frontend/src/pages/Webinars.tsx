@@ -8,7 +8,13 @@ import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
 import { StripeMark } from '../components/branding/StripeMark';
+import { LiveSessionSortControl } from '../components/live/LiveSessionSortControl';
+import { useLiveSessionListSort } from '../hooks/useLiveSessionListSort';
 import { isSessionExpired } from '../utils/live-session-timing';
+import {
+  LIVE_WEBINARS_SORT_STORAGE_KEY,
+  sortLiveSessions,
+} from '../utils/live-session-list-sort';
 import {
   LIVE_WEBINARS_QUERY_KEY,
   liveSessionListQueryOptions,
@@ -38,6 +44,7 @@ function formatDuration(minutes?: number): string {
 export default function Webinars() {
   const { user } = useAuth();
   const userId = user?.userId;
+  const { sortKey, setSortKey } = useLiveSessionListSort(LIVE_WEBINARS_SORT_STORAGE_KEY);
 
   const { data: webinars = [], isLoading } = useQuery({
     queryKey: LIVE_WEBINARS_QUERY_KEY,
@@ -59,16 +66,17 @@ export default function Webinars() {
   }, [liveStatuses]);
 
   const { upcoming, past } = useMemo(() => {
-    const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
-    const upcomingList = webinars
-      .filter((w) => !isExpired(w))
-      .sort((a, b) => withDate(a) - withDate(b));
-    const pastList = webinars
-      .filter((w) => isExpired(w))
-      .sort((a, b) => withDate(b) - withDate(a))
-      .slice(0, 5);
-    return { upcoming: upcomingList, past: pastList };
-  }, [webinars]);
+    const upcomingList = sortLiveSessions(
+      webinars.filter((w) => !isExpired(w)),
+      sortKey,
+    );
+    // Past stays recency-capped; still apply title-stable secondary via sort when not date_desc.
+    const pastSorted = sortLiveSessions(
+      webinars.filter((w) => isExpired(w)),
+      sortKey === 'date_asc' ? 'date_desc' : sortKey,
+    ).slice(0, 5);
+    return { upcoming: upcomingList, past: pastSorted };
+  }, [webinars, sortKey]);
 
   return (
     <div className="space-y-8">
@@ -78,7 +86,24 @@ export default function Webinars() {
             <Radio className="h-5 w-5 text-steel-600 dark:text-steel-400" strokeWidth={2} aria-hidden />
             <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">LIVE</h1>
           </div>
-          
+          <div className="w-full sm:w-auto">
+            <div className="sm:hidden">
+              <LiveSessionSortControl
+                sortKey={sortKey}
+                onChange={setSortKey}
+                includeTopic={false}
+                variant="select"
+              />
+            </div>
+            <div className="hidden sm:block">
+              <LiveSessionSortControl
+                sortKey={sortKey}
+                onChange={setSortKey}
+                includeTopic={false}
+                variant="buttons"
+              />
+            </div>
+          </div>
         </div>
         <p className="text-pretty text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
           Real-time sessions. Open a session to complete the Jotform registration survey; after an administrator approves

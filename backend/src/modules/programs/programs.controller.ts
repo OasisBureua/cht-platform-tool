@@ -29,6 +29,7 @@ import {
   VideoProgressResponseDto,
 } from './dto/update-video-progress.dto';
 import { BatchSubmitRegistrationsDto } from './dto/batch-registration.dto';
+import { RequestPostEventHonorariumDto } from './dto/request-post-event-honorarium.dto';
 
 @Controller('programs')
 export class ProgramsController {
@@ -160,10 +161,12 @@ export class ProgramsController {
   async requestPostEventHonorarium(
     @Param('id') id: string,
     @CurrentUser() user: AuthUser,
+    @Body() body: RequestPostEventHonorariumDto,
   ) {
     return this.registrationsService.requestPostEventHonorariumPayout(
       user.userId,
       id,
+      { entryKind: body?.entryKind },
     );
   }
 

@@ -57,6 +57,7 @@ export class PaymentsService {
 
   /**
    * Learner-facing payout summary for a program honorarium (masked bank + partial address only).
+   * Never includes full account numbers — Stripe holds those.
    */
   async getHonorariumProgramPreview(
     userId: string,
@@ -69,6 +70,13 @@ export class PaymentsService {
     addressSummary: string | null;
     hasPayoutAccount: boolean;
     w9Submitted: boolean;
+    stripePayoutsEnabled: boolean;
+    methodLabel: string;
+    detailsAddedAt: string | null;
+    missingRequirements: Array<
+      'STRIPE_ACCOUNT' | 'BANK_ACCOUNT' | 'TAX_DETAILS' | 'PAYOUTS_ENABLED'
+    >;
+    payoutReady: boolean;
   }> {
     const [user, program] = await Promise.all([
       this.prisma.user.findUnique({
@@ -81,8 +89,10 @@ export class PaymentsService {
           zipCode: true,
           stripeAccountId: true,
           stripePayoutsEnabled: true,
+          stripeOnboardingCompleteAt: true,
           bankAccountLast4: true,
           w9Submitted: true,
+          w9SubmittedAt: true,
           specialty: true,
           npiNumber: true,
           phoneNumber: true,
@@ -123,6 +133,27 @@ export class PaymentsService {
 
     const maskedBankLast4: string | null = user.bankAccountLast4 ?? null;
     const hasPayoutAccount = !!user.stripeAccountId;
+    const stripePayoutsEnabled = !!user.stripePayoutsEnabled;
+    const w9Submitted = !!user.w9Submitted;
+
+    const missingRequirements: Array<
+      'STRIPE_ACCOUNT' | 'BANK_ACCOUNT' | 'TAX_DETAILS' | 'PAYOUTS_ENABLED'
+    > = [];
+    if (!hasPayoutAccount) missingRequirements.push('STRIPE_ACCOUNT');
+    else if (!stripePayoutsEnabled) missingRequirements.push('PAYOUTS_ENABLED');
+    if (!w9Submitted) missingRequirements.push('TAX_DETAILS');
+    // Soft gap: account exists but last4 not mirrored yet — show Edit, still allow confirm if otherwise ready.
+    if (hasPayoutAccount && stripePayoutsEnabled && !maskedBankLast4) {
+      missingRequirements.push('BANK_ACCOUNT');
+    }
+
+    const detailsAddedAt =
+      user.stripeOnboardingCompleteAt?.toISOString() ??
+      user.w9SubmittedAt?.toISOString() ??
+      null;
+
+    const payoutReady =
+      hasPayoutAccount && w9Submitted && stripePayoutsEnabled;
 
     return {
       programTitle: program.title,
@@ -131,7 +162,12 @@ export class PaymentsService {
       maskedBankLast4,
       addressSummary,
       hasPayoutAccount,
-      w9Submitted: user.w9Submitted,
+      w9Submitted,
+      stripePayoutsEnabled,
+      methodLabel: 'ACH direct deposit',
+      detailsAddedAt,
+      missingRequirements,
+      payoutReady,
     };
   }
 
@@ -424,16 +460,67 @@ export class PaymentsService {
 
   /**
    * List pending payments (admin only). Optional `programId` / `none` scope.
+   * Attaches per-registration payout confirmation metadata when available.
    */
   async getPendingPayments(programId?: string) {
     const scope = this.parseProgramIdScope(programId);
-    return this.prisma.payment.findMany({
+    const rows = await this.prisma.payment.findMany({
       where: {
         status: 'PENDING',
         ...(scope ? { programId: scope.programId } : {}),
       },
       include: this.adminPaymentListInclude(),
       orderBy: { createdAt: 'desc' },
+    });
+    return this.attachPayoutConfirmationMeta(rows);
+  }
+
+  private async attachPayoutConfirmationMeta<
+    T extends { userId: string; programId: string | null },
+  >(
+    rows: T[],
+  ): Promise<
+    Array<
+      T & {
+        payoutDetailsConfirmedAt: string | null;
+        payoutDetailsEntryKind: 'REUSED' | 'NEWLY_ENTERED' | null;
+      }
+    >
+  > {
+    const pairs = rows
+      .filter((r): r is T & { programId: string } => !!r.programId)
+      .map((r) => ({ userId: r.userId, programId: r.programId }));
+    if (!pairs.length) {
+      return rows.map((r) => ({
+        ...r,
+        payoutDetailsConfirmedAt: null,
+        payoutDetailsEntryKind: null,
+      }));
+    }
+
+    const regs = await this.prisma.programRegistration.findMany({
+      where: { OR: pairs },
+      select: {
+        userId: true,
+        programId: true,
+        payoutDetailsConfirmedAt: true,
+        payoutDetailsEntryKind: true,
+      },
+    });
+    const byKey = new Map(
+      regs.map((r) => [`${r.userId}:${r.programId}`, r] as const),
+    );
+
+    return rows.map((r) => {
+      const reg = r.programId
+        ? byKey.get(`${r.userId}:${r.programId}`)
+        : undefined;
+      return {
+        ...r,
+        payoutDetailsConfirmedAt:
+          reg?.payoutDetailsConfirmedAt?.toISOString() ?? null,
+        payoutDetailsEntryKind: reg?.payoutDetailsEntryKind ?? null,
+      };
     });
   }
 

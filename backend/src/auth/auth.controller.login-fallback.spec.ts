@@ -48,7 +48,9 @@ describe('AuthController /login prod fail-closed (SCRUM-101)', () => {
     isMfaEnrollmentEnabled: jest.fn().mockReturnValue(false),
     getAuthFeatures: jest.fn().mockReturnValue({
       mfa: { enabled: false, method: 'sms' },
+      betaTerms: { required: true },
     }),
+    isBetaTermsRequired: jest.fn().mockReturnValue(true),
   };
 
   const buildController = () =>

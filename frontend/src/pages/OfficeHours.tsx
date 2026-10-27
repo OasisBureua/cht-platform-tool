@@ -7,10 +7,16 @@ import { webinarsApi, type WebinarItem } from '../api/webinars';
 import { programsApi } from '../api/programs';
 import { useAuth } from '../contexts/AuthContext';
 import { liveSessionListBadgeLabel } from '../utils/live-session-list-badge';
+import { LiveSessionSortControl } from '../components/live/LiveSessionSortControl';
+import { useLiveSessionListSort } from '../hooks/useLiveSessionListSort';
 import {
   OFFICE_HOURS_QUERY_KEY,
   liveSessionListQueryOptions,
 } from '../utils/live-session-list-query';
+import {
+  OFFICE_HOURS_SORT_STORAGE_KEY,
+  sortLiveSessions,
+} from '../utils/live-session-list-sort';
 import { isSessionExpired } from '../utils/live-session-timing';
 
 function isExpired(w: WebinarItem): boolean {
@@ -28,6 +34,7 @@ function formatDuration(minutes?: number): string {
 export default function OfficeHours() {
   const { user } = useAuth();
   const userId = user?.userId;
+  const { sortKey, setSortKey } = useLiveSessionListSort(OFFICE_HOURS_SORT_STORAGE_KEY);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: OFFICE_HOURS_QUERY_KEY,
@@ -49,24 +56,47 @@ export default function OfficeHours() {
   }, [liveStatuses]);
 
   const { upcoming, past } = useMemo(() => {
-    const withDate = (w: WebinarItem) => (w.startTime ? new Date(w.startTime).getTime() : 0);
-    const upcomingList = sessions
-      .filter((w) => !isExpired(w))
-      .sort((a, b) => withDate(a) - withDate(b));
-    const pastList = sessions
-      .filter((w) => isExpired(w))
-      .sort((a, b) => withDate(b) - withDate(a));
+    const upcomingList = sortLiveSessions(
+      sessions.filter((w) => !isExpired(w)),
+      sortKey,
+    );
+    const pastList = sortLiveSessions(
+      sessions.filter((w) => isExpired(w)),
+      sortKey === 'date_asc' ? 'date_desc' : sortKey,
+    );
     return { upcoming: upcomingList, past: pastList };
-  }, [sessions]);
+  }, [sessions, sortKey]);
 
   return (
     <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">CHM Office Hours</h1>
-        <p className="text-pretty text-sm text-muted-foreground">
-          Get time with our experts, live sessions for Q&amp;A. Select an available time slot and join from here when
-          it&apos;s time.
-        </p>
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="text-balance text-2xl font-bold text-foreground md:text-3xl">CHM Office Hours</h1>
+            <p className="text-pretty text-sm text-muted-foreground">
+              Get time with our experts, live sessions for Q&amp;A. Select an available time slot and join from here when
+              it&apos;s time.
+            </p>
+          </div>
+          <div className="w-full sm:w-auto">
+            <div className="sm:hidden">
+              <LiveSessionSortControl
+                sortKey={sortKey}
+                onChange={setSortKey}
+                includeTopic={false}
+                variant="select"
+              />
+            </div>
+            <div className="hidden sm:block">
+              <LiveSessionSortControl
+                sortKey={sortKey}
+                onChange={setSortKey}
+                includeTopic={false}
+                variant="buttons"
+              />
+            </div>
+          </div>
+        </div>
       </header>
 
       <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-sm text-amber-900" role="note">

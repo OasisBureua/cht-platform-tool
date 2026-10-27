@@ -6,6 +6,7 @@ import {
   listNativeSurveyQuestions,
   surveyHasNativeQuestions,
 } from '../../utils/survey-questions';
+import { surveyFieldInputHints } from '../../utils/survey-field-autocomplete';
 
 type Props = {
   surveyId: string;
@@ -267,6 +268,11 @@ function NativeQuestionField(props: {
   }
 
   if (question.type === 'long_text') {
+    const hints = surveyFieldInputHints({
+      questionId: id,
+      syncToProfile: question.syncToProfile,
+      prompt,
+    });
     return (
       <label className="block space-y-1 text-sm">
         <span className="font-medium text-foreground">
@@ -278,6 +284,8 @@ function NativeQuestionField(props: {
           rows={4}
           required={required}
           disabled={disabled}
+          autoComplete={hints.autoComplete}
+          name={id}
           value={typeof value === 'string' ? value : ''}
           onChange={(e) => onChange(e.target.value)}
         />
@@ -372,6 +380,12 @@ function NativeQuestionField(props: {
     );
   }
 
+  const hints = surveyFieldInputHints({
+    questionId: id,
+    syncToProfile: question.syncToProfile,
+    prompt,
+  });
+
   return (
     <label className="block space-y-1 text-sm">
       <span className="font-medium text-foreground">
@@ -379,9 +393,12 @@ function NativeQuestionField(props: {
         {required ? ' *' : ''}
       </span>
       <input
+        type={hints.inputType}
+        name={id}
         className="w-full rounded-[6px] border border-border px-3 py-2"
         required={required}
         disabled={disabled}
+        autoComplete={hints.autoComplete}
         value={typeof value === 'string' ? value : ''}
         onChange={(e) => onChange(e.target.value)}
       />

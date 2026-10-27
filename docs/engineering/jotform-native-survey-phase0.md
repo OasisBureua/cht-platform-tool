@@ -260,3 +260,15 @@ Replace JotForm-specific **detection** with survey-based detection; keep registr
 | `acknowledgePostEventSurvey` checks `jotformSurveyUrl` | Check FEEDBACK survey exists for program |
 
 **Do not change:** approval workflow, attendance verification, honorarium amount, enrollment rules, HubSpot side effects, email notifications, or post-event nav lock behavior.
+
+---
+
+## Profile prefill (native vs Jotform)
+
+| Surface | Prefill source | In scope? |
+|---------|----------------|-----------|
+| Native intake / feedback (`ProgramSurveyPanel`) | Signed-in user’s own profile via `GET /surveys/:id/profile-prefill`; HTML `autocomplete` for browser/device suggestions | **Yes** — mapped fields only; write-back is opt-in (“Update my saved details”) |
+| Signed-out / public forms | Browser autofill only (`autocomplete` attributes); no CHT profile data before sign-in | **Yes** |
+| Legacy Jotform embeds | Query-string `?uniqueName=value` possible only when form field unique names are known; `user_id` / `program_id` are attribution-only (deprecated) | **Out of scope** for product profile prefill — prefer native surveys |
+
+**Mapped profile fields today:** firstName, lastName, specialty, npiNumber, institution, city, state, zipCode, phoneNumber. Street address is intake-only (not on User). `licenseNumber` exists in Prisma but is not on the profile API — do not prefill until exposed. Email is session-bound for authenticated users (not collected again on native intake).

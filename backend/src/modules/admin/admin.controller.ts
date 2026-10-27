@@ -34,7 +34,10 @@ import {
   UserStatus,
   PaymentStatus,
   ProgramRegistrationStatus,
+  OutboundEmailStatus,
+  OutboundEmailType,
 } from '@prisma/client';
+import { IsEmail, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -73,6 +76,13 @@ import {
   adminUserListSelect,
 } from './user-recipient-filters.util';
 import { loadProgramSurveyMeta } from '../../utils/program-survey-config';
+import { ProgramInvitationsService } from './program-invitations.service';
+
+class ResendInvitationDto {
+  @IsOptional()
+  @IsEmail()
+  correctedEmail?: string;
+}
 
 /** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
 function lastProgramRegistrationSubmittedAtIso(r: {
@@ -105,6 +115,7 @@ export class AdminController {
     private sessionHeroPresign: SessionHeroPresignService,
     private programZoomRecordings: ProgramZoomRecordingsService,
     private sesEmail: SesEmailService,
+    private programInvitations: ProgramInvitationsService,
   ) {}
 
   // ─── Bootstrap (no auth - first super-admin setup) ───────────────────────
@@ -690,6 +701,67 @@ export class AdminController {
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(Buffer.from(body, 'utf8'));
+  }
+
+  @Get('beta-terms-acceptances/export.csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({
+    summary:
+      'CSV export of Beta Participant Terms acceptances (user, timestamp, version) for legal',
+  })
+  async exportBetaTermsAcceptancesCsv(@Res() res: Response) {
+    const rows = await this.prisma.betaTermsAcceptance.findMany({
+      orderBy: { acceptedAt: 'desc' },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+      take: 50_000,
+    });
+    const header = [
+      'acceptance_id',
+      'user_id',
+      'email',
+      'first_name',
+      'last_name',
+      'role',
+      'terms_version',
+      'accepted_at',
+      'ip_address',
+    ];
+    const escape = (v: string) =>
+      /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push(
+        [
+          r.id,
+          r.userId,
+          escape(r.user.email),
+          escape(r.user.firstName),
+          escape(r.user.lastName),
+          r.user.role,
+          r.termsVersion,
+          r.acceptedAt.toISOString(),
+          escape(r.ipAddress ?? ''),
+        ].join(','),
+      );
+    }
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename="beta-terms-acceptances.csv"',
+    );
+    res.send(lines.join('\n'));
   }
 
   @Get('users/registration-invite-filter-options')
@@ -1794,7 +1866,10 @@ export class AdminController {
     summary:
       'Email learners a link to register for multiple webinars (multi-register landing page)',
   })
-  async sendRegistrationInvites(@Body() body: SendRegistrationInvitesDto) {
+  async sendRegistrationInvites(
+    @Body() body: SendRegistrationInvitesDto,
+    @CurrentUser() admin: AuthUser,
+  ) {
     return this.programRegistrations.sendRegistrationInvites({
       programIds: body.programIds,
       userIds: body.userIds,
@@ -1803,6 +1878,77 @@ export class AdminController {
       cities: body.cities,
       states: body.states,
       institutions: body.institutions,
+      sentByUserId: admin.userId,
+    });
+  }
+
+  @Get('programs/:id/invitations')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List platform-sent invite/registration emails for a program (admin only)',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  async listProgramInvitations(
+    @Param('id') id: string,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('emailType') emailType?: string,
+    @Query('skip') skip?: string,
+    @Query('take') take?: string,
+  ) {
+    return this.programInvitations.list(id, {
+      q,
+      status: parseOutboundStatus(status),
+      emailType: parseOutboundType(emailType),
+      skip: skip ? Number(skip) : 0,
+      take: take ? Number(take) : 200,
+    });
+  }
+
+  @Get('programs/:id/invitations/export.csv')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @Header('Content-Type', 'text/csv; charset=utf-8')
+  @ApiOperation({ summary: 'CSV export of program invitation log (filtered)' })
+  async exportProgramInvitationsCsv(
+    @Param('id') id: string,
+    @Res() res: Response,
+    @Query('q') q?: string,
+    @Query('status') status?: string,
+    @Query('emailType') emailType?: string,
+  ) {
+    const { filename, body } = await this.programInvitations.exportCsv(id, {
+      q,
+      status: parseOutboundStatus(status),
+      emailType: parseOutboundType(emailType),
+    });
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"`,
+    );
+    res.send(body);
+  }
+
+  @Post('programs/:id/invitations/:logId/resend')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Re-send a failed/bounced (or registration invite) email; optional corrected address',
+  })
+  async resendProgramInvitation(
+    @Param('id') id: string,
+    @Param('logId') logId: string,
+    @Body() body: ResendInvitationDto,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    return this.programInvitations.resend(id, logId, admin, {
+      correctedEmail: body?.correctedEmail,
     });
   }
 
@@ -1870,6 +2016,8 @@ export class AdminController {
           subject,
           textBody,
           programTitle: program.title,
+          programId: id,
+          sentByUserId: admin.userId,
         });
         sent += 1;
       } catch (err) {
@@ -2253,6 +2401,8 @@ export class AdminController {
         postEventSurveyAcknowledgedAt:
           r.postEventSurveyAcknowledgedAt?.toISOString(),
         honorariumRequestedAt: r.honorariumRequestedAt?.toISOString(),
+        payoutDetailsConfirmedAt: r.payoutDetailsConfirmedAt?.toISOString(),
+        payoutDetailsEntryKind: r.payoutDetailsEntryKind ?? null,
         zoomJoined: zoomPresence.get(r.userId)?.zoomJoined ?? false,
         zoomParticipantEmail:
           zoomPresence.get(r.userId)?.zoomParticipantEmail ?? null,
@@ -2839,4 +2989,22 @@ export class AdminController {
     });
     return { deleted: true, id };
   }
+}
+
+function parseOutboundStatus(
+  raw?: string,
+): OutboundEmailStatus | undefined {
+  if (!raw?.trim()) return undefined;
+  const v = raw.trim().toUpperCase();
+  return (Object.values(OutboundEmailStatus) as string[]).includes(v)
+    ? (v as OutboundEmailStatus)
+    : undefined;
+}
+
+function parseOutboundType(raw?: string): OutboundEmailType | undefined {
+  if (!raw?.trim()) return undefined;
+  const v = raw.trim().toUpperCase();
+  return (Object.values(OutboundEmailType) as string[]).includes(v)
+    ? (v as OutboundEmailType)
+    : undefined;
 }

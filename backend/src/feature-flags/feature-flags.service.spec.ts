@@ -4,7 +4,7 @@ import {
 } from './feature-flags.types';
 
 describe('parseAuthFeaturesConfig', () => {
-  it('defaults MFA to disabled with sms method', () => {
+  it('defaults MFA to disabled with sms method and beta terms required', () => {
     expect(parseAuthFeaturesConfig(undefined)).toEqual(
       DEFAULT_AUTH_FEATURE_FLAGS,
     );
@@ -21,6 +21,7 @@ describe('parseAuthFeaturesConfig', () => {
       }),
     ).toEqual({
       mfa: { enabled: true, method: 'totp' },
+      betaTerms: { required: true },
     });
   });
 
@@ -31,6 +32,18 @@ describe('parseAuthFeaturesConfig', () => {
       }),
     ).toEqual({
       mfa: { enabled: true, method: 'sms' },
+      betaTerms: { required: true },
+    });
+  });
+
+  it('turns beta terms off when AppConfig sets required false', () => {
+    expect(
+      parseAuthFeaturesConfig({
+        betaTerms: { required: false },
+      }),
+    ).toEqual({
+      mfa: { enabled: false, method: 'sms' },
+      betaTerms: { required: false },
     });
   });
 });

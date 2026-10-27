@@ -1,16 +1,14 @@
 /**
- * SCRUM-186 profile pre-fill + write-back.
+ * Profile pre-fill + opt-in write-back (SCRUM-186 / registration autofill).
  *
  * Survey questions may opt into "sync with User profile" by setting
- * `syncToProfile: '<user-field>'` on the question JSON. When a survey
- * response is submitted, matching answers are written back to the User
- * table. When the same survey is loaded again (by the same user or a
- * different program), the questions can be pre-filled with the current
- * User field values.
+ * `syncToProfile: '<user-field>'` on the question JSON. Prefill loads the
+ * signed-in user's own values into matching fields. Write-back to the User
+ * table is **opt-in only** (`updateProfile: true` on submit) — never silent.
  *
  * Questions without an explicit tag are still mapped when their id or
  * prompt clearly matches a profile field (webinar intake templates use
- * ids like `npi`, `organization`, `postal_code`).
+ * ids like `npi`, `organization`, `postal_code`, `phone`).
  */
 
 import { normalizeUsStateCode, normalizeUsZip5 } from '../../common/us-address';
@@ -21,8 +19,9 @@ import {
 
 /**
  * User columns that may be sync-targeted. Additions require both a Prisma
- * schema field and (usually) a normalizer in the writeUserProfileFromAnswers
- * function below.
+ * schema field and (usually) a normalizer in extractProfileUpdatesFromAnswers.
+ * Email is session-bound (not synced). licenseNumber is not exposed on the
+ * profile API yet and must not be prefilled.
  */
 export const SYNC_TARGET_FIELDS = [
   'firstName',
@@ -33,6 +32,7 @@ export const SYNC_TARGET_FIELDS = [
   'city',
   'state',
   'zipCode',
+  'phoneNumber',
 ] as const;
 
 export type SyncTargetField = (typeof SYNC_TARGET_FIELDS)[number];
@@ -57,6 +57,7 @@ export type SyncableUserProfile = {
   city: string | null;
   state: string | null;
   zipCode: string | null;
+  phoneNumber: string | null;
 };
 
 type QuestionWithSync = NativeSurveyQuestion & {
@@ -97,6 +98,7 @@ export function inferSyncTargetFromQuestion(
     organisation: 'institution',
     institution: 'institution',
     company: 'institution',
+    affiliation: 'institution',
     city: 'city',
     state: 'state',
     province: 'state',
@@ -106,12 +108,23 @@ export function inferSyncTargetFromQuestion(
     postal: 'zipCode',
     postalcode: 'zipCode',
     postal_code: 'zipCode',
+    phone: 'phoneNumber',
+    phonenumber: 'phoneNumber',
+    phone_number: 'phoneNumber',
+    mobile: 'phoneNumber',
+    tel: 'phoneNumber',
   };
   if (qid && idAlias[qid]) return idAlias[qid];
 
   // Prompt heuristics (order: more specific first).
   if (/\bnpi\b/.test(prompt) || promptKey.includes('npinumber')) {
     return 'npiNumber';
+  }
+  if (
+    /\b(phone|mobile|cell)\b/.test(prompt) ||
+    promptKey.includes('phonenumber')
+  ) {
+    return 'phoneNumber';
   }
   if (
     /\b(first\s*name|given\s*name)\b/.test(prompt) ||
@@ -233,6 +246,7 @@ export function extractProfileUpdatesFromAnswers(
       case 'specialty':
       case 'institution':
       case 'city':
+      case 'phoneNumber':
         updates[field] = trimmed;
         break;
       case 'state': {
@@ -253,4 +267,26 @@ export function extractProfileUpdatesFromAnswers(
     }
   }
   return updates;
+}
+
+function profileValueKey(value: string | null | undefined): string {
+  return (value ?? '').trim().toLowerCase();
+}
+
+/**
+ * Fields from survey answers that differ from the current profile (for the
+ * post-submit "Update my saved details" opt-in).
+ */
+export function diffSuggestedProfileUpdates(
+  current: SyncableUserProfile,
+  proposed: Partial<SyncableUserProfile>,
+): Partial<SyncableUserProfile> {
+  const out: Partial<SyncableUserProfile> = {};
+  for (const field of SYNC_TARGET_FIELDS) {
+    const next = proposed[field];
+    if (typeof next !== 'string' || !next.trim()) continue;
+    if (profileValueKey(current[field]) === profileValueKey(next)) continue;
+    out[field] = next;
+  }
+  return out;
 }

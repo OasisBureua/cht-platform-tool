@@ -23,7 +23,8 @@ vi.mock('../../contexts/AuthContext', () => ({
 
 vi.mock('../../api/terms', () => ({
   termsApi: {
-    accept: (version: string) => mockAccept(version),
+    accept: (version: string, opts?: { betaAccepted?: boolean; betaVersion?: string }) =>
+      mockAccept(version, opts),
     decline: () => mockDecline(),
   },
 }));
@@ -42,7 +43,15 @@ describe('Terms acceptance gate', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
-    mockUser = { userId: 'u1', role: 'HCP', termsAccepted: false, termsVersion: '2026-10-13' };
+    mockUser = {
+      userId: 'u1',
+      role: 'HCP',
+      termsAccepted: false,
+      termsVersion: '2026-10-22',
+      betaTermsRequired: true,
+      betaTermsVersion: '2026-10-22',
+      betaTermsAccepted: false,
+    };
   });
 
   it('blocks protected content until terms are accepted', () => {
@@ -52,31 +61,54 @@ describe('Terms acceptance gate', () => {
     expect(screen.queryByText('Dashboard content')).not.toBeInTheDocument();
   });
 
-  it('links to the full documents in a new tab', () => {
+  it('links to the full documents in a new tab including beta terms', () => {
     renderGate();
 
     const terms = screen.getByRole('link', { name: /terms of use/i });
     const privacy = screen.getByRole('link', { name: /privacy policy/i });
+    const beta = screen.getByRole('link', { name: /beta participant terms/i });
     expect(terms).toHaveAttribute('href', '/terms');
     expect(terms).toHaveAttribute('target', '_blank');
     expect(privacy).toHaveAttribute('href', '/privacy');
     expect(privacy).toHaveAttribute('target', '_blank');
+    expect(beta).toHaveAttribute('href', '/beta-terms');
+    expect(beta).toHaveAttribute('target', '_blank');
   });
 
-  it('requires the checkbox, then saves the displayed version and refreshes the profile', async () => {
+  it('requires both checkboxes when beta is on, then saves versions and refreshes', async () => {
     mockAccept.mockResolvedValue({ termsAccepted: true });
     renderGate();
 
     const accept = screen.getByRole('button', { name: /accept and continue/i });
     expect(accept).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox'));
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(2);
+    fireEvent.click(checkboxes[0]);
+    expect(accept).toBeDisabled();
+    fireEvent.click(checkboxes[1]);
     expect(accept).toBeEnabled();
     fireEvent.click(accept);
 
     await waitFor(() => expect(mockRefreshProfile).toHaveBeenCalled());
-    expect(mockAccept).toHaveBeenCalledWith('2026-10-13');
+    expect(mockAccept).toHaveBeenCalledWith('2026-10-22', {
+      betaAccepted: true,
+      betaVersion: '2026-10-22',
+    });
     expect(mockLogout).not.toHaveBeenCalled();
+  });
+
+  it('hides beta checkbox when betaTermsRequired is false', () => {
+    mockUser = {
+      userId: 'u1',
+      role: 'HCP',
+      termsAccepted: false,
+      termsVersion: '2026-10-22',
+      betaTermsRequired: false,
+    };
+    renderGate();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
+    expect(screen.queryByRole('link', { name: /beta participant terms/i })).not.toBeInTheDocument();
   });
 
   it('declining records the decline, flags the notice and signs out', async () => {

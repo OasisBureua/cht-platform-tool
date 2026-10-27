@@ -69,7 +69,10 @@ export function defaultWebinarIntakeQuestions() {
           'intake_email_notice',
           'We will send your confirmation and join link to the email on your account.',
         ),
-        text('phone', 'Phone number', { required: false }),
+        text('phone', 'Phone number', {
+          required: false,
+          syncToProfile: 'phoneNumber',
+        }),
         text('npi', 'NPI number', {
           required: false,
           syncToProfile: 'npiNumber',

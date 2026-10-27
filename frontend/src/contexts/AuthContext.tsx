@@ -42,10 +42,16 @@ export interface AuthUser {
   mfaFeature?: MfaFeatureFlags;
   /** Verified E.164 phone when stored (SMS MFA). */
   phoneNumber?: string | null;
-  /** False until the user accepts the current Terms of Service & Privacy Policy. */
+  /** False until the user accepts the current Terms of Service & Privacy Policy (and beta terms when required). */
   termsAccepted?: boolean;
   /** Terms version the server requires; echoed back on accept. */
   termsVersion?: string;
+  /** When true, the acceptance pop-up also requires Beta Participant Terms. */
+  betaTermsRequired?: boolean;
+  /** Beta terms version the server requires when betaTermsRequired. */
+  betaTermsVersion?: string;
+  /** Whether the user has accepted the current beta terms version. */
+  betaTermsAccepted?: boolean;
 }
 
 function parseMfaFeature(
@@ -91,6 +97,10 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     // Only an explicit false gates: an older API without the field must not lock users out.
     termsAccepted: data.termsAccepted !== false,
     termsVersion: typeof data.termsVersion === 'string' ? data.termsVersion : undefined,
+    betaTermsRequired: data.betaTermsRequired === true,
+    betaTermsVersion:
+      typeof data.betaTermsVersion === 'string' ? data.betaTermsVersion : undefined,
+    betaTermsAccepted: data.betaTermsAccepted === true,
   };
 }
 

@@ -306,6 +306,8 @@ export default function Settings() {
                 <label className="block text-sm font-semibold text-muted-foreground mb-1">First Name</label>
                 <input
                   type="text"
+                  name="given-name"
+                  autoComplete="given-name"
                   value={firstName}
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter first name"
@@ -316,6 +318,8 @@ export default function Settings() {
                 <label className="block text-sm font-semibold text-muted-foreground mb-1">Last Name</label>
                 <input
                   type="text"
+                  name="family-name"
+                  autoComplete="family-name"
                   value={lastName}
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter last name"
@@ -328,6 +332,8 @@ export default function Settings() {
                 </label>
                 <input
                   type="tel"
+                  name="tel"
+                  autoComplete="tel"
                   inputMode="tel"
                   value={phoneNumber}
                   onChange={(e) => setPhoneNumber(e.target.value)}
