@@ -127,7 +127,7 @@ export function derivePostEventProgress(f: PostEventProgressFacts): PostEventPro
       attention: f.payoutReady === false,
       helper:
         f.payoutReady === false
-          ? 'Payment details missing. Finish your Stripe payout setup to continue.'
+          ? 'Payout setup is not finished yet. Complete it below to continue.'
           : 'Check where we should send your honorarium, then confirm.',
     });
   }

@@ -5,29 +5,16 @@ import { CheckCircle2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   programsApi,
-  type HonorariumMissingRequirement,
-  type HonorariumProgramPreview,
   type ProgramRegistrationState,
 } from '../../api/programs';
 import { surveysApi } from '../../api/surveys';
 import { StripeConnectOnboarding } from '../payments/StripeConnectOnboarding';
 import { StripeMark } from '../branding/StripeMark';
-
-const MISSING_COPY: Record<HonorariumMissingRequirement, string> = {
-  STRIPE_ACCOUNT: 'Connect your Stripe payout account',
-  BANK_ACCOUNT: 'Add a bank account for ACH deposits',
-  TAX_DETAILS: 'Finish tax details (W-9) in Stripe onboarding',
-  PAYOUTS_ENABLED: 'Complete Stripe verification so payouts can be enabled',
-};
-
-function hardBlockers(preview: HonorariumProgramPreview | undefined): HonorariumMissingRequirement[] {
-  if (!preview) return [];
-  return (preview.missingRequirements ?? []).filter((r) => r !== 'BANK_ACCOUNT');
-}
+import { PAYOUT_WINDOW_LABEL } from '../../utils/payout-timing';
 
 /**
  * Inline post-event payment step (not survey form fields).
- * Ready → summary + Continue / Edit. Incomplete → itemized gaps + embedded Stripe Connect.
+ * Ready → summary + Continue / Edit. Incomplete → 1-2-3 setup guide (what Stripe still needs) + embedded Stripe Connect.
  */
 export function PostEventPayoutStep(props: {
   programId: string;
@@ -68,7 +55,6 @@ export function PostEventPayoutStep(props: {
   });
 
   const payoutReady = preview?.payoutReady ?? false;
-  const blockers = hardBlockers(preview);
   /** Editing only applies to a ready account; an account that is not ready shows setup instead. */
   const editingDetails = editing && payoutReady;
 
@@ -122,7 +108,7 @@ export function PostEventPayoutStep(props: {
         </p>
         <p className="text-sm text-muted-foreground">
           Your honorarium is pending admin review. Payouts are typically sent within{' '}
-          <strong className="font-semibold text-foreground">14 calendar days</strong> after submission via
+          <strong className="font-semibold text-foreground">{PAYOUT_WINDOW_LABEL}</strong> after submission via
           ACH once your bank and tax details are connected.
         </p>
         {myRegistration.payoutDetailsEntryKind ? (
@@ -177,9 +163,8 @@ export function PostEventPayoutStep(props: {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Your survey answers are saved as a draft. Confirm payout details below — nothing here is stored as
-        survey answers. <StripeMark size="sm" className="translate-y-px" /> holds your bank and tax info;
-        we only keep a reference and a masked display value.
+        Your survey answers are saved. Now confirm where to send your honorarium. Your answers and the honorarium
+        request are sent together when you continue.
       </p>
 
       {payoutReady && !editingDetails ? (
@@ -245,15 +230,6 @@ export function PostEventPayoutStep(props: {
         </div>
       ) : null}
 
-      {!payoutReady && blockers.length > 0 ? (
-        <ul className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 space-y-1.5">
-          <li className="font-semibold">Finish these items to continue:</li>
-          {blockers.map((code) => (
-            <li key={code}>• {MISSING_COPY[code]}</li>
-          ))}
-        </ul>
-      ) : null}
-
       {showInlineSetup ? (
         <div className="space-y-3">
           {editingDetails ? (
@@ -274,8 +250,9 @@ export function PostEventPayoutStep(props: {
               </button>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">
-              Set up payouts below. When Stripe marks your account ready, you can confirm and submit.
+            <p className="text-sm font-medium text-foreground">
+              Payouts are not set up yet. Follow the 3 steps below. You can confirm as soon as this page says
+              &quot;Ready for payouts&quot;.
             </p>
           )}
           <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} />
