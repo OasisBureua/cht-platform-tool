@@ -61,19 +61,31 @@ function safeAmountCents(amount: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-async function downloadPipelineCsv(
-  filters: Parameters<typeof pipelineExportParams>[0],
-) {
-  const params = pipelineExportParams(filters);
-  const blob = await adminApi.exportPaymentsCsv(params);
+async function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `cht-honorarium-pipeline-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+
+/** Pre-SCRUM-292 payment ledger CSV (PENDING / FAILED / PAID / ALL). */
+async function downloadPaymentsLedgerCsv() {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const blob = await adminApi.exportPaymentsCsv({ status: 'ALL' });
+  await downloadBlob(blob, `cht-payments-all-${stamp}.csv`);
+}
+
+/** SCRUM-292 honorarium pipeline CSV for the current filters. */
+async function downloadPipelineCsv(
+  filters: Parameters<typeof pipelineExportParams>[0],
+) {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const blob = await adminApi.exportPaymentsCsv(pipelineExportParams(filters));
+  await downloadBlob(blob, `cht-honorarium-pipeline-${stamp}.csv`);
 }
 
 function paymentUserLabel(p: {
@@ -235,7 +247,8 @@ export default function AdminPayments() {
   const [bulkAction, setBulkAction] = useState<'release' | 'hold' | null>(null);
   const [bulkReason, setBulkReason] = useState('');
   const [bulkErrors, setBulkErrors] = useState<string[]>([]);
-  const [exporting, setExporting] = useState(false);
+  const [exportingLedger, setExportingLedger] = useState(false);
+  const [exportingPipeline, setExportingPipeline] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [surveyFromDraft, setSurveyFromDraft] = useState('');
   const [surveyToDraft, setSurveyToDraft] = useState('');
@@ -514,9 +527,25 @@ export default function AdminPayments() {
         <div className="shrink-0 flex flex-wrap gap-2">
           <button
             type="button"
-            disabled={exporting || dateRangeInvalid}
+            disabled={exportingLedger}
             onClick={() => {
-              setExporting(true);
+              setExportingLedger(true);
+              void downloadPaymentsLedgerCsv()
+                .catch((err) => {
+                  window.alert(getApiErrorMessage(err, 'CSV export failed.'));
+                })
+                .finally(() => setExportingLedger(false));
+            }}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+          >
+            {exportingLedger ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export CSV
+          </button>
+          <button
+            type="button"
+            disabled={exportingPipeline || dateRangeInvalid}
+            onClick={() => {
+              setExportingPipeline(true);
               void downloadPipelineCsv({
                 programId: pipelineProgramId,
                 status: pipelineStatus,
@@ -525,14 +554,14 @@ export default function AdminPayments() {
                 q: userFilter,
               })
                 .catch((err) => {
-                  window.alert(getApiErrorMessage(err, 'CSV export failed.'));
+                  window.alert(getApiErrorMessage(err, 'Pipeline CSV export failed.'));
                 })
-                .finally(() => setExporting(false));
+                .finally(() => setExportingPipeline(false));
             }}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
           >
-            {exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Export CSV
+            {exportingPipeline ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            Export pipeline
           </button>
           {showPaymentDetails ? (
             <a
