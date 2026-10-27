@@ -15,6 +15,7 @@ import { CognitoM2mTokenService } from './cognito-m2m-token.service';
 import { NpiRegistryService } from './npi-registry.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
+import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
 
 @Module({
   controllers: [AuthController],
@@ -23,6 +24,7 @@ import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.modul
     ConfigModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     PrismaModule,
+    FeatureFlagsModule,
   ],
   providers: [
     AuthService,

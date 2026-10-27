@@ -46,6 +46,20 @@ export function isSessionExpired(
   return now.getTime() >= sessionEndsAt(start, durationMinutes).getTime();
 }
 
+/** True while the session window is in progress (started, not yet ended). */
+export function isSessionLiveNow(
+  startTime?: string | Date | null,
+  durationMinutes?: number | null,
+  now: Date = new Date(),
+): boolean {
+  if (!startTime) return false;
+  const start =
+    startTime instanceof Date ? startTime : new Date(startTime);
+  if (Number.isNaN(start.getTime())) return false;
+  const t = now.getTime();
+  return t >= start.getTime() && t < sessionEndsAt(start, durationMinutes).getTime();
+}
+
 /** HCPs may not register once the scheduled start time has been reached. */
 export function isRegistrationClosed(
   startTime?: string | Date | null,

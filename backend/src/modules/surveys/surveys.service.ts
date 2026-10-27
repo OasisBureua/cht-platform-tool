@@ -40,7 +40,9 @@ import {
 import { SubmitSurveyResponseDto } from './dto/submit-survey-response.dto';
 import {
   buildProfilePrefill,
+  diffSuggestedProfileUpdates,
   extractProfileUpdatesFromAnswers,
+  type SyncableUserProfile,
 } from './profile-sync';
 import {
   findUnsafeAnsweredQuestionChanges,
@@ -1288,6 +1290,8 @@ export class SurveysService {
     submissionId?: string;
     submittedAt: string;
     draft?: boolean;
+    profileUpdated?: boolean;
+    suggestedProfileUpdates?: Partial<SyncableUserProfile>;
   }> {
     await this.ensureUserCanAccessSurvey(surveyId, userId, role);
     assertNoIdentityFieldsInSurveyAnswers(dto.answers);
@@ -1362,16 +1366,22 @@ export class SurveysService {
       );
     }
 
+    let suggestedProfileUpdates: Partial<SyncableUserProfile> | undefined;
+    let profileUpdated = false;
+
     if (!asDraft) {
       await this.formJotformProgress
         .clear(userId, FormJotformScope.SURVEY, surveyId)
         .catch(() => {});
-      await this.writeProfileFromSurveyAnswers(
+      const profileWrite = await this.resolveProfileWriteFromSurveyAnswers(
         userId,
         surveyId,
         survey.questions,
         answers,
+        dto.updateProfile === true,
       );
+      suggestedProfileUpdates = profileWrite.suggested;
+      profileUpdated = profileWrite.wrote;
 
       if (wasDraftOrNew) {
         const user = await this.prisma.user.findUnique({
@@ -1386,6 +1396,7 @@ export class SurveysService {
             state: true,
             zipCode: true,
             npiNumber: true,
+            phoneNumber: true,
           },
         });
         if (user) {
@@ -1430,19 +1441,7 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.FEEDBACK && !asDraft) {
-      const npiRaw = answers.npi ?? answers.npi_number;
-      const npi =
-        typeof npiRaw === 'string' && npiRaw.trim()
-          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
-          : '';
-      if (npi.length === 10) {
-        await this.prisma.user
-          .update({
-            where: { id: userId },
-            data: { npiNumber: npi },
-          })
-          .catch(() => {});
-      }
+      // NPI / other profile fields write only via opt-in updateProfile.
       await this.prisma.programRegistration
         .updateMany({
           where: { userId, programId: survey.programId },
@@ -1456,27 +1455,10 @@ export class SurveysService {
     }
 
     if (survey.type === SurveyType.INTAKE && !asDraft) {
-      // Persist NPI from intake answers. Mark registration SURVEY_SUBMITTED —
-      // the wizard's explicit "Submit registration" (or Jotform path) moves to
-      // PENDING/APPROVED. Do not auto-approve here.
+      // Mark registration SURVEY_SUBMITTED — the wizard's explicit
+      // "Submit registration" moves to PENDING/APPROVED. Profile fields
+      // (including NPI) update only when updateProfile is opted in.
       const intakeSubmissionId = response.submissionId ?? response.id;
-      const npiRaw = answers.npi ?? answers.npi_number;
-      const npi =
-        typeof npiRaw === 'string' && npiRaw.trim()
-          ? npiRaw.trim().replace(/\D/g, '').slice(0, 10)
-          : '';
-      if (npi.length === 10) {
-        await this.prisma.user
-          .update({
-            where: { id: userId },
-            data: { npiNumber: npi },
-          })
-          .catch((err: unknown) => {
-            this.logger.warn(
-              `Could not sync NPI from intake survey for user ${userId}: ${String(err)}`,
-            );
-          });
-      }
       await this.programRegistrations
         .markIntakeSurveySubmitted(userId, survey.programId, intakeSubmissionId)
         .catch((err: unknown) => {
@@ -1491,37 +1473,69 @@ export class SurveysService {
       submissionId: response.submissionId ?? undefined,
       submittedAt: response.submittedAt.toISOString(),
       draft: asDraft,
+      profileUpdated,
+      ...(suggestedProfileUpdates &&
+      Object.keys(suggestedProfileUpdates).length > 0 &&
+      !profileUpdated
+        ? { suggestedProfileUpdates }
+        : {}),
     };
   }
 
   /**
-   * SCRUM-186: mirror survey answers back to the User profile for any
-   * question that opts in via `syncToProfile`. Fires on both first submit
-   * and re-submit. Never fails the survey submit itself.
+   * Compute profile diffs from survey answers. Writes only when
+   * `updateProfile` is true (explicit opt-in). Never fails the survey submit.
    */
-  private async writeProfileFromSurveyAnswers(
+  private async resolveProfileWriteFromSurveyAnswers(
     userId: string,
     surveyId: string,
     questions: unknown,
     answers: Record<string, unknown>,
-  ): Promise<void> {
+    updateProfile: boolean,
+  ): Promise<{
+    suggested: Partial<SyncableUserProfile>;
+    wrote: boolean;
+  }> {
     try {
-      const profileUpdates = extractProfileUpdatesFromAnswers(
-        questions,
-        answers,
-      );
-      if (Object.keys(profileUpdates).length === 0) return;
+      const proposed = extractProfileUpdatesFromAnswers(questions, answers);
+      if (Object.keys(proposed).length === 0) {
+        return { suggested: {}, wrote: false };
+      }
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          firstName: true,
+          lastName: true,
+          specialty: true,
+          npiNumber: true,
+          institution: true,
+          city: true,
+          state: true,
+          zipCode: true,
+          phoneNumber: true,
+        },
+      });
+      if (!user) return { suggested: {}, wrote: false };
+      const suggested = diffSuggestedProfileUpdates(user, proposed);
+      if (Object.keys(suggested).length === 0) {
+        return { suggested: {}, wrote: false };
+      }
+      if (!updateProfile) {
+        return { suggested, wrote: false };
+      }
       await this.prisma.user.update({
         where: { id: userId },
-        data: profileUpdates,
+        data: suggested,
       });
       this.logger.log(
-        `Survey ${surveyId}: wrote back ${Object.keys(profileUpdates).length} profile field(s) for user ${userId}`,
+        `Survey ${surveyId}: opted-in profile write-back (${Object.keys(suggested).length} field(s)) for user ${userId}`,
       );
+      return { suggested, wrote: true };
     } catch (err) {
       this.logger.error(
         `[Surveys] profile write-back failed for user ${userId} survey ${surveyId}: ${(err as Error).message}`,
       );
+      return { suggested: {}, wrote: false };
     }
   }
 
@@ -1552,6 +1566,7 @@ export class SurveysService {
         city: true,
         state: true,
         zipCode: true,
+        phoneNumber: true,
       },
     });
     if (!user) return {};

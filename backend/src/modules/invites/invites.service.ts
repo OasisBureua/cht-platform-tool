@@ -37,7 +37,7 @@ export class InvitesService {
     programIds: string[];
     createdByAdminId?: string;
     ttlDays?: number;
-  }): Promise<{ token: string; expiresAt: Date }> {
+  }): Promise<{ id: string; token: string; expiresAt: Date }> {
     const email = opts.email.trim().toLowerCase();
     if (!email) {
       throw new BadRequestException('email required');
@@ -48,7 +48,7 @@ export class InvitesService {
     const ttlDays = opts.ttlDays ?? this.defaultTtlDays;
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
     const token = this.generateToken();
-    await this.prisma.registrationInvite.create({
+    const row = await this.prisma.registrationInvite.create({
       data: {
         token,
         email,
@@ -56,8 +56,9 @@ export class InvitesService {
         expiresAt,
         createdByAdminId: opts.createdByAdminId ?? null,
       },
+      select: { id: true },
     });
-    return { token, expiresAt };
+    return { id: row.id, token, expiresAt };
   }
 
   /**

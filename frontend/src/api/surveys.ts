@@ -13,9 +13,9 @@ export interface SurveyQuestion {
   scaleMax?: number;
   required?: boolean;
   /**
-   * SCRUM-186: opt this question into User-profile pre-fill + write-back.
+   * Opt this question into User-profile pre-fill + opt-in write-back.
    * Value is the User field name (firstName, lastName, specialty, npiNumber,
-   * institution, city, state, zipCode). Backend validates.
+   * institution, city, state, zipCode, phoneNumber). Backend validates.
    */
   syncToProfile?: string;
   [key: string]: unknown;
@@ -109,17 +109,26 @@ export const surveysApi = {
 
   submitResponse: async (
     id: string,
-    payload: { answers: Record<string, unknown>; draft?: boolean },
+    payload: {
+      answers: Record<string, unknown>;
+      draft?: boolean;
+      /** Opt-in: write mapped answers to the user's saved profile. */
+      updateProfile?: boolean;
+    },
   ) => {
     const { data } = await apiClient.post(`/surveys/${id}/responses`, {
       answers: payload.answers,
       ...(payload.draft ? { draft: true } : {}),
+      ...(payload.updateProfile ? { updateProfile: true } : {}),
     });
     return data as {
       id: string;
       submissionId?: string;
       submittedAt: string;
       draft?: boolean;
+      profileUpdated?: boolean;
+      /** Present when answers differ from profile and updateProfile was not set. */
+      suggestedProfileUpdates?: Record<string, string>;
     };
   },
 

@@ -5,6 +5,7 @@ import { CognitoService } from './cognito.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboundSyncService } from '../modules/outbound-sync/outbound-sync.service';
 import { RedisCacheService } from '../cache/redis-cache.service';
+import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 import { UserRole } from '@prisma/client';
 
 type PrismaMock = {
@@ -22,6 +23,9 @@ type PrismaMock = {
     deleteMany: jest.Mock;
     delete: jest.Mock;
     update: jest.Mock;
+  };
+  betaTermsAcceptance: {
+    create: jest.Mock;
   };
 };
 
@@ -62,6 +66,9 @@ describe('AuthService', () => {
         deleteMany: jest.fn(),
         delete: jest.fn(),
         update: jest.fn(),
+      },
+      betaTermsAcceptance: {
+        create: jest.fn().mockResolvedValue({ id: 'beta-1' }),
       },
     };
     cache = {
@@ -104,6 +111,17 @@ describe('AuthService', () => {
         {
           provide: RedisCacheService,
           useValue: cache,
+        },
+        {
+          provide: FeatureFlagsService,
+          useValue: {
+            isBetaTermsRequired: jest.fn().mockReturnValue(true),
+            isMfaEnrollmentEnabled: jest.fn().mockReturnValue(false),
+            getAuthFeatures: jest.fn().mockReturnValue({
+              mfa: { enabled: false, method: 'sms' },
+              betaTerms: { required: true },
+            }),
+          },
         },
       ],
     }).compile();

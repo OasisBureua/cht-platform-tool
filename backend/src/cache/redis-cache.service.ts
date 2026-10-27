@@ -103,6 +103,43 @@ export class RedisCacheService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * INCR a counter, setting its TTL when the key is new. Returns the new
+   * count, or null when Redis is off or the call fails.
+   */
+  async increment(key: string, ttlSeconds: number): Promise<number | null> {
+    if (!this.isEnabled() || !this.client) return null;
+    try {
+      const count = await this.client.incr(key);
+      if (count === 1) await this.client.expire(key, ttlSeconds);
+      return count;
+    } catch (err) {
+      this.logger.warn(
+        `Redis INCR ${key} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
+  /**
+   * DECR a counter made by `increment`, deleting it once it reaches zero (so
+   * a key that expired meanwhile is not left behind at -1 without a TTL).
+   * Returns the new count, or null when Redis is off or the call fails.
+   */
+  async decrement(key: string): Promise<number | null> {
+    if (!this.isEnabled() || !this.client) return null;
+    try {
+      const count = await this.client.decr(key);
+      if (count <= 0) await this.client.del(key);
+      return Math.max(0, count);
+    } catch (err) {
+      this.logger.warn(
+        `Redis DECR ${key} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return null;
+    }
+  }
+
   async del(key: string): Promise<void> {
     if (!this.isEnabled() || !this.client) return;
     try {
