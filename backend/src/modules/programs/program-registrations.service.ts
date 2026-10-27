@@ -9,12 +9,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   PaymentType,
+  PayoutDetailsOrigin,
   PostEventAttendanceStatus,
   ProgramRegistrationStatus,
   ProgramStatus,
   ProgramZoomSessionType,
   SurveyType,
 } from '@prisma/client';
+import { payoutDetailsOriginForRequest } from '../payments/dto/payment-pipeline.contract';
 import { PrismaService } from '../../prisma/prisma.service';
 import {
   assertProfileCompleteForPayments,
@@ -2197,12 +2199,37 @@ export class ProgramRegistrationsService {
       );
     }
 
+    const priorHonorariumRequests = await this.prisma.programRegistration.count({
+      where: {
+        userId,
+        id: { not: reg.id },
+        honorariumRequestedAt: { not: null },
+      },
+    });
+    const priorHonorariumPayments =
+      priorHonorariumRequests > 0
+        ? 0
+        : await this.prisma.payment.count({
+            where: {
+              userId,
+              type: PaymentType.HONORARIUM,
+              status: { not: 'CANCELLED' },
+            },
+          });
+    const origin = payoutDetailsOriginForRequest(
+      priorHonorariumRequests + priorHonorariumPayments,
+    );
+
     const claimed = await this.prisma.programRegistration.updateMany({
       where: {
         id: reg.id,
         honorariumRequestedAt: null,
       },
-      data: { honorariumRequestedAt: new Date() },
+      data: {
+        honorariumRequestedAt: new Date(),
+        payoutDetailsOrigin:
+          origin === 'new' ? PayoutDetailsOrigin.NEW : PayoutDetailsOrigin.REUSED,
+      },
     });
 
     if (claimed.count === 0) {
@@ -2233,7 +2260,7 @@ export class ProgramRegistrationsService {
     if (!queued) {
       await this.prisma.programRegistration.update({
         where: { id: reg.id },
-        data: { honorariumRequestedAt: null },
+        data: { honorariumRequestedAt: null, payoutDetailsOrigin: null },
       });
       throw new ServiceUnavailableException(
         'Could not queue honorarium. Check configuration or try again in a moment.',

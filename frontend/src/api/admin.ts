@@ -266,6 +266,333 @@ export interface ProgramPaymentSummaryResponse {
   programs: ProgramPaymentSummaryItem[];
 }
 
+/** SCRUM-292 pipeline statuses. Order matches the backend contract. */
+export const PIPELINE_STATUSES = [
+  'registered',
+  'approved',
+  'attended',
+  'survey_completed',
+  'payment_info_on_file',
+  'payment_eligible',
+  'release_pending',
+  'paid',
+  'failed',
+  'on_hold',
+] as const;
+
+export type PipelineStatus = (typeof PIPELINE_STATUSES)[number];
+
+export const PIPELINE_STATUS_LABELS: Record<PipelineStatus, string> = {
+  registered: 'Registered',
+  approved: 'Approved',
+  attended: 'Attended',
+  survey_completed: 'Survey completed',
+  payment_info_on_file: 'Payment info on file',
+  payment_eligible: 'Eligible, unpaid',
+  release_pending: 'Release pending',
+  paid: 'Paid',
+  failed: 'Failed',
+  on_hold: 'On hold',
+};
+
+export interface PaymentPipelineTotals {
+  committedCents: number;
+  releasedCents: number;
+  outstandingCents: number;
+}
+
+export interface PaymentPipelineRow {
+  status: PipelineStatus;
+  programId: string;
+  programTitle: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  amountCents: number;
+  surveyCompletedAt: string | null;
+  aging: {
+    daysSinceSurvey: number | null;
+    atRisk: boolean;
+    overdue: boolean;
+  };
+  payoutDetailsOrigin: 'new' | 'reused' | null;
+  paymentDetailsConfirmedAt: string | null;
+  attendanceRecordedAt: string | null;
+  releaseAt: string | null;
+  stripeTransferId: string | null;
+  stripePayoutId: string | null;
+  holdReason: string | null;
+  totals: PaymentPipelineTotals;
+}
+
+export interface PipelineTimelineItem {
+  label: string;
+  value: string;
+}
+
+function timelineWhen(value: string | null, formatWhen: (iso: string) => string): string {
+  return value ? formatWhen(value) : '—';
+}
+
+function payoutOriginLabel(origin: PaymentPipelineRow['payoutDetailsOrigin']): string {
+  if (origin === 'new') return 'Newly entered';
+  if (origin === 'reused') return 'Reused saved details';
+  return 'Not recorded';
+}
+
+/** Drill-down timeline. Missing dates stay visible as an em dash. */
+export function pipelineTimelineItems(
+  row: PaymentPipelineRow,
+  formatWhen: (iso: string) => string = (iso) => iso,
+): PipelineTimelineItem[] {
+  const confirmed = timelineWhen(row.paymentDetailsConfirmedAt, formatWhen);
+  const origin = payoutOriginLabel(row.payoutDetailsOrigin);
+  const provider = [row.stripeTransferId, row.stripePayoutId].filter(Boolean).join(' · ');
+  return [
+    { label: 'Attendance recorded', value: timelineWhen(row.attendanceRecordedAt, formatWhen) },
+    { label: 'Survey submitted', value: timelineWhen(row.surveyCompletedAt, formatWhen) },
+    {
+      label: 'Payment details confirmed',
+      value: row.paymentDetailsConfirmedAt || row.payoutDetailsOrigin ? `${confirmed} · ${origin}` : '—',
+    },
+    { label: 'Release date', value: timelineWhen(row.releaseAt, formatWhen) },
+    { label: 'Provider reference', value: provider || '—' },
+  ];
+}
+
+const UNPAID_PIPELINE_STATUSES: readonly PipelineStatus[] = [
+  'payment_eligible',
+  'release_pending',
+  'on_hold',
+  'failed',
+];
+
+/** How long an unpaid honorarium has waited since the survey. Null once paid or before the survey. */
+export function unpaidDaysLabel(row: Pick<PaymentPipelineRow, 'status' | 'aging'>): string | null {
+  if (!row.aging || !UNPAID_PIPELINE_STATUSES.includes(row.status)) return null;
+  const days = row.aging.daysSinceSurvey;
+  if (days == null) return null;
+  return days === 1 ? '1 day unpaid' : `${days} days unpaid`;
+}
+
+export interface PaymentPipelineException {
+  code: 'missing_payment_details' | 'provider_error' | 'survey_unmatched' | 'duplicate_payouts';
+  action: string;
+  programId: string | null;
+  programTitle: string | null;
+  userId: string | null;
+  userName: string | null;
+  userEmail: string | null;
+  surveyResponseId: string | null;
+  failureReason: string | null;
+}
+
+export const PIPELINE_EXCEPTION_LABELS: Record<PaymentPipelineException['code'], string> = {
+  missing_payment_details: 'Missing payment details',
+  provider_error: 'Provider error',
+  survey_unmatched: 'Survey not matched',
+  duplicate_payouts: 'Duplicate payouts',
+};
+
+/** Label plus the next action. Provider errors keep the Stripe failure text. */
+export function pipelineExceptionSummary(
+  item: Pick<PaymentPipelineException, 'code' | 'action' | 'failureReason'>,
+): string {
+  const label = PIPELINE_EXCEPTION_LABELS[item.code] ?? 'Payment exception';
+  const action = item.action?.trim() || 'Review this payment.';
+  const reason =
+    item.code === 'provider_error' && item.failureReason?.trim()
+      ? ` (${item.failureReason.trim()})`
+      : '';
+  return `${label}: ${action}${reason}`;
+}
+
+export interface PaymentPipelineResponse {
+  counts: { status: PipelineStatus; count: number }[];
+  totals: PaymentPipelineTotals;
+  programs: {
+    programId: string;
+    programTitle: string;
+    totals: PaymentPipelineTotals;
+  }[];
+  overdueRows: PaymentPipelineRow[];
+  rows: PaymentPipelineRow[];
+  exceptions: PaymentPipelineException[];
+}
+
+function pipelineTotalsOrZero(
+  totals: Partial<PaymentPipelineTotals> | null | undefined,
+): PaymentPipelineTotals {
+  return {
+    committedCents: typeof totals?.committedCents === 'number' ? totals.committedCents : 0,
+    releasedCents: typeof totals?.releasedCents === 'number' ? totals.releasedCents : 0,
+    outstandingCents: typeof totals?.outstandingCents === 'number' ? totals.outstandingCents : 0,
+  };
+}
+
+function isPipelineStatus(value: unknown): value is PipelineStatus {
+  return typeof value === 'string' && (PIPELINE_STATUSES as readonly string[]).includes(value);
+}
+
+function normalizePipelineRow(row: Partial<PaymentPipelineRow> | null | undefined): PaymentPipelineRow | null {
+  if (!row || typeof row !== 'object' || !isPipelineStatus(row.status)) return null;
+  if (typeof row.programId !== 'string' || typeof row.userId !== 'string') return null;
+  return {
+    status: row.status,
+    programId: row.programId,
+    programTitle: typeof row.programTitle === 'string' && row.programTitle.trim()
+      ? row.programTitle.trim()
+      : 'Untitled program',
+    userId: row.userId,
+    userName: row.userName ?? '',
+    userEmail: row.userEmail ?? '',
+    amountCents: typeof row.amountCents === 'number' ? row.amountCents : 0,
+    surveyCompletedAt: row.surveyCompletedAt ?? null,
+    aging: {
+      daysSinceSurvey: row.aging?.daysSinceSurvey ?? null,
+      atRisk: row.aging?.atRisk === true,
+      overdue: row.aging?.overdue === true,
+    },
+    payoutDetailsOrigin:
+      row.payoutDetailsOrigin === 'new' || row.payoutDetailsOrigin === 'reused'
+        ? row.payoutDetailsOrigin
+        : null,
+    paymentDetailsConfirmedAt: row.paymentDetailsConfirmedAt ?? null,
+    attendanceRecordedAt: row.attendanceRecordedAt ?? null,
+    releaseAt: row.releaseAt ?? null,
+    stripeTransferId: row.stripeTransferId ?? null,
+    stripePayoutId: row.stripePayoutId ?? null,
+    holdReason: row.holdReason ?? null,
+    totals: pipelineTotalsOrZero(row.totals),
+  };
+}
+
+/** A missing or partial payload is an empty pipeline, not a thrown render. */
+export function normalizePaymentPipeline(
+  data: Partial<PaymentPipelineResponse> | null | undefined,
+): PaymentPipelineResponse {
+  const counts = PIPELINE_STATUSES.map((status) => ({ status, count: 0 }));
+  if (Array.isArray(data?.counts)) {
+    for (const item of data.counts) {
+      if (!item || !isPipelineStatus(item.status) || typeof item.count !== 'number') continue;
+      const slot = counts.find((entry) => entry.status === item.status);
+      if (slot) slot.count = item.count;
+    }
+  }
+  const programs = Array.isArray(data?.programs)
+    ? data.programs.flatMap((program) => {
+        if (!program || typeof program.programId !== 'string') return [];
+        return [{
+          programId: program.programId,
+          programTitle: typeof program.programTitle === 'string' && program.programTitle.trim()
+            ? program.programTitle.trim()
+            : 'Untitled program',
+          totals: pipelineTotalsOrZero(program.totals),
+        }];
+      })
+    : [];
+  const exceptions = Array.isArray(data?.exceptions)
+    ? data.exceptions.flatMap((item) => {
+        if (!item || !Object.hasOwn(PIPELINE_EXCEPTION_LABELS, item.code)) return [];
+        const code = item.code as PaymentPipelineException['code'];
+        return [{
+          code,
+          action: typeof item.action === 'string' && item.action.trim()
+            ? item.action.trim()
+            : 'Review this payment.',
+          programId: item.programId ?? null,
+          programTitle: item.programTitle ?? null,
+          userId: item.userId ?? null,
+          userName: item.userName ?? null,
+          userEmail: item.userEmail ?? null,
+          surveyResponseId: item.surveyResponseId ?? null,
+          failureReason: item.failureReason ?? null,
+        }];
+      })
+    : [];
+  return {
+    counts,
+    totals: pipelineTotalsOrZero(data?.totals),
+    programs,
+    overdueRows: Array.isArray(data?.overdueRows)
+      ? data.overdueRows.flatMap((row) => {
+          const normalized = normalizePipelineRow(row);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+    rows: Array.isArray(data?.rows)
+      ? data.rows.flatMap((row) => {
+          const normalized = normalizePipelineRow(row);
+          return normalized ? [normalized] : [];
+        })
+      : [],
+    exceptions,
+  };
+}
+
+/** Export uses the same program, status, survey dates, and name filters as the table. */
+export function pipelineExportParams(filters: {
+  programId?: string;
+  status?: PipelineStatus | null;
+  surveyFrom?: string;
+  surveyTo?: string;
+  q?: string;
+}): {
+  scope: 'pipeline';
+  programId?: string;
+  status?: PipelineStatus;
+  from?: string;
+  to?: string;
+  q?: string;
+} {
+  const params: {
+    scope: 'pipeline';
+    programId?: string;
+    status?: PipelineStatus;
+    from?: string;
+    to?: string;
+    q?: string;
+  } = { scope: 'pipeline' };
+  if (filters.programId) params.programId = filters.programId;
+  if (filters.status) params.status = filters.status;
+  if (filters.surveyFrom) params.from = `${filters.surveyFrom}T00:00:00.000Z`;
+  if (filters.surveyTo) params.to = `${filters.surveyTo}T23:59:59.999Z`;
+  const q = filters.q?.trim();
+  if (q) params.q = q;
+  return params;
+}
+
+/**
+ * Body for POST /payments/bulk. Nothing is sent until the admin confirms.
+ * Hold still requires a reason after confirm.
+ */
+export function bulkPaymentRequest(input: {
+  action: 'release' | 'hold';
+  paymentIds: string[];
+  reason?: string;
+  confirmed: boolean;
+}): { action: 'release' | 'hold'; paymentIds: string[]; reason?: string } | null {
+  if (!input.confirmed) return null;
+  const paymentIds = [...new Set(input.paymentIds.map((id) => id.trim()).filter(Boolean))];
+  if (paymentIds.length === 0) return null;
+  if (input.action === 'hold') {
+    const reason = input.reason?.trim() ?? '';
+    if (!reason) return null;
+    return { action: 'hold', paymentIds, reason };
+  }
+  return { action: 'release', paymentIds };
+}
+
+/** Status chip click must not show a different status. */
+export function pipelineRowsForStatus(
+  rows: PaymentPipelineRow[],
+  status: PipelineStatus | null,
+): PaymentPipelineRow[] {
+  if (!Array.isArray(rows)) return [];
+  if (!status) return rows.filter((row) => Boolean(row));
+  return rows.filter((row) => row?.status === status);
+}
+
 export interface AdminStats {
   activeHcpsCount: number;
   activeHcpsCountPreviousWeek: number;
@@ -1182,9 +1509,12 @@ export const adminApi = {
   },
 
   exportPaymentsCsv: async (params?: {
-    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL';
+    scope?: 'pipeline';
+    programId?: string;
+    status?: 'PENDING' | 'FAILED' | 'PAID' | 'ALL' | PipelineStatus;
     from?: string;
     to?: string;
+    q?: string;
   }): Promise<Blob> => {
     const { data } = await apiClient.get<Blob>('/payments/export.csv', {
       params,
@@ -2033,6 +2363,28 @@ export const adminApi = {
     return data ?? { programs: [] };
   },
 
+  /**
+   * SCRUM-292: honorarium pipeline. Counts ignore `status`; rows follow it.
+   */
+  getPaymentPipeline: async (params?: {
+    programId?: string;
+    status?: PipelineStatus;
+    from?: string;
+    to?: string;
+    q?: string;
+  }): Promise<PaymentPipelineResponse> => {
+    const query: Record<string, string> = {};
+    if (params?.programId) query.programId = params.programId;
+    if (params?.status) query.status = params.status;
+    if (params?.from) query.from = params.from;
+    if (params?.to) query.to = params.to;
+    if (params?.q?.trim()) query.q = params.q.trim();
+    const { data } = await apiClient.get<PaymentPipelineResponse>('/payments/pipeline', {
+      params: Object.keys(query).length > 0 ? query : undefined,
+    });
+    return normalizePaymentPipeline(data);
+  },
+
   getPendingPayments: async (params?: { programId?: ProgramPaymentScopeId }) => {
     try {
       const { data } = await apiClient.get<PendingPayment[]>('/payments/pending', {
@@ -2083,6 +2435,15 @@ export const adminApi = {
 
   payNow: async (paymentId: string) => {
     const { data } = await apiClient.post(`/payments/${paymentId}/pay-now`);
+    return data;
+  },
+
+  bulkPayments: async (body: {
+    action: 'release' | 'hold';
+    paymentIds: string[];
+    reason?: string;
+  }): Promise<{ results: Array<{ paymentId: string; ok: boolean; error?: string }> }> => {
+    const { data } = await apiClient.post('/payments/bulk', body);
     return data;
   },
 

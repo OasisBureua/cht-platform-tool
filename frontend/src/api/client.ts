@@ -81,12 +81,12 @@ export function getApiErrorMessage(err: unknown, fallback = 'Something went wron
     response?: { status?: number; data?: { message?: string | string[] } };
   };
   const m = ax.response?.data?.message;
-  if (Array.isArray(m)) return m.filter(Boolean).join('; ');
-  if (typeof m === 'string' && m.trim()) return m;
   const status = ax.response?.status;
   // 5xx (and no-response network errors, which have no status) => use fallback
-  // instead of leaking axios's generic "Request failed with status code N" text.
+  // instead of "Internal server error" or axios's "Request failed with status code N".
   if (status === undefined || status >= 500) return fallback;
+  if (Array.isArray(m)) return m.filter(Boolean).join('; ');
+  if (typeof m === 'string' && m.trim()) return m;
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }

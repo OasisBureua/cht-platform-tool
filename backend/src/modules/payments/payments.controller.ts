@@ -20,6 +20,8 @@ import {
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
+import { CurrentUser } from '../../auth/current-user.decorator';
+import type { AuthUser } from '../../auth/auth.service';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
@@ -27,6 +29,8 @@ import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
 import { CreateManualPaymentDto } from './dto/create-manual-payment.dto';
+import { HoldPaymentDto } from './dto/hold-payment.dto';
+import { BulkPaymentDto } from './dto/bulk-payment.dto';
 import {
   CreateConnectAccountResponseDto,
   AccountLinkResponseDto,
@@ -34,6 +38,7 @@ import {
 import { SubmitW9Dto } from './dto/submit-w9.dto';
 import { AccountStatusDto } from './dto/account-status.dto';
 import { ProgramPaymentSummaryResponseDto } from './dto/program-payment-summary.dto';
+import { PipelineResponseDto } from './dto/payment-pipeline.dto';
 
 @Controller('payments')
 export class PaymentsController {
@@ -196,6 +201,37 @@ export class PaymentsController {
   }
 
   /**
+   * GET /api/payments/pipeline
+   * Honorarium status pipeline (SCRUM-292). Static path — keep before :userId.
+   * Counts ignore `status`; rows and totals follow it.
+   */
+  @Get('pipeline')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Honorarium pipeline rows, counts, and totals (admin)' })
+  @ApiQuery({ name: 'programId', required: false })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    description:
+      'registered | approved | attended | survey_completed | payment_info_on_file | payment_eligible | release_pending | paid | failed | on_hold',
+  })
+  @ApiQuery({ name: 'from', required: false, description: 'Inclusive survey-completed ISO start' })
+  @ApiQuery({ name: 'to', required: false, description: 'Inclusive survey-completed ISO end' })
+  @ApiQuery({ name: 'q', required: false, description: 'Name or email contains' })
+  @ApiOkResponse({ type: PipelineResponseDto })
+  async listPipeline(
+    @Query('programId') programId?: string,
+    @Query('status') status?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('q') q?: string,
+  ): Promise<PipelineResponseDto> {
+    return this.paymentsService.listPipeline({ programId, status, from, to, q });
+  }
+
+  /**
    * GET /api/payments/export.csv
    * Download payments as CSV (admin).
    */
@@ -207,16 +243,44 @@ export class PaymentsController {
   @ApiQuery({
     name: 'status',
     required: false,
-    description: 'PENDING | FAILED | PAID | ALL (default ALL)',
+    description:
+      'Payment ledger: PENDING | FAILED | PAID | ALL. Pipeline scope: a pipeline status.',
   })
   @ApiQuery({ name: 'from', required: false, description: 'ISO start date' })
   @ApiQuery({ name: 'to', required: false, description: 'ISO end date' })
+  @ApiQuery({
+    name: 'scope',
+    required: false,
+    description: 'pipeline exports the honorarium pipeline for the current filters',
+  })
+  @ApiQuery({ name: 'programId', required: false })
+  @ApiQuery({ name: 'q', required: false, description: 'Name or email contains' })
   async exportPaymentsCsv(
     @Res() res: Response,
     @Query('status') status?: string,
     @Query('from') from?: string,
     @Query('to') to?: string,
+    @Query('scope') scope?: string,
+    @Query('programId') programId?: string,
+    @Query('q') q?: string,
   ) {
+    if (scope === 'pipeline') {
+      const csv = await this.paymentsService.exportPipelineCsv({
+        programId,
+        status,
+        from,
+        to,
+        q,
+      });
+      const stamp = new Date().toISOString().slice(0, 10);
+      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="cht-honorarium-pipeline-${stamp}.csv"`,
+      );
+      res.send(csv);
+      return;
+    }
     const normalized =
       status &&
       ['PENDING', 'FAILED', 'PAID', 'ALL'].includes(status.toUpperCase())
@@ -237,14 +301,66 @@ export class PaymentsController {
   }
 
   /**
+   * POST /api/payments/bulk
+   * Release (pay now) or hold each payment. One failure does not stop the rest.
+   */
+  @Post('bulk')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Bulk release or hold payments (admin)' })
+  async bulkPayments(
+    @Body() dto: BulkPaymentDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.bulkPayments(dto, actor);
+  }
+
+  /**
    * POST /api/payments/:paymentId/retry
    * Retry a FAILED payment by resetting it to PENDING and re-attempting via Stripe Connect (admin only).
    */
   @Post(':paymentId/retry')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async retryPayment(@Param('paymentId') paymentId: string) {
-    return this.paymentsService.retryPayment(paymentId);
+  async retryPayment(
+    @Param('paymentId') paymentId: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.retryPayment(paymentId, actor);
+  }
+
+  /**
+   * POST /api/payments/:paymentId/hold
+   * Hold a PENDING payout. Reason required. Pay now is blocked until release-hold.
+   */
+  @Post(':paymentId/hold')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Hold a pending payment (admin)' })
+  async holdPayment(
+    @Param('paymentId') paymentId: string,
+    @Body() dto: HoldPaymentDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.holdPayment(paymentId, dto.reason, actor);
+  }
+
+  /**
+   * POST /api/payments/:paymentId/release-hold
+   * Clear a hold and leave the payment PENDING.
+   */
+  @Post(':paymentId/release-hold')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Release a payment hold (admin)' })
+  async releaseHold(
+    @Param('paymentId') paymentId: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.releaseHold(paymentId, actor);
   }
 
   /**
@@ -256,8 +372,11 @@ export class PaymentsController {
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Delete payment by ID (admin/dev only)' })
   @ApiResponse({ status: 200, description: 'Payment deleted' })
-  async deletePayment(@Param('paymentId') paymentId: string) {
-    return this.paymentsService.deletePaymentById(paymentId);
+  async deletePayment(
+    @Param('paymentId') paymentId: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.deletePaymentById(paymentId, actor);
   }
 
   /**
@@ -267,8 +386,11 @@ export class PaymentsController {
   @Post(':paymentId/pay-now')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async payNow(@Param('paymentId') paymentId: string) {
-    return this.paymentsService.payNow(paymentId);
+  async payNow(
+    @Param('paymentId') paymentId: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.payNow(paymentId, actor);
   }
 
   /**
@@ -336,8 +458,11 @@ export class PaymentsController {
   @Roles(UserRole.ADMIN)
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Create manual pending payment (admin)' })
-  async createManualPayment(@Body() dto: CreateManualPaymentDto) {
-    return this.paymentsService.createManualPendingPayment(dto);
+  async createManualPayment(
+    @Body() dto: CreateManualPaymentDto,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.paymentsService.createManualPendingPayment(dto, actor);
   }
 
   /**
