@@ -211,3 +211,51 @@ export function isPostEventStepSelectable(step: PostEventStep): boolean {
 export function parsePostEventStepKey(raw: string | null | undefined): PostEventStepKey | null {
   return raw === 'attend' || raw === 'survey' || raw === 'payment' || raw === 'done' ? raw : null;
 }
+
+export type PostEventHeroCopy = {
+  eyebrow: string;
+  title: string;
+  helper: string;
+  /** Null when there is nothing for the learner to do yet (attendance still being verified). */
+  cta: string | null;
+};
+
+/** Words for the post-event hero: what to do next, from the same derived progress as the step map. */
+export function postEventHeroCopy(
+  progress: PostEventProgress,
+  facts: Pick<PostEventProgressFacts, 'hasHonorarium' | 'paymentStatus'>,
+  opts: { surveyStarted: boolean },
+): PostEventHeroCopy {
+  const step = progress.active;
+  const next = facts.hasHonorarium ? 'Next step to get paid' : 'Next step';
+  switch (step.key) {
+    case 'attend':
+      return { eyebrow: 'After the session', title: 'We are confirming your attendance', helper: step.helper, cta: null };
+    case 'survey':
+      return { eyebrow: next, title: 'Complete the survey', helper: step.helper, cta: opts.surveyStarted ? 'Continue the survey' : 'Start the survey' };
+    case 'payment':
+      return {
+        eyebrow: next,
+        title: 'Confirm payment information',
+        helper: step.helper,
+        cta: step.state === 'attention' ? 'Set up payouts' : 'Confirm payment info',
+      };
+    default:
+      break;
+  }
+  if (!facts.hasHonorarium) {
+    return { eyebrow: 'All done', title: 'Thank you for your feedback', helper: step.helper, cta: 'View details' };
+  }
+  switch (facts.paymentStatus) {
+    case 'PAID':
+      return { eyebrow: 'All done', title: 'Your honorarium has been paid', helper: step.helper, cta: 'View details' };
+    case 'PROCESSING':
+      return { eyebrow: 'Payment requested', title: 'Your payment is on its way', helper: step.helper, cta: 'View payment status' };
+    case 'FAILED':
+      return { eyebrow: 'Needs attention', title: 'There is a problem with your payment', helper: step.helper, cta: 'View payment status' };
+    case 'CANCELLED':
+      return { eyebrow: 'Payment cancelled', title: 'This payment was cancelled', helper: step.helper, cta: 'View payment status' };
+    default:
+      return { eyebrow: 'Payment requested', title: 'Your honorarium is requested', helper: step.helper, cta: 'View payment status' };
+  }
+}

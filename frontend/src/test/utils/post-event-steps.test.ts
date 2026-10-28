@@ -3,6 +3,7 @@ import {
   derivePostEventProgress,
   isPostEventStepSelectable,
   parsePostEventStepKey,
+  postEventHeroCopy,
   postEventFactsFromRegistration,
   type PostEventProgressFacts,
 } from '../../utils/post-event-steps';
@@ -167,5 +168,46 @@ describe('step helpers', () => {
     expect(parsePostEventStepKey('survey')).toBe('survey');
     expect(parsePostEventStepKey('nope')).toBeNull();
     expect(parsePostEventStepKey(null)).toBeNull();
+  });
+});
+
+describe('postEventHeroCopy', () => {
+  const copy = (f: Partial<PostEventProgressFacts>, surveyStarted = false) => {
+    const facts = { ...base, ...f };
+    return postEventHeroCopy(derivePostEventProgress(facts), facts, { surveyStarted });
+  };
+
+  it('has no button while attendance is being verified', () => {
+    expect(copy({ attendance: 'PENDING_VERIFICATION' })).toMatchObject({
+      title: 'We are confirming your attendance',
+      cta: null,
+    });
+  });
+
+  it('starts or continues the survey', () => {
+    expect(copy({}).cta).toBe('Start the survey');
+    expect(copy({}, true).cta).toBe('Continue the survey');
+  });
+
+  it('asks to set up payouts when payout details are missing', () => {
+    expect(copy({ surveyDraftSaved: true, payoutReady: false }).cta).toBe('Set up payouts');
+    expect(copy({ surveyDraftSaved: true, payoutReady: true }).cta).toBe('Confirm payment info');
+  });
+
+  it('follows the payment status after payment info is confirmed', () => {
+    expect(copy({ paymentInfoConfirmed: true, paymentStatus: 'PENDING' }).title).toBe('Your honorarium is requested');
+    expect(copy({ paymentInfoConfirmed: true, paymentStatus: 'PROCESSING' }).title).toBe('Your payment is on its way');
+    expect(copy({ paymentInfoConfirmed: true, paymentStatus: 'PAID' })).toMatchObject({
+      eyebrow: 'All done',
+      title: 'Your honorarium has been paid',
+    });
+    expect(copy({ paymentInfoConfirmed: true, paymentStatus: 'FAILED' }).eyebrow).toBe('Needs attention');
+  });
+
+  it('thanks people on sessions without an honorarium', () => {
+    expect(copy({ hasHonorarium: false, surveySubmitted: true })).toMatchObject({
+      eyebrow: 'All done',
+      title: 'Thank you for your feedback',
+    });
   });
 });

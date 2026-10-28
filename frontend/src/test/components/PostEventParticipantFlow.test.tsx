@@ -80,9 +80,10 @@ function renderFlow(registration: ProgramRegistrationState, path = '/app/live/p1
   );
 }
 
-const desktopMap = () => screen.getAllByRole('list', { hidden: true })[0];
+const heroPills = () => screen.getByRole('list', { name: 'Post-event progress' });
+const wizard = () => screen.getByRole('dialog');
 
-describe('PostEventParticipantFlow step map', () => {
+describe('PostEventParticipantFlow hero and wizard', () => {
   beforeEach(() => {
     mocks.myResponse = null;
     mocks.payoutReady = true;
@@ -91,44 +92,58 @@ describe('PostEventParticipantFlow step map', () => {
 
   it('starts an attendee at the survey with step 1 complete', async () => {
     renderFlow(reg());
-    expect(await screen.findByRole('heading', { name: 'Step 2 of 4: Complete the survey' })).toBeInTheDocument();
-    expect(within(desktopMap()).getByRole('button', { name: /Step 1 of 4: Attend, complete/ })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Start survey' })).toBeInTheDocument();
+    expect(await screen.findByText('Complete the survey')).toBeInTheDocument();
+    expect(within(heroPills()).getByRole('button', { name: /Step 1 of 4: Attend, complete/ })).toBeInTheDocument();
+    expect(within(heroPills()).getByRole('button', { name: /Step 2 of 4: Survey, current step/ })).toHaveAttribute(
+      'aria-current',
+      'step',
+    );
+  });
+
+  it('opens the survey in the wizard with one tap on the hero button', async () => {
+    renderFlow(reg());
+    fireEvent.click(await screen.findByRole('button', { name: /Start the survey/ }));
+    const dialog = wizard();
+    expect(within(dialog).getByRole('heading', { name: 'Complete the survey' })).toHaveFocus();
+    expect(within(dialog).getByText('Step 2 of 4')).toBeInTheDocument();
+    expect(localStorage.getItem('post-event-flow-started:p1')).toBe('1');
   });
 
   it('resumes at payment info after the survey, with steps 1 and 2 complete', async () => {
     mocks.myResponse = { submitted: false, draft: true, answers: { q1: 'Order the panel earlier' } };
     renderFlow(reg());
-    expect(
-      await screen.findByRole('heading', { name: 'Step 3 of 4: Confirm payment information' }),
-    ).toBeInTheDocument();
-    const map = desktopMap();
-    expect(within(map).getByRole('button', { name: /Step 1 of 4: Attend, complete/ })).toBeInTheDocument();
-    expect(within(map).getByRole('button', { name: /Step 2 of 4: Survey, complete/ })).toBeInTheDocument();
-    expect(within(map).getByRole('button', { name: /Step 3 of 4: Payment info, current step/ })).toHaveAttribute(
+    expect(await screen.findByText('Confirm payment information')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Confirm payment info/ }));
+    const steps = within(wizard()).getByRole('list', { name: 'Post-event progress' });
+    expect(within(steps).getByRole('button', { name: /Step 1 of 4: Attend, complete/ })).toBeInTheDocument();
+    expect(within(steps).getByRole('button', { name: /Step 2 of 4: Survey, complete/ })).toBeInTheDocument();
+    expect(within(steps).getByRole('button', { name: /Step 3 of 4: Payment info, current step/ })).toHaveAttribute(
       'aria-current',
       'step',
     );
-    expect(await screen.findByRole('button', { name: 'Continue with this payment info' })).toBeInTheDocument();
+    expect(await within(wizard()).findByRole('button', { name: 'Continue with this payment info' })).toBeInTheDocument();
   });
 
-  it('opens a done step for review and returns to the step in progress', async () => {
+  it('reviews a done step inside the wizard and returns to the step in progress', async () => {
     mocks.myResponse = { submitted: false, draft: true, answers: { q1: 'Order the panel earlier' } };
     renderFlow(reg());
-    await screen.findByRole('heading', { name: 'Step 3 of 4: Confirm payment information' });
-    fireEvent.click(within(desktopMap()).getByRole('button', { name: /Step 2 of 4: Survey, complete/ }));
-    expect(screen.getByRole('heading', { name: 'Reviewing step 2 of 4: Complete the survey' })).toHaveFocus();
-    expect(await screen.findByText('Order the panel earlier')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Back to step 3: Payment info' }));
-    expect(screen.getByRole('heading', { name: 'Step 3 of 4: Confirm payment information' })).toHaveFocus();
+    fireEvent.click(await screen.findByRole('button', { name: /Confirm payment info/ }));
+    const steps = within(wizard()).getByRole('list', { name: 'Post-event progress' });
+    fireEvent.click(within(steps).getByRole('button', { name: /Step 2 of 4: Survey, complete/ }));
+    expect(within(wizard()).getByText('Reviewing step 2 of 4')).toBeInTheDocument();
+    expect(within(wizard()).getByRole('heading', { name: 'Complete the survey' })).toHaveFocus();
+    expect(await within(wizard()).findByText('Order the panel earlier')).toBeInTheDocument();
+    fireEvent.click(within(wizard()).getByRole('button', { name: 'Back to step 3: Payment info' }));
+    expect(within(wizard()).getByRole('heading', { name: 'Confirm payment information' })).toHaveFocus();
   });
 
-  it('flags payment info when payout details are missing', async () => {
+  it('flags payment info and asks to set up payouts when details are missing', async () => {
     mocks.myResponse = { submitted: false, draft: true, answers: {} };
     mocks.payoutReady = false;
     renderFlow(reg());
+    expect(await screen.findByRole('button', { name: /Set up payouts/ })).toBeInTheDocument();
     expect(
-      await within(desktopMap()).findByRole('button', { name: /Step 3 of 4: Payment info, needs attention/ }),
+      within(heroPills()).getByRole('button', { name: /Step 3 of 4: Payment info, needs attention/ }),
     ).toBeInTheDocument();
   });
 
@@ -142,24 +157,31 @@ describe('PostEventParticipantFlow step map', () => {
         honorariumPayment: { id: 'pay', status: 'PENDING' },
       }),
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Step 4 of 4: Confirmation and payment timing' }),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('Payment status: Waiting for release');
+    expect(await screen.findByText('Your honorarium is requested')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /View payment status/ }));
+    expect(within(wizard()).getByRole('heading', { name: 'Confirmation and payment timing' })).toBeInTheDocument();
+    expect(within(wizard()).getByRole('status')).toHaveTextContent('Payment status: Waiting for release');
   });
 
-  it('opens the step named in ?step= from the dashboard card', async () => {
+  it('opens the wizard on the step named in ?step= from the dashboard card', async () => {
     mocks.myResponse = { submitted: false, draft: true, answers: { q1: 'Order the panel earlier' } };
     renderFlow(reg(), '/app/live/p1?step=survey');
-    expect(
-      await screen.findByRole('heading', { name: 'Reviewing step 2 of 4: Complete the survey' }),
-    ).toBeInTheDocument();
+    expect(await within(wizard()).findByText('Reviewing step 2 of 4')).toBeInTheDocument();
   });
 
-  it('keeps step 1 in progress while attendance is being verified', async () => {
+  it('closes the wizard with Escape', async () => {
+    renderFlow(reg());
+    fireEvent.click(await screen.findByRole('button', { name: /Start the survey/ }));
+    expect(wizard()).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).toBeNull();
+  });
+
+  it('keeps step 1 in progress while attendance is being verified, with nothing to tap yet', async () => {
     renderFlow(reg({ postEventAttendanceStatus: 'PENDING_VERIFICATION' }));
-    expect(await screen.findByRole('heading', { name: 'Step 1 of 4: Attend the session' })).toBeInTheDocument();
-    expect(within(desktopMap()).queryByRole('button', { name: /Payment info/ })).toBeNull();
+    expect(await screen.findByText('We are confirming your attendance')).toBeInTheDocument();
+    expect(within(heroPills()).queryByRole('button', { name: /Payment info/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Start the survey/ })).toBeNull();
   });
 
   it('shows non-attendees a clear message and no payment steps', () => {

@@ -9,10 +9,13 @@ import {
   derivePostEventProgress,
   parsePostEventStepKey,
   postEventFactsFromRegistration,
+  postEventHeroCopy,
   type PostEventStepKey,
 } from '../../utils/post-event-steps';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
-import { PostEventStepMap } from './PostEventStepMap';
+import { PostEventDrawer } from './PostEventDrawer';
+import { PostEventHero } from './PostEventHero';
+import { PostEventWizard } from './PostEventWizard';
 import {
   PostEventAttendPending,
   PostEventAttendReview,
@@ -48,10 +51,11 @@ function writeFlowStarted(programId: string) {
 }
 
 /**
- * Post-event flow on the program page: a numbered step map (attend, survey, payment info, done)
- * over the panel for the step in progress. Which step is in progress comes from server data
+ * Post-event flow on the program page (SCRUM-288): a hero with the next step to get paid and one
+ * button, which opens a drawer (bottom sheet on phones) holding a focused one-step-at-a-time wizard
+ * (attend, survey, payment info, done). Which step is in progress comes from server data
  * (see utils/post-event-steps), so a returning learner lands on the first incomplete step.
- * Done steps can be opened from the map to review them.
+ * Done steps can be opened from the hero or the wizard progress bar to review them.
  */
 export default function PostEventParticipantFlow(props: {
   program: Pick<
@@ -88,6 +92,8 @@ export default function PostEventParticipantFlow(props: {
   const [viewingKey, setViewingKey] = useState<PostEventStepKey | null>(() =>
     parsePostEventStepKey(searchParams.get('step')),
   );
+  /** Arriving from the dashboard card (`?step=`) opens the wizard straight away. */
+  const [drawerOpen, setDrawerOpen] = useState(() => parsePostEventStepKey(searchParams.get('step')) !== null);
 
   const hasSurvey = program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
@@ -176,6 +182,7 @@ export default function PostEventParticipantFlow(props: {
     setLocalSurveyDone(false);
     setLocalPaymentDone(false);
     setViewingKey(null);
+    setDrawerOpen(false);
   }
 
   const [prevShownKey, setPrevShownKey] = useState(shown.key);
@@ -196,7 +203,7 @@ export default function PostEventParticipantFlow(props: {
     headingRef.current?.focus();
   }, [shown.key]);
 
-  /** Arriving from the dashboard card (`?step=`): bring the step map into view once it renders. */
+  /** Arriving from the dashboard card (`?step=`): bring the hero into view behind the wizard. */
   const sectionRef = useRef<HTMLElement>(null);
   const scrolledFromLink = useRef(false);
   const arrivedWithStep = searchParams.has('step');
@@ -258,7 +265,17 @@ export default function PostEventParticipantFlow(props: {
   };
 
   const surveyOpen = flowStarted || hasSurveyDraft || surveySubmitted;
-  const total = progress.steps.length;
+
+  /** Hero button opens the step in progress (starting the survey in the same tap); pills open that step. */
+  const openWizard = (key?: PostEventStepKey) => {
+    if (key) {
+      setViewingKey(key === progress.active.key ? null : key);
+    } else {
+      setViewingKey(null);
+      if (progress.active.key === 'survey' && !surveyOpen) startSurvey();
+    }
+    setDrawerOpen(true);
+  };
 
   let panel: ReactNode = null;
   if (shown.key === 'attend') {
@@ -362,43 +379,33 @@ export default function PostEventParticipantFlow(props: {
   }
 
   return (
-    <section
-      ref={sectionRef}
-      className="scroll-mt-24 bg-card border border-border rounded-card p-6 space-y-5"
-      aria-labelledby="post-event-steps-heading"
-    >
-      <h2 id="post-event-steps-heading" className="text-base font-semibold text-foreground">
+    <section ref={sectionRef} className="scroll-mt-24" aria-labelledby="post-event-steps-heading">
+      <h2 id="post-event-steps-heading" className="sr-only">
         Post-event steps
       </h2>
-
-      <PostEventStepMap
-        steps={progress.steps}
-        active={progress.active}
-        viewingKey={reviewing ? shown.key : null}
-        onSelect={selectStep}
+      <PostEventHero
+        progress={progress}
+        copy={postEventHeroCopy(progress, facts, { surveyStarted: surveyOpen })}
+        onOpen={openWizard}
       />
-
-      <div className="space-y-3 border-t border-border pt-5">
-        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3
-            ref={headingRef}
-            tabIndex={-1}
-            className="text-sm font-semibold text-foreground outline-none"
-          >
-            {reviewing ? 'Reviewing step' : 'Step'} {shown.number} of {total}: {shown.title}
-          </h3>
-          {reviewing ? (
-            <button
-              type="button"
-              onClick={() => selectStep(progress.active.key)}
-              className="text-sm font-semibold text-foreground underline underline-offset-2"
-            >
-              Back to step {progress.active.number}: {progress.active.label}
-            </button>
-          ) : null}
-        </div>
-        {panel}
-      </div>
+      <PostEventDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        labelledBy="post-event-wizard-title"
+        initialFocusRef={headingRef}
+      >
+        <PostEventWizard
+          progress={progress}
+          shown={shown}
+          reviewing={reviewing}
+          titleId="post-event-wizard-title"
+          headingRef={headingRef}
+          onSelect={selectStep}
+          onClose={() => setDrawerOpen(false)}
+        >
+          {panel}
+        </PostEventWizard>
+      </PostEventDrawer>
     </section>
   );
 }
