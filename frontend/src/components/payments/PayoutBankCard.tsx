@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
-import { AlertTriangle, ArrowRight, Check, CheckCircle2, Landmark, Loader2, Plus, X } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Check, CheckCircle2, Clock3, Landmark, Loader2, Plus, X } from 'lucide-react';
+import { StripeMark } from '../branding/StripeMark';
 import { derivePayoutSetup, joinPlain, type PayoutAccountStatus, type PayoutSetup } from '../../utils/payout-setup';
 
 /** Fixed light-theme brand teal so the white type on the ready card keeps its contrast in dark mode. */
@@ -7,52 +8,94 @@ const READY_GRADIENT = 'bg-[linear-gradient(135deg,hsl(193_63%_28%)_0%,hsl(193_6
 
 const STEP_LABELS = ['Open the Stripe form', 'Add name, bank and tax info', 'Ready for payouts'];
 
+const BADGE: Record<PayoutSetup['phase'], { label: string; cls: string }> = {
+  not_started: { label: 'Not set up', cls: 'bg-muted text-muted-foreground ring-border' },
+  in_progress: { label: 'Not finished', cls: 'bg-orange-50 text-amber ring-orange-200' },
+  verifying: { label: 'Checking', cls: 'bg-cta/10 text-anchor ring-cta/25' },
+  ready: { label: 'Ready', cls: 'bg-white/20 text-white ring-white/30' },
+};
+
 /**
- * The payout account as a card that fills in as setup progresses (SCRUM-281): dashed when
- * empty, a chip per detail while Stripe still needs things, teal with the last 4 digits when ready.
+ * The payout account as a card that fills in as setup progresses (SCRUM-281). Same anatomy in
+ * every state (bank tile, status, account number, holder, Stripe) so it reads as one object:
+ * dashed and empty, then a chip per detail Stripe still needs, then teal with the last 4 digits.
  */
-export function BankCardVisual({ setup, last4 }: { setup: PayoutSetup; last4?: string | null }) {
-  if (setup.phase === 'ready') {
-    return (
-      <div
-        className={`relative flex aspect-[1.6] w-full flex-col justify-between overflow-hidden rounded-[18px] p-5 text-white shadow-card ${READY_GRADIENT}`}
-      >
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold uppercase tracking-wide text-white/90">Direct deposit</span>
-          <CheckCircle2 className="h-5 w-5" aria-hidden />
-        </div>
-        <div>
-          <p className="font-mono text-xl tracking-[0.2em]">
-            <span className="sr-only">Bank account ending </span>•••• {last4 ?? '••••'}
-          </p>
-          <p className="mt-1 text-sm text-white">Ready for payouts</p>
-        </div>
-      </div>
-    );
-  }
+export function BankCardVisual({
+  setup,
+  last4,
+  holderName,
+}: {
+  setup: PayoutSetup;
+  last4?: string | null;
+  holderName?: string | null;
+}) {
+  const ready = setup.phase === 'ready';
   const started = setup.phase !== 'not_started';
+  const badge = BADGE[setup.phase];
+  const BadgeIcon = ready ? CheckCircle2 : setup.phase === 'verifying' ? Clock3 : setup.phase === 'in_progress' ? AlertTriangle : null;
   const chips: Array<[string, boolean]> = [
     ['Name and address', !setup.missing.includes('personal details')],
     ['Bank account', !setup.missing.includes('bank account')],
     ['Tax info (W-9)', !setup.missing.includes('tax info (W-9)')],
   ];
+  const ink = ready ? 'text-white' : 'text-foreground';
+  const soft = ready ? 'text-white/80' : 'text-muted-foreground';
+
   return (
     <div
-      className={`flex aspect-[1.6] w-full flex-col justify-between rounded-[18px] p-5 ${
-        started ? 'bg-cta/5 ring-1 ring-cta/25' : 'border-2 border-dashed border-border'
-      }`}
+      className={[
+        'relative isolate flex aspect-[1.586] w-full flex-col justify-between overflow-hidden rounded-[18px] p-4 sm:p-5',
+        ready
+          ? `${READY_GRADIENT} text-white shadow-[0_18px_40px_-18px_rgba(18,78,96,0.75)]`
+          : started
+            ? 'bg-cta/[0.06] ring-1 ring-cta/25'
+            : 'border-2 border-dashed border-border bg-muted/30',
+      ].join(' ')}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Direct deposit</span>
-        <Landmark className="h-5 w-5 text-anchor" aria-hidden />
+      {/* Texture: a fine dot grid, plus soft light shapes on the finished card. */}
+      <span
+        aria-hidden
+        className={`pointer-events-none absolute inset-0 -z-10 ${ready ? 'opacity-[0.14]' : 'opacity-[0.5]'}`}
+        style={{
+          backgroundImage: `radial-gradient(${ready ? '#fff' : 'hsl(var(--border))'} 1px, transparent 1px)`,
+          backgroundSize: '14px 14px',
+        }}
+      />
+      {ready ? (
+        <>
+          <span aria-hidden className="pointer-events-none absolute -right-14 -top-20 -z-10 h-56 w-56 rounded-full bg-white/10" />
+          <span aria-hidden className="pointer-events-none absolute -bottom-28 -left-12 -z-10 h-56 w-56 rounded-full bg-black/10" />
+        </>
+      ) : null}
+
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <span
+            aria-hidden
+            className={`inline-flex h-9 w-9 items-center justify-center rounded-[10px] ${
+              ready ? 'bg-white/15 ring-1 ring-white/25' : 'bg-card text-anchor ring-1 ring-border'
+            }`}
+          >
+            <Landmark className="h-[18px] w-[18px]" />
+          </span>
+          <span className="leading-tight">
+            <span className={`block text-[11px] font-semibold uppercase tracking-wide ${soft}`}>Direct deposit</span>
+            <span className={`block text-xs font-semibold ${ink}`}>ACH bank transfer</span>
+          </span>
+        </div>
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${badge.cls}`}>
+          {BadgeIcon ? <BadgeIcon className="h-3 w-3" aria-hidden /> : null}
+          {badge.label}
+        </span>
       </div>
-      {started ? (
+
+      {setup.phase === 'in_progress' ? (
         <ul className="flex flex-wrap gap-1.5">
           {chips.map(([label, ok]) => (
             <li
               key={label}
               className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${
-                ok ? 'bg-success/10 text-success ring-success/20' : 'bg-orange-50 text-amber ring-orange-200'
+                ok ? 'bg-success/10 text-success ring-success/20' : 'bg-card text-amber ring-orange-200'
               }`}
             >
               {ok ? <Check className="h-3 w-3" aria-hidden /> : <AlertTriangle className="h-3 w-3" aria-hidden />}
@@ -62,10 +105,28 @@ export function BankCardVisual({ setup, last4 }: { setup: PayoutSetup; last4?: s
           ))}
         </ul>
       ) : (
-        <p className="inline-flex items-center gap-2 text-sm font-semibold text-anchor">
-          <Plus className="h-4 w-4" aria-hidden /> Add your bank account
-        </p>
+        <div>
+          <p className={`font-mono text-lg tracking-[0.18em] sm:text-xl ${started ? ink : 'text-muted-foreground/70'}`}>
+            <span className="sr-only">{last4 ? `Bank account ending ${last4}` : 'No bank account yet'}</span>
+            <span aria-hidden>•••• •••• {last4 ?? '----'}</span>
+          </p>
+          {!started ? (
+            <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-anchor">
+              <Plus className="h-4 w-4" aria-hidden /> Add your bank account
+            </p>
+          ) : null}
+        </div>
       )}
+
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0 leading-tight">
+          <p className={`text-[10px] font-semibold uppercase tracking-wide ${soft}`}>Account holder</p>
+          <p className={`truncate text-sm font-semibold ${holderName ? ink : soft}`}>{holderName || 'Your legal name'}</p>
+        </div>
+        <p className={`flex shrink-0 items-center gap-1 text-[10px] font-semibold uppercase tracking-wide ${soft}`}>
+          via <StripeMark size="xs" className={ready ? 'brightness-0 invert' : ''} />
+        </p>
+      </div>
     </div>
   );
 }
@@ -150,6 +211,8 @@ function headlineFor(setup: PayoutSetup, last4?: string | null) {
  */
 export function PayoutBankCard(props: {
   status: PayoutAccountStatus | null | undefined;
+  /** Shown on the card; Stripe pays out to the legal name on file. */
+  holderName?: string | null;
   formOpen: boolean;
   /** True after the learner closed the Stripe form in this visit without finishing. */
   leftStripe: boolean;
@@ -159,16 +222,16 @@ export function PayoutBankCard(props: {
   onPrimary: () => void;
   children?: ReactNode;
 }) {
-  const { status, formOpen, leftStripe, checking, startTipVisible, onDismissStartTip, onPrimary, children } = props;
+  const { status, holderName, formOpen, leftStripe, checking, startTipVisible, onDismissStartTip, onPrimary, children } = props;
   const setup = derivePayoutSetup(status);
   const copy = headlineFor(setup, status?.bankAccountLast4);
   const ready = setup.phase === 'ready';
 
   return (
     <section aria-label="Payout setup" className="space-y-5 rounded-card border border-border bg-card p-5 sm:p-6">
-      <div className="grid gap-5 sm:grid-cols-[minmax(0,280px)_1fr] sm:items-center">
-        <div className="max-w-[320px]">
-          <BankCardVisual setup={setup} last4={status?.bankAccountLast4} />
+      <div className="grid gap-5 sm:grid-cols-[minmax(0,300px)_1fr] sm:items-center">
+        <div className="max-w-[340px]">
+          <BankCardVisual setup={setup} last4={status?.bankAccountLast4} holderName={holderName} />
         </div>
         <div className="space-y-3">
           <div role="status">

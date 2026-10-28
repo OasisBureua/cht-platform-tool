@@ -166,7 +166,12 @@ export default function Payments() {
       ) : null}
 
       {!profileIncomplete ? (
-        <StripeConnectOnboarding userId={userId} locked={profileIncomplete} onSuccess={refreshPayments} />
+        <StripeConnectOnboarding
+          userId={userId}
+          locked={profileIncomplete}
+          holderName={[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name}
+          onSuccess={refreshPayments}
+        />
       ) : null}
 
       <section className="grid gap-6 md:grid-cols-3">

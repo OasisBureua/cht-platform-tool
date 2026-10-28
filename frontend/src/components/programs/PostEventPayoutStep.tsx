@@ -172,7 +172,7 @@ export function PostEventPayoutStep(props: {
       {payoutReady && !editingDetails ? (
         <div className="grid gap-5 rounded-card border border-border bg-card p-5 sm:grid-cols-[minmax(0,260px)_1fr] sm:items-center">
           <div className="max-w-[300px]">
-            <BankCardVisual setup={derivePayoutSetup({ hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true })} last4={preview.maskedBankLast4} />
+            <BankCardVisual setup={derivePayoutSetup({ hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true })} last4={preview.maskedBankLast4} holderName={preview.payeeDisplayName} />
           </div>
           <div className="space-y-3">
             <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
@@ -257,7 +257,12 @@ export function PostEventPayoutStep(props: {
               </button>
             </div>
           ) : null}
-          <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} startOpen={editingDetails} />
+          <StripeConnectOnboarding
+            userId={userId}
+            onSuccess={onConnectSuccess}
+            startOpen={editingDetails}
+            holderName={preview.payeeDisplayName}
+          />
           {payoutReady && editingDetails ? (
             <button
               type="button"

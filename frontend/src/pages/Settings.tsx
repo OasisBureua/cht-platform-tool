@@ -767,7 +767,7 @@ function PaymentSettingsSection({
   userId,
   accountStatus,
   isLoading,
-  displayName: _displayName,
+  displayName,
   profileCity: _profileCity,
   profileState: _profileState,
   profileZip: _profileZip,
@@ -831,6 +831,9 @@ function PaymentSettingsSection({
       });
     },
   });
+
+  /** Settings falls back to the email or "User"; only a real name belongs on the payout card. */
+  const holderName = displayName && displayName !== 'User' && !displayName.includes('@') ? displayName : null;
 
   const cardShell = embedded
     ? 'min-w-0'
@@ -928,6 +931,7 @@ function PaymentSettingsSection({
             <StripeConnectOnboarding
               userId={userId}
               locked={profileIncomplete}
+              holderName={holderName}
               startOpen
               onSuccess={() => {
                 setEditingPaymentDetails(false);
@@ -965,6 +969,7 @@ function PaymentSettingsSection({
             <StripeConnectOnboarding
               userId={userId}
               locked={profileIncomplete}
+              holderName={holderName}
               onSuccess={onSuccess}
             />
           ) : null}

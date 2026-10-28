@@ -26,8 +26,10 @@ export function StripeConnectOnboarding(props: {
   locked?: boolean;
   /** Open the Stripe form straight away (edit flows that already asked to update details). */
   startOpen?: boolean;
+  /** Name shown on the payout card. */
+  holderName?: string | null;
 }) {
-  const { userId, onSuccess, locked = false, startOpen = false } = props;
+  const { userId, onSuccess, locked = false, startOpen = false, holderName } = props;
   const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [formOpen, setFormOpen] = useState(startOpen);
@@ -146,6 +148,7 @@ export function StripeConnectOnboarding(props: {
   return (
     <PayoutBankCard
       status={statusQuery.data}
+      holderName={holderName}
       formOpen={formOpen}
       leftStripe={leftStripe}
       checking={syncMut.isPending}
