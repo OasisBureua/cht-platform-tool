@@ -13,6 +13,8 @@ export type ReportInputRow = {
   key: string;
   /** Generate toggle this row belongs to. */
   source: string;
+  /** Set when the row spans several toggles: included while any is on. */
+  sources?: string[];
   label: string;
   detail: string;
   status: ReportSourceInput['status'];
@@ -26,6 +28,18 @@ type SourceOption = { value: string; label: string };
 const completenessKey = (source: string) => (source === 'surveys' ? 'surveyResponses' : source);
 
 const count = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+/** Toggles whose numbers can come from linked social posts (Hub SOURCE_TOGGLE / CHANNEL_TOGGLE). */
+const SOCIAL_SOURCES = ['hubspot', 'linkedin', 'meta', 'youtube'];
+
+const CHANNEL_LABELS: Record<string, string> = {
+  youtube: 'YouTube',
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  instagram: 'Instagram',
+  x: 'X',
+  other: 'Other',
+};
 
 /** CPR-51 — one row per source (plus transcripts / registrations), in toggle order. */
 export function describeReportInputs(inputs: ReportInputs, sources: SourceOption[]): ReportInputRow[] {
@@ -51,6 +65,30 @@ export function describeReportInputs(inputs: ReportInputs, sources: SourceOption
       status: entry.status,
       fetchedAt: entry.fetchedAt,
       fix: entry.status === 'ok' ? undefined : fix,
+    });
+  };
+
+  // CPR-61: one line for linked social posts, after the last social toggle.
+  const social = sources.filter(({ value }) => SOCIAL_SOURCES.includes(value)).map(({ value }) => value);
+  const addSocialPosts = () => {
+    const entry = c.socialPosts;
+    const channels = inputs.socialPosts ?? [];
+    if (!entry || !social.length) return;
+    const linked = channels.reduce((n, ch) => n + ch.linked, 0);
+    const perChannel = channels.map((ch) => `${CHANNEL_LABELS[ch.channel] ?? ch.channel} ${ch.linked}`).join(', ');
+    rows.push({
+      key: 'socialPosts',
+      source: social[0],
+      sources: social,
+      label: 'Social posts',
+      detail:
+        entry.status === 'error'
+          ? 'Last sync failed'
+          : linked
+            ? `${count(linked, 'post')} linked (${perChannel}), ${entry.rowCount} with metrics in this window`
+            : 'No posts linked to this campaign',
+      status: entry.status,
+      fetchedAt: entry.fetchedAt,
     });
   };
 
@@ -129,6 +167,7 @@ export function describeReportInputs(inputs: ReportInputs, sources: SourceOption
         add(value, value, label, c.surveyResponses, (e) => count(e.rowCount, 'response'), 'No responses in this window');
         break;
     }
+    if (value === social[social.length - 1]) addSocialPosts();
   }
   return rows;
 }

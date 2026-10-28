@@ -446,7 +446,8 @@ Reports are **requested through CHT** and **built from data pulled from Content 
 cht-reports (PDF/LLM worker) does **not** use the CHT proxy. It calls Hub
 directly: `GET /api/campaigns/{id}/report-packet?windowStart=&windowEnd=&sources=`
 with a Cognito M2M Bearer token scoped `hub/reports.read` (its own client, provisioned
-in Hub Terraform). See `cht-content-hub/docs/engineering/reports-ingest-etl.md`.
+in Hub Terraform). The packet shape is in `cht-content-hub/docs/contenthub-campaign-report-api-contract.md`
+(Reports, and Social performance in the report packet).
 
 ### Flow (analytics + executive)
 
