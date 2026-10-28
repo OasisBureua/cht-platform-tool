@@ -1,18 +1,35 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Program, ProgramRegistrationState } from '../../api/programs';
+import { useSearchParams } from 'react-router-dom';
+import { programsApi, type Program, type ProgramRegistrationState } from '../../api/programs';
 import { surveysApi } from '../../api/surveys';
 import { isPostEventSurveyUnlocked } from '../../utils/post-event-survey';
+import {
+  attendanceRecorded,
+  derivePostEventProgress,
+  parsePostEventStepKey,
+  postEventFactsFromRegistration,
+  postEventHeroCopy,
+  type PostEventStepKey,
+} from '../../utils/post-event-steps';
 import { PostEventFeedbackLearnerActions } from './PostEventFeedbackLearnerActions';
-import { StripeMark } from '../branding/StripeMark';
+import { PostEventDrawer } from './PostEventDrawer';
+import { PostEventHero } from './PostEventHero';
+import { PostEventWizard } from './PostEventWizard';
+import {
+  PostEventAttendPending,
+  PostEventAttendReview,
+  PostEventConfirmation,
+  PostEventNotAttendee,
+  PostEventPaymentReview,
+  PostEventSurveyReview,
+} from './PostEventStepPanels';
 import { ProgramSurveyPanel } from '../surveys/ProgramSurveyPanel';
 import { programHasHonorarium } from '../../utils/program-has-honorarium';
 
-type Phase = 'intro' | 'survey' | 'payout' | 'done';
-
 const POST_EVENT_NATIVE_FORM_ID = 'post-event-native-survey';
 
-/** Persists across refresh: user clicked Continue for this program and is committed to the flow. */
+/** Persists across refresh: user started the survey for this program and is committed to the flow. */
 function flowStartedKey(programId: string) {
   return `post-event-flow-started:${programId}`;
 }
@@ -33,6 +50,13 @@ function writeFlowStarted(programId: string) {
   }
 }
 
+/**
+ * Post-event flow on the program page (SCRUM-288): a hero with the next step to get paid and one
+ * button, which opens a drawer (bottom sheet on phones) holding a focused one-step-at-a-time wizard
+ * (attend, survey, payment info, done). Which step is in progress comes from server data
+ * (see utils/post-event-steps), so a returning learner lands on the first incomplete step.
+ * Done steps can be opened from the hero or the wizard progress bar to review them.
+ */
 export default function PostEventParticipantFlow(props: {
   program: Pick<
     Program,
@@ -57,16 +81,25 @@ export default function PostEventParticipantFlow(props: {
 }) {
   const { program, userId, userSummary, enrolled, myRegistration, onPostEventNavLockChange } = props;
   const queryClient = useQueryClient();
-  const [phase, setPhase] = useState<Phase>('intro');
+  const [searchParams] = useSearchParams();
   const [flowStarted, setFlowStarted] = useState(() => readFlowStarted(program.id));
   const [nativeSurveySubmitting, setNativeSurveySubmitting] = useState(false);
   const [nativeSurveyError, setNativeSurveyError] = useState<string | null>(null);
+  /** Bridge the registration refetch after a step finishes, so the map advances without flashing back. */
+  const [localSurveyDone, setLocalSurveyDone] = useState(false);
+  const [localPaymentDone, setLocalPaymentDone] = useState(false);
+  /** A done step opened from the map (or `?step=` from the dashboard card). Null follows the step in progress. */
+  const [viewingKey, setViewingKey] = useState<PostEventStepKey | null>(() =>
+    parsePostEventStepKey(searchParams.get('step')),
+  );
+  /** Arriving from the dashboard card (`?step=`) opens the wizard straight away. */
+  const [drawerOpen, setDrawerOpen] = useState(() => parsePostEventStepKey(searchParams.get('step')) !== null);
 
-  const hasSurvey =
-    program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
+  const hasSurvey = program.hasPostEventSurvey ?? !!program.jotformSurveyUrl?.trim();
   const surveySubmitted = !!myRegistration?.postEventSurveySubmitted;
   const hasHonorarium = programHasHonorarium(program);
   const feedbackSurveyId = program.feedbackSurveyId;
+  const nativePostEventSurvey = !!feedbackSurveyId;
 
   const { data: mySurveyResponse } = useQuery({
     queryKey: ['survey', feedbackSurveyId, 'my-response'],
@@ -75,9 +108,7 @@ export default function PostEventParticipantFlow(props: {
   });
   const hasSurveyDraft = !!mySurveyResponse?.draft;
   const timeUnlocked = isPostEventSurveyUnlocked(program);
-  const att = myRegistration?.postEventAttendanceStatus;
-  const attendancePending = att === 'PENDING_VERIFICATION';
-  const attendanceDenied = att === 'DENIED';
+  const attendanceOk = attendanceRecorded(myRegistration?.postEventAttendanceStatus);
 
   const showFlow =
     enrolled &&
@@ -87,7 +118,46 @@ export default function PostEventParticipantFlow(props: {
     !!myRegistration &&
     myRegistration.status === 'APPROVED';
 
-  const flowBackLocked = showFlow && phase !== 'intro' && phase !== 'done';
+  const registrationFacts = postEventFactsFromRegistration({
+    registration: myRegistration,
+    hasSurvey,
+    hasHonorarium,
+    nativeSurvey: nativePostEventSurvey,
+    surveyDraftSaved: hasSurveyDraft,
+  });
+  const facts = {
+    ...registrationFacts,
+    surveyAcknowledged: registrationFacts.surveyAcknowledged || localSurveyDone,
+    paymentInfoConfirmed: registrationFacts.paymentInfoConfirmed || localPaymentDone,
+    paymentStatus: registrationFacts.paymentStatus ?? (localPaymentDone ? 'PENDING' : null),
+  };
+  const paymentStepInProgress =
+    showFlow && hasHonorarium && attendanceOk && derivePostEventProgress(facts).active.key === 'payment';
+
+  // Same query as PostEventPayoutStep, so the map can flag missing payout details without a second request.
+  const { data: payoutPreview } = useQuery({
+    queryKey: ['programs', program.id, 'honorarium-preview'],
+    queryFn: () => programsApi.getHonorariumPreview(program.id),
+    enabled: paymentStepInProgress,
+    retry: false,
+  });
+  const progress = derivePostEventProgress({
+    ...facts,
+    payoutReady: paymentStepInProgress ? payoutPreview?.payoutReady : undefined,
+  });
+
+  const viewingStep = viewingKey
+    ? progress.steps.find((s) => s.key === viewingKey && s.state !== 'not_started')
+    : undefined;
+  const shown = viewingStep ?? progress.active;
+  const reviewing = shown.key !== progress.active.key;
+
+  const midFlow = flowStarted || hasSurveyDraft || surveySubmitted || facts.surveyAcknowledged;
+  const flowBackLocked =
+    showFlow &&
+    attendanceOk &&
+    midFlow &&
+    (progress.active.key === 'survey' || progress.active.key === 'payment');
 
   useEffect(() => {
     onPostEventNavLockChange?.(flowBackLocked);
@@ -108,168 +178,77 @@ export default function PostEventParticipantFlow(props: {
   const [prevProgramId, setPrevProgramId] = useState(program.id);
   if (program.id !== prevProgramId) {
     setPrevProgramId(program.id);
-    setPhase('intro');
     setFlowStarted(readFlowStarted(program.id));
+    setLocalSurveyDone(false);
+    setLocalPaymentDone(false);
+    setViewingKey(null);
+    setDrawerOpen(false);
   }
 
-  // Resume from server (e.g. refresh) when sitting at intro.
-  useEffect(() => {
-    if (!myRegistration || !showFlow) return;
-    if (phase !== 'intro') return;
-    const ack = !!myRegistration.postEventSurveyAcknowledgedAt;
-    const req = !!myRegistration.honorariumRequestedAt;
-    const jotformSubmitted = surveySubmitted;
-
-    if (hasSurvey && !ack) {
-      if (hasSurveyDraft && hasHonorarium) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- resume payout after draft save
-        setPhase('payout');
-        return;
-      }
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resume the flow from server registration state
-      if (flowStarted || jotformSubmitted || hasSurveyDraft) setPhase('survey');
-      return;
-    }
-
-    if (hasHonorarium) {
-      if (req || myRegistration.honorariumPayment) {
-        setPhase('done');
-      } else {
-        setPhase('payout');
-      }
-    } else if (ack) {
-      setPhase('done');
-    }
-  }, [
-    myRegistration,
-    showFlow,
-    hasSurvey,
-    hasHonorarium,
-    phase,
-    program.id,
-    flowStarted,
-    surveySubmitted,
-    hasSurveyDraft,
-  ]);
-
-  /** Mid-flow: survey finalized → payout or done. Draft + honorarium → payout (inline Stripe). */
-  useEffect(() => {
-    if (!myRegistration || !showFlow || phase !== 'survey' || !hasSurvey) return;
-    if (myRegistration.postEventSurveyAcknowledgedAt) {
-      if (hasHonorarium && !myRegistration.honorariumRequestedAt && !myRegistration.honorariumPayment) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- advance when the server reports the survey was saved
-        setPhase('payout');
-      } else {
-        setPhase('done');
-      }
-      return;
-    }
-    if (hasSurveyDraft && hasHonorarium) {
-      setPhase('payout');
-    }
-  }, [
-    myRegistration,
-    showFlow,
-    phase,
-    hasSurvey,
-    hasHonorarium,
-    hasSurveyDraft,
-    program.id,
-    myRegistration?.postEventSurveyAcknowledgedAt,
-    myRegistration?.honorariumRequestedAt,
-    myRegistration?.honorariumPayment,
-  ]);
-
-  const [prevPhase, setPrevPhase] = useState(phase);
-  if (phase !== prevPhase) {
-    setPrevPhase(phase);
-    if (phase !== 'survey') setNativeSurveySubmitting(false);
+  const [prevShownKey, setPrevShownKey] = useState(shown.key);
+  if (shown.key !== prevShownKey) {
+    setPrevShownKey(shown.key);
+    if (shown.key !== 'survey') setNativeSurveySubmitting(false);
   }
 
-  if (!showFlow) {
+  /**
+   * After the learner finishes a step or opens one from the map, move focus to the step heading so
+   * keyboard and screen reader users follow along. Data loading on its own never moves focus.
+   */
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const focusOnStepChange = useRef(false);
+  useEffect(() => {
+    if (!focusOnStepChange.current) return;
+    focusOnStepChange.current = false;
+    headingRef.current?.focus();
+  }, [shown.key]);
+
+  /** Arriving from the dashboard card (`?step=`): bring the hero into view behind the wizard. */
+  const sectionRef = useRef<HTMLElement>(null);
+  const scrolledFromLink = useRef(false);
+  const arrivedWithStep = searchParams.has('step');
+  useEffect(() => {
+    if (!arrivedWithStep || scrolledFromLink.current || !showFlow || !sectionRef.current) return;
+    scrolledFromLink.current = true;
+    sectionRef.current.scrollIntoView?.({ block: 'start' });
+  }, [arrivedWithStep, showFlow]);
+
+  if (!showFlow || !myRegistration) {
     return null;
   }
 
-  if (attendancePending) {
-    return (
-      <section className="bg-card border border-border rounded-card p-6 space-y-2">
-        <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
-        <p className="text-sm text-muted-foreground">
-          Your registration is approved. After the live session, attendance is recorded automatically when the
-          email on your HCP account matches the email Zoom saw. The post-event survey unlocks once that happens.
-        </p>
-      </section>
-    );
+  if (!progress.attendee) {
+    return <PostEventNotAttendee />;
   }
 
-  if (attendanceDenied) {
-    return (
-      <section className="rounded-card border border-destructive/25 bg-destructive/10 p-6 space-y-2">
-        <h2 className="text-base font-semibold text-red-900">Attendance not verified</h2>
-        <p className="text-sm text-destructive">
-          Your attendance could not be verified for this session. If you believe this is a mistake, contact support.
-        </p>
-      </section>
-    );
-  }
-
-  const begin = () => {
+  const startSurvey = () => {
     writeFlowStarted(program.id);
     setFlowStarted(true);
-    if (hasSurvey) setPhase('survey');
-    else if (hasHonorarium) setPhase('payout');
-    else setPhase('done');
   };
 
-  const surveyAcked = !!myRegistration?.postEventSurveyAcknowledgedAt;
-  const honorariumDone = !!(myRegistration?.honorariumRequestedAt || myRegistration?.honorariumPayment);
-
-  const surveyStepLabel = hasSurvey
-    ? surveyAcked
-      ? 'Survey complete'
-      : 'Complete your survey'
-    : 'Survey required';
-
-  const steps = [
-    { key: 'survey', label: surveyStepLabel, active: phase === 'intro' || phase === 'survey' },
-    {
-      key: 'payout',
-      label: hasHonorarium
-        ? honorariumDone
-          ? 'Payment submitted'
-          : 'Confirm payment info'
-        : 'Payment info',
-      active: phase === 'payout',
-    },
-    { key: 'done', label: 'Complete', active: phase === 'done' },
-  ];
-  const activeStep =
-    phase === 'intro' || phase === 'survey' ? 0 : phase === 'payout' ? 1 : 2;
-
-  const nativePostEventSurvey = !!program.feedbackSurveyId;
-
-  const advanceAfterSurvey = () => {
-    if (hasHonorarium) setPhase('payout');
-    else setPhase('done');
+  const finishSurvey = () => {
+    focusOnStepChange.current = true;
+    setLocalSurveyDone(true);
+    setViewingKey(null);
   };
 
   const handleCompleteNativeSurvey = () => {
     setNativeSurveyError(null);
-    if (surveyAcked) {
-      advanceAfterSurvey();
+    if (facts.surveyAcknowledged) {
+      finishSurvey();
       return;
     }
     if (hasSurveyDraft && hasHonorarium) {
-      setPhase('payout');
+      finishSurvey();
       return;
     }
     if (surveySubmitted && !hasHonorarium) {
-      advanceAfterSurvey();
+      finishSurvey();
       return;
     }
     const form = document.getElementById(POST_EVENT_NATIVE_FORM_ID) as HTMLFormElement | null;
     if (!form) {
-      advanceAfterSurvey();
+      finishSurvey();
       return;
     }
     if (!form.reportValidity()) {
@@ -280,80 +259,55 @@ export default function PostEventParticipantFlow(props: {
     form.requestSubmit();
   };
 
-  return (
-    <section className="bg-card border border-border rounded-card p-6 space-y-4">
-      <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
+  const selectStep = (key: PostEventStepKey) => {
+    if (key !== shown.key) focusOnStepChange.current = true;
+    setViewingKey(key === progress.active.key ? null : key);
+  };
 
-      <ol className="flex items-center gap-0" aria-label="Post-event progress">
-        {steps.map((step, idx) => {
-          const done = idx < activeStep;
-          const current = idx === activeStep;
-          return (
-            <li key={step.key} className="flex items-center min-w-0">
-              <div className="flex flex-col items-center">
-                <div
-                  className={[
-                    'h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0',
-                    done
-                      ? 'bg-green-600 text-white'
-                      : current
-                        ? 'bg-gray-900 text-white ring-2 ring-offset-1 ring-gray-400'
-                        : 'bg-gray-100 text-gray-400',
-                  ].join(' ')}
-                >
-                  {done ? '✓' : idx + 1}
-                </div>
-                <span
-                  className={[
-                    'mt-1 text-[11px] font-semibold text-center whitespace-nowrap',
-                    done ? 'text-success' : current ? 'text-gray-900' : 'text-gray-400',
-                  ].join(' ')}
-                >
-                  {step.label}
-                </span>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className={['mx-2 h-px w-8 shrink-0 self-start mt-3', done ? 'bg-green-400' : 'bg-gray-200'].join(' ')} />
-              )}
-            </li>
-          );
-        })}
-      </ol>
+  const surveyOpen = flowStarted || hasSurveyDraft || surveySubmitted;
 
-      {phase === 'intro' ? (
-        <>
+  /** Hero button opens the step in progress (starting the survey in the same tap); pills open that step. */
+  const openWizard = (key?: PostEventStepKey) => {
+    if (key) {
+      setViewingKey(key === progress.active.key ? null : key);
+    } else {
+      setViewingKey(null);
+      if (progress.active.key === 'survey' && !surveyOpen) startSurvey();
+    }
+    setDrawerOpen(true);
+  };
+
+  let panel: ReactNode = null;
+  if (shown.key === 'attend') {
+    panel = reviewing ? <PostEventAttendReview registration={myRegistration} /> : <PostEventAttendPending />;
+  } else if (shown.key === 'survey') {
+    if (reviewing) {
+      panel = (
+        <PostEventSurveyReview
+          surveyId={feedbackSurveyId}
+          hasHonorarium={hasHonorarium}
+          paymentInfoConfirmed={facts.paymentInfoConfirmed}
+        />
+      );
+    } else if (!surveyOpen) {
+      panel = (
+        <div className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            {hasSurvey ? (
-              <>
-                Complete the post-event survey in the next step
-                {hasHonorarium ? (
-                  <>
-                    . Answers are saved as a draft first; then you confirm{' '}
-                    <StripeMark size="sm" className="mx-0.5 translate-y-px" /> payout details on the next
-                    step (or set them up inline) and submit
-                  </>
-                ) : null}
-                . You cannot return to a previous step after you continue.
-              </>
-            ) : hasHonorarium ? (
-              <>
-                Confirm you are ready to submit your honorarium request. Payout is processed by an administrator through{' '}
-                <StripeMark size="sm" className="mx-0.5 translate-y-px" />
-                . After you continue, you <strong>cannot</strong> return to this step.
-              </>
-            ) : null}
+            {hasHonorarium
+              ? 'Answer a few questions about the session. When you continue, your answers are saved and you move on to confirm your payment info. Answers cannot be changed after that.'
+              : 'Answer a few questions about the session. Answers cannot be changed after you submit.'}
           </p>
           <button
             type="button"
-            onClick={begin}
+            onClick={startSurvey}
             className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black"
           >
-            Continue
+            Start survey
           </button>
-        </>
-      ) : null}
-
-      {phase === 'survey' && hasSurvey ? (
+        </div>
+      );
+    } else {
+      panel = (
         <PostEventFeedbackLearnerActions
           programId={program.id}
           userId={userId}
@@ -382,16 +336,12 @@ export default function PostEventParticipantFlow(props: {
                   setNativeSurveySubmitting(false);
                   setNativeSurveyError('Could not save survey. Check your connection and try again.');
                 }}
-                onSubmitted={(_id, meta) => {
+                onSubmitted={() => {
                   setNativeSurveySubmitting(false);
                   setNativeSurveyError(null);
                   queryClient.invalidateQueries({ queryKey: ['program', program.id, 'registration'] });
                   queryClient.invalidateQueries({ queryKey: ['survey', program.feedbackSurveyId, 'my-response'] });
-                  if (meta?.draft && hasHonorarium) {
-                    setPhase('payout');
-                    return;
-                  }
-                  advanceAfterSurvey();
+                  finishSurvey();
                 }}
               />
             ) : (
@@ -400,36 +350,62 @@ export default function PostEventParticipantFlow(props: {
               </p>
             )
           }
-          onSurveyAcknowledged={({ hasHonorarium: h }) => {
-            if (h) setPhase('payout');
-            else setPhase('done');
-          }}
+          onSurveyAcknowledged={finishSurvey}
         />
-      ) : null}
+      );
+    }
+  } else if (shown.key === 'payment') {
+    panel = reviewing ? (
+      <PostEventPaymentReview registration={myRegistration} />
+    ) : (
+      <PostEventFeedbackLearnerActions
+        programId={program.id}
+        userId={userId}
+        myRegistration={myRegistration}
+        hasHonorarium={hasHonorarium}
+        surveyReadyForAck={false}
+        payoutStepOnly
+        nativeSurveyMode={nativePostEventSurvey}
+        feedbackSurveyId={feedbackSurveyId}
+        onHonorariumRequestSubmitted={() => {
+          focusOnStepChange.current = true;
+          setLocalPaymentDone(true);
+          setViewingKey(null);
+        }}
+      />
+    );
+  } else {
+    panel = <PostEventConfirmation registration={myRegistration} hasHonorarium={hasHonorarium} />;
+  }
 
-      {phase === 'payout' && hasHonorarium ? (
-        <PostEventFeedbackLearnerActions
-          programId={program.id}
-          userId={userId}
-          myRegistration={myRegistration}
-          hasHonorarium={hasHonorarium}
-          surveyReadyForAck={false}
-          payoutStepOnly
-          nativeSurveyMode={nativePostEventSurvey}
-          feedbackSurveyId={feedbackSurveyId}
-          onHonorariumRequestSubmitted={() => setPhase('done')}
-        />
-      ) : null}
-
-      {phase === 'done' ? (
-        <PostEventFeedbackLearnerActions
-          programId={program.id}
-          userId={userId}
-          myRegistration={myRegistration}
-          hasHonorarium={hasHonorarium}
-          surveyReadyForAck={false}
-        />
-      ) : null}
+  return (
+    <section ref={sectionRef} className="scroll-mt-24" aria-labelledby="post-event-steps-heading">
+      <h2 id="post-event-steps-heading" className="sr-only">
+        Post-event steps
+      </h2>
+      <PostEventHero
+        progress={progress}
+        copy={postEventHeroCopy(progress, facts, { surveyStarted: surveyOpen })}
+        onOpen={openWizard}
+      />
+      <PostEventDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        labelledBy="post-event-wizard-title"
+        initialFocusRef={headingRef}
+      >
+        <PostEventWizard
+          progress={progress}
+          shown={shown}
+          reviewing={reviewing}
+          titleId="post-event-wizard-title"
+          headingRef={headingRef}
+          onSelect={selectStep}
+          onClose={() => setDrawerOpen(false)}
+        >
+          {panel}
+        </PostEventWizard>
+      </PostEventDrawer>
     </section>
   );
 }

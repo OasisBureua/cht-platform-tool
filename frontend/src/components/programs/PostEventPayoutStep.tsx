@@ -1,33 +1,22 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   programsApi,
-  type HonorariumMissingRequirement,
-  type HonorariumProgramPreview,
   type ProgramRegistrationState,
 } from '../../api/programs';
 import { surveysApi } from '../../api/surveys';
 import { StripeConnectOnboarding } from '../payments/StripeConnectOnboarding';
+import { BankCardVisual } from '../payments/PayoutBankCard';
+import { derivePayoutSetup } from '../../utils/payout-setup';
 import { StripeMark } from '../branding/StripeMark';
-
-const MISSING_COPY: Record<HonorariumMissingRequirement, string> = {
-  STRIPE_ACCOUNT: 'Connect your Stripe payout account',
-  BANK_ACCOUNT: 'Add a bank account for ACH deposits',
-  TAX_DETAILS: 'Finish tax details (W-9) in Stripe onboarding',
-  PAYOUTS_ENABLED: 'Complete Stripe verification so payouts can be enabled',
-};
-
-function hardBlockers(preview: HonorariumProgramPreview | undefined): HonorariumMissingRequirement[] {
-  if (!preview) return [];
-  return (preview.missingRequirements ?? []).filter((r) => r !== 'BANK_ACCOUNT');
-}
+import { PAYOUT_WINDOW_LABEL } from '../../utils/payout-timing';
 
 /**
  * Inline post-event payment step (not survey form fields).
- * Ready → summary + Continue / Edit. Incomplete → itemized gaps + embedded Stripe Connect.
+ * Ready → summary + Continue / Edit. Incomplete → 1-2-3 setup guide (what Stripe still needs) + embedded Stripe Connect.
  */
 export function PostEventPayoutStep(props: {
   programId: string;
@@ -68,11 +57,8 @@ export function PostEventPayoutStep(props: {
   });
 
   const payoutReady = preview?.payoutReady ?? false;
-  const blockers = hardBlockers(preview);
-
-  useEffect(() => {
-    if (!payoutReady) setEditing(false);
-  }, [payoutReady]);
+  /** Editing only applies to a ready account; an account that is not ready shows setup instead. */
+  const editingDetails = editing && payoutReady;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['program', programId, 'registration'] });
@@ -99,7 +85,7 @@ export function PostEventPayoutStep(props: {
       } else if (!surveyAcked && !nativeSurveyMode) {
         await programsApi.acknowledgePostEventSurvey(programId);
       }
-      const entryKind = touchedSetup || editing ? 'NEWLY_ENTERED' : 'REUSED';
+      const entryKind = touchedSetup || editingDetails ? 'NEWLY_ENTERED' : 'REUSED';
       return programsApi.requestPostEventHonorarium(programId, { entryKind });
     },
     onSuccess: () => {
@@ -124,7 +110,7 @@ export function PostEventPayoutStep(props: {
         </p>
         <p className="text-sm text-muted-foreground">
           Your honorarium is pending admin review. Payouts are typically sent within{' '}
-          <strong className="font-semibold text-foreground">14 calendar days</strong> after submission via
+          <strong className="font-semibold text-foreground">{PAYOUT_WINDOW_LABEL}</strong> after submission via
           ACH once your bank and tax details are connected.
         </p>
         {myRegistration.payoutDetailsEntryKind ? (
@@ -171,7 +157,7 @@ export function PostEventPayoutStep(props: {
     );
   }
 
-  const showInlineSetup = !payoutReady || editing;
+  const showInlineSetup = !payoutReady || editingDetails;
   const bankLabel = preview.maskedBankLast4
     ? `Bank account ending ${preview.maskedBankLast4}`
     : 'Bank account on file (last digits unavailable)';
@@ -179,86 +165,81 @@ export function PostEventPayoutStep(props: {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Your survey answers are saved as a draft. Confirm payout details below — nothing here is stored as
-        survey answers. <StripeMark size="sm" className="translate-y-px" /> holds your bank and tax info;
-        we only keep a reference and a masked display value.
+        Your survey answers are saved. Now confirm where to send your honorarium. Your answers and the honorarium
+        request are sent together when you continue.
       </p>
 
-      {payoutReady && !editing ? (
-        <div className="rounded-[6px] border border-border bg-muted px-4 py-3 space-y-3">
-          <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="inline-flex flex-wrap items-center gap-1.5">
-              Account connected via <StripeMark size="xs" className="translate-y-px" />
-            </span>
-          </p>
-          <ul className="text-sm text-foreground space-y-1.5">
-            <li>
-              <span className="font-medium">Payee: </span>
-              {preview.payeeDisplayName}
-            </li>
-            <li>
-              <span className="font-medium">Method: </span>
-              {preview.methodLabel ?? 'ACH direct deposit'}
-            </li>
-            <li>
-              <span className="font-medium">Account: </span>
-              {bankLabel}
-            </li>
-            {preview.detailsAddedAt ? (
+      {payoutReady && !editingDetails ? (
+        <div className="grid gap-5 rounded-card border border-border bg-card p-5 sm:grid-cols-[minmax(0,260px)_1fr] sm:items-center">
+          <div className="max-w-[300px]">
+            <BankCardVisual setup={derivePayoutSetup({ hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true })} last4={preview.maskedBankLast4} holderName={preview.payeeDisplayName} />
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                Account connected via <StripeMark size="xs" className="translate-y-px" />
+              </span>
+            </p>
+            <ul className="text-sm text-foreground space-y-1.5">
               <li>
-                <span className="font-medium">Added: </span>
-                {format(new Date(preview.detailsAddedAt), 'MMM d, yyyy')}
+                <span className="font-medium">Payee: </span>
+                {preview.payeeDisplayName}
               </li>
-            ) : null}
-            {preview.addressSummary ? (
               <li>
-                <span className="font-medium">Address on profile: </span>
-                {preview.addressSummary}
+                <span className="font-medium">Method: </span>
+                {preview.methodLabel ?? 'ACH direct deposit'}
               </li>
-            ) : null}
-            {(preview.missingRequirements ?? []).includes('BANK_ACCOUNT') ? (
-              <li className="text-amber-900">
-                Bank last digits are not available yet. You can continue, or tap Edit to refresh details.
+              <li>
+                <span className="font-medium">Account: </span>
+                {bankLabel}
               </li>
-            ) : null}
-          </ul>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button
-              type="button"
-              disabled={finalizeMut.isPending || finalizeMut.isSuccess}
-              onClick={() => finalizeMut.mutateAsync().catch(() => {})}
-              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
-            >
-              {finalizeMut.isPending ? 'Submitting…' : 'Continue with this payment info'}
-            </button>
-            <button
-              type="button"
-              disabled={finalizeMut.isPending}
-              onClick={() => {
-                setEditing(true);
-                setTouchedSetup(true);
-              }}
-              className="inline-flex rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              Edit
-            </button>
+              {preview.detailsAddedAt ? (
+                <li>
+                  <span className="font-medium">Added: </span>
+                  {format(new Date(preview.detailsAddedAt), 'MMM d, yyyy')}
+                </li>
+              ) : null}
+              {preview.addressSummary ? (
+                <li>
+                  <span className="font-medium">Address on profile: </span>
+                  {preview.addressSummary}
+                </li>
+              ) : null}
+              {(preview.missingRequirements ?? []).includes('BANK_ACCOUNT') ? (
+                <li className="text-amber">
+                  Bank last digits are not available yet. You can continue, or tap Edit to refresh details.
+                </li>
+              ) : null}
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                disabled={finalizeMut.isPending || finalizeMut.isSuccess}
+                onClick={() => finalizeMut.mutateAsync().catch(() => {})}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-[10px] bg-anchor px-5 text-sm font-semibold text-white shadow-card hover:bg-cta-deep disabled:opacity-50"
+              >
+                {finalizeMut.isPending ? 'Submitting…' : 'Continue with this payment info'}
+              </button>
+              <button
+                type="button"
+                disabled={finalizeMut.isPending}
+                onClick={() => {
+                  setEditing(true);
+                  setTouchedSetup(true);
+                }}
+                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+              >
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
 
-      {!payoutReady && blockers.length > 0 ? (
-        <ul className="rounded-[6px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 space-y-1.5">
-          <li className="font-semibold">Finish these items to continue:</li>
-          {blockers.map((code) => (
-            <li key={code}>• {MISSING_COPY[code]}</li>
-          ))}
-        </ul>
-      ) : null}
-
       {showInlineSetup ? (
         <div className="space-y-3">
-          {editing ? (
+          {editingDetails ? (
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
                 Update your <StripeMark size="xs" className="translate-y-px" /> bank or tax details, then
@@ -275,13 +256,14 @@ export function PostEventPayoutStep(props: {
                 Done editing
               </button>
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Set up payouts below. When Stripe marks your account ready, you can confirm and submit.
-            </p>
-          )}
-          <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} />
-          {payoutReady && editing ? (
+          ) : null}
+          <StripeConnectOnboarding
+            userId={userId}
+            onSuccess={onConnectSuccess}
+            startOpen={editingDetails}
+            holderName={preview.payeeDisplayName}
+          />
+          {payoutReady && editingDetails ? (
             <button
               type="button"
               disabled={finalizeMut.isPending}

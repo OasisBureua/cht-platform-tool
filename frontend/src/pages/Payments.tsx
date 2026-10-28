@@ -45,7 +45,6 @@ export default function Payments() {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const returnTo = safeAppReturnTo(searchParams.get('returnTo'));
-  const [editingPaymentDetails, setEditingPaymentDetails] = useState(false);
   const [programFilter, setProgramFilter] = useState<string>('all');
   const { data: accountStatus, isLoading: loadingAccount } = useQuery({
     queryKey: ['payments-account-status', userId],
@@ -100,7 +99,6 @@ export default function Payments() {
   }).length;
 
   const payoutsReady = !!(accountStatus?.hasAccount && accountStatus?.payoutsEnabled);
-  const needsSetup = !payoutsReady;
   const missingProfile = useMemo(
     () => (user ? listMissingProfileFields(user) : []),
     [user],
@@ -167,43 +165,14 @@ export default function Payments() {
         </div>
       ) : null}
 
-      {needsSetup ? (
-        !profileIncomplete ? (
-          <StripeConnectOnboarding userId={userId} locked={profileIncomplete} onSuccess={refreshPayments} />
-        ) : null
-      ) : (
-        <div className="space-y-3">
-          <div className="rounded-card border border-success/25 bg-success/10/50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
-                <StripeMark size="sm" /> account ready for ACH payouts
-                {accountStatus?.bankAccountLast4
-                  ? ` · ••••${accountStatus.bankAccountLast4}`
-                  : ''}
-              </p>
-            </div>
-            <button
-              type="button"
-              disabled={profileIncomplete}
-              onClick={() => setEditingPaymentDetails((v) => !v)}
-              className="rounded-[6px] border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-            >
-              {editingPaymentDetails ? 'Close' : 'Update bank / tax details'}
-            </button>
-          </div>
-          {editingPaymentDetails && !profileIncomplete ? (
-            <StripeConnectOnboarding
-              userId={userId}
-              locked={profileIncomplete}
-              onSuccess={() => {
-                setEditingPaymentDetails(false);
-                refreshPayments();
-              }}
-            />
-          ) : null}
-        </div>
-      )}
+      {!profileIncomplete ? (
+        <StripeConnectOnboarding
+          userId={userId}
+          locked={profileIncomplete}
+          holderName={[user?.firstName, user?.lastName].filter(Boolean).join(' ') || user?.name}
+          onSuccess={refreshPayments}
+        />
+      ) : null}
 
       <section className="grid gap-6 md:grid-cols-3">
         <StatCard

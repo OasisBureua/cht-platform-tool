@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
+  PaymentStatus,
   PaymentType,
   PayoutDetailsEntryKind,
   PostEventAttendanceStatus,
@@ -41,6 +42,25 @@ import {
   zoomPresenceForRegistration,
   type ZoomJoinEvidence,
 } from '../webinars/zoom-attendance-match';
+
+/** One row of GET /programs/me/post-event-progress (dashboard step-map card). */
+export type PostEventProgressItem = {
+  programId: string;
+  title: string;
+  zoomSessionType: ProgramZoomSessionType;
+  startDate: string | null;
+  hasSurvey: boolean;
+  hasHonorarium: boolean;
+  nativeSurvey: boolean;
+  feedbackSurveyId: string | null;
+  attendance: PostEventAttendanceStatus;
+  surveyAcknowledged: boolean;
+  surveySubmitted: boolean;
+  surveyDraftSaved: boolean;
+  paymentInfoConfirmed: boolean;
+  paymentStatus: PaymentStatus | null;
+  payoutReady: boolean;
+};
 
 @Injectable()
 export class ProgramRegistrationsService {
@@ -568,6 +588,170 @@ export class ProgramRegistrationsService {
         ? { id: honorariumPayment.id, status: honorariumPayment.status }
         : null,
     };
+  }
+
+  /**
+   * Dashboard card (SCRUM-288): the learner's live sessions whose honorarium is not paid yet, with the
+   * facts the post-event step map is derived from (attendance, survey response, payout confirmation,
+   * payment status, payout readiness). The frontend applies the same step rules as the program page.
+   * Paid and cancelled honoraria drop off; so do denied attendees and surveys whose window closed
+   * before anything was saved.
+   */
+  async getMyPostEventProgress(
+    userId: string,
+    nowMs: number = Date.now(),
+  ): Promise<PostEventProgressItem[]> {
+    const since = new Date(nowMs - 90 * 24 * 60 * 60 * 1000);
+    const regs = await this.prisma.programRegistration.findMany({
+      where: {
+        userId,
+        status: ProgramRegistrationStatus.APPROVED,
+        postEventAttendanceStatus: { not: PostEventAttendanceStatus.DENIED },
+        program: {
+          status: ProgramStatus.PUBLISHED,
+          zoomSessionType: {
+            in: [
+              ProgramZoomSessionType.WEBINAR,
+              ProgramZoomSessionType.MEETING,
+            ],
+          },
+          honorariumAmount: { gt: 0 },
+          OR: [{ startDate: null }, { startDate: { gte: since } }],
+        },
+      },
+      select: {
+        programId: true,
+        postEventAttendanceStatus: true,
+        postEventSurveyAcknowledgedAt: true,
+        honorariumRequestedAt: true,
+        payoutDetailsConfirmedAt: true,
+        program: {
+          select: {
+            id: true,
+            title: true,
+            zoomSessionType: true,
+            startDate: true,
+            duration: true,
+            zoomSessionEndedAt: true,
+            jotformSurveyUrl: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    // Only sessions whose post-event steps have opened (session ended).
+    const opened = regs.filter((r) => {
+      const unlockAt = getPostEventSurveyUnlockAt(r.program);
+      return !!unlockAt && nowMs >= unlockAt.getTime();
+    });
+    if (opened.length === 0) return [];
+
+    const programIds = opened.map((r) => r.programId);
+    const [surveys, payments, user] = await Promise.all([
+      this.prisma.survey.findMany({
+        where: { programId: { in: programIds }, type: SurveyType.FEEDBACK },
+        orderBy: { createdAt: 'desc' },
+        select: { id: true, programId: true },
+      }),
+      this.prisma.payment.findMany({
+        where: {
+          userId,
+          programId: { in: programIds },
+          type: PaymentType.HONORARIUM,
+        },
+        orderBy: { createdAt: 'desc' },
+        select: { programId: true, status: true },
+      }),
+      this.prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          stripeAccountId: true,
+          stripePayoutsEnabled: true,
+          w9Submitted: true,
+        },
+      }),
+    ]);
+
+    // Latest FEEDBACK survey and latest honorarium per program, matching getMyRegistration.
+    const feedbackByProgram = new Map<string, string>();
+    for (const s of surveys) {
+      if (s.programId && !feedbackByProgram.has(s.programId)) {
+        feedbackByProgram.set(s.programId, s.id);
+      }
+    }
+    const paymentByProgram = new Map<string, PaymentStatus>();
+    for (const pay of payments) {
+      if (pay.programId && !paymentByProgram.has(pay.programId)) {
+        paymentByProgram.set(pay.programId, pay.status);
+      }
+    }
+    const feedbackIds = [...feedbackByProgram.values()];
+    const responses =
+      feedbackIds.length === 0
+        ? []
+        : await this.prisma.surveyResponse.findMany({
+            where: { userId, surveyId: { in: feedbackIds } },
+            select: { surveyId: true, isDraft: true },
+          });
+    const responseBySurvey = new Map(responses.map((r) => [r.surveyId, r]));
+    const payoutReady =
+      !!user?.stripeAccountId &&
+      !!user?.stripePayoutsEnabled &&
+      !!user?.w9Submitted;
+
+    const items: PostEventProgressItem[] = [];
+    for (const r of opened) {
+      const p = r.program;
+      const paymentStatus = paymentByProgram.get(p.id) ?? null;
+      if (
+        paymentStatus === PaymentStatus.PAID ||
+        paymentStatus === PaymentStatus.CANCELLED
+      ) {
+        continue;
+      }
+      const feedbackSurveyId = feedbackByProgram.get(p.id);
+      const hasSurvey = !!p.jotformSurveyUrl?.trim() || !!feedbackSurveyId;
+      const response = feedbackSurveyId
+        ? responseBySurvey.get(feedbackSurveyId)
+        : undefined;
+      const surveySubmitted = !!response && !response.isDraft;
+      const surveyDraftSaved = !!response?.isDraft;
+      const paymentInfoConfirmed = !!(
+        r.honorariumRequestedAt ||
+        r.payoutDetailsConfirmedAt ||
+        paymentStatus
+      );
+      const surveyOnFile =
+        !!response || !!r.postEventSurveyAcknowledgedAt || paymentInfoConfirmed;
+      // A survey still to do can only be taken inside the post-event window.
+      if (
+        hasSurvey &&
+        !surveyOnFile &&
+        !isPostEventSurveyWithinWindow(getPostEventSurveyUnlockAt(p), nowMs)
+      ) {
+        continue;
+      }
+      items.push({
+        programId: p.id,
+        title: p.title,
+        zoomSessionType: p.zoomSessionType,
+        startDate: p.startDate?.toISOString() ?? null,
+        hasSurvey,
+        hasHonorarium: true,
+        nativeSurvey: !!feedbackSurveyId,
+        feedbackSurveyId: feedbackSurveyId ?? null,
+        attendance: r.postEventAttendanceStatus,
+        surveyAcknowledged: !!r.postEventSurveyAcknowledgedAt,
+        surveySubmitted,
+        surveyDraftSaved,
+        paymentInfoConfirmed,
+        paymentStatus,
+        payoutReady,
+      });
+    }
+    return items;
   }
 
   /**

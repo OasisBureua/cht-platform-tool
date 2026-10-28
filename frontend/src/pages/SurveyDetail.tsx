@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -16,6 +16,12 @@ import { NativeSurveyForm } from '../components/surveys/NativeSurveyForm';
 import { surveyHasNativeQuestions } from '../utils/survey-questions';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { programHasHonorarium } from '../utils/program-has-honorarium';
+import {
+  derivePostEventProgress,
+  postEventFactsFromRegistration,
+  postEventProgramPath,
+} from '../utils/post-event-steps';
+import { PostEventStepMap } from '../components/programs/PostEventStepMap';
 
 const SURVEY_DETAIL_NATIVE_FORM_ID = 'survey-detail-native-form';
 
@@ -79,9 +85,38 @@ export default function SurveyDetail() {
     !honorariumDone &&
     (surveyAcked || surveyDraft);
 
-  useEffect(() => {
-    if (surveyDraft || surveyAcked) setStarted(true);
-  }, [surveyDraft, surveyAcked]);
+  /** A saved draft or acknowledged survey reopens straight into the form state. */
+  const surveyStarted = started || surveyDraft || surveyAcked;
+
+  /** Post-event step map (SCRUM-288): same rules as the program page, derived from server data. */
+  const postEventFacts = postEventFactsFromRegistration({
+    registration: programRegistration,
+    hasSurvey: true,
+    hasHonorarium,
+    nativeSurvey: true,
+    surveyDraftSaved: surveyDraft,
+  });
+  const paymentStepInProgress =
+    isPostEventFeedback &&
+    hasHonorarium &&
+    registrationApproved &&
+    attendanceOkForPostEvent &&
+    derivePostEventProgress(postEventFacts).active.key === 'payment';
+  const { data: payoutPreview } = useQuery({
+    queryKey: ['programs', survey?.programId, 'honorarium-preview'],
+    queryFn: () => programsApi.getHonorariumPreview(survey!.programId),
+    enabled: paymentStepInProgress,
+    retry: false,
+  });
+  const postEventProgress = derivePostEventProgress({
+    ...postEventFacts,
+    payoutReady: paymentStepInProgress ? payoutPreview?.payoutReady : undefined,
+  });
+  const showStepMap =
+    isPostEventFeedback &&
+    registrationApproved &&
+    !!programRegistration &&
+    postEventProgress.attendee;
 
   const submitMutation = useMutation({
     mutationFn: async (answers: Record<string, unknown>) =>
@@ -193,6 +228,21 @@ export default function SurveyDetail() {
         ) : null}
       </header>
 
+      {showStepMap && survey.programId ? (
+        <section className="rounded-card border border-border bg-card p-6 space-y-4" aria-labelledby="survey-post-event-steps">
+          <h2 id="survey-post-event-steps" className="text-base font-semibold text-foreground">
+            Post-event steps
+          </h2>
+          <PostEventStepMap
+            steps={postEventProgress.steps}
+            active={postEventProgress.active}
+            stepHref={(key) =>
+              `${postEventProgramPath(survey.programId, survey.program?.zoomSessionType)}?step=${key}`
+            }
+          />
+        </section>
+      ) : null}
+
       {/* Main */}
       <section className="grid gap-6 lg:grid-cols-12">
         {/* Left: content */}
@@ -209,7 +259,7 @@ export default function SurveyDetail() {
               <p className="text-sm font-medium text-foreground bg-muted border border-border rounded-card px-4 py-3">
                 Your answers are saved as a draft. Confirm or set up payout details below, then submit.
               </p>
-            ) : !started ? (
+            ) : !surveyStarted ? (
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm font-semibold text-foreground">Ready to complete the survey?</p>
                 <button
