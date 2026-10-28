@@ -5,6 +5,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { ProgramStatus } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -66,6 +67,8 @@ export class InvitesService {
    * GET /api/invites/:token endpoint that the /join page hits.
    * Throws NotFoundException for unknown tokens and GoneException for
    * expired/used tokens (both cases surface a "link no longer valid" state).
+   * Program IDs are re-checked against current PUBLISHED status so draft /
+   * archived sessions never reach the registration UI via an invite link.
    */
   async resolveInvite(
     token: string,
@@ -85,7 +88,39 @@ export class InvitesService {
     if (invite.expiresAt.getTime() < Date.now()) {
       throw new GoneException('invite expired');
     }
-    return { email: invite.email, programIds: invite.programIds };
+
+    const programIds = await this.filterPublishedProgramIds(invite.programIds);
+    if (programIds.length === 0) {
+      this.logger.warn(
+        `[Invites] Token ${invite.id} has no remaining PUBLISHED programs`,
+      );
+      throw new GoneException('invite sessions unavailable');
+    }
+
+    return { email: invite.email, programIds };
+  }
+
+  /**
+   * Keep only programs that are still PUBLISHED (draft/archived drop out).
+   * Preserves the invite's original ID order.
+   */
+  private async filterPublishedProgramIds(
+    programIds: string[],
+  ): Promise<string[]> {
+    const uniqueIds = [
+      ...new Set(programIds.map((id) => id.trim()).filter(Boolean)),
+    ];
+    if (uniqueIds.length === 0) return [];
+
+    const published = await this.prisma.program.findMany({
+      where: {
+        id: { in: uniqueIds },
+        status: ProgramStatus.PUBLISHED,
+      },
+      select: { id: true },
+    });
+    const publishedSet = new Set(published.map((p) => p.id));
+    return uniqueIds.filter((id) => publishedSet.has(id));
   }
 
   /**

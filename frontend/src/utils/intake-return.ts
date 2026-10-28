@@ -45,6 +45,11 @@ export const MULTI_REGISTER_STORAGE_KEY = 'cht:live-multi-register';
 
 export type MultiRegisterPersistedState = {
   selectedIds: string[];
+  /**
+   * Program IDs from the registration invite link (`?programs=`).
+   * The multi-register UI only lists these sessions (not the full catalog).
+   */
+  invitedProgramIds?: string[];
   intakeByProgramId: Record<string, string>;
   /** Highest intake step index the user has continued past (forward-only). */
   maxIntakeIndexCompleted: number;
@@ -89,7 +94,12 @@ export function loadMultiRegisterState(): MultiRegisterPersistedState | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as MultiRegisterPersistedState;
     if (!parsed || !Array.isArray(parsed.selectedIds)) return null;
-    return parsed;
+    const invitedProgramIds = Array.isArray(parsed.invitedProgramIds)
+      ? parsed.invitedProgramIds.filter(
+          (id): id is string => typeof id === 'string' && id.trim().length > 0,
+        )
+      : undefined;
+    return { ...parsed, invitedProgramIds };
   } catch {
     return null;
   }

@@ -18,7 +18,10 @@ describe('InvitesService', () => {
     createdByAdminId: string | null;
   };
 
-  function buildService(seed: InviteRow[] = []): InvitesService {
+  function buildService(
+    seed: InviteRow[] = [],
+    publishedProgramIds: string[] | 'all' = 'all',
+  ): InvitesService {
     const rows: InviteRow[] = [...seed];
     const prisma = {
       registrationInvite: {
@@ -55,6 +58,20 @@ describe('InvitesService', () => {
             }
           }
           return Promise.resolve({ count: n });
+        },
+      },
+      program: {
+        findMany: ({
+          where,
+        }: {
+          where: { id: { in: string[] }; status: string };
+        }) => {
+          const ids = where.id.in;
+          const kept =
+            publishedProgramIds === 'all'
+              ? ids
+              : ids.filter((id) => publishedProgramIds.includes(id));
+          return Promise.resolve(kept.map((id) => ({ id })));
         },
       },
     };
@@ -154,5 +171,28 @@ describe('InvitesService', () => {
       tokens.add(token);
     }
     expect(tokens.size).toBe(200);
+  });
+
+  it('filters draft/unpublished programs out of resolveInvite', async () => {
+    const svc = buildService([], ['prog_live']);
+    const { token } = await svc.createInvite({
+      email: 'bob@example.com',
+      programIds: ['prog_live', 'prog_draft'],
+    });
+    await expect(svc.resolveInvite(token)).resolves.toEqual({
+      email: 'bob@example.com',
+      programIds: ['prog_live'],
+    });
+  });
+
+  it('throws GoneException when no invited programs remain published', async () => {
+    const svc = buildService([], []);
+    const { token } = await svc.createInvite({
+      email: 'bob@example.com',
+      programIds: ['prog_draft'],
+    });
+    await expect(svc.resolveInvite(token)).rejects.toBeInstanceOf(
+      GoneException,
+    );
   });
 });
