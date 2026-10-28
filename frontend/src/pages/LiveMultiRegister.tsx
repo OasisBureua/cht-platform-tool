@@ -82,6 +82,8 @@ export default function LiveMultiRegister() {
 
   const [phase, setPhase] = useState<WizardPhase>('select');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  /** Sessions from the invite link — UI lists only these (not the full catalog). */
+  const [invitedProgramIds, setInvitedProgramIds] = useState<string[]>([]);
   const [intakeByProgramId, setIntakeByProgramId] = useState<Record<string, string>>({});
   const [intakeIndex, setIntakeIndex] = useState(0);
   const [maxIntakeIndexCompleted, setMaxIntakeIndexCompleted] = useState(-1);
@@ -111,8 +113,16 @@ export default function LiveMultiRegister() {
     return m;
   }, [liveStatuses]);
 
+  const invitedIdSet = useMemo(
+    () => new Set(invitedProgramIds),
+    [invitedProgramIds],
+  );
+
   const upcoming = useMemo(() => {
     return webinars
+      // Invite-scoped only — never the full catalog. Drafts are already
+      // excluded by GET /webinars (PUBLISHED-only).
+      .filter((w) => invitedIdSet.has(w.id))
       .filter((w) => !isExpired(w))
       .filter((w) => canBulkRegister(w.id, statusByProgramId, w))
       .sort((a, b) => {
@@ -120,7 +130,7 @@ export default function LiveMultiRegister() {
         const tb = b.startTime ? new Date(b.startTime).getTime() : 0;
         return ta - tb;
       });
-  }, [webinars, statusByProgramId]);
+  }, [webinars, statusByProgramId, invitedIdSet]);
 
   const webinarById = useMemo(() => {
     const m = new Map<string, WebinarItem>();
@@ -157,6 +167,7 @@ export default function LiveMultiRegister() {
       if (phase === 'result') return;
       saveMultiRegisterState({
         selectedIds: [...selected],
+        invitedProgramIds,
         intakeByProgramId,
         maxIntakeIndexCompleted,
         phase,
@@ -164,7 +175,14 @@ export default function LiveMultiRegister() {
         ...overrides,
       });
     },
-    [selected, intakeByProgramId, maxIntakeIndexCompleted, phase, intakeIndex],
+    [
+      selected,
+      invitedProgramIds,
+      intakeByProgramId,
+      maxIntakeIndexCompleted,
+      phase,
+      intakeIndex,
+    ],
   );
 
   useEffect(() => {
@@ -174,8 +192,28 @@ export default function LiveMultiRegister() {
     const intakeProgramId = readMultiRegisterIntakeProgramId(location.search);
     const preselectedPrograms = readMultiRegisterProgramIds(location.search);
 
-    const nextSelected = new Set(stored?.selectedIds ?? []);
-    for (const id of preselectedPrograms) nextSelected.add(id);
+    // Invite scope: URL `programs` wins; else stored invite ids; else legacy
+    // selectedIds (older sessions before invitedProgramIds existed).
+    const nextInvited = [
+      ...new Set(
+        preselectedPrograms.length > 0
+          ? preselectedPrograms
+          : (stored?.invitedProgramIds?.length
+              ? stored.invitedProgramIds
+              : (stored?.selectedIds?.length
+                  ? stored.selectedIds
+                  : intakeProgramId
+                    ? [intakeProgramId]
+                    : [])),
+      ),
+    ];
+
+    const nextSelected = new Set(
+      (stored?.selectedIds ?? []).filter((id) => nextInvited.includes(id)),
+    );
+    for (const id of preselectedPrograms) {
+      if (nextInvited.includes(id)) nextSelected.add(id);
+    }
     const nextIntake = { ...(stored?.intakeByProgramId ?? {}) };
     let nextPhase: WizardPhase = stored?.phase ?? 'select';
     let nextIntakeIndex = stored?.intakeIndex ?? 0;
@@ -183,6 +221,9 @@ export default function LiveMultiRegister() {
 
     if (submissionId && intakeProgramId) {
       nextIntake[intakeProgramId] = submissionId;
+      if (!nextInvited.includes(intakeProgramId)) {
+        nextInvited.push(intakeProgramId);
+      }
       nextSelected.add(intakeProgramId);
       nextPhase = 'intake';
       const intakeOrderedIds = [...nextSelected]
@@ -194,6 +235,7 @@ export default function LiveMultiRegister() {
     }
 
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate the wizard from storage and URL once programs load
+    setInvitedProgramIds(nextInvited);
     setSelected(nextSelected);
     setIntakeByProgramId(nextIntake);
     setPhase(nextPhase);
@@ -218,7 +260,16 @@ export default function LiveMultiRegister() {
   useEffect(() => {
     if (!hydrated || phase === 'result') return;
     persistWizard();
-  }, [hydrated, phase, selected, intakeByProgramId, intakeIndex, maxIntakeIndexCompleted, persistWizard]);
+  }, [
+    hydrated,
+    phase,
+    selected,
+    invitedProgramIds,
+    intakeByProgramId,
+    intakeIndex,
+    maxIntakeIndexCompleted,
+    persistWizard,
+  ]);
 
   const submitMut = useMutation({
     mutationFn: () =>
@@ -234,6 +285,7 @@ export default function LiveMultiRegister() {
   });
 
   const toggle = (id: string) => {
+    if (invitedIdSet.size > 0 && !invitedIdSet.has(id)) return;
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -304,8 +356,10 @@ export default function LiveMultiRegister() {
     : undefined;
 
   const hasInviteContext =
+    invitedProgramIds.length > 0 ||
     readMultiRegisterProgramIds(location.search).length > 0 ||
     !!readMultiRegisterIntakeProgramId(location.search) ||
+    (loadMultiRegisterState()?.invitedProgramIds?.length ?? 0) > 0 ||
     (loadMultiRegisterState()?.selectedIds.length ?? 0) > 0;
   const allowAccess = hasInviteContext;
 
@@ -382,7 +436,9 @@ export default function LiveMultiRegister() {
         <h1 className="text-2xl font-bold text-foreground">Register for multiple webinars</h1>
         <p className="text-sm text-muted-foreground">
           {phase === 'select'
-            ? 'Select upcoming sessions, then complete each session’s intake form when prompted before submitting your registration requests.'
+            ? invitedProgramIds.length > 0
+              ? 'Select from the sessions in your invitation, then complete each session’s intake form when prompted before submitting your registration requests.'
+              : 'Select upcoming sessions, then complete each session’s intake form when prompted before submitting your registration requests.'
             : phase === 'intake'
               ? 'Complete the intake form for each selected session. Use Continue when done. You won’t be able to return to a previous intake step.'
               : phase === 'review'
@@ -461,23 +517,10 @@ export default function LiveMultiRegister() {
             </div>
           ) : null}
           <div className="flex flex-wrap gap-3 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                setResult(null);
-                setPhase('select');
-                setIntakeByProgramId({});
-                setIntakeIndex(0);
-                setMaxIntakeIndexCompleted(-1);
-                clearMultiRegisterState();
-              }}
-              className="rounded-card bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
-            >
-              Register for more
-            </button>
             <Link
               to="/app/live"
-              className="rounded-card border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted"
+              onClick={() => clearMultiRegisterState()}
+              className="rounded-card bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700"
             >
               Back to LIVE
             </Link>
@@ -491,13 +534,15 @@ export default function LiveMultiRegister() {
             <div className="rounded-card border border-border bg-muted p-8 text-center">
               <p className="font-medium text-foreground">No sessions available</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                You may already be registered or pending for all upcoming webinars.
+                {invitedProgramIds.length > 0
+                  ? 'The session(s) from your invitation are not open for registration (they may be unpublished, past, or you may already be registered).'
+                  : 'You may already be registered or pending for all upcoming webinars.'}
               </p>
               <Link
                 to="/app/live"
                 className="mt-4 inline-block text-sm font-semibold text-brand-600 underline"
               >
-                View all sessions
+                Back to LIVE
               </Link>
             </div>
           ) : (
