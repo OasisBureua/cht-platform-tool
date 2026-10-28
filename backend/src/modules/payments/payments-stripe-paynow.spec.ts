@@ -25,6 +25,7 @@ describe('PaymentsService payNow Stripe gates', () => {
   const configService = {
     get: jest.fn().mockReturnValue('http://localhost:5173'),
   };
+  const audit = { record: jest.fn() };
 
   let service: PaymentsService;
 
@@ -34,11 +35,23 @@ describe('PaymentsService payNow Stripe gates', () => {
       prisma as never,
       stripeService as never,
       configService as never,
+      audit as never,
     );
   });
 
   it('blocks payNow when Stripe not configured', async () => {
     stripeService.isConfigured.mockReturnValue(false);
+    prisma.payment.findUnique.mockResolvedValue({
+      id: 'pay_1',
+      userId: 'u1',
+      programId: null,
+      type: 'HONORARIUM',
+      status: 'PENDING',
+      amount: 1000,
+      description: 'test',
+      heldAt: null,
+      user: { id: 'u1' },
+    });
     await expect(service.payNow('pay_1')).rejects.toBeInstanceOf(
       BadRequestException,
     );

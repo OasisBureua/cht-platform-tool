@@ -6,6 +6,7 @@ import {
   NotFoundException,
   ConflictException,
   ForbiddenException,
+  HttpException,
 } from '@nestjs/common';
 import {
   Prisma,
@@ -15,6 +16,8 @@ import {
 } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
+import { AuditService } from '../../audit/audit.service';
+import type { AuthUser } from '../../auth/auth.service';
 import { StripeService } from './stripe.service';
 import {
   CreateConnectAccountResponseDto,
@@ -29,9 +32,63 @@ import {
   ProgramPaymentSummaryResponseDto,
   ProgramPaymentStatusTotalsDto,
 } from './dto/program-payment-summary.dto';
+import {
+  PAYMENT_AUDIT_ACTIONS,
+  PIPELINE_STATUSES,
+  agingFromSurvey,
+  countPipelineStatuses,
+  deriveExceptionCodes,
+  derivePipelineStatus,
+  matchesPersonQuery,
+  normalizePayoutDetailsOrigin,
+  overdueUnpaidRows,
+  pipelineAmountCents,
+  pipelineCsv,
+  pipelineExceptionItems,
+  pipelineFailureReason,
+  pipelineHoldReason,
+  pipelineProviderRefs,
+  pipelineRowTotals,
+  sortPipelineExceptions,
+  sumPipelineTotals,
+  surveyDateInRange,
+  unmatchedSurveyExceptionItem,
+  type PipelineDerivationInput,
+  type PipelinePaymentRef,
+  type PipelineStatus,
+} from './dto/payment-pipeline.contract';
+import {
+  PipelineProgramTotalsDto,
+  PipelineResponseDto,
+  PipelineRowDto,
+} from './dto/payment-pipeline.dto';
 import { validateTaxId, sanitizeCompanyName } from './w9-validation';
 import { assertProfileCompleteForPayments } from '../../common/profile-payment-eligibility';
 import { programHasPostEventSurvey } from '../../utils/program-survey-config';
+
+function bulkActionError(err: unknown): string {
+  if (err instanceof HttpException) {
+    const body = err.getResponse();
+    if (typeof body === 'string') return body;
+    if (body && typeof body === 'object' && 'message' in body) {
+      const message = (body as { message?: string | string[] }).message;
+      if (Array.isArray(message)) return message.join(', ');
+      if (typeof message === 'string' && message.trim()) return message;
+    }
+  }
+  return 'Payment action failed';
+}
+
+/** Use the program window only when both days are stored. Otherwise the contract defaults apply. */
+function programHonorariumWindow(program: {
+  honorariumWindowDays?: number | null;
+  honorariumAtRiskDays?: number | null;
+}): { windowDays?: number; atRiskDays?: number } {
+  const windowDays = program.honorariumWindowDays;
+  const atRiskDays = program.honorariumAtRiskDays;
+  if (typeof windowDays !== 'number' || typeof atRiskDays !== 'number') return {};
+  return { windowDays, atRiskDays };
+}
 
 @Injectable()
 export class PaymentsService {
@@ -42,6 +99,7 @@ export class PaymentsService {
     private prisma: PrismaService,
     private stripeService: StripeService,
     private configService: ConfigService,
+    private audit: AuditService,
   ) {
     this.frontendUrl =
       this.configService.get<string>('frontendUrl') || 'http://localhost:3000';
@@ -379,13 +437,23 @@ export class PaymentsService {
   /**
    * Delete a payment by ID (admin/dev only). For removing test entries.
    */
-  async deletePaymentById(paymentId: string): Promise<{ deleted: boolean }> {
-    const result = await this.prisma.payment.deleteMany({
+  async deletePaymentById(
+    paymentId: string,
+    actor?: AuthUser,
+  ): Promise<{ deleted: boolean }> {
+    const existing = await this.prisma.payment.findUnique({
       where: { id: paymentId },
+      select: { id: true, status: true, userId: true, programId: true },
     });
-    if (result.count === 0) {
+    if (!existing) {
       throw new NotFoundException('Payment not found');
     }
+    await this.prisma.payment.delete({ where: { id: paymentId } });
+    this.recordPaymentAudit(actor, 'payment.delete', paymentId, {
+      status: existing.status,
+      userId: existing.userId,
+      programId: existing.programId,
+    });
     this.logger.log(`Deleted payment ${paymentId}`);
     return { deleted: true };
   }
@@ -638,7 +706,7 @@ export class PaymentsService {
   /**
    * Create a PENDING payment for admin review (no immediate Stripe payout).
    */
-  async createManualPendingPayment(dto: CreateManualPaymentDto) {
+  async createManualPendingPayment(dto: CreateManualPaymentDto, actor?: AuthUser) {
     const user = await this.prisma.user.findUnique({
       where: { id: dto.userId.trim() },
     });
@@ -662,7 +730,7 @@ export class PaymentsService {
       dto.description?.trim() ||
       (programId ? 'Manual program payment (admin)' : 'Manual payment (admin)');
 
-    return this.prisma.payment.create({
+    const created = await this.prisma.payment.create({
       data: {
         userId: user.id,
         programId,
@@ -692,6 +760,13 @@ export class PaymentsService {
         },
       },
     });
+    this.recordPaymentAudit(actor, 'payment.manual_create', created.id, {
+      userId: created.userId,
+      programId: created.programId,
+      amountCents: created.amount,
+      type: created.type,
+    });
+    return created;
   }
 
   /**
@@ -855,6 +930,338 @@ export class PaymentsService {
   }
 
   /**
+   * SCRUM-292: honorarium pipeline for admin. Does not change program-summary
+   * or the pending / paid / failed lists.
+   *
+   * Counts, headline totals, and per-program totals ignore the status filter.
+   * Rows follow it. Released counts paid honoraria that have a Stripe transfer.
+   * `payoutDetailsOrigin` is the learner's confirmation: NEWLY_ENTERED or REUSED.
+   * Rows requested before that column existed stay null.
+   * A PENDING row with heldAt set is on_hold.
+   */
+  async listPipeline(
+    query: {
+      programId?: string;
+      status?: string;
+      from?: string;
+      to?: string;
+      q?: string;
+    },
+    now: Date = new Date(),
+  ): Promise<PipelineResponseDto> {
+    const statusFilter = this.parsePipelineStatus(query.status);
+    const from = this.parsePipelineInstant(query.from, 'from');
+    const to = this.parsePipelineInstant(query.to, 'to');
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new BadRequestException('from must be before or equal to to');
+    }
+
+    const registrations = await this.prisma.programRegistration.findMany({
+      where: {
+        status: { not: 'REJECTED' },
+        program: { honorariumAmount: { gt: 0 } },
+        ...(query.programId?.trim()
+          ? { programId: query.programId.trim() }
+          : {}),
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            w9Submitted: true,
+            stripePayoutsEnabled: true,
+          },
+        },
+        program: {
+          select: {
+            id: true,
+            title: true,
+            honorariumAmount: true,
+            honorariumWindowDays: true,
+            honorariumAtRiskDays: true,
+          },
+        },
+      },
+    });
+
+    const programIds = [...new Set(registrations.map((r) => r.programId))];
+    const userIds = [...new Set(registrations.map((r) => r.userId))];
+    const paymentRows =
+      programIds.length === 0
+        ? []
+        : await this.prisma.payment.findMany({
+            where: {
+              type: 'HONORARIUM',
+              programId: { in: programIds },
+              userId: { in: userIds },
+            },
+            select: {
+              userId: true,
+              programId: true,
+              status: true,
+              amount: true,
+              stripeTransferId: true,
+              stripePayoutId: true,
+              paidAt: true,
+              heldAt: true,
+              holdReason: true,
+              failureReason: true,
+            },
+          });
+
+    const paymentsByPair = new Map<string, PipelinePaymentRef[]>();
+    const paidAtByPair = new Map<string, Date | null>();
+    const failureReasonByPair = new Map<string, string | null>();
+    for (const payment of paymentRows) {
+      if (!payment.programId) continue;
+      const key = `${payment.userId}:${payment.programId}`;
+      const ref: PipelinePaymentRef = {
+        status: payment.status,
+        amountCents: payment.amount,
+        held: payment.heldAt != null,
+        holdReason: payment.holdReason,
+        stripeTransferId: payment.stripeTransferId,
+        stripePayoutId: payment.stripePayoutId,
+        failureReason: payment.failureReason,
+      };
+      const list = paymentsByPair.get(key) ?? [];
+      list.push(ref);
+      paymentsByPair.set(key, list);
+      if (payment.status === 'PAID' && payment.paidAt) {
+        paidAtByPair.set(key, payment.paidAt);
+      }
+      failureReasonByPair.set(key, pipelineFailureReason(paymentsByPair.get(key) ?? []));
+    }
+
+    const matched: PipelineRowDto[] = [];
+    const programFilter = query.programId?.trim() || null;
+    for (const reg of registrations) {
+      if (programFilter && reg.programId !== programFilter) continue;
+      const userName = `${reg.user.firstName ?? ''} ${reg.user.lastName ?? ''}`.trim();
+      if (!matchesPersonQuery(userName, reg.user.email ?? '', query.q ?? '')) {
+        continue;
+      }
+      const surveyAt = reg.postEventSurveyAcknowledgedAt;
+      if (!surveyDateInRange(surveyAt, from, to)) continue;
+
+      const key = `${reg.userId}:${reg.programId}`;
+      const payments = paymentsByPair.get(key) ?? [];
+      const derived: PipelineDerivationInput = {
+        registrationStatus: reg.status,
+        attendanceStatus: reg.postEventAttendanceStatus,
+        surveyCompletedAt: surveyAt,
+        payoutProfileComplete:
+          reg.user.w9Submitted === true && reg.user.stripePayoutsEnabled === true,
+        honorariumRequestedAt: reg.honorariumRequestedAt,
+        honorariumAmountCents: reg.program.honorariumAmount ?? 0,
+        payments,
+      };
+      const status = derivePipelineStatus(derived);
+      if (!status) continue;
+
+      const amountCents = pipelineAmountCents(derived);
+      const refs = pipelineProviderRefs(payments);
+      let aging;
+      try {
+        aging = agingFromSurvey({
+          surveyCompletedAt: surveyAt,
+          asOf: now,
+          ...programHonorariumWindow(reg.program),
+        });
+      } catch {
+        this.logger.warn(
+          `Ignoring invalid honorarium window on program ${reg.programId}`,
+        );
+        aging = agingFromSurvey({
+          surveyCompletedAt: surveyAt,
+          asOf: now,
+        });
+      }
+      matched.push({
+        status,
+        programId: reg.programId,
+        programTitle: reg.program.title?.trim() || 'Untitled program',
+        userId: reg.userId,
+        userName,
+        userEmail: reg.user.email ?? '',
+        amountCents,
+        surveyCompletedAt: surveyAt ? surveyAt.toISOString() : null,
+        aging,
+        payoutDetailsOrigin: normalizePayoutDetailsOrigin(reg.payoutDetailsEntryKind),
+        paymentDetailsConfirmedAt: (
+          reg.payoutDetailsConfirmedAt ?? reg.honorariumRequestedAt
+        )?.toISOString() ?? null,
+        attendanceRecordedAt: reg.postEventAttendanceReviewedAt
+          ? reg.postEventAttendanceReviewedAt.toISOString()
+          : null,
+        releaseAt: paidAtByPair.get(key)?.toISOString() ?? null,
+        stripeTransferId: refs.stripeTransferId,
+        stripePayoutId: refs.stripePayoutId,
+        holdReason: pipelineHoldReason(payments),
+        exceptions: deriveExceptionCodes(derived, status),
+        totals: pipelineRowTotals(status, amountCents, Boolean(refs.stripeTransferId?.trim())),
+      });
+    }
+
+    matched.sort((a, b) => {
+      const byProgram = a.programTitle.localeCompare(b.programTitle);
+      if (byProgram !== 0) return byProgram;
+      return a.userEmail.localeCompare(b.userEmail);
+    });
+
+    const rows = statusFilter
+      ? matched.filter((row) => row.status === statusFilter)
+      : matched;
+    const programs = this.pipelineProgramTotals(matched);
+    const unmatched = await this.listUnmatchedSurveyExceptions({
+      programId: programFilter,
+      from,
+      to,
+      q: query.q ?? '',
+    });
+
+    return {
+      counts: countPipelineStatuses(matched.map((row) => row.status)),
+      totals: sumPipelineTotals(matched.map((row) => row.totals)),
+      programs,
+      overdueRows: overdueUnpaidRows(matched),
+      rows,
+      exceptions: sortPipelineExceptions([
+        ...pipelineExceptionItems(
+          matched.map((row) => ({
+            ...row,
+            failureReason:
+              failureReasonByPair.get(`${row.userId}:${row.programId}`) ?? null,
+          })),
+        ),
+        ...unmatched,
+      ]),
+    };
+  }
+
+  /**
+   * Post-event feedback with no user account on an honorarium program.
+   * Drafts are ignored. `Survey.programId` is required in schema, so an
+   * "orphan survey with no webinar" cannot exist — only unmatched-to-user.
+   */
+  private async listUnmatchedSurveyExceptions(opts: {
+    programId: string | null;
+    from: Date | null;
+    to: Date | null;
+    q: string;
+  }) {
+    const responses = await this.prisma.surveyResponse.findMany({
+      where: {
+        isDraft: false,
+        userId: null,
+        survey: {
+          type: 'FEEDBACK',
+          program: {
+            honorariumAmount: { gt: 0 },
+            ...(opts.programId ? { id: opts.programId } : {}),
+          },
+        },
+      },
+      select: {
+        id: true,
+        userId: true,
+        isDraft: true,
+        submittedAt: true,
+        publicRegistration: {
+          select: { firstName: true, lastName: true, email: true },
+        },
+        survey: {
+          select: {
+            program: { select: { id: true, title: true } },
+          },
+        },
+      },
+    });
+
+    const items: ReturnType<typeof unmatchedSurveyExceptionItem>[] = [];
+    for (const response of responses) {
+      if (response.isDraft || response.userId) continue;
+      const program = response.survey?.program;
+      if (!program?.id) continue;
+      if (opts.programId && program.id !== opts.programId) continue;
+      if (!surveyDateInRange(response.submittedAt, opts.from, opts.to)) continue;
+      const userName =
+        `${response.publicRegistration?.firstName ?? ''} ${response.publicRegistration?.lastName ?? ''}`.trim();
+      const userEmail = response.publicRegistration?.email ?? '';
+      if (!matchesPersonQuery(userName, userEmail, opts.q)) continue;
+      items.push(
+        unmatchedSurveyExceptionItem({
+          surveyResponseId: response.id,
+          programId: program.id,
+          programTitle: program.title?.trim() || 'Untitled program',
+          userName: userName || null,
+          userEmail: userEmail || null,
+        }),
+      );
+    }
+    return items;
+  }
+
+  private pipelineProgramTotals(rows: PipelineRowDto[]): PipelineProgramTotalsDto[] {
+    const byProgram = new Map<string, PipelineRowDto[]>();
+    for (const row of rows) {
+      const list = byProgram.get(row.programId) ?? [];
+      list.push(row);
+      byProgram.set(row.programId, list);
+    }
+    return [...byProgram.entries()]
+      .map(([programId, programRows]) => ({
+        programId,
+        programTitle: programRows[0]?.programTitle ?? 'Untitled program',
+        totals: sumPipelineTotals(programRows.map((row) => row.totals)),
+      }))
+      .sort((a, b) => a.programTitle.localeCompare(b.programTitle));
+  }
+
+  private parsePipelineStatus(status: string | undefined): PipelineStatus | null {
+    const raw = status?.trim();
+    if (!raw) return null;
+    if ((PIPELINE_STATUSES as readonly string[]).includes(raw)) {
+      return raw as PipelineStatus;
+    }
+    throw new BadRequestException(
+      `status must be one of: ${PIPELINE_STATUSES.join(', ')}`,
+    );
+  }
+
+  private parsePipelineInstant(
+    value: string | undefined,
+    name: 'from' | 'to',
+  ): Date | null {
+    const raw = value?.trim();
+    if (!raw) return null;
+    const date = new Date(raw);
+    if (Number.isNaN(date.getTime())) {
+      throw new BadRequestException(`${name} must be an ISO date`);
+    }
+    return date;
+  }
+
+  /**
+   * Honorarium pipeline CSV for the current filters. Rows follow the status
+   * filter. Columns are the frozen pipeline set: amounts and provider refs,
+   * no account or tax id.
+   */
+  async exportPipelineCsv(query: {
+    programId?: string;
+    status?: string;
+    from?: string;
+    to?: string;
+    q?: string;
+  }): Promise<string> {
+    const pipeline = await this.listPipeline(query);
+    return pipelineCsv(pipeline.rows);
+  }
+
+  /**
    * Admin CSV export of payments (pending / failed / paid / all) with optional date range.
    */
   async exportPaymentsCsv(opts: {
@@ -962,7 +1369,119 @@ export class PaymentsService {
   /**
    * Reset a FAILED payment back to PENDING and immediately attempt payment via Stripe Connect (admin only).
    */
-  async retryPayment(paymentId: string): Promise<PayoutResponseDto> {
+  /**
+   * Release (pay now) or hold each id on its own. One failure does not stop the rest.
+   * Hold requires a reason before any id is touched. Each success writes its own audit row.
+   */
+  async bulkPayments(
+    input: { action: 'release' | 'hold'; paymentIds: string[]; reason?: string },
+    actor?: AuthUser,
+  ): Promise<{
+    results: Array<{ paymentId: string; ok: boolean; error?: string }>;
+  }> {
+    const ids = [...new Set(input.paymentIds.map((id) => id.trim()).filter(Boolean))];
+    if (ids.length === 0) {
+      throw new BadRequestException('Select at least one payment');
+    }
+    // Cap keeps one ALB request under the ~90s idle timeout (each release hits Stripe).
+    if (ids.length > 25) {
+      throw new BadRequestException('Select at most 25 payments');
+    }
+    if (input.action === 'hold' && !input.reason?.trim()) {
+      throw new BadRequestException('A hold reason is required');
+    }
+    if (input.action !== 'release' && input.action !== 'hold') {
+      throw new BadRequestException('action must be release or hold');
+    }
+
+    const results: Array<{ paymentId: string; ok: boolean; error?: string }> = [];
+    for (const paymentId of ids) {
+      try {
+        if (input.action === 'hold') {
+          await this.holdPayment(paymentId, input.reason ?? '', actor);
+        } else {
+          await this.payNow(paymentId, actor);
+        }
+        results.push({ paymentId, ok: true });
+      } catch (err) {
+        results.push({ paymentId, ok: false, error: bulkActionError(err) });
+      }
+    }
+    return { results };
+  }
+
+  async holdPayment(paymentId: string, reason: string, actor?: AuthUser) {
+    const trimmed = reason?.trim() ?? '';
+    if (!trimmed) {
+      throw new BadRequestException('A hold reason is required');
+    }
+    if (trimmed.length > 500) {
+      throw new BadRequestException('Hold reason must be 500 characters or fewer');
+    }
+    // Atomic: only hold while still PENDING and not already held (avoids racing Pay now).
+    const claimed = await this.prisma.payment.updateMany({
+      where: { id: paymentId, status: 'PENDING', heldAt: null },
+      data: {
+        heldAt: new Date(),
+        heldByUserId: actor?.userId ?? null,
+        holdReason: trimmed,
+      },
+    });
+    if (claimed.count === 0) {
+      const payment = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+      });
+      if (!payment) throw new NotFoundException('Payment not found');
+      if (payment.heldAt) {
+        throw new BadRequestException('Payment is already on hold');
+      }
+      if (payment.status !== 'PENDING') {
+        throw new BadRequestException(
+          `Only a pending payment can be held (status: ${payment.status})`,
+        );
+      }
+      throw new ConflictException(
+        'Payment could not be held. It may no longer be pending.',
+      );
+    }
+    this.recordPaymentAudit(actor, 'payment.hold', paymentId, { reason: trimmed });
+    return this.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  }
+
+  async releaseHold(paymentId: string, actor?: AuthUser) {
+    const existing = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
+    if (!existing) throw new NotFoundException('Payment not found');
+    if (!existing.heldAt) {
+      throw new BadRequestException('Payment is not on hold');
+    }
+    if (existing.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Only a pending payment can be released from hold (status: ${existing.status})`,
+      );
+    }
+    // Atomic: only clear hold while still PENDING and held.
+    const released = await this.prisma.payment.updateMany({
+      where: {
+        id: paymentId,
+        status: 'PENDING',
+        heldAt: { not: null },
+      },
+      data: { heldAt: null, heldByUserId: null, holdReason: null },
+    });
+    if (released.count === 0) {
+      throw new ConflictException(
+        'Hold could not be released. The payment may no longer be pending.',
+      );
+    }
+    this.recordPaymentAudit(actor, 'payment.release_hold', paymentId, {
+      previousReason: existing.holdReason,
+    });
+    return this.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
+  }
+
+  async retryPayment(paymentId: string, actor?: AuthUser): Promise<PayoutResponseDto> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
     });
@@ -982,16 +1501,15 @@ export class PaymentsService {
       data: { status: 'PENDING', failedAt: null, failureReason: null },
     });
 
+    this.recordPaymentAudit(actor, 'payment.retry', paymentId);
     this.logger.log(`Retrying failed payment: ${paymentId}`);
-    return this.payNow(paymentId);
+    return this.payNow(paymentId, actor);
   }
 
   /**
    * Pay a specific PENDING payment via Stripe Connect (admin only). "Pay now" button flow.
    */
-  async payNow(paymentId: string): Promise<PayoutResponseDto> {
-    this.assertStripeConfigured();
-
+  async payNow(paymentId: string, actor?: AuthUser): Promise<PayoutResponseDto> {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
       include: { user: true },
@@ -999,6 +1517,12 @@ export class PaymentsService {
 
     if (!payment) {
       throw new NotFoundException('Payment not found');
+    }
+
+    if (payment.heldAt) {
+      throw new BadRequestException(
+        'Payment is on hold. Release the hold before paying.',
+      );
     }
 
     if (payment.status === 'PAID') {
@@ -1014,6 +1538,8 @@ export class PaymentsService {
         `Payment is not pending (status: ${payment.status})`,
       );
     }
+
+    this.assertStripeConfigured();
 
     const user = payment.user;
 
@@ -1065,7 +1591,7 @@ export class PaymentsService {
       }
     }
 
-    return this.payNowWithStripe(paymentId, payment, user);
+    return this.payNowWithStripe(paymentId, payment, user, actor);
   }
 
   private async payNowWithStripe(
@@ -1085,6 +1611,7 @@ export class PaymentsService {
       w9Submitted: boolean;
       paymentEnabled: boolean;
     },
+    actor?: AuthUser,
   ): Promise<PayoutResponseDto> {
     if (!user.stripeAccountId) {
       throw new BadRequestException(
@@ -1123,7 +1650,7 @@ export class PaymentsService {
     });
 
     const locked = await this.prisma.payment.updateMany({
-      where: { id: paymentId, status: 'PENDING' },
+      where: { id: paymentId, status: 'PENDING', heldAt: null },
       data: {
         status: 'PROCESSING',
         deliveryMethod: 'ACH',
@@ -1172,6 +1699,10 @@ export class PaymentsService {
       this.logger.log(
         `Pay now successful: ${paymentId} -> Stripe transfer ${transfer.id}`,
       );
+      this.recordPaymentAudit(actor, 'payment.release', paymentId, {
+        transferId: transfer.id,
+        amountCents: payment.amount,
+      });
       return {
         paymentId: payment.id,
         amount: payment.amount,
@@ -1196,8 +1727,12 @@ export class PaymentsService {
   /**
    * Create payout to user via Stripe Connect (admin only).
    * Pass `idempotencyKey` (or reuse the same key on retry) for safe deduplication.
+   * Honors active holds on the same user/program and writes payment.release audit.
    */
-  async createPayout(dto: CreatePayoutDto): Promise<PayoutResponseDto> {
+  async createPayout(
+    dto: CreatePayoutDto,
+    actor?: AuthUser,
+  ): Promise<PayoutResponseDto> {
     this.assertStripeConfigured();
     this.logger.log(
       `Creating payout for user ${dto.userId}: $${dto.amount / 100}`,
@@ -1214,6 +1749,22 @@ export class PaymentsService {
     if (!user.stripeAccountId || !user.stripePayoutsEnabled) {
       throw new BadRequestException(
         'User does not have an active Stripe Connect account ready for payouts.',
+      );
+    }
+
+    const heldOpen = await this.prisma.payment.findFirst({
+      where: {
+        userId: dto.userId,
+        type: 'HONORARIUM',
+        status: { in: ['PENDING', 'PROCESSING'] },
+        heldAt: { not: null },
+        ...(dto.programId ? { programId: dto.programId } : {}),
+      },
+      select: { id: true },
+    });
+    if (heldOpen) {
+      throw new BadRequestException(
+        'An honorarium payout for this person is on hold. Release the hold before paying.',
       );
     }
 
@@ -1335,11 +1886,13 @@ export class PaymentsService {
     }
 
     const locked = await this.prisma.payment.updateMany({
-      where: { id: payment.id, status: 'PENDING' },
+      where: { id: payment.id, status: 'PENDING', heldAt: null },
       data: { status: 'PROCESSING' },
     });
     if (locked.count !== 1) {
-      throw new ConflictException('Could not start payout processing.');
+      throw new ConflictException(
+        'Could not start payout processing. The payment may be on hold or already processing.',
+      );
     }
 
     try {
@@ -1371,6 +1924,10 @@ export class PaymentsService {
       await this.prisma.user.update({
         where: { id: dto.userId },
         data: { totalEarnings: { increment: dto.amount } },
+      });
+      this.recordPaymentAudit(actor, 'payment.release', payment.id, {
+        transferId: transfer.id,
+        source: 'createPayout',
       });
       return {
         paymentId: payment.id,
@@ -1515,5 +2072,23 @@ export class PaymentsService {
       w9Submitted: status.w9Submitted,
       payoutsEnabled: status.payoutsEnabled,
     };
+  }
+
+  private recordPaymentAudit(
+    actor: AuthUser | undefined,
+    action: (typeof PAYMENT_AUDIT_ACTIONS)[number],
+    paymentId: string,
+    metadata?: Prisma.InputJsonObject,
+  ): void {
+    if (!actor?.userId) return;
+    this.audit.record({
+      actorId: actor.userId,
+      actorEmail: actor.email ?? null,
+      actorRole: actor.role ?? null,
+      action,
+      resource: 'payment',
+      resourceId: paymentId,
+      metadata,
+    });
   }
 }
