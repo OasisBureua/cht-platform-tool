@@ -17,6 +17,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
  * - `<cuid>` → payments for that program
  *
  * Constant for the null-program filter value: {@link PROGRAM_PAYMENT_SCOPE_NONE}.
+ *
+ * SCRUM-292 phase 2 does not change this summary. The honorarium pipeline
+ * (status, aging, totals, CSV) is frozen in `payment-pipeline.contract.ts`.
  */
 
 /** Query value meaning Payment.programId IS NULL on list endpoints. */

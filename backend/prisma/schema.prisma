@@ -196,6 +196,10 @@ model Program {
   
   // Payment configuration
   honorariumAmount  Int?     // Amount in cents (e.g., 50000 = $500)
+  /// Days after survey completion before an unpaid honorarium is overdue (1–30).
+  honorariumWindowDays Int @default(30)
+  /// Days after survey completion when an unpaid honorarium is at risk (1 through the window).
+  honorariumAtRiskDays Int @default(21)
   
   // Zoom Events integration
   zoomSessionType   ProgramZoomSessionType @default(WEBINAR)
@@ -749,6 +753,11 @@ model Payment {
   paidAt      DateTime?
   failedAt    DateTime?
   failureReason String?
+
+  /// Set while an admin holds a PENDING payout. Cleared on release-hold.
+  heldAt       DateTime?
+  heldByUserId String?
+  holdReason   String?
   
   // Relations
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)

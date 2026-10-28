@@ -8,6 +8,8 @@ export const HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPES = [
 export const HUBSPOT_CAMPAIGNS_DASHBOARD_SCOPE_LABELS = [
   'marketing.campaigns.read',
   'marketing-email (or content)',
+  // Optional (CPR-56): channel / URL / publish time via legacy Social API.
+  'social (optional — social broadcast enrich)',
 ] as const;
 
 export type HubSpotParsedError = {
