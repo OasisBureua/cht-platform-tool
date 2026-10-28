@@ -42,7 +42,9 @@ function WizardSteps({
                 s.key === shownKey ? 'font-semibold text-foreground' : s.state === 'not_started' ? 'text-muted-foreground' : 'font-medium text-foreground',
               ].join(' ')}
             >
-              {s.state === 'attention' ? <AlertTriangle className="h-3 w-3 shrink-0 text-amber" aria-hidden /> : null}
+              {s.state === 'attention' ? (
+                <AlertTriangle className="hidden h-3 w-3 shrink-0 text-amber sm:inline" aria-hidden />
+              ) : null}
               <span className="sr-only">{`Step ${s.number} of ${steps.length}:`}</span> {s.label}
               <span className="sr-only">{`, ${STATE_TEXT[s.state]}`}</span>
             </span>
