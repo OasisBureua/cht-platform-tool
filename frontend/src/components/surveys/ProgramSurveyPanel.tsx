@@ -57,7 +57,7 @@ export function ProgramSurveyPanel({
   const onSubmittedRef = useRef(onSubmitted);
   useEffect(() => {
     onSubmittedRef.current = onSubmitted;
-  }, [onSubmitted]);
+  });
 
   const [pendingSubmit, setPendingSubmit] = useState<PendingSubmit | null>(null);
   const [profileSaveError, setProfileSaveError] = useState<string | null>(null);
