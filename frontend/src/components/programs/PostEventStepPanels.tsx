@@ -154,7 +154,7 @@ export function PostEventConfirmation(props: {
   const requested = shortDate(registration.honorariumRequestedAt ?? registration.payoutDetailsConfirmedAt);
   const StatusIcon = status.tone === 'ok' ? CheckCircle2 : status.tone === 'problem' ? AlertTriangle : Clock3;
   const statusTone =
-    status.tone === 'ok' ? 'text-success' : status.tone === 'problem' ? 'text-warning' : 'text-foreground';
+    status.tone === 'ok' ? 'text-success' : status.tone === 'problem' ? 'text-amber' : 'text-foreground';
 
   return (
     <div className="space-y-3">
@@ -201,7 +201,7 @@ export function PostEventNotAttendee() {
     <section className="rounded-card border border-border bg-card p-6 space-y-2">
       <h2 className="text-base font-semibold text-foreground">Post-event steps</h2>
       <p className="inline-flex items-start gap-2 text-sm font-medium text-foreground">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" aria-hidden />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber" aria-hidden />
         <span>The survey and payment steps are for people who attended the live session.</span>
       </p>
       <p className="text-sm text-muted-foreground">

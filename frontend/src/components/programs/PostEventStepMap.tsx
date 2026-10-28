@@ -22,9 +22,9 @@ function StepDot({ step, size = 'md' }: { step: PostEventStep; size?: 'sm' | 'md
     step.state === 'complete'
       ? 'bg-success text-card'
       : step.state === 'current'
-        ? 'bg-foreground text-card ring-2 ring-foreground/25 ring-offset-2 ring-offset-card'
+        ? 'bg-anchor text-white ring-4 ring-cta/20'
         : step.state === 'attention'
-          ? 'bg-warning text-card ring-2 ring-warning/30 ring-offset-2 ring-offset-card'
+          ? 'bg-orange-50 text-amber ring-2 ring-orange-300'
           : 'border border-border bg-card text-muted-foreground';
   return (
     <span
@@ -43,7 +43,7 @@ function StepDot({ step, size = 'md' }: { step: PostEventStep; size?: 'sm' | 'md
 }
 
 function labelTone(state: PostEventStepState) {
-  if (state === 'attention') return 'font-semibold text-warning';
+  if (state === 'attention') return 'font-semibold text-amber';
   if (state === 'current') return 'font-semibold text-foreground';
   if (state === 'complete') return 'font-medium text-foreground';
   return 'font-medium text-muted-foreground';
@@ -200,9 +200,9 @@ export function PostEventStepMap(props: {
                 step.state === 'complete'
                   ? 'bg-success'
                   : step.state === 'current'
-                    ? 'bg-foreground'
+                    ? 'bg-cta'
                     : step.state === 'attention'
-                      ? 'bg-warning'
+                      ? 'bg-orange-400'
                       : 'bg-border',
               ].join(' ')}
             />
