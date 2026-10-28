@@ -140,6 +140,25 @@ export type LiveWebinarActionItem = {
   href: string;
 };
 
+/** One row of GET /programs/me/post-event-progress: a session with an unpaid honorarium (dashboard card). */
+export type PostEventProgressItem = {
+  programId: string;
+  title: string;
+  zoomSessionType: 'WEBINAR' | 'MEETING';
+  startDate: string | null;
+  hasSurvey: boolean;
+  hasHonorarium: boolean;
+  nativeSurvey: boolean;
+  feedbackSurveyId: string | null;
+  attendance: PostEventAttendanceStatus;
+  surveyAcknowledged: boolean;
+  surveySubmitted: boolean;
+  surveyDraftSaved: boolean;
+  paymentInfoConfirmed: boolean;
+  paymentStatus: 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED' | 'CANCELLED' | null;
+  payoutReady: boolean;
+};
+
 export type MyLiveSessionListStatus = {
   programId: string;
   enrolled: boolean;
@@ -169,6 +188,12 @@ export const programsApi = {
   getLiveActionItems: async (): Promise<LiveWebinarActionItem[]> => {
     const { data } = await apiClient.get<LiveWebinarActionItem[]>('/programs/live-action-items');
     return data ?? [];
+  },
+
+  /** Sessions with an unpaid honorarium and the facts for the post-event step map (SCRUM-288). */
+  getMyPostEventProgress: async (): Promise<PostEventProgressItem[]> => {
+    const { data } = await apiClient.get<PostEventProgressItem[]>('/programs/me/post-event-progress');
+    return Array.isArray(data) ? data : [];
   },
 
   getMyLiveSessionStatus: async (): Promise<MyLiveSessionListStatus[]> => {
