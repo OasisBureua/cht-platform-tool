@@ -9,6 +9,8 @@ import {
 } from '../../api/programs';
 import { surveysApi } from '../../api/surveys';
 import { StripeConnectOnboarding } from '../payments/StripeConnectOnboarding';
+import { BankCardVisual } from '../payments/PayoutBankCard';
+import { derivePayoutSetup } from '../../utils/payout-setup';
 import { StripeMark } from '../branding/StripeMark';
 import { PAYOUT_WINDOW_LABEL } from '../../utils/payout-timing';
 
@@ -168,64 +170,69 @@ export function PostEventPayoutStep(props: {
       </p>
 
       {payoutReady && !editingDetails ? (
-        <div className="rounded-[6px] border border-border bg-muted px-4 py-3 space-y-3">
-          <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
-            <span className="inline-flex flex-wrap items-center gap-1.5">
-              Account connected via <StripeMark size="xs" className="translate-y-px" />
-            </span>
-          </p>
-          <ul className="text-sm text-foreground space-y-1.5">
-            <li>
-              <span className="font-medium">Payee: </span>
-              {preview.payeeDisplayName}
-            </li>
-            <li>
-              <span className="font-medium">Method: </span>
-              {preview.methodLabel ?? 'ACH direct deposit'}
-            </li>
-            <li>
-              <span className="font-medium">Account: </span>
-              {bankLabel}
-            </li>
-            {preview.detailsAddedAt ? (
+        <div className="grid gap-5 rounded-card border border-border bg-card p-5 sm:grid-cols-[minmax(0,260px)_1fr] sm:items-center">
+          <div className="max-w-[300px]">
+            <BankCardVisual setup={derivePayoutSetup({ hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true })} last4={preview.maskedBankLast4} />
+          </div>
+          <div className="space-y-3">
+            <p className="text-sm font-medium text-success inline-flex flex-wrap items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="inline-flex flex-wrap items-center gap-1.5">
+                Account connected via <StripeMark size="xs" className="translate-y-px" />
+              </span>
+            </p>
+            <ul className="text-sm text-foreground space-y-1.5">
               <li>
-                <span className="font-medium">Added: </span>
-                {format(new Date(preview.detailsAddedAt), 'MMM d, yyyy')}
+                <span className="font-medium">Payee: </span>
+                {preview.payeeDisplayName}
               </li>
-            ) : null}
-            {preview.addressSummary ? (
               <li>
-                <span className="font-medium">Address on profile: </span>
-                {preview.addressSummary}
+                <span className="font-medium">Method: </span>
+                {preview.methodLabel ?? 'ACH direct deposit'}
               </li>
-            ) : null}
-            {(preview.missingRequirements ?? []).includes('BANK_ACCOUNT') ? (
-              <li className="text-amber-900">
-                Bank last digits are not available yet. You can continue, or tap Edit to refresh details.
+              <li>
+                <span className="font-medium">Account: </span>
+                {bankLabel}
               </li>
-            ) : null}
-          </ul>
-          <div className="flex flex-wrap gap-2 pt-1">
-            <button
-              type="button"
-              disabled={finalizeMut.isPending || finalizeMut.isSuccess}
-              onClick={() => finalizeMut.mutateAsync().catch(() => {})}
-              className="inline-flex rounded-[6px] bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-black disabled:opacity-50"
-            >
-              {finalizeMut.isPending ? 'Submitting…' : 'Continue with this payment info'}
-            </button>
-            <button
-              type="button"
-              disabled={finalizeMut.isPending}
-              onClick={() => {
-                setEditing(true);
-                setTouchedSetup(true);
-              }}
-              className="inline-flex rounded-[6px] border border-border bg-card px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
-            >
-              Edit
-            </button>
+              {preview.detailsAddedAt ? (
+                <li>
+                  <span className="font-medium">Added: </span>
+                  {format(new Date(preview.detailsAddedAt), 'MMM d, yyyy')}
+                </li>
+              ) : null}
+              {preview.addressSummary ? (
+                <li>
+                  <span className="font-medium">Address on profile: </span>
+                  {preview.addressSummary}
+                </li>
+              ) : null}
+              {(preview.missingRequirements ?? []).includes('BANK_ACCOUNT') ? (
+                <li className="text-amber">
+                  Bank last digits are not available yet. You can continue, or tap Edit to refresh details.
+                </li>
+              ) : null}
+            </ul>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                type="button"
+                disabled={finalizeMut.isPending || finalizeMut.isSuccess}
+                onClick={() => finalizeMut.mutateAsync().catch(() => {})}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-[10px] bg-anchor px-5 text-sm font-semibold text-white shadow-card hover:bg-cta-deep disabled:opacity-50"
+              >
+                {finalizeMut.isPending ? 'Submitting…' : 'Continue with this payment info'}
+              </button>
+              <button
+                type="button"
+                disabled={finalizeMut.isPending}
+                onClick={() => {
+                  setEditing(true);
+                  setTouchedSetup(true);
+                }}
+                className="inline-flex min-h-[44px] items-center rounded-[10px] border border-border bg-card px-4 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-50"
+              >
+                Edit
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -249,13 +256,8 @@ export function PostEventPayoutStep(props: {
                 Done editing
               </button>
             </div>
-          ) : (
-            <p className="text-sm font-medium text-foreground">
-              Payouts are not set up yet. Follow the 3 steps below. You can confirm as soon as this page says
-              &quot;Ready for payouts&quot;.
-            </p>
-          )}
-          <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} />
+          ) : null}
+          <StripeConnectOnboarding userId={userId} onSuccess={onConnectSuccess} startOpen={editingDetails} />
           {payoutReady && editingDetails ? (
             <button
               type="button"

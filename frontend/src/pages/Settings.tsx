@@ -928,6 +928,7 @@ function PaymentSettingsSection({
             <StripeConnectOnboarding
               userId={userId}
               locked={profileIncomplete}
+              startOpen
               onSuccess={() => {
                 setEditingPaymentDetails(false);
                 onSuccess();

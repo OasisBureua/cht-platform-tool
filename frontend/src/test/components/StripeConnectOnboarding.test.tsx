@@ -45,45 +45,56 @@ function renderOnboarding(onSuccess = vi.fn()) {
   return { onSuccess };
 }
 
-describe('StripeConnectOnboarding setup guide', () => {
+describe('StripeConnectOnboarding bank card flow', () => {
   beforeEach(() => {
-    state.status = { hasAccount: true, detailsSubmitted: false, payoutsEnabled: false, w9Submitted: false };
+    state.status = { hasAccount: false, detailsSubmitted: false, payoutsEnabled: false, w9Submitted: false };
   });
 
-  it('shows the 1-2-3 steps with the next one marked', async () => {
+  it('starts with an empty bank card, the 3 steps and one button, without opening Stripe yet', async () => {
+    const { paymentsApi } = await import('../../api/payments');
     renderOnboarding();
-    expect(await screen.findByRole('heading', { name: 'Get paid in 3 steps' })).toBeInTheDocument();
-    expect(await screen.findByText('Not finished')).toBeInTheDocument();
-    const next = screen.getByText('Add your details').closest('li')!;
-    expect(next).toHaveAttribute('aria-current', 'step');
-    expect(next).toHaveTextContent('Next');
+    expect(await screen.findByRole('heading', { name: 'Get paid by direct deposit' })).toBeInTheDocument();
+    expect(screen.getByText('Add your bank account')).toBeInTheDocument();
+    expect(screen.getByText('Open the Stripe form').closest('li')).toHaveAttribute('aria-current', 'step');
+    expect(screen.queryByRole('button', { name: 'Close Stripe' })).toBeNull();
+    expect(paymentsApi.createAccountSession).not.toHaveBeenCalled();
+  });
+
+  it('opens the Stripe form with a "Start here" tip from the one button', async () => {
+    renderOnboarding();
+    fireEvent.click(await screen.findByRole('button', { name: /Set up payouts/ }));
+    expect(await screen.findByRole('button', { name: 'Close Stripe' })).toBeInTheDocument();
+    expect(screen.getByText(/Tap the button in the Stripe form/)).toBeInTheDocument();
   });
 
   it('says plainly that setup is not finished after leaving Stripe early', async () => {
+    state.status = { hasAccount: true, detailsSubmitted: false, payoutsEnabled: false, w9Submitted: false };
     const { onSuccess } = renderOnboarding();
+    fireEvent.click(await screen.findByRole('button', { name: /Finish setup in Stripe/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Close Stripe' }));
-    const notice = await screen.findByRole('status');
-    expect(notice).toHaveTextContent('Setup is not finished yet.');
-    expect(notice).toHaveTextContent(
-      'Stripe still needs your personal details, bank account and tax info (W-9).',
-    );
+    expect(await screen.findByText('Almost there: setup is not finished')).toBeInTheDocument();
+    expect(
+      screen.getByText('Stripe still needs your personal details, bank account and tax info (W-9).'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Pick up where you stopped. Stripe keeps what you already entered.')).toBeInTheDocument();
+    expect(screen.getByText('Bank account').closest('li')).toHaveTextContent('still needed');
     expect(onSuccess).toHaveBeenCalled();
-    expect(screen.getByRole('button', { name: 'Check again' })).toBeInTheDocument();
   });
 
-  it('tells people Stripe is still checking once their details are in', async () => {
+  it('offers a status check while Stripe verifies the details', async () => {
     state.status = { hasAccount: true, detailsSubmitted: true, payoutsEnabled: false, w9Submitted: true };
     renderOnboarding();
-    fireEvent.click(await screen.findByRole('button', { name: 'Close Stripe' }));
-    expect(await screen.findByRole('status')).toHaveTextContent('Stripe is checking your details');
+    expect(await screen.findByRole('heading', { name: 'Stripe is checking your details' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Check status' }));
+    const { paymentsApi } = await import('../../api/payments');
+    expect(paymentsApi.syncAccountStatus).toHaveBeenCalled();
   });
 
-  it('collapses to a single ready line once payouts are set up', async () => {
-    state.status = { hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true };
+  it('shows the teal card with the last 4 digits once payouts are ready', async () => {
+    state.status = { hasAccount: true, detailsSubmitted: true, payoutsEnabled: true, w9Submitted: true, bankAccountLast4: '6789' };
     renderOnboarding();
-    expect(await screen.findByText('Ready for payouts')).toBeInTheDocument();
-    expect(screen.queryByText('Get paid in 3 steps')).toBeNull();
-    fireEvent.click(await screen.findByRole('button', { name: 'Close Stripe' }));
-    expect(screen.queryByRole('status')).toBeNull();
+    expect(await screen.findByRole('heading', { name: 'Ready for payouts' })).toBeInTheDocument();
+    expect(screen.getByText(/•••• 6789/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update bank or tax details' })).toBeInTheDocument();
   });
 });

@@ -78,7 +78,7 @@ describe('derivePostEventProgress', () => {
     const p = derivePostEventProgress({ ...base, surveyDraftSaved: true, payoutReady: false });
     expect(p.active.key).toBe('payment');
     expect(p.active.state).toBe('attention');
-    expect(p.active.helper).toBe('Payout setup is not finished yet. Complete it below to continue.');
+    expect(p.active.helper).toBe('Payout setup is not finished yet. Finish it to continue.');
   });
 
   it('does not flag a payment step that has not been reached yet', () => {
