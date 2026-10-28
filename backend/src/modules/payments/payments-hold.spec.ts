@@ -15,7 +15,9 @@ describe('PaymentsService hold and audit', () => {
   const prisma = {
     payment: {
       findUnique: jest.fn(),
+      findUniqueOrThrow: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       delete: jest.fn(),
       create: jest.fn(),
     },
@@ -38,17 +40,17 @@ describe('PaymentsService hold and audit', () => {
   });
 
   it('holds a pending payment with a reason and writes an audit row', async () => {
-    prisma.payment.findUnique.mockResolvedValue({
+    prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+    prisma.payment.findUniqueOrThrow.mockResolvedValue({
       id: 'pay_1',
       status: 'PENDING',
-      heldAt: null,
     });
-    prisma.payment.update.mockResolvedValue({ id: 'pay_1', status: 'PENDING' });
 
     await service.holdPayment('pay_1', '  finance review  ', actor);
 
-    expect(prisma.payment.update).toHaveBeenCalledWith(
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: { id: 'pay_1', status: 'PENDING', heldAt: null },
         data: expect.objectContaining({
           heldByUserId: 'admin-1',
           holdReason: 'finance review',
@@ -72,6 +74,9 @@ describe('PaymentsService hold and audit', () => {
     await expect(service.holdPayment('pay_1', '   ', actor)).rejects.toBeInstanceOf(
       BadRequestException,
     );
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
+
+    prisma.payment.updateMany.mockResolvedValue({ count: 0 });
     prisma.payment.findUnique.mockResolvedValue({
       id: 'pay_1',
       status: 'PENDING',
@@ -98,12 +103,18 @@ describe('PaymentsService hold and audit', () => {
       heldAt: new Date(),
       holdReason: 'finance review',
     });
-    prisma.payment.update.mockResolvedValue({ id: 'pay_1' });
+    prisma.payment.updateMany.mockResolvedValue({ count: 1 });
+    prisma.payment.findUniqueOrThrow.mockResolvedValue({ id: 'pay_1' });
 
     await service.releaseHold('pay_1', actor);
 
-    expect(prisma.payment.update).toHaveBeenCalledWith(
+    expect(prisma.payment.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
+        where: {
+          id: 'pay_1',
+          status: 'PENDING',
+          heldAt: { not: null },
+        },
         data: { heldAt: null, heldByUserId: null, holdReason: null },
       }),
     );
@@ -171,14 +182,21 @@ describe('PaymentsService hold and audit', () => {
   });
 
   it('holds two pending payments and reports the ineligible one', async () => {
+    prisma.payment.updateMany.mockImplementation(
+      async ({ where }: { where: { id: string } }) => ({
+        count: where.id === 'paid' ? 0 : 1,
+      }),
+    );
     prisma.payment.findUnique.mockImplementation(async ({ where }: { where: { id: string } }) => {
       if (where.id === 'paid') return { id: 'paid', status: 'PAID', heldAt: null };
       return { id: where.id, status: 'PENDING', heldAt: null };
     });
-    prisma.payment.update.mockImplementation(async ({ where }: { where: { id: string } }) => ({
-      id: where.id,
-      status: 'PENDING',
-    }));
+    prisma.payment.findUniqueOrThrow.mockImplementation(
+      async ({ where }: { where: { id: string } }) => ({
+        id: where.id,
+        status: 'PENDING',
+      }),
+    );
 
     const result = await service.bulkPayments(
       { action: 'hold', paymentIds: ['a', 'paid', 'b'], reason: 'finance review' },
@@ -200,7 +218,7 @@ describe('PaymentsService hold and audit', () => {
     await expect(
       service.bulkPayments({ action: 'hold', paymentIds: ['a'], reason: '  ' }, actor),
     ).rejects.toBeInstanceOf(BadRequestException);
-    expect(prisma.payment.update).not.toHaveBeenCalled();
+    expect(prisma.payment.updateMany).not.toHaveBeenCalled();
     expect(audit.record).not.toHaveBeenCalled();
   });
 

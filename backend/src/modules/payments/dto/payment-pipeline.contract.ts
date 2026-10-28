@@ -573,11 +573,9 @@ export function pipelineCsv(
 export type PayoutDetailsOrigin = 'new' | 'reused';
 
 /**
- * Snapshotted when the learner requests an honorarium.
- * `reused` when this user already has another honorarium request or a
- * non-cancelled honorarium payment (the Stripe account is already in use).
- * `new` on the first confirmation.
- * Rows requested before the column existed stay null. Do not backfill them.
+ * Legacy helper for tests only. Live honorarium requests store the learner's
+ * `payoutDetailsEntryKind` (REUSED / NEWLY_ENTERED); the pipeline maps that via
+ * {@link normalizePayoutDetailsOrigin}. Do not call this from services.
  */
 export function payoutDetailsOriginForRequest(
   priorHonorariumUses: number,

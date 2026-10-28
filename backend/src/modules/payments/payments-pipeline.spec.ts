@@ -51,6 +51,7 @@ describe('PaymentsService.listPipeline', () => {
   };
   const stripeService = { isConfigured: jest.fn() };
   const configService = { get: jest.fn() };
+  const audit = { record: jest.fn() };
   let service: PaymentsService;
 
   beforeEach(() => {
@@ -61,6 +62,7 @@ describe('PaymentsService.listPipeline', () => {
       prisma as never,
       stripeService as never,
       configService as never,
+      audit as never,
     );
   });
 
@@ -93,7 +95,9 @@ describe('PaymentsService.listPipeline', () => {
     });
   });
 
-  it('skips an unmatched survey that has no program', async () => {
+  it('skips survey responses whose program row is missing after load', async () => {
+    // Survey.programId is required in schema, so "no webinar" orphans cannot exist.
+    // A null include is defensive only (broken join), not a product exception path.
     prisma.programRegistration.findMany.mockResolvedValue([]);
     prisma.surveyResponse.findMany.mockResolvedValue([
       {

@@ -267,6 +267,10 @@ export interface PendingPayment {
   checkMailedAt?: string | null;
   checkDeliveredAt?: string | null;
   checkTrackingInfo?: string | null;
+  /** Set while an admin holds this PENDING payout. */
+  heldAt?: string | null;
+  heldByUserId?: string | null;
+  holdReason?: string | null;
   /** From registration: learner confirmed Stripe details for this program. */
   payoutDetailsConfirmedAt?: string | null;
   /** REUSED = existing Connect details; NEWLY_ENTERED = set up/edited in post-event flow. */
@@ -596,6 +600,22 @@ export function normalizePaymentPipeline(
   };
 }
 
+/**
+ * Convert a YYYY-MM-DD date-input value to ISO using the browser's local day
+ * bounds (not UTC midnight), so survey filters match the calendar day the admin picked.
+ */
+export function localDayBoundIso(dateYmd: string, endOfDay: boolean): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateYmd.trim());
+  if (!match) return dateYmd;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const local = endOfDay
+    ? new Date(year, month - 1, day, 23, 59, 59, 999)
+    : new Date(year, month - 1, day, 0, 0, 0, 0);
+  return local.toISOString();
+}
+
 /** Export uses the same program, status, survey dates, and name filters as the table. */
 export function pipelineExportParams(filters: {
   programId?: string;
@@ -621,8 +641,8 @@ export function pipelineExportParams(filters: {
   } = { scope: 'pipeline' };
   if (filters.programId) params.programId = filters.programId;
   if (filters.status) params.status = filters.status;
-  if (filters.surveyFrom) params.from = `${filters.surveyFrom}T00:00:00.000Z`;
-  if (filters.surveyTo) params.to = `${filters.surveyTo}T23:59:59.999Z`;
+  if (filters.surveyFrom) params.from = localDayBoundIso(filters.surveyFrom, false);
+  if (filters.surveyTo) params.to = localDayBoundIso(filters.surveyTo, true);
   const q = filters.q?.trim();
   if (q) params.q = q;
   return params;
@@ -639,7 +659,9 @@ export function bulkPaymentRequest(input: {
   confirmed: boolean;
 }): { action: 'release' | 'hold'; paymentIds: string[]; reason?: string } | null {
   if (!input.confirmed) return null;
-  const paymentIds = [...new Set(input.paymentIds.map((id) => id.trim()).filter(Boolean))];
+  const paymentIds = [
+    ...new Set(input.paymentIds.map((id) => id.trim()).filter(Boolean)),
+  ].slice(0, 25);
   if (paymentIds.length === 0) return null;
   if (input.action === 'hold') {
     const reason = input.reason?.trim() ?? '';
@@ -2544,6 +2566,11 @@ export const adminApi = {
 
   payNow: async (paymentId: string) => {
     const { data } = await apiClient.post(`/payments/${paymentId}/pay-now`);
+    return data;
+  },
+
+  releaseHold: async (paymentId: string) => {
+    const { data } = await apiClient.post(`/payments/${paymentId}/release-hold`);
     return data;
   },
 

@@ -1143,8 +1143,9 @@ export class PaymentsService {
   }
 
   /**
-   * Post-event feedback with no user account. Drafts are ignored.
-   * A response is unmatched to a person; the survey's program is still shown.
+   * Post-event feedback with no user account on an honorarium program.
+   * Drafts are ignored. `Survey.programId` is required in schema, so an
+   * "orphan survey with no webinar" cannot exist — only unmatched-to-user.
    */
   private async listUnmatchedSurveyExceptions(opts: {
     programId: string | null;
@@ -1185,8 +1186,7 @@ export class PaymentsService {
       if (response.isDraft || response.userId) continue;
       const program = response.survey?.program;
       if (!program?.id) continue;
-      const programId = program.id;
-      if (opts.programId && programId !== opts.programId) continue;
+      if (opts.programId && program.id !== opts.programId) continue;
       if (!surveyDateInRange(response.submittedAt, opts.from, opts.to)) continue;
       const userName =
         `${response.publicRegistration?.firstName ?? ''} ${response.publicRegistration?.lastName ?? ''}`.trim();
@@ -1195,7 +1195,7 @@ export class PaymentsService {
       items.push(
         unmatchedSurveyExceptionItem({
           surveyResponseId: response.id,
-          programId,
+          programId: program.id,
           programTitle: program.title?.trim() || 'Untitled program',
           userName: userName || null,
           userEmail: userEmail || null,
@@ -1383,8 +1383,9 @@ export class PaymentsService {
     if (ids.length === 0) {
       throw new BadRequestException('Select at least one payment');
     }
-    if (ids.length > 100) {
-      throw new BadRequestException('Select at most 100 payments');
+    // Cap keeps one ALB request under the ~90s idle timeout (each release hits Stripe).
+    if (ids.length > 25) {
+      throw new BadRequestException('Select at most 25 payments');
     }
     if (input.action === 'hold' && !input.reason?.trim()) {
       throw new BadRequestException('A hold reason is required');
@@ -1417,51 +1418,67 @@ export class PaymentsService {
     if (trimmed.length > 500) {
       throw new BadRequestException('Hold reason must be 500 characters or fewer');
     }
-    const payment = await this.prisma.payment.findUnique({
-      where: { id: paymentId },
-    });
-    if (!payment) throw new NotFoundException('Payment not found');
-    if (payment.heldAt) {
-      throw new BadRequestException('Payment is already on hold');
-    }
-    if (payment.status !== 'PENDING') {
-      throw new BadRequestException(
-        `Only a pending payment can be held (status: ${payment.status})`,
-      );
-    }
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
+    // Atomic: only hold while still PENDING and not already held (avoids racing Pay now).
+    const claimed = await this.prisma.payment.updateMany({
+      where: { id: paymentId, status: 'PENDING', heldAt: null },
       data: {
         heldAt: new Date(),
         heldByUserId: actor?.userId ?? null,
         holdReason: trimmed,
       },
     });
+    if (claimed.count === 0) {
+      const payment = await this.prisma.payment.findUnique({
+        where: { id: paymentId },
+      });
+      if (!payment) throw new NotFoundException('Payment not found');
+      if (payment.heldAt) {
+        throw new BadRequestException('Payment is already on hold');
+      }
+      if (payment.status !== 'PENDING') {
+        throw new BadRequestException(
+          `Only a pending payment can be held (status: ${payment.status})`,
+        );
+      }
+      throw new ConflictException(
+        'Payment could not be held. It may no longer be pending.',
+      );
+    }
     this.recordPaymentAudit(actor, 'payment.hold', paymentId, { reason: trimmed });
-    return updated;
+    return this.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
   }
 
   async releaseHold(paymentId: string, actor?: AuthUser) {
-    const payment = await this.prisma.payment.findUnique({
+    const existing = await this.prisma.payment.findUnique({
       where: { id: paymentId },
     });
-    if (!payment) throw new NotFoundException('Payment not found');
-    if (!payment.heldAt) {
+    if (!existing) throw new NotFoundException('Payment not found');
+    if (!existing.heldAt) {
       throw new BadRequestException('Payment is not on hold');
     }
-    if (payment.status !== 'PENDING') {
+    if (existing.status !== 'PENDING') {
       throw new BadRequestException(
-        `Only a pending payment can be released from hold (status: ${payment.status})`,
+        `Only a pending payment can be released from hold (status: ${existing.status})`,
       );
     }
-    const updated = await this.prisma.payment.update({
-      where: { id: paymentId },
+    // Atomic: only clear hold while still PENDING and held.
+    const released = await this.prisma.payment.updateMany({
+      where: {
+        id: paymentId,
+        status: 'PENDING',
+        heldAt: { not: null },
+      },
       data: { heldAt: null, heldByUserId: null, holdReason: null },
     });
+    if (released.count === 0) {
+      throw new ConflictException(
+        'Hold could not be released. The payment may no longer be pending.',
+      );
+    }
     this.recordPaymentAudit(actor, 'payment.release_hold', paymentId, {
-      previousReason: payment.holdReason,
+      previousReason: existing.holdReason,
     });
-    return updated;
+    return this.prisma.payment.findUniqueOrThrow({ where: { id: paymentId } });
   }
 
   async retryPayment(paymentId: string, actor?: AuthUser): Promise<PayoutResponseDto> {
@@ -1710,8 +1727,12 @@ export class PaymentsService {
   /**
    * Create payout to user via Stripe Connect (admin only).
    * Pass `idempotencyKey` (or reuse the same key on retry) for safe deduplication.
+   * Honors active holds on the same user/program and writes payment.release audit.
    */
-  async createPayout(dto: CreatePayoutDto): Promise<PayoutResponseDto> {
+  async createPayout(
+    dto: CreatePayoutDto,
+    actor?: AuthUser,
+  ): Promise<PayoutResponseDto> {
     this.assertStripeConfigured();
     this.logger.log(
       `Creating payout for user ${dto.userId}: $${dto.amount / 100}`,
@@ -1728,6 +1749,22 @@ export class PaymentsService {
     if (!user.stripeAccountId || !user.stripePayoutsEnabled) {
       throw new BadRequestException(
         'User does not have an active Stripe Connect account ready for payouts.',
+      );
+    }
+
+    const heldOpen = await this.prisma.payment.findFirst({
+      where: {
+        userId: dto.userId,
+        type: 'HONORARIUM',
+        status: { in: ['PENDING', 'PROCESSING'] },
+        heldAt: { not: null },
+        ...(dto.programId ? { programId: dto.programId } : {}),
+      },
+      select: { id: true },
+    });
+    if (heldOpen) {
+      throw new BadRequestException(
+        'An honorarium payout for this person is on hold. Release the hold before paying.',
       );
     }
 
@@ -1849,11 +1886,13 @@ export class PaymentsService {
     }
 
     const locked = await this.prisma.payment.updateMany({
-      where: { id: payment.id, status: 'PENDING' },
+      where: { id: payment.id, status: 'PENDING', heldAt: null },
       data: { status: 'PROCESSING' },
     });
     if (locked.count !== 1) {
-      throw new ConflictException('Could not start payout processing.');
+      throw new ConflictException(
+        'Could not start payout processing. The payment may be on hold or already processing.',
+      );
     }
 
     try {
@@ -1885,6 +1924,10 @@ export class PaymentsService {
       await this.prisma.user.update({
         where: { id: dto.userId },
         data: { totalEarnings: { increment: dto.amount } },
+      });
+      this.recordPaymentAudit(actor, 'payment.release', payment.id, {
+        transferId: transfer.id,
+        source: 'createPayout',
       });
       return {
         paymentId: payment.id,

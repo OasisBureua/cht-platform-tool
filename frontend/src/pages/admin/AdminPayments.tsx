@@ -21,6 +21,7 @@ import {
   pipelineRowsForStatus,
   bulkPaymentRequest,
   pipelineExceptionSummary,
+  localDayBoundIso,
   pipelineExportParams,
   pipelineTimelineItems,
   unpaidDaysLabel,
@@ -28,7 +29,7 @@ import {
 import { getApiErrorMessage } from '../../api/client';
 import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
-import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download } from 'lucide-react';
+import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download, ChevronRight } from 'lucide-react';
 import { StripeMark } from '../../components/branding/StripeMark';
 
 function formatMoney(cents: number) {
@@ -50,6 +51,14 @@ function pipelineStatusClass(status: PipelineStatus): string {
     return 'bg-brand-50 text-brand-800';
   }
   return 'bg-muted text-foreground';
+}
+
+/** Filter chip look — same light muted as totals blocks; only selected changes. */
+function pipelineStatusChipClass(selected: boolean): string {
+  if (selected) {
+    return 'border-brand-600 bg-brand-100 text-brand-900 ring-1 ring-brand-400/50';
+  }
+  return 'border-border bg-muted/40 text-foreground hover:bg-muted/70';
 }
 
 function asArray<T>(value: T[] | null | undefined): T[] {
@@ -314,11 +323,11 @@ export default function AdminPayments() {
     isError: pipelineError,
     error: pipelineErrorObj,
   } = useQuery({
+    // Status is filtered client-side so chips don't refetch totals/overdue/exceptions.
     queryKey: [
       'admin',
       'payment-pipeline',
       pipelineProgramId ?? 'all',
-      pipelineStatus ?? 'all',
       surveyFrom,
       surveyTo,
       userFilter.trim(),
@@ -326,9 +335,8 @@ export default function AdminPayments() {
     queryFn: () =>
       adminApi.getPaymentPipeline({
         programId: pipelineProgramId,
-        status: pipelineStatus ?? undefined,
-        from: surveyFrom ? `${surveyFrom}T00:00:00.000Z` : undefined,
-        to: surveyTo ? `${surveyTo}T23:59:59.999Z` : undefined,
+        from: surveyFrom ? localDayBoundIso(surveyFrom, false) : undefined,
+        to: surveyTo ? localDayBoundIso(surveyTo, true) : undefined,
         q: userFilter,
       }),
     enabled: !dateRangeInvalid,
@@ -444,8 +452,23 @@ export default function AdminPayments() {
   const visibleSelectedIds = selectedPaymentIds.filter((id) =>
     filteredPending.some((payment) => payment.id === id),
   );
+  /** Bulk "Pay selected" only acts on rows that are not on hold. */
+  const payableSelectedIds = visibleSelectedIds.filter((id) => {
+    const payment = filteredPending.find((row) => row.id === id);
+    return payment != null && !payment.heldAt;
+  });
   const allPendingSelected =
     filteredPending.length > 0 && visibleSelectedIds.length === filteredPending.length;
+
+  const paymentLabelById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const payment of pending) {
+      const name = `${payment.user?.firstName ?? ''} ${payment.user?.lastName ?? ''}`.trim();
+      const program = payment.program?.title?.trim() || 'No program';
+      map.set(payment.id, `${name || payment.user?.email || payment.id} · ${program}`);
+    }
+    return map;
+  }, [pending]);
 
   const bulkMutation = useMutation({
     mutationFn: (body: { action: 'release' | 'hold'; paymentIds: string[]; reason?: string }) =>
@@ -461,11 +484,16 @@ export default function AdminPayments() {
         return;
       }
       setBulkErrors(
-        failed.map((row) => `${row.paymentId}: ${row.error ?? 'Payment action failed'}`),
+        failed.map((row) => {
+          const who = paymentLabelById.get(row.paymentId) ?? row.paymentId;
+          return `${who}: ${row.error ?? 'Payment action failed'}`;
+        }),
       );
       setSelectedPaymentIds(failed.map((row) => row.paymentId));
     },
     onError: (err) => {
+      // Refresh so the admin can see any transfers that finished before a timeout.
+      invalidateAdminPaymentQueries(queryClient);
       setBulkErrors([getApiErrorMessage(err, 'Could not update the selected payments.')]);
     },
   });
@@ -477,6 +505,16 @@ export default function AdminPayments() {
     },
     onError: () => {
       // Payout failures mark the row FAILED server-side — refresh lists + summary.
+      invalidateAdminPaymentQueries(queryClient);
+    },
+  });
+
+  const releaseHoldMutation = useMutation({
+    mutationFn: (paymentId: string) => adminApi.releaseHold(paymentId),
+    onSuccess: () => {
+      invalidateAdminPaymentQueries(queryClient);
+    },
+    onError: () => {
       invalidateAdminPaymentQueries(queryClient);
     },
   });
@@ -518,10 +556,10 @@ export default function AdminPayments() {
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-2">
           <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
-          <p className="text-sm text-muted-foreground flex flex-wrap items-center gap-x-1 gap-y-1">
-            Review payouts by program, then drill down to Pending, Paid, Failed, and Eligible rows. Click{' '}
+          <p className="text-sm text-muted-foreground">
+            Pipeline overview first, then open a program for its payment lists. Use{' '}
             <strong>Pay now</strong> on a pending row to send through{' '}
-            <StripeMark size="sm" className="translate-y-px" /> (ACH direct deposit only).
+            <StripeMark size="sm" className="translate-y-px" /> (ACH only).
           </p>
         </div>
         <div className="shrink-0 flex flex-wrap gap-2">
@@ -693,7 +731,7 @@ export default function AdminPayments() {
         <div className="px-6 pt-5 pb-3 border-b border-border">
           <h2 className="text-base font-semibold text-foreground">Honorarium pipeline</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Statuses below are buttons. Click one to list those people in the table. Click a person to open their timeline.
+            Status chips filter the people table. A person row opens their timeline.
           </p>
           {pipelineReady && pipelineData ? (
             <div className="mt-4 space-y-3">
@@ -737,7 +775,7 @@ export default function AdminPayments() {
         </div>
         {pipelineReady ? (
         <div className="px-6 pt-4">
-          <p className="text-sm text-foreground">
+          <p className="text-sm font-semibold text-foreground">
             {pipelineStatus
               ? `Showing ${PIPELINE_STATUS_LABELS[pipelineStatus].toLowerCase()} in the table below. Click that status again to show everyone.`
               : 'Click a status to show only those people in the table below.'}
@@ -755,12 +793,8 @@ export default function AdminPayments() {
                   setPipelineStatus((current) => (current === status ? null : status))
                 }
                 className={[
-                  'flex min-h-9 items-center justify-between gap-2 rounded-[6px] border px-3 py-2 text-left text-xs font-semibold',
-                  selected
-                    ? 'border-brand-600 bg-brand-50 text-brand-800'
-                    : count > 0
-                      ? 'border-border bg-card text-foreground hover:bg-muted'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                  'flex min-h-9 items-center justify-between gap-2 rounded-[6px] border px-3 py-2 text-left text-xs font-semibold transition-colors',
+                  pipelineStatusChipClass(selected),
                 ].join(' ')}
               >
                 <span>{PIPELINE_STATUS_LABELS[status]}</span>
@@ -954,7 +988,7 @@ export default function AdminPayments() {
         ) : null}
       </section>
 
-      {/* Program summary — click a row to drill down */}
+      {/* Program summary — rows open payment lists below */}
       <section
         id="program-summary"
         className="rounded-card border border-border bg-card overflow-hidden"
@@ -963,7 +997,7 @@ export default function AdminPayments() {
           <div>
             <h2 className="text-base font-semibold text-foreground">Programs</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Select a program to view its Pending, Paid, Failed, and Eligible payments. Pending, Paid,
+              Each program opens its Pending, Paid, Failed, and Eligible lists below. Pending, Paid,
               and Failed totals are all-time.
             </p>
           </div>
@@ -1019,6 +1053,9 @@ export default function AdminPayments() {
                   <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
                     Eligible
                   </th>
+                  <th className="px-4 py-3 text-right text-xs font-semibold text-muted-foreground uppercase">
+                    <span className="sr-only">Open</span>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -1027,23 +1064,31 @@ export default function AdminPayments() {
                   const selected =
                     programFilter === selectValue ||
                     (programFilter === 'none' && row.programId === null);
+                  const toggleProgram = () =>
+                    setProgramFilter(selected ? 'all' : selectValue);
                   return (
                     <tr
                       key={row.key}
                       className={[
-                        'cursor-pointer transition-colors',
-                        selected ? 'bg-brand-50' : 'hover:bg-muted/60',
+                        'group cursor-pointer transition-colors border-l-2',
+                        selected
+                          ? 'border-l-brand-600 bg-brand-50'
+                          : 'border-l-transparent hover:border-l-brand-300 hover:bg-muted/70',
                       ].join(' ')}
-                      onClick={() => setProgramFilter(selectValue)}
+                      onClick={toggleProgram}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
-                          setProgramFilter(selectValue);
+                          toggleProgram();
                         }
                       }}
                       tabIndex={0}
                       aria-selected={selected}
-                      aria-label={`Open payments for ${row.title}`}
+                      aria-label={
+                        selected
+                          ? `Close payments for ${row.title}`
+                          : `Open payments for ${row.title}`
+                      }
                     >
                       <td className="px-4 py-3">
                         <p className="font-medium text-foreground">{row.title}</p>
@@ -1084,6 +1129,25 @@ export default function AdminPayments() {
                       <td className="px-4 py-3 text-right font-semibold text-foreground">
                         {eligibleError ? '—' : row.eligibleCount}
                       </td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                        <span
+                          className={[
+                            'inline-flex items-center gap-1 text-xs font-semibold',
+                            selected
+                              ? 'text-brand-700'
+                              : 'text-muted-foreground group-hover:text-brand-700',
+                          ].join(' ')}
+                        >
+                          {selected ? 'Viewing' : 'View'}
+                          <ChevronRight
+                            className={[
+                              'h-4 w-4 transition-transform',
+                              selected ? 'translate-x-0.5' : 'group-hover:translate-x-0.5',
+                            ].join(' ')}
+                            aria-hidden
+                          />
+                        </span>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1099,11 +1163,12 @@ export default function AdminPayments() {
         <div className="rounded-card border border-brand-200 bg-brand-50/60 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-sm font-semibold text-foreground">
+              Viewing:{' '}
               {selectedProgramRow?.title ??
                 (programFilter === 'none' ? 'No program' : 'Selected program')}
             </p>
             <p className="text-xs text-muted-foreground">
-              Showing this program&apos;s Pending, Paid, Failed, and Eligible rows.
+              Pending, Paid, Failed, and Eligible lists for this program.
             </p>
           </div>
           <button
@@ -1114,11 +1179,7 @@ export default function AdminPayments() {
             Back to all programs
           </button>
         </div>
-      ) : (
-        <p className="text-sm text-muted-foreground text-center py-2">
-          Select a program above to drill down into its payment lists.
-        </p>
-      )}
+      ) : null}
 
       {showPaymentDetails ? (
       <>
@@ -1160,7 +1221,7 @@ export default function AdminPayments() {
           <div className="flex flex-wrap items-center gap-2 border-b border-border px-4 py-3">
             <button
               type="button"
-              disabled={visibleSelectedIds.length === 0}
+              disabled={payableSelectedIds.length === 0}
               onClick={() => {
                 setBulkErrors([]);
                 setBulkReason('');
@@ -1168,13 +1229,14 @@ export default function AdminPayments() {
               }}
               className="h-9 rounded-[6px] bg-brand-600 px-3 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
             >
-              Release selected
+              Pay selected
             </button>
             <button
               type="button"
-              disabled={visibleSelectedIds.length === 0}
+              disabled={payableSelectedIds.length === 0}
               onClick={() => {
                 setBulkErrors([]);
+                setBulkReason('');
                 setBulkAction('hold');
               }}
               className="h-9 rounded-[6px] border border-border px-3 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-50"
@@ -1183,6 +1245,9 @@ export default function AdminPayments() {
             </button>
             <span className="text-xs text-muted-foreground">
               {visibleSelectedIds.length} selected
+              {payableSelectedIds.length !== visibleSelectedIds.length
+                ? ` · ${payableSelectedIds.length} payable (held rows skipped)`
+                : ''}
             </span>
           </div>
         ) : null}
@@ -1225,13 +1290,22 @@ export default function AdminPayments() {
                     );
                   }}
                   onPayNow={() => payNowMutation.mutate(p.id)}
+                  onReleaseHold={() => releaseHoldMutation.mutate(p.id)}
                   onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
                   isPaying={payNowMutation.isPending && payNowMutation.variables === p.id}
+                  isReleasingHold={
+                    releaseHoldMutation.isPending && releaseHoldMutation.variables === p.id
+                  }
                   isDeleting={deleteMutation.isPending && deleteMutation.variables === p.id}
                   payError={
                     payNowMutation.isError && payNowMutation.variables === p.id
                       ? getApiErrorMessage(payNowMutation.error, 'Pay now failed.')
-                      : null
+                      : releaseHoldMutation.isError && releaseHoldMutation.variables === p.id
+                        ? getApiErrorMessage(
+                            releaseHoldMutation.error,
+                            'Could not release hold.',
+                          )
+                        : null
                   }
                 />
               ))}
@@ -1481,13 +1555,18 @@ export default function AdminPayments() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-semibold text-foreground">
-                  {bulkAction === 'release' ? 'Release selected payments?' : 'Hold selected payments?'}
+                  {bulkAction === 'release' ? 'Pay selected payments?' : 'Hold selected payments?'}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-1">
                   {bulkAction === 'release'
-                    ? `This sends ${visibleSelectedIds.length} pending payout${visibleSelectedIds.length === 1 ? '' : 's'} through Stripe. A payment that is not pending, or is already on hold, is skipped.`
-                    : `This holds ${visibleSelectedIds.length} pending payout${visibleSelectedIds.length === 1 ? '' : 's'}. Pay now stays blocked until each hold is released.`}
+                    ? `This sends ${Math.min(payableSelectedIds.length, 25)} pending payout${payableSelectedIds.length === 1 ? '' : 's'} through Stripe (max 25 per request). Held rows are not included — use Release hold on each row first.`
+                    : `This holds ${Math.min(payableSelectedIds.length, 25)} pending payout${payableSelectedIds.length === 1 ? '' : 's'} (max 25 per request). Pay now stays blocked until each hold is released.`}
                 </p>
+                {payableSelectedIds.length > 25 ? (
+                  <p className="mt-2 text-sm text-destructive">
+                    You selected {payableSelectedIds.length} payable rows. Confirm will process the first 25 only — run again for the rest.
+                  </p>
+                ) : null}
               </div>
               <button
                 type="button"
@@ -1534,9 +1613,16 @@ export default function AdminPayments() {
               <button
                 type="button"
                 onClick={() => {
+                  const ids = payableSelectedIds.slice(0, 25);
+                  if (ids.length === 0) {
+                    setBulkErrors([
+                      'No payable rows selected. Release hold on held rows, or select pending rows that are not on hold.',
+                    ]);
+                    return;
+                  }
                   const body = bulkPaymentRequest({
                     action: bulkAction,
-                    paymentIds: visibleSelectedIds,
+                    paymentIds: ids,
                     reason: bulkReason,
                     confirmed: true,
                   });
@@ -1545,7 +1631,7 @@ export default function AdminPayments() {
                 }}
                 disabled={
                   bulkMutation.isPending ||
-                  visibleSelectedIds.length === 0 ||
+                  payableSelectedIds.length === 0 ||
                   (bulkAction === 'hold' && bulkReason.trim().length === 0)
                 }
                 className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2"
@@ -2069,8 +2155,10 @@ function PendingRow({
   selected,
   onSelectedChange,
   onPayNow,
+  onReleaseHold,
   onRequestDelete,
   isPaying,
+  isReleasingHold,
   isDeleting,
   payError,
 }: {
@@ -2078,21 +2166,28 @@ function PendingRow({
   selected: boolean;
   onSelectedChange: (checked: boolean) => void;
   onPayNow: () => void;
+  onReleaseHold: () => void;
   onRequestDelete: () => void;
   isPaying: boolean;
+  isReleasingHold: boolean;
   isDeleting: boolean;
   payError?: string | null;
 }) {
+  const isHeld = Boolean(payment.heldAt);
   const hasStripe =
     !!payment.user.stripeAccountId && payment.user.stripePayoutsEnabled !== false;
   const hasPayoutAccount = hasStripe;
   const hasW9 = payment.user.w9Submitted !== false;
-  const canPay = hasPayoutAccount && hasW9;
-  const blockReason = !hasPayoutAccount
-    ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
-    : !hasW9
-      ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
-      : null;
+  const canPay = hasPayoutAccount && hasW9 && !isHeld;
+  const blockReason = isHeld
+    ? payment.holdReason?.trim()
+      ? `On hold: ${payment.holdReason.trim()}`
+      : 'On hold — release the hold before Pay now'
+    : !hasPayoutAccount
+      ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
+      : !hasW9
+        ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
+        : null;
 
   const methodLabel =
     payment.user.preferredPaymentMethod === 'CHECK'
@@ -2121,6 +2216,11 @@ function PendingRow({
           {payment.user.firstName} {payment.user.lastName}
         </p>
         <p className="text-sm text-muted-foreground">{payment.user.email}</p>
+        {isHeld ? (
+          <p className="mt-1 inline-flex rounded-[6px] bg-warning/10 px-2 py-0.5 text-xs font-semibold text-warning">
+            On hold
+          </p>
+        ) : null}
       </td>
       <td className="px-4 py-3 font-semibold text-foreground">{formatMoney(payment.amount)}</td>
       <td className="px-4 py-3 text-sm text-muted-foreground">{payment.type.replace(/_/g, ' ')}</td>
@@ -2140,21 +2240,33 @@ function PendingRow({
       <td className="px-4 py-3 text-sm text-muted-foreground">{format(new Date(payment.createdAt), 'MMM d, yyyy')}</td>
       <td className="px-4 py-3 text-right whitespace-nowrap">
         <div className="flex items-center justify-end gap-2">
-          <button
-            type="button"
-            onClick={onPayNow}
-            disabled={!canPay || isPaying}
-            title={blockReason ?? 'Send payout via Stripe ACH'}
-            className={[
-              'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
-              canPay && !isPaying
-                ? 'bg-brand-600 text-white hover:bg-brand-700'
-                : 'bg-gray-200 text-gray-500 cursor-not-allowed',
-            ].join(' ')}
-          >
-            <DollarSign className="h-4 w-4" aria-hidden />
-            {isPaying ? 'Processing…' : 'Pay now'}
-          </button>
+          {isHeld ? (
+            <button
+              type="button"
+              onClick={onReleaseHold}
+              disabled={isReleasingHold}
+              title="Clear hold so Pay now can run"
+              className="inline-flex items-center justify-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm font-semibold text-warning hover:bg-warning/20 disabled:opacity-50"
+            >
+              {isReleasingHold ? 'Releasing…' : 'Release hold'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onPayNow}
+              disabled={!canPay || isPaying}
+              title={blockReason ?? 'Send payout via Stripe ACH'}
+              className={[
+                'inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition-colors',
+                canPay && !isPaying
+                  ? 'bg-brand-600 text-white hover:bg-brand-700'
+                  : 'bg-gray-200 text-gray-500 cursor-not-allowed',
+              ].join(' ')}
+            >
+              <DollarSign className="h-4 w-4" aria-hidden />
+              {isPaying ? 'Processing…' : 'Pay now'}
+            </button>
+          )}
           <button
             type="button"
             onClick={onRequestDelete}

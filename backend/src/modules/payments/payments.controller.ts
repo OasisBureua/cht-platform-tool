@@ -472,9 +472,12 @@ export class PaymentsController {
   @Post('payout')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async createPayout(@Body() dto: CreatePayoutDto): Promise<PayoutResponseDto> {
+  async createPayout(
+    @Body() dto: CreatePayoutDto,
+    @CurrentUser() actor: AuthUser,
+  ): Promise<PayoutResponseDto> {
     this.logger.log(`Creating payout for user: ${dto.userId}`);
-    return this.paymentsService.createPayout(dto);
+    return this.paymentsService.createPayout(dto, actor);
   }
 
   /**

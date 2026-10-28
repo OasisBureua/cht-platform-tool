@@ -4,6 +4,7 @@ import {
   pipelineExceptionSummary,
   normalizePaymentPipeline,
   bulkPaymentRequest,
+  localDayBoundIso,
   pipelineExportParams,
   unpaidDaysLabel,
   type PaymentPipelineRow,
@@ -188,10 +189,19 @@ describe('pipelineExportParams', () => {
       scope: 'pipeline',
       programId: 'prog-1',
       status: 'paid',
-      from: '2026-10-01T00:00:00.000Z',
-      to: '2026-10-31T23:59:59.999Z',
+      from: localDayBoundIso('2026-10-01', false),
+      to: localDayBoundIso('2026-10-31', true),
       q: 'ada',
     });
+  });
+
+  it('builds survey day bounds in local time, not UTC midnight', () => {
+    const from = localDayBoundIso('2026-10-27', false);
+    const to = localDayBoundIso('2026-10-27', true);
+    expect(new Date(from).getHours()).toBe(0);
+    expect(new Date(from).getMinutes()).toBe(0);
+    expect(new Date(to).getHours()).toBe(23);
+    expect(new Date(to).getMinutes()).toBe(59);
   });
 
   it('omits empty filters', () => {

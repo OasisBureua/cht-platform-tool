@@ -72,9 +72,8 @@ apiClient.interceptors.response.use(
 
 /** NestJS often returns `{ message: string | string[] }` on 4xx; axios uses generic `Error` otherwise.
  *
- * On 5xx or network errors the server-side `message` is usually missing; falling through
- * to axios's own `err.message` leaks strings like "Request failed with status code 502"
- * into curator-facing toasts. Prefer the caller-supplied `fallback` for that case.
+ * Network errors (no status) use the caller fallback. Useful 5xx Nest messages are kept;
+ * only blank / literal "Internal server error" fall back so real config errors still show.
  */
 export function getApiErrorMessage(err: unknown, fallback = 'Something went wrong.'): string {
   const ax = err as {
@@ -82,11 +81,22 @@ export function getApiErrorMessage(err: unknown, fallback = 'Something went wron
   };
   const m = ax.response?.data?.message;
   const status = ax.response?.status;
-  // 5xx (and no-response network errors, which have no status) => use fallback
-  // instead of "Internal server error" or axios's "Request failed with status code N".
-  if (status === undefined || status >= 500) return fallback;
-  if (Array.isArray(m)) return m.filter(Boolean).join('; ');
-  if (typeof m === 'string' && m.trim()) return m;
+  const serverMessage = Array.isArray(m)
+    ? m.filter(Boolean).join('; ').trim()
+    : typeof m === 'string'
+      ? m.trim()
+      : '';
+  if (status === undefined) return fallback;
+  if (status >= 500) {
+    if (
+      serverMessage &&
+      serverMessage.toLowerCase() !== 'internal server error'
+    ) {
+      return serverMessage;
+    }
+    return fallback;
+  }
+  if (serverMessage) return serverMessage;
   if (err instanceof Error && err.message) return err.message;
   return fallback;
 }

@@ -18,7 +18,7 @@ export class BulkPaymentDto {
   @ApiProperty({ type: [String] })
   @IsArray()
   @ArrayNotEmpty()
-  @ArrayMaxSize(100)
+  @ArrayMaxSize(25)
   @IsString({ each: true })
   paymentIds: string[];
 
