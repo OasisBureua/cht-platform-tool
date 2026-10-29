@@ -1,6 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import {
   ChevronDown,
@@ -11,7 +11,7 @@ import {
   Download,
   Inbox,
 } from 'lucide-react';
-import { adminApi } from '../../api/admin';
+import { adminApi, type SurveyCommentStage } from '../../api/admin';
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { SurveyAnalyticsPanel } from '../../components/admin/survey-analytics/SurveyAnalyticsPanel';
 import { Button } from '../../components/ui/Button';
@@ -52,10 +52,18 @@ function initials(firstName: string, lastName: string, email: string): string {
 
 type SurveyResponsesTab = 'responses' | 'analytics';
 
+const COMMENT_STAGES: Array<{ id: SurveyCommentStage; label: string }> = [
+  { id: 'access', label: 'Access' },
+  { id: 'registration', label: 'Registration' },
+  { id: 'livestream', label: 'Livestream' },
+  { id: 'honorarium', label: 'Honorarium' },
+];
+
 type ResponseRow = {
   id: string;
   submittedAt: string;
   answers: Record<string, unknown>;
+  commentStageTags?: string[];
   user: {
     id: string;
     email: string;
@@ -68,6 +76,11 @@ type ResponseRow = {
     postEventAttendanceStatus: string;
   } | null;
 };
+
+function hasFreeTextComment(answers: Record<string, unknown>): boolean {
+  const raw = answers.q16_additional_comments;
+  return typeof raw === 'string' && raw.trim().length > 0;
+}
 
 function StatusPill({ className, children }: { className: string; children: ReactNode }) {
   return (
@@ -88,12 +101,14 @@ function ResponseItem({
   surveyType,
   expanded,
   onToggle,
+  onTagsSaved,
 }: {
   response: ResponseRow;
   questionsSchema: unknown;
   surveyType: string;
   expanded: boolean;
   onToggle: () => void;
+  onTagsSaved: (responseId: string, tags: string[]) => void;
 }) {
   const answerRows = surveyAnswersToRows(response.answers, questionsSchema);
   const fullName = `${response.user.firstName} ${response.user.lastName}`.trim() || 'Unknown';
@@ -102,6 +117,21 @@ function ResponseItem({
   const submittedRelative = formatDistanceToNow(submittedAt, { addSuffix: true });
   const panelId = `response-answers-${response.id}`;
   const showAttendance = surveyType === 'FEEDBACK';
+  const showCommentTags = hasFreeTextComment(response.answers);
+  const selectedTags = new Set(response.commentStageTags ?? []);
+
+  const tagMut = useMutation({
+    mutationFn: (stages: SurveyCommentStage[]) =>
+      adminApi.updateSurveyCommentStageTags(response.id, stages),
+    onSuccess: (data) => onTagsSaved(response.id, data.commentStageTags),
+  });
+
+  const toggleTag = (stage: SurveyCommentStage) => {
+    const next = new Set(selectedTags);
+    if (next.has(stage)) next.delete(stage);
+    else next.add(stage);
+    tagMut.mutate([...next] as SurveyCommentStage[]);
+  };
 
   return (
     <li
@@ -213,6 +243,37 @@ function ResponseItem({
               questionsSchema={questionsSchema}
             />
           )}
+          {showCommentTags ? (
+            <div className="mt-4 rounded-[6px] border border-border bg-card px-3 py-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Tag comment by stage
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {COMMENT_STAGES.map((stage) => {
+                  const active = selectedTags.has(stage.id);
+                  return (
+                    <button
+                      key={stage.id}
+                      type="button"
+                      disabled={tagMut.isPending}
+                      onClick={() => toggleTag(stage.id)}
+                      className={[
+                        'rounded-[6px] px-2.5 py-1 text-xs font-semibold transition-colors',
+                        active
+                          ? 'bg-brand-600 text-white'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                      ].join(' ')}
+                    >
+                      {stage.label}
+                    </button>
+                  );
+                })}
+              </div>
+              {tagMut.isError ? (
+                <p className="mt-2 text-xs text-destructive">Could not save tags.</p>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </li>
@@ -221,10 +282,12 @@ function ResponseItem({
 
 export default function AdminSurveyResponses() {
   const { id } = useParams<{ id: string }>();
+  const queryClient = useQueryClient();
   const [csvDownloading, setCsvDownloading] = useState(false);
   const [tab, setTab] = useState<SurveyResponsesTab>('responses');
   const [page, setPage] = useState(1);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
+  const [tagOverrides, setTagOverrides] = useState<Record<string, string[]>>({});
 
   const { data, isLoading, isError, isFetching } = useQuery({
     queryKey: ['admin', 'survey', id, 'responses', page, PAGE_SIZE],
@@ -239,10 +302,15 @@ export default function AdminSurveyResponses() {
   const total = data?.pagination?.total ?? 0;
   const pageSize = data?.pagination?.pageSize ?? PAGE_SIZE;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const responses = useMemo(
-    () => (data?.pagination?.page === page ? (data.responses ?? []) : []),
-    [data, page],
-  );
+  const responses = useMemo(() => {
+    const rows =
+      data?.pagination?.page === page ? (data.responses ?? []) : [];
+    return rows.map((r) =>
+      tagOverrides[r.id]
+        ? { ...r, commentStageTags: tagOverrides[r.id] }
+        : r,
+    );
+  }, [data, page, tagOverrides]);
 
   const responseIds = useMemo(() => responses.map((r) => r.id), [responses]);
 
@@ -449,6 +517,12 @@ export default function AdminSurveyResponses() {
                   surveyType={survey.type}
                   expanded={expandedIds.has(r.id)}
                   onToggle={() => toggleOne(r.id)}
+                  onTagsSaved={(responseId, tags) => {
+                    setTagOverrides((prev) => ({ ...prev, [responseId]: tags }));
+                    void queryClient.invalidateQueries({
+                      queryKey: ['admin', 'survey', id, 'analytics'],
+                    });
+                  }}
                 />
               ))}
             </ul>

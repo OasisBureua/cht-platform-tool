@@ -210,6 +210,38 @@ export class SurveySegmentBreakdownDto {
   groups: SurveySegmentGroupDto[];
 }
 
+/** HCP Beta (and scoring-metadata) insights: ease averages + NPS + comments. */
+export class SurveyBetaInsightsDto {
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  easeByStage: Array<{
+    stage: string;
+    questionId: string;
+    prompt: string;
+    average: number | null;
+    count: number;
+  }>;
+
+  @ApiPropertyOptional({
+    description: 'Net Promoter Score summary when a 0–10 recommend question is present',
+  })
+  nps: {
+    questionId: string;
+    prompt: string;
+    score: number | null;
+    promoters: number;
+    passives: number;
+    detractors: number;
+    totalRated: number;
+  } | null;
+
+  @ApiProperty({ type: 'array', items: { type: 'object' } })
+  comments: Array<{
+    responseId?: string;
+    text: string;
+    stageTags?: string[];
+  }>;
+}
+
 /** Chart-ready analytics for a survey's responses. */
 export class SurveyResponseAnalyticsDto {
   @ApiProperty()
@@ -234,6 +266,14 @@ export class SurveyResponseAnalyticsDto {
       'Per-segment breakdown when segmentBy was provided; otherwise null.',
   })
   segments: SurveySegmentBreakdownDto | null;
+
+  @ApiProperty({
+    type: SurveyBetaInsightsDto,
+    nullable: true,
+    description:
+      'Ease-by-stage, NPS, and taggable comments when the schema declares scoring metadata.',
+  })
+  betaInsights: SurveyBetaInsightsDto | null;
 }
 
 /** Program the survey belongs to. */

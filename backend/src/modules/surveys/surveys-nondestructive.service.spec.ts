@@ -42,6 +42,9 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       delete: jest.Mock;
       deleteMany: jest.Mock;
     };
+    surveyResponse: {
+      count: jest.Mock;
+    };
   };
 
   beforeEach(() => {
@@ -64,6 +67,9 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
         update: jest.fn(),
         delete: jest.fn(),
         deleteMany: jest.fn(),
+      },
+      surveyResponse: {
+        count: jest.fn().mockResolvedValue(0),
       },
     };
 
@@ -109,8 +115,8 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     expect(prisma.survey.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         programId: 'program-1',
-        title: 'Program One - Post Event Survey',
-        description: 'Post-webinar feedback',
+        title: 'Program One - HCP Beta Testing Survey',
+        description: expect.stringContaining('HCP Beta Testing Survey'),
         type: 'FEEDBACK',
         required: true,
         jotformFormId: null,
@@ -120,10 +126,11 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
     });
     const createdQuestions = (
       prisma.survey.create.mock.calls[0][0] as {
-        data: { questions: { version: number } };
+        data: { questions: { version: number; templateId?: string } };
       }
     ).data.questions;
     expect(createdQuestions.version).toBe(1);
+    expect(createdQuestions.templateId).toBe('hcp-beta-testing-v1');
     expect(prisma.survey.deleteMany).not.toHaveBeenCalled();
     expect(prisma.survey.update).not.toHaveBeenCalled();
     expect(prisma.program.update).toHaveBeenCalledWith({
@@ -134,8 +141,21 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
 
   it('is idempotent when both survey types already exist', async () => {
     prisma.survey.findMany.mockResolvedValue([
-      { id: 'intake-1', type: 'INTAKE', createdAt: new Date() },
-      { id: 'feedback-1', type: 'FEEDBACK', createdAt: new Date() },
+      {
+        id: 'intake-1',
+        type: 'INTAKE',
+        isCustomized: false,
+        createdAt: new Date(),
+      },
+      {
+        id: 'feedback-1',
+        type: 'FEEDBACK',
+        isCustomized: false,
+        schemaVersion: 1,
+        // Already on the HCP Beta template — skip upgrade rewrite.
+        questions: { templateId: 'hcp-beta-testing-v1', version: 1 },
+        createdAt: new Date(),
+      },
     ]);
 
     await expect(
@@ -145,6 +165,7 @@ describe('SurveysService non-destructive native survey lifecycle', () => {
       feedbackSurveyId: 'feedback-1',
     });
     expect(prisma.survey.create).not.toHaveBeenCalled();
+    expect(prisma.survey.update).not.toHaveBeenCalled();
     expect(prisma.survey.deleteMany).not.toHaveBeenCalled();
     expect(prisma.program.update).not.toHaveBeenCalled();
   });

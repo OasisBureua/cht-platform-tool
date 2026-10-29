@@ -16,13 +16,20 @@ import {
 import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { ZoomRecordingFilesTable } from '../../components/admin/ZoomRecordingFilesTable';
 import { ProgramInvitationsPanel } from '../../components/admin/ProgramInvitationsPanel';
+import { ProgramEmailsPanel } from '../../components/admin/ProgramEmailsPanel';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import { getApiErrorMessage } from '../../api/client';
 
-type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys' | 'invitations';
+type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys' | 'invitations' | 'emails';
 
 function parseHubTab(raw: string | null): WebinarHubTab {
-  if (raw === 'surveys' || raw === 'enrolled' || raw === 'approvals' || raw === 'invitations') {
+  if (
+    raw === 'surveys' ||
+    raw === 'enrolled' ||
+    raw === 'approvals' ||
+    raw === 'invitations' ||
+    raw === 'emails'
+  ) {
     return raw;
   }
   return 'approvals';
@@ -932,6 +939,16 @@ export default function AdminProgramHub() {
             >
               Invitations
             </button>
+            <button
+              type="button"
+              onClick={() => setWebinarHubTab('emails')}
+              className={[
+                'rounded-lg px-3 py-1.5 text-sm font-semibold',
+                webinarHubTab === 'emails' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
+              ].join(' ')}
+            >
+              Emails
+            </button>
           </div>
           {webinarHubTab === 'approvals' ? (
             <>
@@ -1392,6 +1409,8 @@ export default function AdminProgramHub() {
             </>
           ) : webinarHubTab === 'invitations' ? (
             programId ? <ProgramInvitationsPanel programId={programId} /> : null
+          ) : webinarHubTab === 'emails' ? (
+            programId ? <ProgramEmailsPanel programId={programId} /> : null
           ) : (
             <>
               <h2 className="text-lg font-semibold text-foreground">Who is enrolled</h2>

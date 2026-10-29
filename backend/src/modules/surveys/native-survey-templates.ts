@@ -1,5 +1,58 @@
 type NativeQuestion = Record<string, unknown>;
 
+/** Canonical 5-point ease scale (maps to scores 1–5 left→right). */
+export const EASE_SCALE_5 = [
+  'Very difficult',
+  'Difficult',
+  'Neither difficult nor easy',
+  'Easy',
+  'Very easy',
+] as const;
+
+const CLARITY_SCALE_5 = [
+  'Very unclear',
+  'Unclear',
+  'Neither unclear nor clear',
+  'Clear',
+  'Very clear',
+] as const;
+
+const QUALITY_SCALE_5 = [
+  'Very poor',
+  'Poor',
+  'Fair',
+  'Good',
+  'Excellent',
+] as const;
+
+const SATISFACTION_SCALE_5 = [
+  'Very dissatisfied',
+  'Dissatisfied',
+  'Neither dissatisfied nor satisfied',
+  'Satisfied',
+  'Very satisfied',
+] as const;
+
+const REASONABLENESS_SCALE = [
+  'Very unreasonable',
+  'Unreasonable',
+  'Neither unreasonable nor reasonable',
+  'Reasonable',
+  'Very reasonable',
+  'No timeline was provided',
+] as const;
+
+export const HCP_BETA_COMMENT_STAGES = [
+  'access',
+  'registration',
+  'livestream',
+  'honorarium',
+] as const;
+
+export type HcpBetaCommentStage = (typeof HCP_BETA_COMMENT_STAGES)[number];
+
+export const HCP_BETA_TESTING_TEMPLATE_ID = 'hcp-beta-testing-v1';
+
 function section(id: string, title: string, questions: NativeQuestion[]) {
   return { id, title, questions };
 }
@@ -7,16 +60,21 @@ function section(id: string, title: string, questions: NativeQuestion[]) {
 function single(
   id: string,
   prompt: string,
-  options: string[],
-  opts?: { required?: boolean; followUp?: NativeQuestion },
+  options: readonly string[] | string[],
+  opts?: {
+    required?: boolean;
+    followUp?: NativeQuestion;
+    scoring?: Record<string, unknown>;
+  },
 ): NativeQuestion {
   return {
     id,
     type: 'single_choice',
     prompt,
     required: opts?.required ?? true,
-    options,
+    options: [...options],
     ...(opts?.followUp ? { followUp: opts.followUp } : {}),
+    ...(opts?.scoring ? { scoring: opts.scoring } : {}),
   };
 }
 
@@ -44,6 +102,7 @@ function text(
     long?: boolean;
     /** Maps this answer to a User profile column (SCRUM-186). */
     syncToProfile?: string;
+    scoring?: Record<string, unknown>;
   },
 ): NativeQuestion {
   return {
@@ -52,6 +111,25 @@ function text(
     prompt,
     required: opts?.required ?? true,
     ...(opts?.syncToProfile ? { syncToProfile: opts.syncToProfile } : {}),
+    ...(opts?.scoring ? { scoring: opts.scoring } : {}),
+  };
+}
+
+function rating(
+  id: string,
+  prompt: string,
+  scaleMin: number,
+  scaleMax: number,
+  opts?: { required?: boolean; scoring?: Record<string, unknown> },
+): NativeQuestion {
+  return {
+    id,
+    type: 'rating',
+    prompt,
+    required: opts?.required ?? true,
+    scaleMin,
+    scaleMax,
+    ...(opts?.scoring ? { scoring: opts.scoring } : {}),
   };
 }
 
@@ -102,11 +180,204 @@ export function defaultWebinarIntakeQuestions() {
 }
 
 /**
- * Default post-event FEEDBACK template (CPR-5: topic-neutral).
- * For disease-specific questions, clone a customized FEEDBACK survey onto the
- * new program via `feedbackSurveySourceId` when scheduling.
+ * Default post-event FEEDBACK template — HCP Beta Testing Survey
+ * (questionnaire dated Oct 26, 2026). Topic-neutral; ~5 minutes; 16 questions.
+ * Completing this survey is the gate for the $200 beta honorarium.
+ *
+ * Skip policy: intro allows skipping questions that do not apply. All items
+ * are optional at the form level except that a submission is still required
+ * once to acknowledge completion for payment. Q16 is free-text optional.
  */
 export function defaultPostEventFeedbackQuestions() {
+  return defaultHcpBetaTestingSurveyQuestions();
+}
+
+/**
+ * HCP Beta Testing Survey — native FEEDBACK template.
+ * Prefer {@link defaultPostEventFeedbackQuestions} at call sites that create
+ * program FEEDBACK rows; this export is the named template for docs/tests.
+ */
+export function defaultHcpBetaTestingSurveyQuestions() {
+  // Skip-friendly: required false so unanswered questions do not block submit.
+  const skippable = { required: false as const };
+
+  return {
+    version: 1,
+    templateId: HCP_BETA_TESTING_TEMPLATE_ID,
+    sections: [
+      section('intro', 'Introduction', [
+        info(
+          'intro_notice',
+          'Thank you for participating in the Community Health Media beta. Your responses are confidential and will be reported in aggregate only. They have no bearing on your eligibility for future studies or honoraria. If a question does not apply to you, you may skip it.',
+        ),
+      ]),
+      section('platform_access', 'Platform Access', [
+        single(
+          'q1_login_ease',
+          'How easy was it to log in to the platform?',
+          EASE_SCALE_5,
+          {
+            ...skippable,
+            scoring: { kind: 'ease', stage: 'access' },
+          },
+        ),
+        single(
+          'q2_login_experience',
+          'Which best describes your login experience?',
+          [
+            'I logged in successfully on the first attempt',
+            'I needed to reset my password',
+            'I had trouble with a verification code or two-factor authentication',
+            'I was unable to log in at least once',
+          ],
+          skippable,
+        ),
+        single(
+          'q3_time_to_dashboard',
+          'About how long did it take you to reach the dashboard after starting login?',
+          [
+            'Under 30 seconds',
+            '30–60 seconds',
+            '1–3 minutes',
+            'Over 3 minutes',
+          ],
+          skippable,
+        ),
+      ]),
+      section('registration_credentialing', 'Account Registration and Credentialing', [
+        single(
+          'q4_account_create_ease',
+          'How easy was it to create your account?',
+          EASE_SCALE_5,
+          {
+            ...skippable,
+            scoring: { kind: 'ease', stage: 'registration' },
+          },
+        ),
+        single(
+          'q5_registration_time',
+          'About how long did registration take, including credential verification?',
+          [
+            'Under 5 minutes',
+            '5–15 minutes',
+            '16–30 minutes',
+            'Over 30 minutes',
+            'I did not complete registration',
+          ],
+          skippable,
+        ),
+        single(
+          'q6_hardest_registration_step',
+          'Which step caused the greatest difficulty?',
+          [
+            'None — registration was straightforward',
+            'Entering professional details',
+            'Email confirmation',
+            'Entering NPI or license number',
+            'Waiting for verification',
+            'Terms and consent',
+            'Other',
+          ],
+          skippable,
+        ),
+      ]),
+      section('livestream', 'Livestream Participation', [
+        single(
+          'q7_join_livestream_ease',
+          'How easy was it to find and join the livestream?',
+          EASE_SCALE_5,
+          {
+            ...skippable,
+            scoring: { kind: 'ease', stage: 'livestream' },
+          },
+        ),
+        single(
+          'q8_livestream_details_clarity',
+          'How clear were the livestream details (date and time, joining instructions, and duration)?',
+          CLARITY_SCALE_5,
+          skippable,
+        ),
+        single(
+          'q9_av_quality',
+          'How would you rate the audio and video quality, including the podcast clip?',
+          QUALITY_SCALE_5,
+          skippable,
+        ),
+      ]),
+      section('honorarium', 'Honorarium and Payment Processing', [
+        single(
+          'q10_honorarium_clarity',
+          'Before today, how clear was it that the $200 honorarium is issued after you complete this survey, and how it is paid?',
+          CLARITY_SCALE_5,
+          skippable,
+        ),
+        single(
+          'q11_payment_setup_ease',
+          'How easy was it to set up your preferred payment method?',
+          [...EASE_SCALE_5, 'Not applicable'],
+          {
+            ...skippable,
+            scoring: {
+              kind: 'ease',
+              stage: 'honorarium',
+              excludeOptions: ['Not applicable'],
+            },
+          },
+        ),
+        single(
+          'q12_payment_timeline_reasonableness',
+          'How reasonable is the timeline for receiving the $200 honorarium?',
+          REASONABLENESS_SCALE,
+          skippable,
+        ),
+      ]),
+      section('overall', 'Overall Evaluation', [
+        single(
+          'q13_technical_issues_frequency',
+          'How often did you experience technical issues on the platform?',
+          [
+            'Never',
+            'Once or twice',
+            'Several times',
+            'Continually',
+          ],
+          skippable,
+        ),
+        single(
+          'q14_overall_satisfaction',
+          'Overall, how satisfied are you with the platform experience?',
+          SATISFACTION_SCALE_5,
+          skippable,
+        ),
+        rating(
+          'q15_recommend_likelihood',
+          'How likely are you to recommend Community Health Media to a colleague? (0 = Not at all likely, 10 = Extremely likely)',
+          0,
+          10,
+          {
+            ...skippable,
+            scoring: { kind: 'nps' },
+          },
+        ),
+        text(
+          'q16_additional_comments',
+          'Optional: Is there anything else you would like us to know about your experience?',
+          {
+            required: false,
+            long: true,
+            scoring: {
+              kind: 'comment',
+              taggableStages: [...HCP_BETA_COMMENT_STAGES],
+            },
+          },
+        ),
+      ]),
+    ],
+  };
+}
+
+/** @deprecated Kept for tests that imported the old clinical FEEDBACK template name. */
+export function defaultPostEventFeedbackQuestionsLegacy() {
   return {
     version: 1,
     sections: [

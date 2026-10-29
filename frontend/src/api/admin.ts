@@ -67,7 +67,35 @@ export interface AdminWebinar {
   sessionDisclaimer?: string;
   /** Banner image URL for session pages */
   sessionHeroImageUrl?: string;
+  /** True when this event has at least one customized participant email. */
+  hasCustomEmails?: boolean;
 }
+
+export type ProgramEmailKind =
+  | 'REGISTRATION_RECEIVED'
+  | 'REGISTRATION_APPROVED'
+  | 'SESSION_REMINDER'
+  | 'POST_WEBINAR_SURVEY'
+  | 'MISSED_SESSION'
+  | 'PAYMENT_FOLLOW_UP';
+
+export type ProgramEmailCopy = {
+  subject: string;
+  greeting: string;
+  body: string;
+  signOff: string;
+};
+
+export type ProgramEmailOverrideRow = {
+  kind: ProgramEmailKind;
+  label: string;
+  description: string;
+  requiredLink: string;
+  isCustom: boolean;
+  copy: ProgramEmailCopy;
+  updatedAt: string | null;
+  updatedByUserId: string | null;
+};
 
 export interface CreateWebinarPayload {
   title: string;
@@ -1066,6 +1094,36 @@ export interface SurveyAnalyticsSegmentBreakdown {
   groups: SurveyAnalyticsSegmentGroup[];
 }
 
+export type SurveyCommentStage =
+  | 'access'
+  | 'registration'
+  | 'livestream'
+  | 'honorarium';
+
+export interface SurveyBetaInsights {
+  easeByStage: Array<{
+    stage: string;
+    questionId: string;
+    prompt: string;
+    average: number | null;
+    count: number;
+  }>;
+  nps: {
+    questionId: string;
+    prompt: string;
+    score: number | null;
+    promoters: number;
+    passives: number;
+    detractors: number;
+    totalRated: number;
+  } | null;
+  comments: Array<{
+    responseId?: string;
+    text: string;
+    stageTags?: string[];
+  }>;
+}
+
 export interface SurveyResponseAnalytics {
   surveyType: string;
   hasNativeSchema: boolean;
@@ -1074,6 +1132,8 @@ export interface SurveyResponseAnalytics {
   questions: SurveyQuestionAnalytics[];
   /** Present when segmentBy was provided; otherwise null. */
   segments: SurveyAnalyticsSegmentBreakdown | null;
+  /** HCP Beta ease / NPS / comments when the schema declares scoring metadata. */
+  betaInsights?: SurveyBetaInsights | null;
 }
 
 export interface SurveyAnalyticsSummary {
@@ -2189,6 +2249,7 @@ export const adminApi = {
         submissionId: string | null;
         submittedAt: string;
         answers: Record<string, unknown>;
+        commentStageTags?: string[];
         user: {
           id: string;
           email: string;
@@ -2207,6 +2268,17 @@ export const adminApi = {
         total: number;
       };
     };
+  },
+
+  updateSurveyCommentStageTags: async (
+    responseId: string,
+    stages: SurveyCommentStage[],
+  ): Promise<{ id: string; commentStageTags: string[] }> => {
+    const { data } = await apiClient.patch(
+      `/admin/survey-responses/${encodeURIComponent(responseId)}/comment-stage-tags`,
+      { stages },
+    );
+    return data as { id: string; commentStageTags: string[] };
   },
 
   downloadSurveyResponsesCsv: async (surveyId: string): Promise<Blob> => {
@@ -2297,6 +2369,99 @@ export const adminApi = {
       sent: number;
       failed: { email: string; error: string }[];
       extras: string[];
+    };
+  },
+
+  listProgramEmailOverrides: async (programId: string) => {
+    const { data } = await apiClient.get(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides`,
+    );
+    return data as {
+      programId: string;
+      hasCustomEmails: boolean;
+      emails: ProgramEmailOverrideRow[];
+    };
+  },
+
+  saveProgramEmailOverride: async (
+    programId: string,
+    kind: ProgramEmailKind,
+    copy: ProgramEmailCopy,
+  ) => {
+    const { data } = await apiClient.put(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides/${encodeURIComponent(kind)}`,
+      copy,
+    );
+    return data as {
+      kind: ProgramEmailKind;
+      isCustom: boolean;
+      copy: ProgramEmailCopy;
+      updatedAt: string;
+    };
+  },
+
+  resetProgramEmailOverride: async (
+    programId: string,
+    kind: ProgramEmailKind,
+  ) => {
+    const { data } = await apiClient.delete(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides/${encodeURIComponent(kind)}`,
+    );
+    return data as {
+      kind: ProgramEmailKind;
+      isCustom: boolean;
+      copy: ProgramEmailCopy;
+    };
+  },
+
+  previewProgramEmailOverride: async (
+    programId: string,
+    kind: ProgramEmailKind,
+    copy?: ProgramEmailCopy | null,
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides/${encodeURIComponent(kind)}/preview`,
+      copy ?? {},
+    );
+    return data as {
+      kind: ProgramEmailKind;
+      subject: string;
+      text: string;
+      html: string;
+      mergeSample: Record<string, string>;
+      allowedTokens: string[];
+    };
+  },
+
+  testSendProgramEmailOverride: async (
+    programId: string,
+    kind: ProgramEmailKind,
+    payload: ProgramEmailCopy & { toEmail?: string },
+  ) => {
+    const { data } = await apiClient.post(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides/${encodeURIComponent(kind)}/test-send`,
+      payload,
+    );
+    return data as { sent: boolean; to: string; subject: string };
+  },
+
+  listProgramEmailOverrideVersions: async (
+    programId: string,
+    kind: ProgramEmailKind,
+  ) => {
+    const { data } = await apiClient.get(
+      `/admin/programs/${encodeURIComponent(programId)}/email-overrides/${encodeURIComponent(kind)}/versions`,
+    );
+    return data as {
+      programId: string;
+      emailKind: ProgramEmailKind;
+      versions: Array<
+        ProgramEmailCopy & {
+          id: string;
+          editedByUserId: string | null;
+          editedAt: string;
+        }
+      >;
     };
   },
 

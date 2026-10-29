@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
 import {
   OutboundEmailStatus,
   OutboundEmailType,
+  ProgramEmailKind,
   ProgramZoomSessionType,
 } from '@prisma/client';
 import { buildRegistrationApprovedEmail } from './templates/registration-approved-email';
@@ -31,6 +32,7 @@ import { buildOperationalEmail } from './templates/operational-email';
 import { buildPublicRegistrationSurveyEmail } from './templates/public-registration-survey-email';
 import { buildReportReadyEmail } from './templates/report-ready-email';
 import { OutboundEmailLogService } from './outbound-email-log.service';
+import { ProgramEmailOverrideService } from './program-email-override.service';
 
 export type OutboundEmailTrackMeta = {
   emailType: OutboundEmailType;
@@ -63,6 +65,8 @@ export class SesEmailService {
   constructor(
     private readonly config: ConfigService,
     private readonly outboundLog: OutboundEmailLogService,
+    @Inject(forwardRef(() => ProgramEmailOverrideService))
+    private readonly emailOverrides: ProgramEmailOverrideService,
   ) {
     const region = this.config.get<string>('aws.region') || 'us-east-1';
     const accessKeyId = this.config.get<string>('aws.accessKeyId');
@@ -157,6 +161,41 @@ export class SesEmailService {
       );
 
     try {
+      const customApproved = await this.renderOverrideIfPresent({
+        kind: ProgramEmailKind.REGISTRATION_APPROVED,
+        program: {
+          id: program.id,
+          title: program.title,
+          startDate: program.startDate,
+          sponsorName: program.sponsorName,
+          honorariumAmount: program.honorariumAmount,
+          zoomJoinUrl: zoomTrim,
+          zoomSessionType: sessionKind,
+        },
+        firstName,
+      });
+      if (customApproved) {
+        // Custom copy uses Simple send; .ics stays on the stock template path.
+        await this.sendSimpleEmail(
+          to,
+          customApproved.subject,
+          customApproved.text,
+          customApproved.html,
+          {
+            emailType: OutboundEmailType.REGISTRATION_APPROVED,
+            programId: program.id,
+            toName: firstName,
+            userId: opts.userId,
+            registrationId: opts.registrationId,
+            sentByUserId: opts.sentByUserId,
+          },
+        );
+        this.logger.log(
+          `Sent custom registration-approved email to ${to} for program ${program.id}`,
+        );
+        return;
+      }
+
       if (!program.startDate) {
         const { subject, text, html } = buildApproved(false);
         await this.sendSimpleEmail(to, subject, text, html, {
@@ -264,18 +303,25 @@ export class SesEmailService {
       sessionKind === ProgramZoomSessionType.MEETING
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
-    const { subject, text, html } = buildRegistrationSubmittedEmail(
-      {
-        firstName,
-        programTitle: program.title,
-        requiresApproval,
-        sessionKind,
-        appSessionUrl,
-        supportEmail: this.supportEmail,
-      },
-      escapeHtml,
-    );
     try {
+      const custom = await this.renderOverrideIfPresent({
+        kind: ProgramEmailKind.REGISTRATION_RECEIVED,
+        program: { id: program.id, title: program.title },
+        firstName,
+      });
+      const { subject, text, html } =
+        custom ??
+        buildRegistrationSubmittedEmail(
+          {
+            firstName,
+            programTitle: program.title,
+            requiresApproval,
+            sessionKind,
+            appSessionUrl,
+            supportEmail: this.supportEmail,
+          },
+          escapeHtml,
+        );
       await this.sendSimpleEmail(to, subject, text, html, {
         emailType: OutboundEmailType.REGISTRATION_SUBMITTED,
         programId: program.id,
@@ -411,20 +457,36 @@ export class SesEmailService {
     const base = this.appBase;
     const appHomeUrl = `${base}/app/home`;
     const supportEmail = this.supportEmail;
-    const { subject, text, html } = buildMissedWebinarEmail(
-      {
-        firstName,
-        programTitle: program.title,
-        programDescription: program.description,
-        startDate: program.startDate,
-        appHomeUrl,
-        supportEmail,
-        sponsorName: program.sponsorName,
-      },
-      escapeHtml,
-    );
     try {
-      await this.sendSimpleEmail(to, subject, text, html);
+      const custom = await this.renderOverrideIfPresent({
+        kind: ProgramEmailKind.MISSED_SESSION,
+        program: {
+          id: program.id,
+          title: program.title,
+          startDate: program.startDate,
+          sponsorName: program.sponsorName,
+        },
+        firstName,
+      });
+      const { subject, text, html } =
+        custom ??
+        buildMissedWebinarEmail(
+          {
+            firstName,
+            programTitle: program.title,
+            programDescription: program.description,
+            startDate: program.startDate,
+            appHomeUrl,
+            supportEmail,
+            sponsorName: program.sponsorName,
+          },
+          escapeHtml,
+        );
+      await this.sendSimpleEmail(to, subject, text, html, {
+        emailType: OutboundEmailType.MISSED_SESSION,
+        programId: program.id,
+        toName: firstName,
+      });
       this.logger.log(
         `Sent missed-webinar email to ${to} for program ${program.id}`,
       );
@@ -472,20 +534,38 @@ export class SesEmailService {
     // Prefer in-app Surveys tab; optional surveyUrl only if explicitly passed.
     const resolvedSurveyUrl = appSurveyUrl || surveyUrl?.trim() || null;
     const supportEmail = this.supportEmail;
-    const { subject, text, html } = buildPostWebinarSurveyEmail(
-      {
-        firstName,
-        programTitle: program.title,
-        surveyUrl: resolvedSurveyUrl,
-        appSessionUrl,
-        supportEmail,
-        sponsorName: program.sponsorName,
-        honorariumCents: program.honorariumAmount,
-      },
-      escapeHtml,
-    );
     try {
-      await this.sendSimpleEmail(to, subject, text, html);
+      const custom = await this.renderOverrideIfPresent({
+        kind: ProgramEmailKind.POST_WEBINAR_SURVEY,
+        program: {
+          id: program.id,
+          title: program.title,
+          sponsorName: program.sponsorName,
+          honorariumAmount: program.honorariumAmount,
+          zoomSessionType: program.zoomSessionType,
+        },
+        firstName,
+        surveyUrl: resolvedSurveyUrl,
+      });
+      const { subject, text, html } =
+        custom ??
+        buildPostWebinarSurveyEmail(
+          {
+            firstName,
+            programTitle: program.title,
+            surveyUrl: resolvedSurveyUrl,
+            appSessionUrl,
+            supportEmail,
+            sponsorName: program.sponsorName,
+            honorariumCents: program.honorariumAmount,
+          },
+          escapeHtml,
+        );
+      await this.sendSimpleEmail(to, subject, text, html, {
+        emailType: OutboundEmailType.POST_EVENT_SURVEY,
+        programId: program.id,
+        toName: firstName,
+      });
       this.logger.log(
         `Sent post-webinar-survey email to ${to} for program ${program.id}` +
           (resolvedSurveyUrl ? ` cta=${resolvedSurveyUrl}` : ''),
@@ -588,23 +668,37 @@ export class SesEmailService {
         ? `${base}/app/chm-office-hours/${encodeURIComponent(program.id)}`
         : `${base}/app/live/${encodeURIComponent(program.id)}`;
     const supportEmail = this.supportEmail;
-    const { subject, text, html } = buildPreWebinarReminderEmail(
-      {
-        firstName,
-        programTitle: program.title,
-        programDescription: program.description,
-        startDate: program.startDate,
-        durationMinutes: program.duration,
-        zoomJoinUrl: program.zoomJoinUrl,
-        hostDisplayName: program.hostDisplayName,
-        sponsorName: program.sponsorName,
-        appSessionUrl,
-        supportEmail,
-        hoursUntilStart,
-      },
-      escapeHtml,
-    );
     try {
+      const custom = await this.renderOverrideIfPresent({
+        kind: ProgramEmailKind.SESSION_REMINDER,
+        program: {
+          id: program.id,
+          title: program.title,
+          startDate: program.startDate,
+          sponsorName: program.sponsorName,
+          zoomJoinUrl: program.zoomJoinUrl,
+          zoomSessionType: program.zoomSessionType,
+        },
+        firstName,
+      });
+      const { subject, text, html } =
+        custom ??
+        buildPreWebinarReminderEmail(
+          {
+            firstName,
+            programTitle: program.title,
+            programDescription: program.description,
+            startDate: program.startDate,
+            durationMinutes: program.duration,
+            zoomJoinUrl: program.zoomJoinUrl,
+            hostDisplayName: program.hostDisplayName,
+            sponsorName: program.sponsorName,
+            appSessionUrl,
+            supportEmail,
+            hoursUntilStart,
+          },
+          escapeHtml,
+        );
       await this.sendSimpleEmail(to, subject, text, html, {
         emailType: OutboundEmailType.PRE_SESSION_REMINDER,
         programId: program.id,
@@ -771,6 +865,77 @@ export class SesEmailService {
     this.logger.log(
       `Sent report-ready email to ${to} campaignId=${opts.campaignId} v${opts.version}`,
     );
+  }
+
+  /**
+   * Admin "send test to me" for per-event email overrides. Logs as the mapped
+   * outbound type with a [TEST] subject prefix from the caller.
+   */
+  async sendRawTestEmail(opts: {
+    to: string;
+    subject: string;
+    text: string;
+    html: string;
+    emailType: OutboundEmailType;
+    programId: string;
+    sentByUserId?: string | null;
+  }): Promise<void> {
+    if (!this.enabled) {
+      this.logger.debug('EMAIL disabled: skip raw test email');
+      return;
+    }
+    await this.sendSimpleEmail(opts.to, opts.subject, opts.text, opts.html, {
+      emailType: opts.emailType,
+      programId: opts.programId,
+      sentByUserId: opts.sentByUserId,
+      toName: 'Test',
+    });
+  }
+
+  /**
+   * If this program has a custom override for `kind`, render it and return
+   * the payload; otherwise null (caller uses the stock template).
+   */
+  private async renderOverrideIfPresent(opts: {
+    kind: ProgramEmailKind;
+    program: {
+      id: string;
+      title: string;
+      startDate?: Date | null;
+      sponsorName?: string | null;
+      honorariumAmount?: number | null;
+      zoomJoinUrl?: string | null;
+      zoomSessionType?: ProgramZoomSessionType | null;
+    };
+    firstName: string;
+    surveyUrl?: string | null;
+  }): Promise<{ subject: string; text: string; html: string } | null> {
+    const { copy, isCustom } = await this.emailOverrides.resolveCopy(
+      opts.program.id,
+      opts.kind,
+    );
+    if (!isCustom) return null;
+    const rendered = this.emailOverrides.buildRendered({
+      kind: opts.kind,
+      copy,
+      program: {
+        id: opts.program.id,
+        title: opts.program.title,
+        startDate: opts.program.startDate ?? null,
+        sponsorName: opts.program.sponsorName ?? 'Community Health Media',
+        honorariumAmount: opts.program.honorariumAmount ?? null,
+        zoomJoinUrl: opts.program.zoomJoinUrl ?? null,
+        zoomSessionType:
+          opts.program.zoomSessionType ?? ProgramZoomSessionType.WEBINAR,
+      },
+      firstName: opts.firstName,
+      surveyUrl: opts.surveyUrl,
+    });
+    return {
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+    };
   }
 
   private async sendSimpleEmail(

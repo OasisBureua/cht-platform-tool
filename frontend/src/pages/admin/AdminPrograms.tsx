@@ -521,7 +521,14 @@ function WebinarRow({
   return (
     <tr className="hover:bg-muted">
       <td className="px-4 py-3">
-        <p className="font-medium text-foreground line-clamp-1">{webinar.title}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium text-foreground line-clamp-1">{webinar.title}</p>
+          {webinar.hasCustomEmails ? (
+            <span className="inline-flex rounded-[6px] bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+              Custom emails
+            </span>
+          ) : null}
+        </div>
         {durationStr && (
           <p className="text-xs text-muted-foreground mt-0.5">{durationStr}</p>
         )}

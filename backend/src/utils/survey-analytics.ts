@@ -31,9 +31,13 @@ export interface SurveyAnalyticsResponseInput {
   submittedAt: string;
   /** For unique-respondent counting. Anonymous rows each count once. */
   userId?: string | null;
+  /** Response id when available (comment tagging in admin). */
+  responseId?: string | null;
   /** Response-level score (PRE_TEST/POST_TEST). Feeds the totals.score summary. */
   score?: number | null;
   answers: Record<string, unknown>;
+  /** Admin-applied stage tags for free-text comments (HCP Beta Q16). */
+  commentStageTags?: string[] | null;
   /** Per-response segment values; consumed only when `segmentBy` is set. */
   segment?: Partial<Record<SurveySegmentDimension, string | null>>;
 }
@@ -146,6 +150,38 @@ export interface SurveySegmentBreakdown {
   groups: SurveySegmentGroup[];
 }
 
+/** Stage ease averages for HCP Beta (and any survey with scoring.kind=ease). */
+export interface SurveyEaseStageScore {
+  stage: string;
+  questionId: string;
+  prompt: string;
+  average: number | null;
+  count: number;
+}
+
+/** Net Promoter Score breakdown from a 0–10 recommend question. */
+export interface SurveyNpsSummary {
+  questionId: string;
+  prompt: string;
+  score: number | null;
+  promoters: number;
+  passives: number;
+  detractors: number;
+  totalRated: number;
+}
+
+export interface SurveyCommentSample {
+  responseId?: string;
+  text: string;
+  stageTags?: string[];
+}
+
+export interface SurveyBetaInsights {
+  easeByStage: SurveyEaseStageScore[];
+  nps: SurveyNpsSummary | null;
+  comments: SurveyCommentSample[];
+}
+
 export interface SurveyResponseAnalytics {
   surveyType: string;
   hasNativeSchema: boolean;
@@ -154,6 +190,8 @@ export interface SurveyResponseAnalytics {
   questions: QuestionAnalytics[];
   /** Per-segment breakdown when `segmentBy` was provided; otherwise null. */
   segments: SurveySegmentBreakdown | null;
+  /** Present when the schema declares ease / NPS / comment scoring metadata. */
+  betaInsights: SurveyBetaInsights | null;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -500,6 +538,12 @@ export function buildSurveyResponseAnalytics(
       )
     : null;
 
+  const betaInsights = buildBetaInsights(
+    schemaQuestions,
+    responses,
+    answersById,
+  );
+
   return {
     surveyType: input.surveyType,
     hasNativeSchema: hasNativeSurveySchema(input.questionsSchema),
@@ -514,7 +558,121 @@ export function buildSurveyResponseAnalytics(
     timeSeries,
     questions,
     segments,
+    betaInsights,
   };
+}
+
+function readScoring(q: NativeSurveyQuestion): Record<string, unknown> | null {
+  const raw = q.scoring;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  return raw as Record<string, unknown>;
+}
+
+function easeScoreFromChoice(
+  answer: unknown,
+  options: string[] | undefined,
+  excludeOptions: string[],
+): number | null {
+  if (typeof answer !== 'string' || !answer.trim()) return null;
+  if (excludeOptions.includes(answer)) return null;
+  if (!options?.length) return null;
+  const idx = options.indexOf(answer);
+  if (idx < 0) return null;
+  // 1-based score matching left→right option order (Very difficult=1 … Very easy=5).
+  return idx + 1;
+}
+
+function buildBetaInsights(
+  schemaQuestions: NativeSurveyQuestion[],
+  responses: SurveyAnalyticsResponseInput[],
+  answersById: Record<string, unknown>[],
+): SurveyBetaInsights | null {
+  const easeByStage: SurveyEaseStageScore[] = [];
+  let nps: SurveyNpsSummary | null = null;
+  const comments: SurveyCommentSample[] = [];
+  let hasScoring = false;
+
+  for (const q of schemaQuestions) {
+    const id = typeof q.id === 'string' ? q.id.trim() : '';
+    if (!id) continue;
+    const scoring = readScoring(q);
+    if (!scoring) continue;
+    hasScoring = true;
+    const kind = String(scoring.kind ?? '');
+    const prompt = String(q.prompt ?? id).trim() || id;
+
+    if (kind === 'ease') {
+      const stage = String(scoring.stage ?? 'unknown');
+      const exclude = Array.isArray(scoring.excludeOptions)
+        ? scoring.excludeOptions.filter(
+            (o): o is string => typeof o === 'string',
+          )
+        : [];
+      const options = Array.isArray(q.options)
+        ? q.options.filter((o): o is string => typeof o === 'string')
+        : undefined;
+      const scores: number[] = [];
+      for (const answers of answersById) {
+        const n = easeScoreFromChoice(answers[id], options, exclude);
+        if (n != null) scores.push(n);
+      }
+      const avg =
+        scores.length > 0
+          ? round(scores.reduce((s, v) => s + v, 0) / scores.length, 2)
+          : null;
+      easeByStage.push({
+        stage,
+        questionId: id,
+        prompt,
+        average: avg,
+        count: scores.length,
+      });
+    }
+
+    if (kind === 'nps') {
+      let promoters = 0;
+      let passives = 0;
+      let detractors = 0;
+      for (const answers of answersById) {
+        const n = toNumber(answers[id]);
+        if (n == null) continue;
+        if (n >= 9) promoters += 1;
+        else if (n >= 7) passives += 1;
+        else detractors += 1;
+      }
+      const totalRated = promoters + passives + detractors;
+      nps = {
+        questionId: id,
+        prompt,
+        score:
+          totalRated > 0
+            ? round(((promoters - detractors) / totalRated) * 100)
+            : null,
+        promoters,
+        passives,
+        detractors,
+        totalRated,
+      };
+    }
+
+    if (kind === 'comment') {
+      for (let i = 0; i < answersById.length; i++) {
+        const text = toText(answersById[i][id]).trim();
+        if (!text) continue;
+        const tags = responses[i]?.commentStageTags;
+        comments.push({
+          responseId: responses[i]?.responseId ?? undefined,
+          text: redactPii(text),
+          stageTags: Array.isArray(tags)
+            ? tags.filter((t): t is string => typeof t === 'string')
+            : [],
+        });
+      }
+    }
+  }
+
+  if (!hasScoring) return null;
+  return { easeByStage, nps, comments };
 }
 
 function aggregateSchemaQuestion(

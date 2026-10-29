@@ -236,6 +236,7 @@ model Program {
   webinarParticipantEvents WebinarParticipantEvent[]
   zoomRecordingSessions ZoomRecordingSession[]
   zoomRecordingFiles    ZoomRecordingFile[]
+  emailOverrides        ProgramEmailOverride[]
 
   @@index([status])
   @@index([startDate])
@@ -243,6 +244,58 @@ model Program {
   @@index([chmProgramId])
   @@index([campaignId])
   @@map("Program")
+}
+
+/// Customizable participant email kinds (per-event overrides).
+enum ProgramEmailKind {
+  REGISTRATION_RECEIVED
+  REGISTRATION_APPROVED
+  SESSION_REMINDER
+  POST_WEBINAR_SURVEY
+  MISSED_SESSION
+  PAYMENT_FOLLOW_UP
+}
+
+/// Per-event override of editable email copy. Locked chrome (footer, required
+/// links) always comes from the platform template renderer.
+model ProgramEmailOverride {
+  id              String          @id @default(cuid())
+  programId       String
+  emailKind       ProgramEmailKind
+  subject         String
+  greeting        String          @db.Text
+  body            String          @db.Text
+  signOff         String          @db.Text
+  updatedByUserId String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  program  Program                     @relation(fields: [programId], references: [id], onDelete: Cascade)
+  versions ProgramEmailOverrideVersion[]
+
+  @@unique([programId, emailKind])
+  @@index([programId])
+  @@map("ProgramEmailOverride")
+}
+
+/// Immutable snapshot of each override save (user + time).
+model ProgramEmailOverrideVersion {
+  id              String          @id @default(cuid())
+  overrideId      String
+  programId       String
+  emailKind       ProgramEmailKind
+  subject         String
+  greeting        String          @db.Text
+  body            String          @db.Text
+  signOff         String          @db.Text
+  editedByUserId String?
+  editedAt        DateTime        @default(now())
+
+  override ProgramEmailOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+
+  @@index([overrideId, editedAt])
+  @@index([programId, emailKind])
+  @@map("ProgramEmailOverrideVersion")
 }
 
 /// Catalog row for a Zoom webinar/meeting with cloud recordings (linked or Zoom-only).
@@ -696,6 +749,9 @@ model SurveyResponse {
   schemaVersion Int @default(1)
   /// True until the learner's final submit (post-event: with honorarium request).
   isDraft     Boolean  @default(false)
+
+  /// Admin tags on free-text comments (HCP Beta: access | registration | livestream | honorarium).
+  commentStageTags String[] @default([])
   
   // External submission id (UUID for native submit; Jotform id for legacy webhooks)
   submissionId String? @unique
@@ -897,6 +953,8 @@ enum OutboundEmailType {
   PUBLIC_REGISTRATION
   WEBINAR_ACCESS
   REPORT_READY
+  /// Honorarium / payment follow-up after survey completion.
+  PAYMENT_FOLLOW_UP
   OTHER
 }
 

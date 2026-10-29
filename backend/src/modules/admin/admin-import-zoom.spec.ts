@@ -49,6 +49,8 @@ describe('AdminController importZoomSession', () => {
       {} as SessionHeroPresignService,
       {} as import('./program-zoom-recordings.service').ProgramZoomRecordingsService,
       {} as import('../email/ses-email.service').SesEmailService,
+      {} as import('./program-invitations.service').ProgramInvitationsService,
+      {} as import('../email/program-email-override.service').ProgramEmailOverrideService,
     );
   });
 

@@ -21,6 +21,7 @@ import { ProgramRegistrationsService } from '../programs/program-registrations.s
 import {
   defaultPostEventFeedbackQuestions,
   defaultWebinarIntakeQuestions,
+  HCP_BETA_TESTING_TEMPLATE_ID,
 } from './native-survey-templates';
 import {
   buildSurveyResponsesCsv,
@@ -706,6 +707,7 @@ export class SurveysService {
         score: r.score,
         schemaVersion: r.schemaVersion,
         answers: r.answers,
+        commentStageTags: r.commentStageTags ?? [],
         // Public registrants have no account: identify them by the name and
         // email they registered with.
         user: r.user ?? publicRespondent(r.publicRegistration),
@@ -771,8 +773,10 @@ export class SurveysService {
       responses: responses.map((r) => ({
         submittedAt: r.submittedAt,
         userId: r.user?.id ?? null,
+        responseId: r.id,
         score: r.score,
         answers: (r.answers ?? {}) as Record<string, unknown>,
+        commentStageTags: r.commentStageTags ?? [],
         segment: {
           specialty: r.user?.specialty ?? null,
           status: r.registration?.status ?? null,
@@ -790,6 +794,40 @@ export class SurveysService {
       },
       analytics,
     };
+  }
+
+  /**
+   * Admin: tag a free-text comment with one or more HCP Beta stages
+   * (access, registration, livestream, honorarium).
+   */
+  async updateCommentStageTags(
+    responseId: string,
+    stages: string[],
+  ): Promise<{ id: string; commentStageTags: string[] }> {
+    const allowed = new Set([
+      'access',
+      'registration',
+      'livestream',
+      'honorarium',
+    ]);
+    const unique = [
+      ...new Set(
+        stages
+          .map((s) => s.trim().toLowerCase())
+          .filter((s) => allowed.has(s)),
+      ),
+    ];
+    const existing = await this.prisma.surveyResponse.findUnique({
+      where: { id: responseId },
+      select: { id: true },
+    });
+    if (!existing) throw new NotFoundException('Survey response not found');
+    const updated = await this.prisma.surveyResponse.update({
+      where: { id: responseId },
+      data: { commentStageTags: unique },
+      select: { id: true, commentStageTags: true },
+    });
+    return updated;
   }
 
   /** Compact catalog used to match Content Hub / HubSpot campaigns to CHT surveys. */
@@ -1179,8 +1217,9 @@ export class SurveysService {
       feedback = await this.prisma.survey.create({
         data: {
           programId,
-          title: `${programTitle} - Post Event Survey`,
-          description: 'Post-webinar feedback',
+          title: `${programTitle} - HCP Beta Testing Survey`,
+          description:
+            'HCP Beta Testing Survey (platform access, registration, livestream, honorarium). Completing this survey is required before the beta honorarium can be issued.',
           questions: feedbackQuestions as object,
           type: 'FEEDBACK',
           required: true,
@@ -1189,6 +1228,12 @@ export class SurveysService {
           schemaVersion: 1,
         },
       });
+    } else if (!feedback.isCustomized) {
+      // Upgrade empty, non-customized FEEDBACK rows to the HCP Beta template.
+      feedback = await this.upgradeFeedbackToHcpBetaIfNeeded(
+        feedback,
+        programTitle,
+      );
     }
 
     if (createIntake || createFeedback) {
@@ -1201,11 +1246,60 @@ export class SurveysService {
       });
     }
 
+    if (!intake || !feedback) {
+      throw new BadRequestException(
+        'Failed to ensure INTAKE and FEEDBACK surveys for program',
+      );
+    }
+
     this.logger.log(
       `Ensured surveys for program ${programId}: intake=${intake.id} feedback=${feedback.id}`,
     );
 
     return { intakeSurveyId: intake.id, feedbackSurveyId: feedback.id };
+  }
+
+  /**
+   * Replace a non-customized FEEDBACK survey with the HCP Beta Testing template
+   * when it has no responses yet and is not already on that template.
+   */
+  private async upgradeFeedbackToHcpBetaIfNeeded<
+    T extends {
+      id: string;
+      questions: unknown;
+      isCustomized: boolean;
+      schemaVersion: number;
+    },
+  >(feedback: T, programTitle: string): Promise<T> {
+    if (feedback.isCustomized) return feedback;
+    const blob =
+      feedback.questions && typeof feedback.questions === 'object'
+        ? (feedback.questions as Record<string, unknown>)
+        : null;
+    if (blob?.templateId === HCP_BETA_TESTING_TEMPLATE_ID) {
+      return feedback;
+    }
+    const responseCount = await this.prisma.surveyResponse.count({
+      where: { surveyId: feedback.id },
+    });
+    if (responseCount > 0) return feedback;
+
+    const feedbackQuestions = withNativeSchemaVersion(
+      validateNativeSurveySchema(defaultPostEventFeedbackQuestions()),
+      Math.max(1, feedback.schemaVersion || 1),
+    );
+    const updated = await this.prisma.survey.update({
+      where: { id: feedback.id },
+      data: {
+        title: `${programTitle} - HCP Beta Testing Survey`,
+        description:
+          'HCP Beta Testing Survey (platform access, registration, livestream, honorarium). Completing this survey is required before the beta honorarium can be issued.',
+        questions: feedbackQuestions as object,
+        jotformFormId: null,
+        isCustomized: false,
+      },
+    });
+    return updated as unknown as T;
   }
 
   /** Convert all published webinars to native surveys (dev / admin bulk). */
