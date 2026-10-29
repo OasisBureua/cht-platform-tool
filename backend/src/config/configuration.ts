@@ -392,4 +392,42 @@ export default () => ({
       process.env.COGNITO_M2M_COMPANION_SCOPE?.trim() ||
       'companion/chat.invoke',
   },
+
+  /**
+   * Post-production (admin clipper): transcripts from the audio with AWS
+   * Transcribe, and AI suggestions for a clip's look from Claude on Amazon
+   * Bedrock. Both use the task role and the recordings bucket.
+   */
+  postProduction: {
+    transcribeEnabled: !['0', 'false', 'no', 'off'].includes(
+      (process.env.POST_PRODUCTION_TRANSCRIBE_ENABLED || 'true')
+        .trim()
+        .toLowerCase(),
+    ),
+    aiEnabled: !['0', 'false', 'no', 'off'].includes(
+      (process.env.POST_PRODUCTION_AI_ENABLED || 'true').trim().toLowerCase(),
+    ),
+    /** Bedrock region; Claude models must be enabled there. */
+    bedrockRegion:
+      process.env.POST_PRODUCTION_BEDROCK_REGION?.trim() ||
+      process.env.AWS_REGION ||
+      'us-east-1',
+    /**
+     * Models offered in the clipper's picker, as `id|Label|note` separated by
+     * commas. The first is the default.
+     */
+    models: (
+      process.env.POST_PRODUCTION_AI_MODELS?.trim() ||
+      'anthropic.claude-opus-5-5|Claude Opus 5.5|best,anthropic.claude-sonnet-5-5|Claude Sonnet 5.5|faster,anthropic.claude-haiku-5-5|Claude Haiku 5.5|cheapest'
+    )
+      .split(',')
+      .map((entry) => {
+        const [id, label, note] = entry.split('|').map((x) => x.trim());
+        return { id, label: label || id, note: note || undefined };
+      })
+      .filter((m) => m.id),
+    /** Transcribe language; Zoom webinars are English. */
+    languageCode:
+      process.env.POST_PRODUCTION_TRANSCRIBE_LANGUAGE?.trim() || 'en-US',
+  },
 });

@@ -16,7 +16,14 @@ import {
   sentencesOf,
   spokenWords,
   formatFrom,
+  cutCues,
+  cuesToSrt,
+  cuesToVtt,
+  speakerSpots,
+  focusAt,
+  FOCUS_EASE,
 } from '../../components/admin/clipper/clipperCore';
+import { marked, punchAt, outputCues, DEFAULT_FORMAT } from '../../components/admin/clipper/socialCut';
 
 const ZOOM_VTT = `WEBVTT
 
@@ -272,5 +279,82 @@ Ana: The second point.
       { start: 8, end: 12 },
     ]);
     expect(spokenWords(cues[2], 10)).toBe(2);
+  });
+});
+
+describe('caption files for a cut', () => {
+  const cues = [
+    { start: 10, end: 12, text: 'First line.', speaker: 'A' },
+    { start: 12.5, end: 14, text: 'Second line.', speaker: 'B' },
+    { start: 20, end: 22, text: 'Later.', speaker: 'A' },
+  ];
+  it('retimes lines to the cut and clips them to its edges', () => {
+    expect(cutCues([{ start: 11, end: 13 }], cues)).toEqual([
+      { start: 0, end: 1, text: 'First line.', speaker: 'A' },
+      { start: 1.5, end: 2, text: 'Second line.', speaker: 'B' },
+    ]);
+  });
+  it('closes up gaps when the cut skips pauses, and offsets for a reel', () => {
+    const out = cutCues([{ start: 10, end: 12 }, { start: 20, end: 22 }], cues, 5);
+    expect(out.map((c) => [c.start, c.end])).toEqual([[5, 7], [7, 9]]);
+  });
+  it('writes SRT without speaker names and VTT with them', () => {
+    const one = [{ start: 61.25, end: 62.5, text: 'Hello there.', speaker: 'Dr. Hale' }];
+    expect(cuesToSrt(one)).toBe('1\n00:01:01,250 --> 00:01:02,500\nHello there.\n');
+    expect(cuesToVtt(one)).toContain('00:01:01.250 --> 00:01:02.500\nDr. Hale: Hello there.');
+    expect(parseCaptions(cuesToVtt(one))[0]).toMatchObject({ start: 61.25, speaker: 'Dr. Hale', text: 'Hello there.' });
+  });
+  it('builds a reel’s captions clip after clip', () => {
+    const fmt = { ...DEFAULT_FORMAT, tighten: false };
+    const out = outputCues([{ id: 'a', title: 'a', start: 10, end: 12 }, { id: 'b', title: 'b', start: 20, end: 22 }], fmt, cues);
+    expect(out.map((c) => c.start)).toEqual([0, 2]);
+  });
+});
+
+describe('speaker focus', () => {
+  const cues = [
+    { start: 0, end: 2, text: 'Hi.', speaker: 'Park' },
+    { start: 3, end: 5, text: 'Hello.', speaker: 'Hale' },
+    { start: 5, end: 6, text: 'Um.' },
+    { start: 8, end: 9, text: 'Yes.', speaker: 'Hale' },
+  ];
+  it('spreads speakers in the order they first talk, and keeps hand placements', () => {
+    expect(speakerSpots(cues, {})).toEqual({ Park: 0.25, Hale: 0.75 });
+    expect(speakerSpots(cues, { Hale: 0.6 })).toEqual({ Park: 0.25, Hale: 0.6 });
+  });
+  it('holds on the last speaker through pauses instead of snapping to the centre', () => {
+    const spots = speakerSpots(cues, {});
+    expect(focusAt(cues, spots, 1)).toBe(0.25);
+    expect(focusAt(cues, spots, 2.6)).toBe(0.25);
+    expect(focusAt(cues, spots, 7)).toBe(0.75);
+  });
+  it('eases across when the talker changes', () => {
+    const spots = speakerSpots(cues, {});
+    const mid = focusAt(cues, spots, 3 + FOCUS_EASE / 2);
+    expect(mid).toBeGreaterThan(0.25);
+    expect(mid).toBeLessThan(0.75);
+    expect(focusAt(cues, spots, 3 + FOCUS_EASE)).toBe(0.75);
+  });
+  it('opens a cut on whoever speaks first in it', () => {
+    const spots = speakerSpots(cues, {});
+    expect(focusAt(cues, spots, 3.05, 3)).toBe(0.75);
+    expect(focusAt(cues, spots, 3.05, 1)).toBeLessThan(0.75);
+  });
+});
+
+describe('looks and titles', () => {
+  it('splits highlighted phrases', () => {
+    expect(marked('Stop [methotrexate] now')).toEqual([
+      { text: 'Stop ', hi: false },
+      { text: 'methotrexate', hi: true },
+      { text: ' now', hi: false },
+    ]);
+  });
+  it('ramps push-ins in and out', () => {
+    const look = { emphasis: [], callouts: [], punchIns: [{ start: 10, end: 14 }] };
+    expect(punchAt(look, 9)).toBe(0);
+    expect(punchAt(look, 12)).toBe(1);
+    expect(punchAt(look, 10.05)).toBeGreaterThan(0);
+    expect(punchAt(look, 10.05)).toBeLessThan(1);
   });
 });

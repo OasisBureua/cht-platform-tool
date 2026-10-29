@@ -442,6 +442,7 @@ jobs:
           VITE_COGNITO_REGION: ${{ env.AWS_REGION }}
           VITE_DISABLE_AUTH: 'false'
           VITE_USE_DEV_AUTH: 'false'
+          VITE_DROPBOX_APP_KEY: ${{ vars.DROPBOX_APP_KEY }}
           VITE_RECAPTCHA_SITE_KEY: ${{ secrets.RECAPTCHA_SITE_KEY }}
           VITE_GOOGLE_OAUTH_ENABLED: 'true'
           VITE_CATALOG_WORDPRESS_ONLY: 'true'

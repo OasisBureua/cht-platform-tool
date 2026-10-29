@@ -21,6 +21,7 @@ import { KolNetworkModule } from './modules/kol-network/kol-network.module';
 import { WebinarsModule } from './modules/webinars/webinars.module';
 import { SurveysModule } from './modules/surveys/surveys.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { PostProductionModule } from './modules/post-production/post-production.module';
 import { JotformModule } from './modules/jotform/jotform.module';
 import { HubSpotModule } from './modules/hubspot/hubspot.module';
 import { OutboundSyncModule } from './modules/outbound-sync/outbound-sync.module';
@@ -163,6 +164,7 @@ function skipHealthOrUnlessAuthThrottle(throttlerName: string) {
     WebinarsModule,
     SurveysModule,
     AdminModule,
+    PostProductionModule,
     JotformModule,
     HubSpotModule,
     OutboundSyncModule,

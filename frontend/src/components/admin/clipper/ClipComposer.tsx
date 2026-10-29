@@ -4,6 +4,7 @@ import { ArrowUp, Captions, Film, FileVideo, Loader2, Search, Video, X } from 'l
 import { adminApi, type ZoomRecordingCatalogSession } from '../../../api/admin';
 import { slugify } from './clipperCore';
 import { isCaptionFile, isVideoFile, pickVideo, type Source } from './sources';
+import { DropboxPicker } from './DropboxPicker';
 
 /**
  * The clipper's start: say what you want, add the recording, and the first
@@ -25,6 +26,8 @@ const dateOf = (iso?: string | null) =>
 export function ClipComposer({ onStart }: { onStart: (source: Source, captions: File | undefined, prompt: string) => void }) {
   const [prompt, setPrompt] = useState('');
   const [video, setVideo] = useState<File | null>(null);
+  /** Set when the video came from Dropbox, so its work is saved against the Dropbox path. */
+  const [dropboxPath, setDropboxPath] = useState<string | null>(null);
   const [captions, setCaptions] = useState<File | null>(null);
   const [zoom, setZoom] = useState<ZoomRecordingCatalogSession | null>(null);
   const [opening, setOpening] = useState(false);
@@ -53,6 +56,7 @@ export function ClipComposer({ onStart }: { onStart: (source: Source, captions: 
     for (const f of Array.from(files)) {
       if (isVideoFile(f)) {
         setVideo(f);
+        setDropboxPath(null);
         setZoom(null);
       } else if (isCaptionFile(f)) setCaptions(f);
     }
@@ -66,7 +70,7 @@ export function ClipComposer({ onStart }: { onStart: (source: Source, captions: 
     const text = prompt.trim();
     if (video) {
       onStart(
-        { kind: 'local', key: `local:${video.name}:${video.size}`, title: video.name.replace(/\.[^.]+$/, ''), fileName: video.name, url: URL.createObjectURL(video), file: video },
+        { kind: 'local', key: dropboxPath ? `dropbox:${dropboxPath.toLowerCase()}` : `local:${video.name}:${video.size}`, title: video.name.replace(/\.[^.]+$/, ''), fileName: video.name, url: URL.createObjectURL(video), file: video },
         captions ?? undefined,
         text,
       );
@@ -226,6 +230,17 @@ export function ClipComposer({ onStart }: { onStart: (source: Source, captions: 
           </button>
         ))}
       </div>
+
+      <DropboxPicker
+        onPick={(file, caps, path) => {
+          setVideo(file);
+          setDropboxPath(path);
+          setZoom(null);
+          if (caps) setCaptions(caps);
+          setError(null);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
 
       <section aria-labelledby="clipper-zoom" className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">

@@ -1115,3 +1115,32 @@ model PublicRegistration {
   @@index([programId])
   @@map("PublicRegistration")
 }
+
+/// Post-production › Clipper: a transcript written from a recording's audio
+/// (AWS Transcribe, speakers labelled), corrected by editors. `sourceKey`
+/// is the clipper's key for the recording (zoom:…, local:…, dropbox:…).
+model PostProductionTranscript {
+  id              String                         @id @default(cuid())
+  sourceKey       String
+  title           String
+  status          PostProductionTranscriptStatus @default(QUEUED)
+  jobName         String?                        @unique
+  mediaS3Uri      String?
+  outputS3Key     String?
+  error           String?
+  /// [{ start, end, text, speaker? }] in seconds, after corrections.
+  cues            Json?
+  edited          Boolean                        @default(false)
+  createdByUserId String?
+  createdAt       DateTime                       @default(now())
+  updatedAt       DateTime                       @updatedAt
+
+  @@index([sourceKey, createdAt])
+}
+
+enum PostProductionTranscriptStatus {
+  QUEUED
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+}
