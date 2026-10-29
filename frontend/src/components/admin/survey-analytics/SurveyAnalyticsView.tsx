@@ -13,6 +13,7 @@ import {
 import { SegmentFilter } from './SegmentFilter';
 import { SubmissionsTrendChart } from './SubmissionsTrendChart';
 import { SurveyAnalyticsSummaryCards } from './SurveyAnalyticsSummaryCards';
+import { SurveyBetaInsightsPanel } from './SurveyBetaInsightsPanel';
 import { SurveyQuestionAnalyticsCard } from './SurveyQuestionAnalyticsCard';
 
 interface SurveyAnalyticsViewProps {
@@ -101,6 +102,10 @@ export function SurveyAnalyticsView({
       ) : (
         <>
           <SurveyAnalyticsSummaryCards totals={analytics.totals} />
+
+          {analytics.betaInsights ? (
+            <SurveyBetaInsightsPanel insights={analytics.betaInsights} />
+          ) : null}
 
           <section
             className="rounded-card border border-border bg-card p-4"

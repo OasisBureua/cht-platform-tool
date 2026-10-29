@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import type { SurveyQuestion } from '../../api/surveys';
 import {
   isIdentitySurveyQuestion,
-  listNativeSurveyQuestions,
+  listNativeSurveySections,
   surveyHasNativeQuestions,
 } from '../../utils/survey-questions';
 import { surveyFieldInputHints } from '../../utils/survey-field-autocomplete';
@@ -84,11 +84,25 @@ export function NativeSurveyForm({
   profilePrefill,
   initialAnswers,
 }: Props) {
-  const visibleQuestions = useMemo(() => {
-    const all = listNativeSurveyQuestions(questions);
-    if (!authenticated) return all;
-    return all.filter((q) => !isIdentitySurveyQuestion(q));
+  const visibleSections = useMemo(() => {
+    const sections = listNativeSurveySections(questions).map((section) => ({
+      ...section,
+      questions: authenticated
+        ? section.questions.filter((q) => !isIdentitySurveyQuestion(q))
+        : section.questions,
+    }));
+    return sections.filter((section) => section.questions.length > 0);
   }, [questions, authenticated]);
+
+  /** Progress excludes intro-only info sections from the "x of 5" content count when possible. */
+  const progressSections = useMemo(() => {
+    const content = visibleSections.filter(
+      (s) => s.id !== 'intro' && s.questions.some((q) => q.type !== 'info'),
+    );
+    return content.length > 0 ? content : visibleSections;
+  }, [visibleSections]);
+
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => ({
     ...(initialAnswers ?? {}),
@@ -157,6 +171,18 @@ export function NativeSurveyForm({
     e.preventDefault();
   };
 
+  const useSectionWizard = progressSections.length > 1;
+  const safeSectionIndex = Math.min(
+    activeSectionIndex,
+    Math.max(progressSections.length - 1, 0),
+  );
+  const currentProgressSection = progressSections[safeSectionIndex];
+  const isLastProgressSection =
+    !useSectionWizard || safeSectionIndex >= progressSections.length - 1;
+
+  // Intro info blocks always shown above the active content section.
+  const introSections = visibleSections.filter((s) => s.id === 'intro');
+
   return (
     <form
       id={formId}
@@ -180,17 +206,77 @@ export function NativeSurveyForm({
         </div>
       ) : null}
 
-      {visibleQuestions.map((q, idx) => (
-        <SurveyQuestionBlock
-          key={q.id ?? `q-${idx}`}
-          question={q}
-          answers={answers}
-          setAnswer={setAnswer}
-          disabled={disabled}
-        />
+      {useSectionWizard && currentProgressSection ? (
+        <div
+          className="sticky top-0 z-10 -mx-1 rounded-[6px] border border-border bg-card/95 px-3 py-2 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80"
+          aria-live="polite"
+        >
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Section {safeSectionIndex + 1} of {progressSections.length}
+          </p>
+          <p className="text-sm font-semibold text-foreground">
+            {currentProgressSection.title}
+          </p>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-brand-600 transition-[width] duration-200"
+              style={{
+                width: `${((safeSectionIndex + 1) / progressSections.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
+      {introSections.map((section) => (
+        <div key={section.id} className="space-y-4">
+          {section.questions.map((q, idx) => (
+            <SurveyQuestionBlock
+              key={q.id ?? `intro-${idx}`}
+              question={q}
+              answers={answers}
+              setAnswer={setAnswer}
+              disabled={disabled}
+            />
+          ))}
+        </div>
       ))}
 
-      {showPayoutNotice ? (
+      {useSectionWizard && currentProgressSection
+        ? currentProgressSection.questions.map((q, idx) => (
+            <SurveyQuestionBlock
+              key={q.id ?? `q-${idx}`}
+              question={q}
+              answers={answers}
+              setAnswer={setAnswer}
+              disabled={disabled}
+            />
+          ))
+        : visibleSections
+            .filter((s) => s.id !== 'intro')
+            .map((section, sectionIndex, arr) => (
+              <section key={section.id} className="space-y-4">
+                <header className="border-b border-border pb-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Section {sectionIndex + 1} of {arr.length}
+                  </p>
+                  <h3 className="text-base font-semibold text-foreground">
+                    {section.title}
+                  </h3>
+                </header>
+                {section.questions.map((q, idx) => (
+                  <SurveyQuestionBlock
+                    key={q.id ?? `q-${idx}`}
+                    question={q}
+                    answers={answers}
+                    setAnswer={setAnswer}
+                    disabled={disabled}
+                  />
+                ))}
+              </section>
+            ))}
+
+      {showPayoutNotice && isLastProgressSection ? (
         <div className="rounded-card border border-warning/25 bg-warning/10 px-4 py-3 text-xs text-amber-950">
           W-9 and honorarium payout details are managed in your{' '}
           <Link to={w9ProfileHref} className="font-semibold underline">
@@ -200,11 +286,44 @@ export function NativeSurveyForm({
         </div>
       ) : null}
 
-      {!hideSubmitButton ? (
+      {useSectionWizard ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          <button
+            type="button"
+            disabled={disabled || safeSectionIndex === 0}
+            onClick={() => setActiveSectionIndex((i) => Math.max(0, i - 1))}
+            className="inline-flex flex-1 items-center justify-center rounded-[6px] border border-border px-4 py-2.5 text-sm font-semibold text-foreground hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
+          >
+            Back
+          </button>
+          {!isLastProgressSection ? (
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() =>
+                setActiveSectionIndex((i) =>
+                  Math.min(progressSections.length - 1, i + 1),
+                )
+              }
+              className="inline-flex flex-1 items-center justify-center rounded-[6px] bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-300 sm:flex-none"
+            >
+              Next section
+            </button>
+          ) : !hideSubmitButton ? (
+            <button
+              type="submit"
+              disabled={disabled || submitting}
+              className="inline-flex flex-1 items-center justify-center rounded-[6px] bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-300 sm:flex-none"
+            >
+              {submitting ? 'Submitting…' : submitLabel ?? `Submit ${title}`}
+            </button>
+          ) : null}
+        </div>
+      ) : !hideSubmitButton ? (
         <button
           type="submit"
           disabled={disabled || submitting}
-          className="inline-flex items-center justify-center rounded-[6px] bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-300"
+          className="inline-flex w-full items-center justify-center rounded-[6px] bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-gray-300 sm:w-auto"
         >
           {submitting ? 'Submitting…' : submitLabel ?? `Submit ${title}`}
         </button>

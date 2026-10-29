@@ -5,6 +5,7 @@ import {
   Header,
   Patch,
   Post,
+  Put,
   Body,
   Param,
   Query,
@@ -55,6 +56,9 @@ import {
   parseZoomWebinarSettings,
 } from '../webinars/zoom-webinar-settings';
 import { SesEmailService } from '../email/ses-email.service';
+import { ProgramEmailOverrideService } from '../email/program-email-override.service';
+import { ProgramEmailKind } from '@prisma/client';
+import type { ProgramEmailCopy } from '../email/program-email-defaults';
 import { SessionHeroPresignService } from './session-hero-presign.service';
 import { ProgramZoomRecordingsService } from './program-zoom-recordings.service';
 import { PresignSessionHeroDto } from './dto/presign-session-hero.dto';
@@ -82,6 +86,18 @@ class ResendInvitationDto {
   @IsOptional()
   @IsEmail()
   correctedEmail?: string;
+}
+
+function parseProgramEmailKind(raw: string): ProgramEmailKind {
+  const kind = String(raw || '')
+    .trim()
+    .toUpperCase() as ProgramEmailKind;
+  if (!Object.values(ProgramEmailKind).includes(kind)) {
+    throw new BadRequestException(
+      `Invalid email kind. Expected one of: ${Object.values(ProgramEmailKind).join(', ')}`,
+    );
+  }
+  return kind;
 }
 
 /** Latest activity for a registration row (resubmits bump updatedAt / intakeJotformSubmittedAt; createdAt is first request only). */
@@ -116,6 +132,7 @@ export class AdminController {
     private programZoomRecordings: ProgramZoomRecordingsService,
     private sesEmail: SesEmailService,
     private programInvitations: ProgramInvitationsService,
+    private programEmailOverrides: ProgramEmailOverrideService,
   ) {}
 
   // ─── Bootstrap (no auth - first super-admin setup) ───────────────────────
@@ -703,6 +720,40 @@ export class AdminController {
     res.send(Buffer.from(body, 'utf8'));
   }
 
+  @Patch('survey-responses/:responseId/comment-stage-tags')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Tag a survey free-text comment by stage (access, registration, livestream, honorarium)',
+  })
+  @ApiParam({ name: 'responseId', description: 'SurveyResponse ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['stages'],
+      properties: {
+        stages: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['access', 'registration', 'livestream', 'honorarium'],
+          },
+        },
+      },
+    },
+  })
+  updateSurveyCommentStageTags(
+    @Param('responseId') responseId: string,
+    @Body('stages') stages: string[],
+  ) {
+    if (!Array.isArray(stages)) {
+      throw new BadRequestException('stages must be an array');
+    }
+    return this.surveysService.updateCommentStageTags(responseId, stages);
+  }
+
   @Get('beta-terms-acceptances/export.csv')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
@@ -1162,6 +1213,11 @@ export class AdminController {
     const webinarById = new Map(zoomWebinars.map((w) => [w.id, w]));
     const meetingById = new Map(zoomMeetings.map((m) => [m.id, m]));
 
+    const customEmailProgramIds =
+      await this.programEmailOverrides.programsWithCustomEmailFlags(
+        programs.map((p) => p.id),
+      );
+
     const result = programs.map((p) => {
       const zoom =
         p.zoomMeetingId && p.zoomSessionType === 'MEETING'
@@ -1201,6 +1257,7 @@ export class AdminController {
         importedViaWebhook: p.importedViaWebhook,
         sessionDisclaimer: p.sessionDisclaimer?.trim() || undefined,
         sessionHeroImageUrl: p.sessionHeroImageUrl?.trim() || undefined,
+        hasCustomEmails: customEmailProgramIds.has(p.id),
       };
     });
 
@@ -1950,6 +2007,159 @@ export class AdminController {
     return this.programInvitations.resend(id, logId, admin, {
       correctedEmail: body?.correctedEmail,
     });
+  }
+
+  @Get('program-email-kinds')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'List customizable participant email kinds and allowed merge tokens',
+  })
+  listProgramEmailKinds() {
+    return this.programEmailOverrides.listKinds();
+  }
+
+  @Get('programs/:id/email-overrides')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'List per-event email overrides (custom vs default) for a program',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  listProgramEmailOverrides(@Param('id') id: string) {
+    return this.programEmailOverrides.listForProgram(id);
+  }
+
+  @Put('programs/:id/email-overrides/:kind')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Save a per-event email override (subject, greeting, body, sign-off). Validates merge tokens.',
+  })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  @ApiParam({
+    name: 'kind',
+    enum: ProgramEmailKind,
+  })
+  saveProgramEmailOverride(
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @Body()
+    body: ProgramEmailCopy,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const emailKind = parseProgramEmailKind(kind);
+    return this.programEmailOverrides.upsert(id, emailKind, body, admin.userId);
+  }
+
+  @Delete('programs/:id/email-overrides/:kind')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Reset a per-event email override to the platform default' })
+  @ApiParam({ name: 'id', description: 'Program ID' })
+  @ApiParam({ name: 'kind', enum: ProgramEmailKind })
+  resetProgramEmailOverride(
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const emailKind = parseProgramEmailKind(kind);
+    return this.programEmailOverrides.resetToDefault(
+      id,
+      emailKind,
+      admin.userId,
+    );
+  }
+
+  @Get('programs/:id/email-overrides/:kind/versions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Version history for a per-event email override' })
+  listProgramEmailOverrideVersions(
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+  ) {
+    return this.programEmailOverrides.listVersions(
+      id,
+      parseProgramEmailKind(kind),
+    );
+  }
+
+  @Post('programs/:id/email-overrides/:kind/preview')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Preview rendered HTML/text with sample merge data (optional unsaved copy in body)',
+  })
+  previewProgramEmailOverride(
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @Body() body?: Partial<ProgramEmailCopy> & { useDraft?: boolean },
+  ) {
+    const emailKind = parseProgramEmailKind(kind);
+    const draft =
+      body?.subject != null &&
+      body?.greeting != null &&
+      body?.body != null &&
+      body?.signOff != null
+        ? {
+            subject: body.subject,
+            greeting: body.greeting,
+            body: body.body,
+            signOff: body.signOff,
+          }
+        : null;
+    return this.programEmailOverrides.preview(id, emailKind, draft);
+  }
+
+  @Post('programs/:id/email-overrides/:kind/test-send')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @SkipThrottle({ short: true, long: true, auth: true, authMfa: true })
+  @Throttle({ medium: { limit: 10, ttl: 600_000 } })
+  @ApiOperation({
+    summary: 'Send a test render of this email (merge fields filled with sample data)',
+  })
+  testSendProgramEmailOverride(
+    @Param('id') id: string,
+    @Param('kind') kind: string,
+    @Body()
+    body: Partial<ProgramEmailCopy> & { toEmail?: string },
+    @CurrentUser() admin: AuthUser,
+  ) {
+    const emailKind = parseProgramEmailKind(kind);
+    const toEmail = body.toEmail?.trim() || admin.email;
+    if (!toEmail) {
+      throw new BadRequestException('toEmail is required (or sign in with an email)');
+    }
+    const draft =
+      body.subject != null &&
+      body.greeting != null &&
+      body.body != null &&
+      body.signOff != null
+        ? {
+            subject: body.subject,
+            greeting: body.greeting,
+            body: body.body,
+            signOff: body.signOff,
+          }
+        : null;
+    return this.programEmailOverrides.sendTest(
+      id,
+      emailKind,
+      toEmail,
+      admin.userId,
+      draft,
+    );
   }
 
   @Post('programs/:id/operational-email')

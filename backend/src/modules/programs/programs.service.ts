@@ -76,7 +76,9 @@ export class ProgramsService {
     const programs = await this.prisma.program.findMany({
       include: {
         videos: { orderBy: { order: 'asc' } },
-        _count: { select: { enrollments: true, surveys: true } },
+        _count: {
+          select: { enrollments: true, surveys: true, emailOverrides: true },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -96,6 +98,7 @@ export class ProgramsService {
       endDate: p.endDate?.toISOString(),
       enrollmentsCount: p._count.enrollments,
       surveysCount: p._count.surveys,
+      hasCustomEmails: p._count.emailOverrides > 0,
     }));
   }
 
