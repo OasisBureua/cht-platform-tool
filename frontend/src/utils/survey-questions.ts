@@ -30,16 +30,43 @@ export function isIdentitySurveyQuestion(question: SurveyQuestion): boolean {
   return false;
 }
 
-export function listNativeSurveyQuestions(questions: unknown): SurveyQuestion[] {
+export type NativeSurveySectionView = {
+  id: string;
+  title: string;
+  questions: SurveyQuestion[];
+};
+
+/** Section list for progress UI (Section x of n). Falls back to one untitled section. */
+export function listNativeSurveySections(
+  questions: unknown,
+): NativeSurveySectionView[] {
   if (!questions || typeof questions !== 'object') return [];
   const q = questions as Record<string, unknown>;
   if (Array.isArray(q.sections)) {
-    return (q.sections as Array<{ questions?: SurveyQuestion[] }>).flatMap(
-      (section) => section.questions ?? [],
-    );
+    return (q.sections as Array<{ id?: string; title?: string; questions?: SurveyQuestion[] }>)
+      .map((section, index) => ({
+        id: String(section.id ?? `section-${index + 1}`),
+        title: String(section.title ?? `Section ${index + 1}`).trim() || `Section ${index + 1}`,
+        questions: section.questions ?? [],
+      }))
+      .filter((section) => section.questions.length > 0);
   }
   if (Array.isArray(questions)) {
-    return questions as SurveyQuestion[];
+    return [
+      {
+        id: 'questions',
+        title: 'Questions',
+        questions: questions as SurveyQuestion[],
+      },
+    ];
+  }
+  return [];
+}
+
+export function listNativeSurveyQuestions(questions: unknown): SurveyQuestion[] {
+  const sections = listNativeSurveySections(questions);
+  if (sections.length > 0) {
+    return sections.flatMap((section) => section.questions);
   }
   return [];
 }
