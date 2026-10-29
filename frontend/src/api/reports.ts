@@ -225,6 +225,13 @@ export type ReportSourceInput = {
   status: 'ok' | 'missing' | 'error';
 };
 
+/** CPR-61 — a channel's posts linked to the campaign, and how many have metrics in the window. */
+export type SocialPostCount = {
+  channel: string;
+  linked: number;
+  withMetrics: number;
+};
+
 /** CPR-51 — what Generate would find per source, as of the Hub's last sync. */
 export type ReportInputs = {
   campaignId: number;
@@ -235,6 +242,8 @@ export type ReportInputs = {
   registeredCount: number | null;
   attendedCount: number | null;
   attendeesWithProfile: number | null;
+  /** Null when no social source is on; absent on older Hub deploys. */
+  socialPosts?: SocialPostCount[] | null;
 };
 
 export const reportInputsApi = {
