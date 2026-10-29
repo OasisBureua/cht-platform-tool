@@ -209,4 +209,80 @@ describe('SurveyAnalyticsView', () => {
     expect(screen.getByText('Approved')).toBeInTheDocument();
     expect(screen.getByText('2 responses')).toBeInTheDocument();
   });
+
+  it('studio variant shows report strip and jump-to-question nav', () => {
+    render(
+      <SurveyAnalyticsView
+        data={baseAnalytics({
+          betaInsights: {
+            easeByStage: [
+              {
+                stage: 'access',
+                questionId: 'ease-access',
+                prompt: 'How easy was access?',
+                average: 4.2,
+                count: 3,
+              },
+            ],
+            nps: {
+              questionId: 'nps1',
+              prompt: 'Recommend?',
+              score: 33,
+              promoters: 2,
+              passives: 0,
+              detractors: 1,
+              totalRated: 3,
+            },
+            comments: [],
+          },
+        })}
+        segmentBy={null}
+        onSegmentChange={vi.fn()}
+        variant="studio"
+      />,
+    );
+
+    expect(screen.getByTestId('survey-analytics-view')).toHaveAttribute(
+      'data-variant',
+      'studio',
+    );
+    expect(screen.getByTestId('survey-report-strip')).toBeInTheDocument();
+    expect(screen.getByText('Completion rate')).toBeInTheDocument();
+    expect(screen.getByText('Access ease')).toBeInTheDocument();
+    expect(screen.getByText('NPS')).toBeInTheDocument();
+    expect(screen.getByRole('navigation', { name: /jump to question/i })).toBeInTheDocument();
+    // Prompt appears in jump-nav + question card heading.
+    expect(screen.getAllByText('How satisfied were you?').length).toBeGreaterThan(0);
+    expect(document.getElementById('question-q1')).toBeTruthy();
+  });
+
+  it('studio empty state uses calm copy when there are no responses', () => {
+    const data = baseAnalytics({
+      totals: {
+        totalResponses: 0,
+        uniqueRespondents: 0,
+        firstResponseAt: null,
+        lastResponseAt: null,
+        completionRate: null,
+        score: null,
+      },
+      timeSeries: [],
+      questions: [],
+    });
+
+    render(
+      <SurveyAnalyticsView
+        data={data}
+        segmentBy={null}
+        onSegmentChange={vi.fn()}
+        variant="studio"
+      />,
+    );
+
+    expect(screen.getByText('No responses yet')).toBeInTheDocument();
+    expect(
+      screen.getByText(/Share the survey link or wait for participants/i),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('survey-report-strip')).not.toBeInTheDocument();
+  });
 });

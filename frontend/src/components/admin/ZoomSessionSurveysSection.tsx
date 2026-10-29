@@ -278,13 +278,13 @@ export function ZoomSessionSurveysSection({
                             <td className="px-3 py-3 align-top">
                               <div className="flex flex-wrap items-center justify-end gap-2">
                                 <Link
-                                  to={`/admin/surveys/${survey.id}/responses`}
+                                  to={`/admin/surveys/${survey.id}?tab=responses`}
                                   className="inline-flex items-center gap-1 rounded-[6px] border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                                 >
                                   Responses
                                 </Link>
                                 <Link
-                                  to={`/admin/surveys/${survey.id}/edit`}
+                                  to={`/admin/surveys/${survey.id}?tab=questions`}
                                   className="inline-flex items-center gap-1 rounded-[6px] border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted"
                                 >
                                   <Pencil className="h-3 w-3" aria-hidden />

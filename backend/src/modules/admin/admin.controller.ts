@@ -637,6 +637,111 @@ export class AdminController {
     return this.surveysService.deleteSurvey(id);
   }
 
+  // Static survey collection routes MUST be registered before surveys/:id/*
+  // or Express can fail to match them (404 on compare / workspace-stats).
+  @Get('surveys/workspace-stats')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Survey workspace dashboard: totals, 30-day trend, HCP Beta ease/NPS, needs attention',
+  })
+  getSurveyWorkspaceStats() {
+    return this.surveysService.getWorkspaceStatsForAdmin();
+  }
+
+  @Get('surveys/compare-candidates')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Search FEEDBACK surveys for the compare picker (title / program title)',
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description: 'Case-insensitive search on survey or program title',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max rows to return (default 50, max 100)',
+  })
+  @ApiQuery({
+    name: 'includeIds',
+    required: false,
+    description:
+      'Comma-separated survey IDs to always include (selected rows stay visible)',
+  })
+  listCompareCandidates(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+    @Query('includeIds') includeIds?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.surveysService.listCompareCandidatesForAdmin({
+      q,
+      limit:
+        parsedLimit != null && Number.isFinite(parsedLimit)
+          ? parsedLimit
+          : undefined,
+      includeIds: (includeIds ?? '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean),
+    });
+  }
+
+  @Get('surveys/compare')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Compare 2–3 FEEDBACK surveys side-by-side (completion, ease, NPS, shared questions)',
+  })
+  @ApiQuery({
+    name: 'ids',
+    required: true,
+    description: 'Comma-separated survey IDs (2 or 3)',
+    example: 'cuid1,cuid2',
+  })
+  compareSurveys(@Query('ids') ids?: string) {
+    const list = (ids ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return this.surveysService.compareSurveysForAdmin(list);
+  }
+
+  @Get('surveys/reusable')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['INTAKE', 'FEEDBACK'],
+  })
+  async listReusableSurveys(@Query('type') type?: string) {
+    const normalized = type?.toUpperCase();
+    if (normalized && normalized !== 'INTAKE' && normalized !== 'FEEDBACK') {
+      throw new BadRequestException('type must be INTAKE or FEEDBACK');
+    }
+    return this.surveysService.listReusableSurveyTemplates(
+      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
+    );
+  }
+
   @Get('surveys/:id/responses')
   @Header('Cache-Control', 'no-store')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -1796,29 +1901,6 @@ export class AdminController {
     return this.surveysService.ensureNativeSurveyPairForProgram(
       program.id,
       program.title,
-    );
-  }
-
-  @Get('surveys/reusable')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth('session-token')
-  @ApiOperation({
-    summary:
-      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
-  })
-  @ApiQuery({
-    name: 'type',
-    required: false,
-    enum: ['INTAKE', 'FEEDBACK'],
-  })
-  async listReusableSurveys(@Query('type') type?: string) {
-    const normalized = type?.toUpperCase();
-    if (normalized && normalized !== 'INTAKE' && normalized !== 'FEEDBACK') {
-      throw new BadRequestException('type must be INTAKE or FEEDBACK');
-    }
-    return this.surveysService.listReusableSurveyTemplates(
-      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
     );
   }
 

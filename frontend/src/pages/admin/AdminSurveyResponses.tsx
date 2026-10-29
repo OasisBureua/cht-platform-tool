@@ -280,11 +280,23 @@ function ResponseItem({
   );
 }
 
-export default function AdminSurveyResponses() {
+export default function AdminSurveyResponses({
+  embedded = false,
+  forceTab,
+  hideCsvButton = false,
+}: {
+  /** Render inside the survey studio shell (no page header / dual-tab chrome). */
+  embedded?: boolean;
+  /** When set, lock to one panel (studio Responses vs Results tabs). */
+  forceTab?: SurveyResponsesTab;
+  /** Studio header already owns CSV download. */
+  hideCsvButton?: boolean;
+} = {}) {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const [csvDownloading, setCsvDownloading] = useState(false);
-  const [tab, setTab] = useState<SurveyResponsesTab>('responses');
+  const [tab, setTab] = useState<SurveyResponsesTab>(forceTab ?? 'responses');
+  const activeTab = forceTab ?? tab;
   const [page, setPage] = useState(1);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set());
   const [tagOverrides, setTagOverrides] = useState<Record<string, string[]>>({});
@@ -380,87 +392,104 @@ export default function AdminSurveyResponses() {
   };
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-16">
-      <div className="space-y-5">
-        <Link
-          to="/admin/surveys"
-          className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Surveys
-        </Link>
+    <div className={embedded ? 'space-y-6 pb-8' : 'mx-auto max-w-5xl space-y-8 pb-16'}>
+      {!embedded ? (
+        <div className="space-y-5">
+          <Link
+            to="/admin/surveys"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Surveys
+          </Link>
 
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center rounded-[6px] bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
-                {surveyTypeLabel(survey.type)}
-              </span>
-              {tab === 'responses' ? (
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {total.toLocaleString()} response{total === 1 ? '' : 's'}
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0 space-y-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center rounded-[6px] bg-muted px-2.5 py-1 text-xs font-semibold text-foreground">
+                  {surveyTypeLabel(survey.type)}
                 </span>
-              ) : null}
+                {activeTab === 'responses' ? (
+                  <span className="text-xs tabular-nums text-muted-foreground">
+                    {total.toLocaleString()} response{total === 1 ? '' : 's'}
+                  </span>
+                ) : null}
+              </div>
+              <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground">
+                {displayTitle}
+              </h1>
+              {survey.program ? (
+                <p className="text-sm text-muted-foreground">
+                  Program{' '}
+                  <Link
+                    to={`/admin/programs/${survey.program.id}/hub?tab=surveys`}
+                    className="font-medium text-foreground underline-offset-2 hover:underline"
+                  >
+                    {survey.program.title}
+                  </Link>
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">Not linked to a program</p>
+              )}
             </div>
-            <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground">
-              {displayTitle}
-            </h1>
-            {survey.program ? (
-              <p className="text-sm text-muted-foreground">
-                Program{' '}
-                <Link
-                  to={`/admin/programs/${survey.program.id}/hub?tab=surveys`}
-                  className="font-medium text-foreground underline-offset-2 hover:underline"
-                >
-                  {survey.program.title}
-                </Link>
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Not linked to a program</p>
+
+            {activeTab === 'analytics' ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={downloadAnalyticsPdf}
+                disabled={total === 0}
+              >
+                <Download className="h-4 w-4" />
+                Download PDF
+              </Button>
+            ) : hideCsvButton ? null : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => void downloadCsv()}
+                disabled={csvDownloading || total === 0}
+              >
+                <Download className="h-4 w-4" />
+                {csvDownloading ? 'Preparing…' : 'Download CSV'}
+              </Button>
             )}
-          </div>
+          </header>
 
-          {tab === 'analytics' ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={downloadAnalyticsPdf}
-              disabled={total === 0}
-            >
-              <Download className="h-4 w-4" />
-              Download PDF
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void downloadCsv()}
-              disabled={csvDownloading || total === 0}
-            >
-              <Download className="h-4 w-4" />
-              {csvDownloading ? 'Preparing…' : 'Download CSV'}
-            </Button>
-          )}
-        </header>
+          {!forceTab ? (
+            <SegmentedControl
+              label="Survey views"
+              value={tab}
+              onChange={(next) => {
+                setTab(next);
+                if (next === 'responses') setPage(1);
+              }}
+              segments={[
+                { value: 'responses', label: 'Responses', count: total },
+                { value: 'analytics', label: 'Analytics' },
+              ]}
+            />
+          ) : null}
+        </div>
+      ) : activeTab === 'analytics' && !hideCsvButton ? (
+        <div className="flex justify-end">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={downloadAnalyticsPdf}
+            disabled={total === 0}
+          >
+            <Download className="h-4 w-4" />
+            Download PDF
+          </Button>
+        </div>
+      ) : null}
 
-        <SegmentedControl
-          label="Survey views"
-          value={tab}
-          onChange={(next) => {
-            setTab(next);
-            if (next === 'responses') setPage(1);
-          }}
-          segments={[
-            { value: 'responses', label: 'Responses', count: total },
-            { value: 'analytics', label: 'Analytics' },
-          ]}
-        />
-      </div>
-
-      {tab === 'analytics' ? (
-        <SurveyAnalyticsPanel surveyId={id} enabled={tab === 'analytics'} />
+      {activeTab === 'analytics' ? (
+        <SurveyAnalyticsPanel surveyId={id} enabled={activeTab === 'analytics'} />
       ) : total === 0 ? (
         <div className="flex flex-col items-center rounded-card bg-card px-6 py-16 text-center shadow-card">
           <div className="mb-3 grid size-12 place-items-center rounded-full bg-muted text-muted-foreground">

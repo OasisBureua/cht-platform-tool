@@ -15,18 +15,23 @@ import { seriesColor, TEAL } from './chartTheme';
 type ChoiceChartType = 'pie' | 'bar';
 
 function CardShell({
+  id,
   prompt,
   subtitle,
   badge,
   children,
 }: {
+  id?: string;
   prompt: string;
   subtitle: string;
   badge?: string;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-card border border-border bg-card p-4">
+    <section
+      id={id}
+      className="scroll-mt-28 rounded-card border border-border bg-card p-4 shadow-card"
+    >
       <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
         <h3 className="text-sm font-semibold text-foreground">{prompt}</h3>
         {badge ? (
@@ -89,6 +94,7 @@ function ChoiceQuestionCard({ question }: { question: SurveyChoiceQuestionAnalyt
 
   return (
     <CardShell
+      id={`question-${question.id}`}
       prompt={question.prompt}
       subtitle={`${question.totalAnswered.toLocaleString()} answered`}
       badge={question.multiSelect ? 'Multi-select' : 'Single-select'}
@@ -175,9 +181,11 @@ function TextSamples({ q }: { q: SurveyTextQuestionAnalytics }) {
           {q.samples.map((sample, i) => (
             <li
               key={i}
-              className="rounded-[6px] border border-gray-100 bg-muted px-3 py-2 text-sm text-muted-foreground"
+              className="rounded-[6px] border border-l-4 border-gray-100 border-l-brand-300 bg-muted px-3 py-2.5 text-sm leading-relaxed text-foreground"
             >
+              <span className="text-muted-foreground">&ldquo;</span>
               {sample}
+              <span className="text-muted-foreground">&rdquo;</span>
             </li>
           ))}
         </ul>
@@ -208,6 +216,7 @@ export function SurveyQuestionAnalyticsCard({
   if (question.kind === 'rating') {
     return (
       <CardShell
+        id={`question-${question.id}`}
         prompt={question.prompt}
         subtitle={`${question.count.toLocaleString()} answered`}
         badge="Rating"
@@ -220,6 +229,7 @@ export function SurveyQuestionAnalyticsCard({
 
   return (
     <CardShell
+      id={`question-${question.id}`}
       prompt={question.prompt}
       subtitle={`${question.responseCount.toLocaleString()} responses`}
       badge="Free text"
