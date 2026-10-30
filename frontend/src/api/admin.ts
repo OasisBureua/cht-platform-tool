@@ -1726,6 +1726,107 @@ export const adminApi = {
     return data;
   },
 
+  /** SCRUM-291 survey workspace landing dashboard aggregates. */
+  getSurveyWorkspaceStats: async (): Promise<{
+    totalSurveys: number;
+    totalResponses: number;
+    completionRate: number | null;
+    averageEaseScore: number | null;
+    npsScore: number | null;
+    responsesLast30Days: number;
+    trend: Array<{ date: string; count: number }>;
+    needsAttention: Array<{
+      id: string;
+      title: string;
+      programTitle: string | null;
+      reason: string;
+      kind: 'no_responses' | 'low_completion';
+      responseCount: number;
+      completionRate: number | null;
+    }>;
+  }> => {
+    const { data } = await apiClient.get('/admin/surveys/workspace-stats');
+    return data;
+  },
+
+  /** SCRUM-291: server-side search for compare picker (FEEDBACK only). */
+  listSurveyCompareCandidates: async (opts?: {
+    q?: string;
+    limit?: number;
+    includeIds?: string[];
+  }): Promise<{
+    items: Array<{
+      id: string;
+      title: string;
+      type: string;
+      isCustomized: boolean;
+      responseCount: number;
+      program: { id: string; title: string } | null;
+    }>;
+    totalMatching: number;
+  }> => {
+    const { data } = await apiClient.get('/admin/surveys/compare-candidates', {
+      params: {
+        q: opts?.q?.trim() || undefined,
+        limit: opts?.limit,
+        includeIds: opts?.includeIds?.length
+          ? opts.includeIds.join(',')
+          : undefined,
+      },
+    });
+    return data;
+  },
+
+  /** SCRUM-291: side-by-side FEEDBACK survey compare (2–3 IDs). */
+  compareSurveys: async (
+    ids: string[],
+  ): Promise<{
+    columns: Array<{
+      surveyId: string;
+      title: string;
+      type: string;
+      program: { id: string; title: string } | null;
+      responseCount: number;
+      completionRate: {
+        eligible: number;
+        completed: number;
+        rate: number;
+      } | null;
+      averageEase: number | null;
+      easeByStage: Array<{
+        stage: string;
+        average: number | null;
+        count: number;
+      }>;
+      nps: {
+        score: number | null;
+        promoters: number;
+        passives: number;
+        detractors: number;
+        totalRated: number;
+      } | null;
+      hasNativeSchema: boolean;
+      hasBetaInsights: boolean;
+    }>;
+    sharedQuestions: Array<{
+      prompt: string;
+      kind: 'rating' | 'choice';
+      values: Array<{
+        surveyId: string;
+        mean: number | null;
+        count: number;
+        topOption: string | null;
+        topPercentage: number | null;
+      }>;
+    }>;
+    warnings: string[];
+  }> => {
+    const { data } = await apiClient.get('/admin/surveys/compare', {
+      params: { ids: ids.join(',') },
+    });
+    return data;
+  },
+
   listReusableSurveys: async (
     type?: 'INTAKE' | 'FEEDBACK',
   ): Promise<

@@ -734,6 +734,13 @@ export default function AdminProgramHub() {
                 type="button"
                 disabled={!intakeCloneSourceId || cloneSurveyMut.isPending}
                 onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Copy this registration survey onto this program?\n\nThe source survey is unchanged. An empty intake here may be replaced; surveys that already have responses are never overwritten.',
+                    )
+                  ) {
+                    return;
+                  }
                   setCloneMessage({});
                   cloneSurveyMut.mutate(intakeCloneSourceId);
                 }}
@@ -769,6 +776,13 @@ export default function AdminProgramHub() {
                 type="button"
                 disabled={!feedbackCloneSourceId || cloneSurveyMut.isPending}
                 onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Copy this post-event survey onto this program?\n\nThe source survey is unchanged. An empty post-event survey here may be replaced; surveys that already have responses are never overwritten.',
+                    )
+                  ) {
+                    return;
+                  }
                   setCloneMessage({});
                   cloneSurveyMut.mutate(feedbackCloneSourceId);
                 }}
@@ -816,14 +830,14 @@ export default function AdminProgramHub() {
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <Link
-                    to={`/admin/surveys/${s.id}/edit`}
+                    to={`/admin/surveys/${s.id}?tab=questions`}
                     className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
                   </Link>
                   <Link
-                    to={`/admin/surveys/${s.id}/responses`}
+                    to={`/admin/surveys/${s.id}?tab=responses`}
                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     Responses
@@ -1190,7 +1204,7 @@ export default function AdminProgramHub() {
                       {intakeSurveyId ? (
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            to={`/admin/surveys/${intakeSurveyId}/edit`}
+                            to={`/admin/surveys/${intakeSurveyId}?tab=questions`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -1274,7 +1288,7 @@ export default function AdminProgramHub() {
                       {feedbackSurveyId ? (
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            to={`/admin/surveys/${feedbackSurveyId}/edit`}
+                            to={`/admin/surveys/${feedbackSurveyId}?tab=questions`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                           >
                             <Pencil className="h-3.5 w-3.5" />

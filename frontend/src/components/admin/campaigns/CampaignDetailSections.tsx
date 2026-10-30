@@ -226,7 +226,7 @@ export function SurveysTable({ campaign }: { campaign: CampaignDashboardRow }) {
             <p className="font-medium text-foreground">{survey.title}</p>
             <div className="mt-1 flex flex-wrap gap-3">
               <Link
-                to={`/admin/surveys/${survey.surveyId}/responses`}
+                to={`/admin/surveys/${survey.surveyId}?tab=responses`}
                 className="inline-flex items-center gap-1 text-xs font-medium text-brand-700 hover:underline dark:text-brand-300"
               >
                 Full responses

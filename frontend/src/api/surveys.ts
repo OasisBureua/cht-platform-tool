@@ -34,6 +34,8 @@ export interface Survey {
   schemaVersion?: number;
   /** Admin-only count used to explain response-safe editing constraints. */
   responseCount?: number;
+  /** Admin-only: responses / approved regs % (null for intake / unknown). */
+  completionRate?: number | null;
 
   jotformFormId?: string | null;
   jotformFormUrl?: string | null;
