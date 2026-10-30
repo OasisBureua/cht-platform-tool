@@ -19,6 +19,12 @@ import { ProgramInvitationsPanel } from '../../components/admin/ProgramInvitatio
 import { ProgramEmailsPanel } from '../../components/admin/ProgramEmailsPanel';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import { getApiErrorMessage } from '../../api/client';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  adminCapabilityDeniedMessage,
+  guardAdminAction,
+  hasAdminCapability,
+} from '../../utils/admin-capabilities';
 
 type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys' | 'invitations' | 'emails';
 
@@ -39,6 +45,11 @@ export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canWritePrograms = hasAdminCapability(user, 'programs');
+  const programsWriteDeniedTitle = adminCapabilityDeniedMessage('programs');
+  const canWriteSurveys = hasAdminCapability(user, 'surveys');
+  const surveysWriteDeniedTitle = adminCapabilityDeniedMessage('surveys');
   const [slotStart, setSlotStart] = useState('');
   const [slotEnd, setSlotEnd] = useState('');
   const [slotLabel, setSlotLabel] = useState('');
@@ -159,10 +170,12 @@ export default function AdminProgramHub() {
   });
 
   const confirmEnsureNativeSurveys = () => {
-    const confirmed = window.confirm(
-      'Create any missing native intake or post-event survey? Existing surveys, admin customizations, survey IDs, and collected responses will not be changed.',
-    );
-    if (confirmed) ensureNativeSurveysMut.mutate();
+    guardAdminAction(user, 'surveys', () => {
+      const confirmed = window.confirm(
+        'Create any missing native intake or post-event survey? Existing surveys, admin customizations, survey IDs, and collected responses will not be changed.',
+      );
+      if (confirmed) ensureNativeSurveysMut.mutate();
+    });
   };
 
   const { data: enrollments = [], isLoading: eLoading } = useQuery({
@@ -695,7 +708,8 @@ export default function AdminProgramHub() {
           <button
             type="button"
             onClick={confirmEnsureNativeSurveys}
-            disabled={ensureNativeSurveysMut.isPending}
+            disabled={!canWriteSurveys || ensureNativeSurveysMut.isPending}
+            title={!canWriteSurveys ? surveysWriteDeniedTitle : undefined}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
           >
             <RefreshCw
@@ -734,6 +748,13 @@ export default function AdminProgramHub() {
                 type="button"
                 disabled={!intakeCloneSourceId || cloneSurveyMut.isPending}
                 onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Copy this registration survey onto this program?\n\nThe source survey is unchanged. An empty intake here may be replaced; surveys that already have responses are never overwritten.',
+                    )
+                  ) {
+                    return;
+                  }
                   setCloneMessage({});
                   cloneSurveyMut.mutate(intakeCloneSourceId);
                 }}
@@ -769,6 +790,13 @@ export default function AdminProgramHub() {
                 type="button"
                 disabled={!feedbackCloneSourceId || cloneSurveyMut.isPending}
                 onClick={() => {
+                  if (
+                    !window.confirm(
+                      'Copy this post-event survey onto this program?\n\nThe source survey is unchanged. An empty post-event survey here may be replaced; surveys that already have responses are never overwritten.',
+                    )
+                  ) {
+                    return;
+                  }
                   setCloneMessage({});
                   cloneSurveyMut.mutate(feedbackCloneSourceId);
                 }}
@@ -816,14 +844,14 @@ export default function AdminProgramHub() {
                 </div>
                 <div className="flex flex-wrap gap-2 shrink-0">
                   <Link
-                    to={`/admin/surveys/${s.id}/edit`}
+                    to={`/admin/surveys/${s.id}?tab=questions`}
                     className="inline-flex items-center gap-1 rounded-lg bg-gray-900 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                     Edit
                   </Link>
                   <Link
-                    to={`/admin/surveys/${s.id}/responses`}
+                    to={`/admin/surveys/${s.id}?tab=responses`}
                     className="inline-flex items-center gap-1 rounded-lg border border-border bg-card px-2.5 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
                   >
                     Responses
@@ -967,16 +995,34 @@ export default function AdminProgramHub() {
                       <div className="ml-auto flex flex-wrap gap-2">
                         <button
                           type="button"
-                          disabled={approvalBusy || selectedPendingList.length === 0}
-                          onClick={() => bulkApproveMut.mutate({ ids: selectedPendingList })}
+                          disabled={
+                            !canWritePrograms ||
+                            approvalBusy ||
+                            selectedPendingList.length === 0
+                          }
+                          title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+                          onClick={() =>
+                            guardAdminAction(user, 'programs', () =>
+                              bulkApproveMut.mutate({ ids: selectedPendingList }),
+                            )
+                          }
                           className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                         >
                           Approve selected
                         </button>
                         <button
                           type="button"
-                          disabled={approvalBusy || selectedPendingList.length === 0}
-                          onClick={() => setRejectModalIds([...selectedPendingList])}
+                          disabled={
+                            !canWritePrograms ||
+                            approvalBusy ||
+                            selectedPendingList.length === 0
+                          }
+                          title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+                          onClick={() =>
+                            guardAdminAction(user, 'programs', () =>
+                              setRejectModalIds([...selectedPendingList]),
+                            )
+                          }
                           className="rounded-lg border border-border bg-card px-2 py-1 text-xs font-semibold text-foreground disabled:opacity-40"
                         >
                           Reject selected
@@ -1063,16 +1109,34 @@ export default function AdminProgramHub() {
                                   <div className="flex flex-wrap gap-1.5">
                                     <button
                                       type="button"
-                                      disabled={approvalBusy}
-                                      onClick={() => approveMut.mutate({ id: r.id })}
+                                      disabled={!canWritePrograms || approvalBusy}
+                                      title={
+                                        !canWritePrograms
+                                          ? programsWriteDeniedTitle
+                                          : undefined
+                                      }
+                                      onClick={() =>
+                                        guardAdminAction(user, 'programs', () =>
+                                          approveMut.mutate({ id: r.id }),
+                                        )
+                                      }
                                       className="rounded bg-green-700 px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40"
                                     >
                                       Approve
                                     </button>
                                     <button
                                       type="button"
-                                      disabled={approvalBusy}
-                                      onClick={() => setRejectModalIds([r.id])}
+                                      disabled={!canWritePrograms || approvalBusy}
+                                      title={
+                                        !canWritePrograms
+                                          ? programsWriteDeniedTitle
+                                          : undefined
+                                      }
+                                      onClick={() =>
+                                        guardAdminAction(user, 'programs', () =>
+                                          setRejectModalIds([r.id]),
+                                        )
+                                      }
                                       className="rounded border border-border px-2 py-0.5 text-[11px] font-semibold disabled:opacity-40"
                                     >
                                       Reject
@@ -1154,7 +1218,8 @@ export default function AdminProgramHub() {
                 <button
                   type="button"
                   onClick={confirmEnsureNativeSurveys}
-                  disabled={ensureNativeSurveysMut.isPending}
+                  disabled={!canWriteSurveys || ensureNativeSurveysMut.isPending}
+                  title={!canWriteSurveys ? surveysWriteDeniedTitle : undefined}
                   className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-50"
                 >
                   <RefreshCw
@@ -1190,7 +1255,7 @@ export default function AdminProgramHub() {
                       {intakeSurveyId ? (
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            to={`/admin/surveys/${intakeSurveyId}/edit`}
+                            to={`/admin/surveys/${intakeSurveyId}?tab=questions`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -1274,7 +1339,7 @@ export default function AdminProgramHub() {
                       {feedbackSurveyId ? (
                         <div className="flex flex-wrap gap-2">
                           <Link
-                            to={`/admin/surveys/${feedbackSurveyId}/edit`}
+                            to={`/admin/surveys/${feedbackSurveyId}?tab=questions`}
                             className="inline-flex items-center gap-1.5 rounded-lg bg-gray-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800"
                           >
                             <Pencil className="h-3.5 w-3.5" />
@@ -1538,16 +1603,38 @@ export default function AdminProgramHub() {
                                 <>
                                   <button
                                     type="button"
-                                    disabled={approveMut.isPending || rejectMut.isPending}
-                                    onClick={() => approveMut.mutate({ id: r.id })}
+                                    disabled={
+                                      !canWritePrograms ||
+                                      approveMut.isPending ||
+                                      rejectMut.isPending
+                                    }
+                                    title={
+                                      !canWritePrograms
+                                        ? programsWriteDeniedTitle
+                                        : undefined
+                                    }
+                                    onClick={() =>
+                                      guardAdminAction(user, 'programs', () =>
+                                        approveMut.mutate({ id: r.id }),
+                                      )
+                                    }
                                     className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                                   >
                                     Approve
                                   </button>
                                   <button
                                     type="button"
-                                    disabled={rejectMut.isPending}
-                                    onClick={() => setRejectModalIds([r.id])}
+                                    disabled={!canWritePrograms || rejectMut.isPending}
+                                    title={
+                                      !canWritePrograms
+                                        ? programsWriteDeniedTitle
+                                        : undefined
+                                    }
+                                    onClick={() =>
+                                      guardAdminAction(user, 'programs', () =>
+                                        setRejectModalIds([r.id]),
+                                      )
+                                    }
                                     className="rounded-lg border border-border px-2 py-1 text-xs font-semibold disabled:opacity-50"
                                   >
                                     Reject

@@ -84,9 +84,9 @@ const AdminZoomRecordingsLayout = lazy(() => import('./pages/admin/AdminZoomReco
 const AdminZoomRecordingsList   = lazy(() => import('./pages/admin/AdminZoomRecordingsList'));
 const AdminZoomRecordingDetail = lazy(() => import('./pages/admin/AdminZoomRecordingDetail'));
 const AdminSurveys          = lazy(() => import('./pages/admin/AdminSurveys'));
-const AdminSurveyResponses  = lazy(() => import('./pages/admin/AdminSurveyResponses'));
+const AdminSurveyCompare    = lazy(() => import('./pages/admin/AdminSurveyCompare'));
+const AdminSurveyStudio     = lazy(() => import('./pages/admin/AdminSurveyStudio'));
 const AdminCreateSurvey     = lazy(() => import('./pages/admin/AdminCreateSurvey'));
-const AdminEditSurvey       = lazy(() => import('./pages/admin/AdminEditSurvey'));
 const AdminWebinarScheduler = lazy(() => import('./pages/admin/AdminWebinarScheduler'));
 const AdminPayments         = lazy(() => import('./pages/admin/AdminPayments'));
 const AdminHcpExplorer      = lazy(() => import('./pages/admin/AdminHcpExplorer'));
@@ -369,8 +369,10 @@ function App() {
               <Route path="webinar-approvals" element={<AdminWebinarApprovals />} />
               <Route path="office-hours" element={<AdminPrograms />} />
               <Route path="surveys" element={<AdminSurveys />} />
-              <Route path="surveys/:id/responses" element={<AdminSurveyResponses />} />
-              <Route path="surveys/:id/edit" element={<AdminEditSurvey />} />
+              <Route path="surveys/compare" element={<AdminSurveyCompare />} />
+              <Route path="surveys/:id" element={<AdminSurveyStudio />} />
+              <Route path="surveys/:id/responses" element={<AdminSurveyResponsesRedirect />} />
+              <Route path="surveys/:id/edit" element={<AdminSurveyEditRedirect />} />
               <Route path="create-survey" element={<AdminCreateSurvey />} />
               <Route path="webinar-scheduler" element={<AdminWebinarScheduler defaultZoomSessionType="WEBINAR" />} />
               <Route path="webinars/schedule" element={<Navigate to="/admin/webinar-scheduler" replace />} />
@@ -433,6 +435,18 @@ export default App;
 function SurveyRedirect() {
   const { id } = useParams<{ id: string }>();
   return <Navigate to={id ? `/app/surveys/${id}` : '/app/surveys'} replace />;
+}
+
+/** SCRUM-291: old responses URL → studio Responses tab. */
+function AdminSurveyResponsesRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/admin/surveys/${id}?tab=responses` : '/admin/surveys'} replace />;
+}
+
+/** SCRUM-291: old edit URL → studio Questions tab. */
+function AdminSurveyEditRedirect() {
+  const { id } = useParams<{ id: string }>();
+  return <Navigate to={id ? `/admin/surveys/${id}?tab=questions` : '/admin/surveys'} replace />;
 }
 
 function LegacyReportsRedirect() {

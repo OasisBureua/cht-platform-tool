@@ -18,6 +18,8 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { AuthUser } from '../../auth/auth.service';
 import { CreateReportDto } from './dto/create-report.dto';
@@ -51,6 +53,8 @@ export class ReportsController {
   }
 
   @Post()
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('reports')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary:
@@ -70,6 +74,8 @@ export class ReportsController {
   }
 
   @Post('campaigns/:campaignId/refresh-data')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('reports')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
     summary:
@@ -100,6 +106,8 @@ export class ReportsController {
   }
 
   @Post(':id/regenerate')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('reports')
   @HttpCode(HttpStatus.ACCEPTED)
   @ApiOperation({
     summary:

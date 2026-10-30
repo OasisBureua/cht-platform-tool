@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { RedisCacheService } from '../../cache/redis-cache.service';
@@ -63,6 +64,8 @@ describe('ReportsController caps (CPR-21, HTTP)', () => {
         },
       })
       .overrideGuard(RolesGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(AdminCapabilityGuard)
       .useValue({ canActivate: () => true })
       .compile();
     app = moduleRef.createNestApplication();

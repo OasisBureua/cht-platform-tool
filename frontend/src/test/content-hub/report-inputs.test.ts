@@ -106,4 +106,54 @@ describe('report inputs (CPR-51)', () => {
     ]);
     expect(summarizeReportInputs(data, options).transcriptsMissing).toBe(false);
   });
+
+  describe('social posts (CPR-61)', () => {
+    const options = [
+      { value: 'hubspot', label: 'HubSpot' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'sessions', label: 'Zoom sessions' },
+    ];
+    const withSocial = (socialPosts: ReportInputs['socialPosts'], status: 'ok' | 'missing' = 'ok', rowCount = 3) =>
+      inputs({
+        inputCompleteness: {
+          ...inputs().inputCompleteness,
+          hubspot: { fetchedAt: '2026-10-15T23:00:00Z', rowCount: 1, status: 'ok' },
+          youtube: { fetchedAt: '2026-10-15T23:00:00Z', rowCount: 4, status: 'ok' },
+          socialPosts: { fetchedAt: '2026-10-20T12:00:00Z', rowCount, status },
+        },
+        socialPosts,
+      });
+
+    it('adds one line after the social toggles with linked posts per channel', () => {
+      const rows = describeReportInputs(
+        withSocial([
+          { channel: 'youtube', linked: 3, withMetrics: 2 },
+          { channel: 'linkedin', linked: 1, withMetrics: 1 },
+        ]),
+        options,
+      );
+      expect(rows.map((r) => r.key)).toEqual(['hubspot', 'youtube', 'socialPosts', 'sessions', 'transcripts']);
+      expect(rows[2]).toMatchObject({
+        label: 'Social posts',
+        status: 'ok',
+        detail: '4 posts linked (YouTube 3, LinkedIn 1), 3 with metrics in this window',
+        sources: ['hubspot', 'youtube'],
+      });
+    });
+
+    it('says when posts are linked without metrics, or none are linked', () => {
+      const noMetrics = describeReportInputs(withSocial([{ channel: 'youtube', linked: 2, withMetrics: 0 }], 'missing', 0), options);
+      expect(noMetrics.find((r) => r.key === 'socialPosts')).toMatchObject({
+        status: 'missing',
+        detail: '2 posts linked (YouTube 2), 0 with metrics in this window',
+      });
+      const none = describeReportInputs(withSocial([], 'missing', 0), options);
+      expect(none.find((r) => r.key === 'socialPosts')?.detail).toBe('No posts linked to this campaign');
+    });
+
+    it('is left out on an older Hub and does not count as a source', () => {
+      expect(describeReportInputs(inputs(), options).some((r) => r.key === 'socialPosts')).toBe(false);
+      expect(summarizeReportInputs(withSocial([]), options).total).toBe(3);
+    });
+  });
 });

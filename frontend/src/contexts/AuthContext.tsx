@@ -29,6 +29,8 @@ export interface AuthUser {
   firstName?: string;
   lastName?: string;
   role?: string;
+  /** Domain write caps from Cognito (payments, programs, …). Empty = admin read-only. */
+  capabilities?: string[];
   profileComplete?: boolean;
   /** Explicit missing fields from /auth/me (phone, profession, npi). */
   profileMissingFields?: ProfileMissingField[];
@@ -85,6 +87,9 @@ function profileFromMePayload(data: Record<string, unknown>): AuthUser {
     firstName: data.firstName as string | undefined,
     lastName: data.lastName as string | undefined,
     role: data.role as string | undefined,
+    capabilities: Array.isArray(data.capabilities)
+      ? data.capabilities.filter((c): c is string => typeof c === 'string')
+      : [],
     profileComplete: (data.profileComplete as boolean | undefined) ?? true,
     profileMissingFields,
     specialty: typeof data.specialty === 'string' ? data.specialty : null,

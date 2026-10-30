@@ -20,6 +20,7 @@ import {
   AdminRemoveUserFromGroupCommand,
   AdminDeleteUserCommand,
   AdminGetUserCommand,
+  AdminListGroupsForUserCommand,
   ListUsersCommand,
   type AuthenticationResultType,
 } from '@aws-sdk/client-cognito-identity-provider';
@@ -27,6 +28,10 @@ import { UserRole } from '@prisma/client';
 import * as jwt from 'jsonwebtoken';
 import type { JwksClient, SigningKey } from 'jwks-rsa';
 import { CognitoUnhandledChallengeError } from './cognito-login-errors';
+import {
+  capabilitiesFromCognitoGroups,
+  type AdminCapability,
+} from '../common/admin-capabilities';
 
 /** Cognito groups defined in infrastructure/terraform/modules/security/cognito/main.tf */
 export const COGNITO_GROUP_HCP = 'cht-hcp';
@@ -834,8 +839,9 @@ export class CognitoService {
   }
 
   /**
-   * Keep Cognito groups aligned with Postgres User.role
+   * Keep Cognito base groups aligned with Postgres User.role
    * (HCP/KOL → cht-hcp, ADMIN/SUPER_ADMIN → cht-admin).
+   * Does **not** touch domain write groups (cht-admin-payments, …).
    * @param preferredUsername Optional pool Username from the ID token (`cognito:username`).
    */
   async syncGroupsForRole(
@@ -863,6 +869,131 @@ export class CognitoService {
 
     await this.addUserToGroup(username, addGroup);
     await this.removeUserFromGroup(username, removeGroup);
+  }
+
+  /**
+   * List Cognito group names for a pool user (by email or preferred username).
+   */
+  async listGroupsForUser(
+    email: string,
+    preferredUsername?: string | null,
+  ): Promise<string[]> {
+    if (!this.isConfigured() || !this.userPoolId) return [];
+
+    const preferred = preferredUsername?.trim();
+    const username =
+      (preferred && preferred.length > 0 ? preferred : null) ??
+      (await this.resolveUsername(email));
+    if (!username) return [];
+
+    try {
+      const groups: string[] = [];
+      let nextToken: string | undefined;
+      do {
+        const out = await this.client.send(
+          new AdminListGroupsForUserCommand({
+            UserPoolId: this.userPoolId,
+            Username: username,
+            Limit: 60,
+            NextToken: nextToken,
+          }),
+          { abortSignal: this.cognitoAbortSignal() },
+        );
+        for (const g of out.Groups ?? []) {
+          if (g.GroupName) groups.push(g.GroupName);
+        }
+        nextToken = out.NextToken;
+      } while (nextToken);
+      return groups;
+    } catch (err) {
+      const msg = this.cognitoErrorMessage(err);
+      this.logger.warn(
+        `[Cognito] listGroupsForUser failed for ${email.trim().toLowerCase()}: ${msg}`,
+      );
+      return [];
+    }
+  }
+
+  /**
+   * Derive admin domain write capabilities from Cognito group membership.
+   */
+  async resolveAdminCapabilitiesFromCognito(
+    email: string,
+    preferredUsername?: string | null,
+  ): Promise<AdminCapability[]> {
+    const groups = await this.listGroupsForUser(email, preferredUsername);
+    return capabilitiesFromCognitoGroups(groups);
+  }
+
+  /**
+   * Add a pool user to a Cognito group. Throws on unexpected Cognito errors
+   * (unlike syncGroupsForRole helpers which log-and-skip).
+   */
+  async addUserToGroupStrict(email: string, groupName: string): Promise<void> {
+    if (!this.isConfigured() || !this.userPoolId) {
+      throw new Error('Cognito is not configured');
+    }
+    const username = await this.resolveUsername(email);
+    if (!username) {
+      throw new Error(`No Cognito user found for ${email.trim().toLowerCase()}`);
+    }
+    try {
+      await this.client.send(
+        new AdminAddUserToGroupCommand({
+          UserPoolId: this.userPoolId,
+          Username: username,
+          GroupName: groupName,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      this.logger.log(`[Cognito] Added ${username} to ${groupName}`);
+    } catch (err) {
+      const msg = this.cognitoErrorMessage(err);
+      this.logger.error(
+        `[Cognito] Failed to add ${username} to ${groupName}: ${msg}`,
+      );
+      throw new Error(`Failed to add Cognito group ${groupName}: ${msg}`);
+    }
+  }
+
+  /**
+   * Remove a pool user from a Cognito group. Missing membership is OK.
+   */
+  async removeUserFromGroupStrict(
+    email: string,
+    groupName: string,
+  ): Promise<void> {
+    if (!this.isConfigured() || !this.userPoolId) {
+      throw new Error('Cognito is not configured');
+    }
+    const username = await this.resolveUsername(email);
+    if (!username) {
+      throw new Error(`No Cognito user found for ${email.trim().toLowerCase()}`);
+    }
+    try {
+      await this.client.send(
+        new AdminRemoveUserFromGroupCommand({
+          UserPoolId: this.userPoolId,
+          Username: username,
+          GroupName: groupName,
+        }),
+        { abortSignal: this.cognitoAbortSignal() },
+      );
+      this.logger.log(`[Cognito] Removed ${username} from ${groupName}`);
+    } catch (err) {
+      const msg = this.cognitoErrorMessage(err);
+      if (
+        /UserNotFoundException|user does not exist|not a member|ResourceNotFoundException/i.test(
+          msg,
+        )
+      ) {
+        return;
+      }
+      this.logger.error(
+        `[Cognito] Failed to remove ${username} from ${groupName}: ${msg}`,
+      );
+      throw new Error(`Failed to remove Cognito group ${groupName}: ${msg}`);
+    }
   }
 
   /**

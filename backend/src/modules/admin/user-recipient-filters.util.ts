@@ -68,4 +68,5 @@ export const registrationInviteUserSelect = {
 export const adminUserListSelect = {
   ...registrationInviteUserSelect,
   npiNumber: true,
+  adminCapabilities: true,
 } satisfies Prisma.UserSelect;

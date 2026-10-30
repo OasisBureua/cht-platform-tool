@@ -42,6 +42,8 @@ import { IsEmail, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthService, AuthUser } from '../../auth/auth.service';
 import { isPlatformAdmin, isSuperAdmin } from '../../common/roles';
@@ -259,8 +261,9 @@ export class AdminController {
   }
 
   @Post('uploads/session-hero/presign')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -469,8 +472,9 @@ export class AdminController {
   }
 
   @Post('programs')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Create a new program' })
   async createProgram(@Body() dto: CreateProgramDto) {
@@ -516,8 +520,9 @@ export class AdminController {
    * where Zoom omits start_url from the webhook payload).
    */
   @Post('programs/:id/refresh-zoom-panelists')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -579,8 +584,9 @@ export class AdminController {
   }
 
   @Patch('programs/:id/status')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary: 'Update program status (DRAFT / PUBLISHED / ARCHIVED)',
@@ -594,8 +600,9 @@ export class AdminController {
   }
 
   @Post('surveys')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Create a survey' })
   createSurvey(@Body() dto: CreateSurveyDto) {
@@ -603,8 +610,9 @@ export class AdminController {
   }
 
   @Post('surveys/from-jotform-template')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -615,8 +623,9 @@ export class AdminController {
   }
 
   @Patch('surveys/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -628,13 +637,119 @@ export class AdminController {
   }
 
   @Delete('surveys/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Delete a survey' })
   @ApiParam({ name: 'id', description: 'Survey ID' })
   deleteSurvey(@Param('id') id: string) {
     return this.surveysService.deleteSurvey(id);
+  }
+
+  // Static survey collection routes MUST be registered before surveys/:id/*
+  // or Express can fail to match them (404 on compare / workspace-stats).
+  @Get('surveys/workspace-stats')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Survey workspace dashboard: totals, 30-day trend, HCP Beta ease/NPS, needs attention',
+  })
+  getSurveyWorkspaceStats() {
+    return this.surveysService.getWorkspaceStatsForAdmin();
+  }
+
+  @Get('surveys/compare-candidates')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Search FEEDBACK surveys for the compare picker (title / program title)',
+  })
+  @ApiQuery({
+    name: 'q',
+    required: false,
+    description: 'Case-insensitive search on survey or program title',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Max rows to return (default 50, max 100)',
+  })
+  @ApiQuery({
+    name: 'includeIds',
+    required: false,
+    description:
+      'Comma-separated survey IDs to always include (selected rows stay visible)',
+  })
+  listCompareCandidates(
+    @Query('q') q?: string,
+    @Query('limit') limit?: string,
+    @Query('includeIds') includeIds?: string,
+  ) {
+    const parsedLimit = limit ? Number(limit) : undefined;
+    return this.surveysService.listCompareCandidatesForAdmin({
+      q,
+      limit:
+        parsedLimit != null && Number.isFinite(parsedLimit)
+          ? parsedLimit
+          : undefined,
+      includeIds: (includeIds ?? '')
+        .split(',')
+        .map((id) => id.trim())
+        .filter(Boolean),
+    });
+  }
+
+  @Get('surveys/compare')
+  @Header('Cache-Control', 'no-store')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Compare 2–3 FEEDBACK surveys side-by-side (completion, ease, NPS, shared questions)',
+  })
+  @ApiQuery({
+    name: 'ids',
+    required: true,
+    description: 'Comma-separated survey IDs (2 or 3)',
+    example: 'cuid1,cuid2',
+  })
+  compareSurveys(@Query('ids') ids?: string) {
+    const list = (ids ?? '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    return this.surveysService.compareSurveysForAdmin(list);
+  }
+
+  @Get('surveys/reusable')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
+  })
+  @ApiQuery({
+    name: 'type',
+    required: false,
+    enum: ['INTAKE', 'FEEDBACK'],
+  })
+  async listReusableSurveys(@Query('type') type?: string) {
+    const normalized = type?.toUpperCase();
+    if (normalized && normalized !== 'INTAKE' && normalized !== 'FEEDBACK') {
+      throw new BadRequestException('type must be INTAKE or FEEDBACK');
+    }
+    return this.surveysService.listReusableSurveyTemplates(
+      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
+    );
   }
 
   @Get('surveys/:id/responses')
@@ -721,8 +836,9 @@ export class AdminController {
   }
 
   @Patch('survey-responses/:responseId/comment-stage-tags')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1043,6 +1159,91 @@ export class AdminController {
     });
   }
 
+  @Get('users/:userId/admin-capabilities')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Get domain write capabilities for an admin user (Super Admin)',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  async getUserAdminCapabilities(@Param('userId') userId: string) {
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminCapabilities: true,
+      },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    let capabilities = target.adminCapabilities ?? [];
+    try {
+      capabilities = await this.authService.syncAdminCapabilitiesFromCognito(
+        target.id,
+        target.email,
+      );
+    } catch {
+      /* keep DB snapshot */
+    }
+    return {
+      id: target.id,
+      email: target.email,
+      role: target.role,
+      capabilities,
+    };
+  }
+
+  @Put('users/:userId/admin-capabilities')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'Set domain write capabilities (Cognito groups) for an ADMIN / SUPER_ADMIN',
+    description:
+      'Super Admin only. Replaces the target’s domain write groups (payments, programs, surveys, reports, content).',
+  })
+  @ApiParam({ name: 'userId', description: 'User ID' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['capabilities'],
+      properties: {
+        capabilities: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['payments', 'programs', 'surveys', 'reports', 'content'],
+          },
+        },
+      },
+    },
+  })
+  async putUserAdminCapabilities(
+    @Param('userId') userId: string,
+    @Body('capabilities') capabilities: string[],
+    @CurrentUser() actor: AuthUser,
+  ) {
+    if (!Array.isArray(capabilities)) {
+      throw new BadRequestException('capabilities must be an array of strings');
+    }
+    const updated = await this.authService.setAdminCapabilities(
+      userId,
+      capabilities,
+    );
+    this.logger.log(
+      `Super admin ${actor.userId} set capabilities for ${updated.email}: [${updated.adminCapabilities.join(',')}]`,
+    );
+    return {
+      id: updated.id,
+      email: updated.email,
+      role: updated.role,
+      capabilities: updated.adminCapabilities,
+    };
+  }
+
   @Patch('users/:userId/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN)
@@ -1326,8 +1527,9 @@ export class AdminController {
   }
 
   @Post('webinars')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary: 'Create a webinar - schedules on Zoom and saves to DB',
@@ -1618,8 +1820,9 @@ export class AdminController {
    * Jotform intake, admin approval, and in-app join flow as app-scheduled sessions.
    */
   @Post('webinars/import-from-zoom')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1732,8 +1935,9 @@ export class AdminController {
   // ─── Program hub: Jotform URLs, approval gate (office hours), slots, ICS invites ───
 
   @Patch('programs/:id/registration-settings')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1780,8 +1984,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/native-surveys')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1799,32 +2004,10 @@ export class AdminController {
     );
   }
 
-  @Get('surveys/reusable')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.ADMIN)
-  @ApiBearerAuth('session-token')
-  @ApiOperation({
-    summary:
-      'List INTAKE/FEEDBACK surveys that can be cloned onto another program',
-  })
-  @ApiQuery({
-    name: 'type',
-    required: false,
-    enum: ['INTAKE', 'FEEDBACK'],
-  })
-  async listReusableSurveys(@Query('type') type?: string) {
-    const normalized = type?.toUpperCase();
-    if (normalized && normalized !== 'INTAKE' && normalized !== 'FEEDBACK') {
-      throw new BadRequestException('type must be INTAKE or FEEDBACK');
-    }
-    return this.surveysService.listReusableSurveyTemplates(
-      normalized as 'INTAKE' | 'FEEDBACK' | undefined,
-    );
-  }
-
   @Post('programs/:id/surveys/clone')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1862,8 +2045,9 @@ export class AdminController {
   }
 
   @Post('webinars/ensure-native-surveys')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('surveys')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1916,8 +2100,9 @@ export class AdminController {
   }
 
   @Post('registration-invites')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -1991,8 +2176,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/invitations/:logId/resend')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2033,8 +2219,9 @@ export class AdminController {
   }
 
   @Put('programs/:id/email-overrides/:kind')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2057,8 +2244,9 @@ export class AdminController {
   }
 
   @Delete('programs/:id/email-overrides/:kind')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Reset a per-event email override to the platform default' })
   @ApiParam({ name: 'id', description: 'Program ID' })
@@ -2092,8 +2280,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/email-overrides/:kind/preview')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2121,8 +2310,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/email-overrides/:kind/test-send')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @SkipThrottle({ short: true, long: true, auth: true, authMfa: true })
   @Throttle({ medium: { limit: 10, ttl: 600_000 } })
@@ -2163,8 +2353,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/operational-email')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @SkipThrottle({ short: true, long: true, auth: true, authMfa: true })
   @Throttle({ medium: { limit: 20, ttl: 600_000 } })
@@ -2272,8 +2463,9 @@ export class AdminController {
   }
 
   @Post('registrations/:registrationId/undo-approval')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2392,8 +2584,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/recordings/pull')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2663,8 +2856,9 @@ export class AdminController {
   }
 
   @Patch('registrations/:registrationId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2720,8 +2914,9 @@ export class AdminController {
   }
 
   @Patch('registrations/:registrationId/post-event-attendance')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2743,8 +2938,9 @@ export class AdminController {
   }
 
   @Delete('programs/:programId/enrollments/:enrollmentId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2781,8 +2977,9 @@ export class AdminController {
   }
 
   @Post('registrations/:registrationId/mark-calendar-sent')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary: 'Record that a calendar invite was sent to the registrant',
@@ -2794,8 +2991,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/slots')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
@@ -2819,8 +3017,9 @@ export class AdminController {
   }
 
   @Delete('programs/:programId/slots/:slotId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Delete an office-hours slot' })
   async deleteOfficeHoursSlot(
@@ -2848,8 +3047,9 @@ export class AdminController {
   }
 
   @Post('programs/:id/form-links')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   async addProgramFormLink(
     @Param('id') id: string,
@@ -2868,8 +3068,9 @@ export class AdminController {
   }
 
   @Delete('program-form-links/:linkId')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   async deleteProgramFormLink(@Param('linkId') linkId: string) {
     return this.programRegistrations.deleteFormLink(linkId);
@@ -2920,8 +3121,9 @@ export class AdminController {
   }
 
   @Patch('webinars/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Update a webinar (DB + Zoom sync)' })
   @ApiParam({ name: 'id', description: 'Program ID' })
@@ -3170,8 +3372,9 @@ export class AdminController {
   }
 
   @Delete('webinars/:id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('programs')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Delete a webinar (DB + Zoom)' })
   @ApiParam({ name: 'id', description: 'Program ID' })

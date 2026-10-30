@@ -9,3 +9,12 @@ export function isSuperAdmin(role: string | null | undefined): boolean {
 }
 
 export type PlatformRole = 'HCP' | 'KOL' | 'ADMIN' | 'SUPER_ADMIN';
+
+export {
+  hasAdminCapability,
+  adminCapabilityDeniedMessage,
+  guardAdminAction,
+  CAPABILITY_TO_COGNITO_GROUP,
+  ADMIN_CAPABILITIES,
+  type AdminCapability,
+} from './admin-capabilities';

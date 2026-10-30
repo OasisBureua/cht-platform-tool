@@ -20,9 +20,14 @@ type Props = {
   submitLabel?: string;
   /** Hide the submit button (parent handles submission). */
   hideSubmitButton?: boolean;
+  /**
+   * Admin participant preview: same layout as learners, but never writes a
+   * session draft or calls submit APIs.
+   */
+  previewMode?: boolean;
   /** Lets a parent trigger HTML5 validation + submit (e.g. wizard Continue). */
   formId?: string;
-  onSubmit: (answers: Record<string, unknown>) => void;
+  onSubmit?: (answers: Record<string, unknown>) => void;
   w9ProfileHref?: string;
   /** When true, show W-9 / honorarium payout reminder (post-event surveys only). */
   showPayoutNotice?: boolean;
@@ -77,6 +82,7 @@ export function NativeSurveyForm({
   submitting,
   submitLabel,
   hideSubmitButton,
+  previewMode = false,
   formId,
   onSubmit,
   w9ProfileHref = '/app/profile',
@@ -84,6 +90,8 @@ export function NativeSurveyForm({
   profilePrefill,
   initialAnswers,
 }: Props) {
+  const suppressPersist = previewMode;
+  const hideSubmit = hideSubmitButton || previewMode;
   const visibleSections = useMemo(() => {
     const sections = listNativeSurveySections(questions).map((section) => ({
       ...section,
@@ -106,7 +114,7 @@ export function NativeSurveyForm({
 
   const [answers, setAnswers] = useState<Record<string, unknown>>(() => ({
     ...(initialAnswers ?? {}),
-    ...readDraftAnswers(surveyId),
+    ...(suppressPersist ? {} : readDraftAnswers(surveyId)),
   }));
 
   // SCRUM-186: merge profile pre-fill into answers once, only for fields the
@@ -133,8 +141,9 @@ export function NativeSurveyForm({
   }, [surveyId, profilePrefill]);
 
   useEffect(() => {
+    if (suppressPersist) return;
     writeDraftAnswers(surveyId, answers);
-  }, [surveyId, answers]);
+  }, [surveyId, answers, suppressPersist]);
 
   if (!surveyHasNativeQuestions(questions)) {
     return (
@@ -150,9 +159,10 @@ export function NativeSurveyForm({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (previewMode) return;
     // Parent-owned submit (hideSubmitButton): ignore Enter / implicit submits.
     // Explicit Complete survey / Continue must set data-cht-explicit-submit="1" first.
-    if (hideSubmitButton) {
+    if (hideSubmit) {
       const form = e.currentTarget;
       if (form.dataset.chtExplicitSubmit !== '1') {
         return;
@@ -160,11 +170,11 @@ export function NativeSurveyForm({
       form.dataset.chtExplicitSubmit = '';
     }
     clearDraftAnswers(surveyId);
-    onSubmit(answers);
+    onSubmit?.(answers);
   };
 
   const blockImplicitEnterSubmit = (e: React.KeyboardEvent<HTMLFormElement>) => {
-    if (!hideSubmitButton) return;
+    if (!hideSubmit) return;
     if (e.key !== 'Enter') return;
     const tag = (e.target as HTMLElement | null)?.tagName;
     if (tag === 'TEXTAREA' || tag === 'BUTTON') return;
@@ -309,7 +319,7 @@ export function NativeSurveyForm({
             >
               Next section
             </button>
-          ) : !hideSubmitButton ? (
+          ) : !hideSubmit ? (
             <button
               type="submit"
               disabled={disabled || submitting}
@@ -319,7 +329,7 @@ export function NativeSurveyForm({
             </button>
           ) : null}
         </div>
-      ) : !hideSubmitButton ? (
+      ) : !hideSubmit ? (
         <button
           type="submit"
           disabled={disabled || submitting}

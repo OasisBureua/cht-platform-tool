@@ -171,3 +171,14 @@ output "sms_external_id" {
   description = "sts:ExternalId Cognito must present when assuming the SMS role"
   value       = var.enable_sms_mfa ? local.sms_external_id : null
 }
+
+output "admin_domain_group_names" {
+  description = "Cognito groups that grant admin Create/Update/Delete per domain (reads are open to all ADMIN)"
+  value = [
+    aws_cognito_user_group.admin_payments.name,
+    aws_cognito_user_group.admin_programs.name,
+    aws_cognito_user_group.admin_surveys.name,
+    aws_cognito_user_group.admin_reports.name,
+    aws_cognito_user_group.admin_content.name,
+  ]
+}

@@ -34,6 +34,8 @@ export type ReportInputs = {
   registeredCount: number | null;
   attendedCount: number | null;
   attendeesWithProfile: number | null;
+  /** CPR-61: per channel with linked posts. Null when no social source is on. */
+  socialPosts?: { channel: string; linked: number; withMetrics: number }[] | null;
 };
 
 export type CampaignListResponse = {

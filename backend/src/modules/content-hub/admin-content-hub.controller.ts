@@ -25,6 +25,8 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CacheClearService } from '../../cache/cache-clear.service';
 import { axiosContentHubErrorMeta } from '../../utils/content-hub-error';
 import { enrichAnalyticsReportWithHubspot } from '../../utils/hubspot-report-enrichment';
@@ -116,6 +118,8 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async createCampaign(@Body() body: Record<string, unknown>) {
     const created = await this.hubCall(() =>
       this.campaigns.createCampaign(body),
@@ -125,6 +129,8 @@ export class AdminContentHubController {
   }
 
   @Patch('campaigns/:id')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async updateCampaign(
     @Param('id') id: string,
     @Body() body: Record<string, unknown>,
@@ -137,6 +143,8 @@ export class AdminContentHubController {
   }
 
   @Delete('campaigns/:id')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async deleteCampaign(@Param('id') id: string) {
     await this.hubCall(() => this.campaigns.deleteCampaign(id));
     await this.afterHubWrite();
@@ -152,6 +160,8 @@ export class AdminContentHubController {
   }
 
   @Put('campaigns/:id/kols')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiOperation({
     summary: 'Replace the Hub KOLs attached to the campaign (used by reports)',
   })
@@ -195,6 +205,8 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns/:id/platforms/:platform/sync')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiParam({
     name: 'platform',
     enum: ['linkedin', 'meta', 'youtube', 'livestream', 'survey'],
@@ -211,6 +223,8 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns/:id/sync-all')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async syncAll(@Param('id') id: string) {
     const result = await this.hubCall(() => this.campaigns.syncAll(id));
     await this.afterHubWrite();
@@ -218,6 +232,8 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns/:id/uploads')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async uploadCsv(
     @Param('id') id: string,
     @Body()
@@ -259,6 +275,8 @@ export class AdminContentHubController {
   }
 
   @Post('campaigns/:id/insights')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async generateInsights(@Param('id') id: string) {
     const result = await this.hubCall(() =>
       this.campaigns.generateInsights(id),
@@ -275,6 +293,8 @@ export class AdminContentHubController {
   }
 
   @Post('templates')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async createTemplate(@Body() body: Record<string, unknown>) {
     const created = await this.hubCall(() =>
       this.campaigns.createTemplate(body),
@@ -284,6 +304,8 @@ export class AdminContentHubController {
   }
 
   @Delete('templates/:id')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async deleteTemplate(@Param('id') id: string) {
     await this.hubCall(() => this.campaigns.deleteTemplate(id));
     await this.afterHubWrite();
@@ -310,6 +332,8 @@ export class AdminContentHubController {
   }
 
   @Patch('integrations')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async patchIntegrations(@Body() body: Record<string, unknown>) {
     // CHT-owned connectors are never stored on Content Hub.
     const hubBody = Object.fromEntries(
@@ -487,6 +511,8 @@ export class AdminContentHubController {
   // ─── HubSpot sync (CHT only) ─────────────────────────────────────────────
 
   @Post('campaigns/:id/hubspot/sync')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   async hubspotSync(@Param('id') id: string) {
     if (!this.hubspot.isConfigured()) {
       throw new BadRequestException(

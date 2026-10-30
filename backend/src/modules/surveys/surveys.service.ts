@@ -47,11 +47,17 @@ import {
 } from './profile-sync';
 import {
   findUnsafeAnsweredQuestionChanges,
+  listNativeSurveyQuestions,
   nextNativeSchemaVersion,
   validateNativeSurveySchema,
   withNativeSchemaVersion,
 } from '../../utils/survey-schema';
 import { learnerHonorariumFlags } from '../../utils/learner-honorarium';
+
+/** SCRUM-291 dashboard: flag FEEDBACK surveys under this completion %. */
+const WORKSPACE_LOW_COMPLETION_RATE = 40;
+/** Cap beta analytics fan-out so the workspace stats call stays cheap. */
+const WORKSPACE_BETA_SURVEY_CAP = 40;
 
 @Injectable()
 export class SurveysService {
@@ -83,6 +89,8 @@ export class SurveysService {
       required: boolean;
       isCustomized: boolean;
       responseCount?: number;
+      /** Admin-only: completed/eligible % for non-INTAKE program surveys. */
+      completionRate?: number | null;
       jotformFormId: string | null;
       jotformFormUrl: string | null;
       createdAt: string;
@@ -111,6 +119,7 @@ export class SurveysService {
       required: boolean;
       isCustomized: boolean;
       responseCount?: number;
+      completionRate?: number | null;
       jotformFormId: string | null;
       jotformFormUrl: string | null;
       createdAt: string;
@@ -150,10 +159,37 @@ export class SurveysService {
             zoomSessionEndedAt: true,
           },
         },
-        _count: { select: { responses: true } },
+        _count: {
+          select: { responses: { where: { isDraft: false } } },
+        },
       },
       orderBy: { createdAt: 'desc' },
     });
+
+    const eligibleByProgram = new Map<string, number>();
+    if (isPlatformAdmin(role)) {
+      const programIds = [
+        ...new Set(
+          surveys
+            .filter((s) => s.type !== SurveyType.INTAKE && s.programId)
+            .map((s) => s.programId),
+        ),
+      ];
+      if (programIds.length > 0) {
+        const rows = await this.prisma.programRegistration.groupBy({
+          by: ['programId'],
+          where: {
+            programId: { in: programIds },
+            status: ProgramRegistrationStatus.APPROVED,
+          },
+          _count: { _all: true },
+        });
+        for (const row of rows) {
+          eligibleByProgram.set(row.programId, row._count._all);
+        }
+      }
+    }
+
     const mapped = surveys.map((s) => {
       const program =
         isPlatformAdmin(role)
@@ -171,6 +207,19 @@ export class SurveysService {
                 ...learnerHonorariumFlags(s.program.honorariumAmount),
               }
             : s.program;
+      const responseCount = s._count.responses;
+      let completionRate: number | null | undefined;
+      if (isPlatformAdmin(role)) {
+        if (s.type === SurveyType.INTAKE || !s.programId) {
+          completionRate = null;
+        } else {
+          const eligible = eligibleByProgram.get(s.programId) ?? 0;
+          completionRate =
+            eligible > 0
+              ? Math.round((responseCount / eligible) * 1000) / 10
+              : null;
+        }
+      }
       return {
         id: s.id,
         programId: s.programId,
@@ -181,7 +230,7 @@ export class SurveysService {
         isCustomized: s.isCustomized,
         schemaVersion: s.schemaVersion,
         ...(isPlatformAdmin(role)
-          ? { responseCount: s._count.responses }
+          ? { responseCount, completionRate }
           : {}),
         jotformFormId: s.jotformFormId,
         jotformFormUrl: s.jotformFormId
@@ -276,7 +325,9 @@ export class SurveysService {
             zoomSessionEndedAt: true,
           },
         },
-        _count: { select: { responses: true } },
+        _count: {
+          select: { responses: { where: { isDraft: false } } },
+        },
       },
     });
     if (!survey) {
@@ -637,8 +688,11 @@ export class SurveysService {
     });
     if (!survey) throw new NotFoundException('Survey not found');
 
+    // Admin list / analytics / compare: finalized submissions only (exclude in-progress drafts).
+    const submittedWhere = { surveyId, isDraft: false as const };
+
     const total = await this.prisma.surveyResponse.count({
-      where: { surveyId },
+      where: submittedWhere,
     });
 
     const paginate = opts?.page != null || opts?.pageSize != null;
@@ -653,7 +707,7 @@ export class SurveysService {
     const take = paginate ? pageSize : undefined;
 
     const responses = await this.prisma.surveyResponse.findMany({
-      where: { surveyId },
+      where: submittedWhere,
       orderBy: { submittedAt: 'desc' },
       ...(take != null ? { skip, take } : {}),
       include: {
@@ -794,6 +848,581 @@ export class SurveysService {
       },
       analytics,
     };
+  }
+
+  /**
+   * SCRUM-291: landing dashboard aggregates for the admin survey workspace.
+   * Totals + 30-day response trend are cheap counts; completion / ease / NPS
+   * roll up HCP Beta–style FEEDBACK surveys (schema scoring metadata) with a cap.
+   */
+  async getWorkspaceStatsForAdmin(): Promise<{
+    totalSurveys: number;
+    totalResponses: number;
+    completionRate: number | null;
+    averageEaseScore: number | null;
+    npsScore: number | null;
+    responsesLast30Days: number;
+    trend: Array<{ date: string; count: number }>;
+    needsAttention: Array<{
+      id: string;
+      title: string;
+      programTitle: string | null;
+      reason: string;
+      kind: 'no_responses' | 'low_completion';
+      responseCount: number;
+      completionRate: number | null;
+    }>;
+  }> {
+    const now = new Date();
+    const from = new Date(now);
+    from.setUTCDate(from.getUTCDate() - 29);
+    from.setUTCHours(0, 0, 0, 0);
+
+    const submittedOnly = { isDraft: false as const };
+
+    const [totalSurveys, totalResponses, recentResponses, surveys, responseCounts] =
+      await Promise.all([
+        this.prisma.survey.count(),
+        this.prisma.surveyResponse.count({ where: submittedOnly }),
+        this.prisma.surveyResponse.findMany({
+          where: { ...submittedOnly, submittedAt: { gte: from } },
+          select: { submittedAt: true },
+        }),
+        this.prisma.survey.findMany({
+          select: {
+            id: true,
+            title: true,
+            type: true,
+            questions: true,
+            programId: true,
+            program: { select: { id: true, title: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+        }),
+        this.prisma.surveyResponse.groupBy({
+          by: ['surveyId'],
+          where: submittedOnly,
+          _count: { _all: true },
+        }),
+      ]);
+
+    const countBySurvey = new Map(
+      responseCounts.map((row) => [row.surveyId, row._count._all]),
+    );
+
+    const dayCounts = new Map<string, number>();
+    for (let i = 0; i < 30; i++) {
+      const d = new Date(from);
+      d.setUTCDate(from.getUTCDate() + i);
+      dayCounts.set(d.toISOString().slice(0, 10), 0);
+    }
+    for (const row of recentResponses) {
+      const key = row.submittedAt.toISOString().slice(0, 10);
+      if (dayCounts.has(key)) {
+        dayCounts.set(key, (dayCounts.get(key) ?? 0) + 1);
+      }
+    }
+    const trend = [...dayCounts.entries()].map(([date, count]) => ({
+      date,
+      count,
+    }));
+    const responsesLast30Days = recentResponses.length;
+
+    const needsAttention: Array<{
+      id: string;
+      title: string;
+      programTitle: string | null;
+      reason: string;
+      kind: 'no_responses' | 'low_completion';
+      responseCount: number;
+      completionRate: number | null;
+    }> = [];
+
+    for (const survey of surveys) {
+      const responseCount = countBySurvey.get(survey.id) ?? 0;
+      if (responseCount > 0) continue;
+      needsAttention.push({
+        id: survey.id,
+        title: survey.title,
+        programTitle: survey.program?.title ?? null,
+        reason: 'No responses collected yet',
+        kind: 'no_responses',
+        responseCount: 0,
+        completionRate: null,
+      });
+      if (needsAttention.length >= 8) break;
+    }
+
+    const betaCandidates = surveys
+      .filter((s) => s.type === SurveyType.FEEDBACK && surveyHasBetaScoring(s.questions))
+      .slice(0, WORKSPACE_BETA_SURVEY_CAP);
+
+    let completionRate: number | null = null;
+    let averageEaseScore: number | null = null;
+    let npsScore: number | null = null;
+
+    if (betaCandidates.length > 0) {
+      const betaIds = betaCandidates.map((s) => s.id);
+      const programIds = [
+        ...new Set(
+          betaCandidates
+            .map((s) => s.programId)
+            .filter((id): id is string => Boolean(id)),
+        ),
+      ];
+
+      const [betaResponses, eligibleByProgram] = await Promise.all([
+        this.prisma.surveyResponse.findMany({
+          where: { surveyId: { in: betaIds }, isDraft: false },
+          select: {
+            id: true,
+            surveyId: true,
+            userId: true,
+            submittedAt: true,
+            score: true,
+            answers: true,
+            commentStageTags: true,
+          },
+        }),
+        programIds.length > 0
+          ? this.prisma.programRegistration.groupBy({
+              by: ['programId'],
+              where: {
+                programId: { in: programIds },
+                status: ProgramRegistrationStatus.APPROVED,
+              },
+              _count: { _all: true },
+            })
+          : Promise.resolve([]),
+      ]);
+
+      const eligibleMap = new Map<string, number>(
+        eligibleByProgram.map(
+          (row) => [row.programId, row._count._all] as [string, number],
+        ),
+      );
+      const responsesBySurvey = new Map<string, typeof betaResponses>();
+      for (const row of betaResponses) {
+        const list = responsesBySurvey.get(row.surveyId) ?? [];
+        list.push(row);
+        responsesBySurvey.set(row.surveyId, list);
+      }
+
+      let eligibleSum = 0;
+      let completedSum = 0;
+      const easeAverages: number[] = [];
+      let npsPromoters = 0;
+      let npsPassives = 0;
+      let npsDetractors = 0;
+
+      for (const survey of betaCandidates) {
+        const rows = responsesBySurvey.get(survey.id) ?? [];
+        const eligibleCount: number | null =
+          survey.programId && survey.type !== SurveyType.INTAKE
+            ? (eligibleMap.get(survey.programId) ?? 0)
+            : null;
+        const analytics = buildSurveyResponseAnalytics({
+          surveyType: survey.type,
+          questionsSchema: survey.questions,
+          eligibleCount,
+          includeTextSamples: false,
+          segmentBy: null,
+          responses: rows.map((r) => ({
+            submittedAt: r.submittedAt.toISOString(),
+            userId: r.userId,
+            responseId: r.id,
+            score: r.score,
+            answers: (r.answers ?? {}) as Record<string, unknown>,
+            commentStageTags: r.commentStageTags ?? [],
+          })),
+        });
+
+        const rate = analytics.totals.completionRate;
+        if (rate && rate.eligible > 0) {
+          eligibleSum += rate.eligible;
+          completedSum += rate.completed;
+          if (
+            rate.rate < WORKSPACE_LOW_COMPLETION_RATE &&
+            needsAttention.length < 12
+          ) {
+            const already = needsAttention.some((item) => item.id === survey.id);
+            if (!already) {
+              needsAttention.push({
+                id: survey.id,
+                title: survey.title,
+                programTitle: survey.program?.title ?? null,
+                reason: `${Math.round(rate.rate)}% completion (${rate.completed}/${rate.eligible})`,
+                kind: 'low_completion',
+                responseCount: countBySurvey.get(survey.id) ?? rows.length,
+                completionRate: rate.rate,
+              });
+            }
+          }
+        }
+
+        const beta = analytics.betaInsights;
+        if (beta?.easeByStage?.length) {
+          for (const stage of beta.easeByStage) {
+            if (stage.average != null && stage.count > 0) {
+              easeAverages.push(stage.average);
+            }
+          }
+        }
+        if (beta?.nps && beta.nps.totalRated > 0) {
+          npsPromoters += beta.nps.promoters;
+          npsPassives += beta.nps.passives;
+          npsDetractors += beta.nps.detractors;
+        }
+      }
+
+      if (eligibleSum > 0) {
+        completionRate = Math.round((completedSum / eligibleSum) * 1000) / 10;
+      }
+      if (easeAverages.length > 0) {
+        averageEaseScore =
+          Math.round(
+            (easeAverages.reduce((s, v) => s + v, 0) / easeAverages.length) * 100,
+          ) / 100;
+      }
+      const npsRated = npsPromoters + npsPassives + npsDetractors;
+      if (npsRated > 0) {
+        npsScore = Math.round(((npsPromoters - npsDetractors) / npsRated) * 100);
+      }
+    }
+
+    needsAttention.sort((a, b) => {
+      if (a.kind !== b.kind) {
+        return a.kind === 'low_completion' ? -1 : 1;
+      }
+      return a.title.localeCompare(b.title);
+    });
+
+    return {
+      totalSurveys,
+      totalResponses,
+      completionRate,
+      averageEaseScore,
+      npsScore,
+      responsesLast30Days,
+      trend,
+      needsAttention: needsAttention.slice(0, 8),
+    };
+  }
+
+  /**
+   * SCRUM-291: server-side search for the compare picker (FEEDBACK only).
+   * Matches survey title or program title; always re-includes selected IDs.
+   */
+  async listCompareCandidatesForAdmin(opts: {
+    q?: string;
+    limit?: number;
+    includeIds?: string[];
+  } = {}): Promise<{
+    items: Array<{
+      id: string;
+      title: string;
+      type: SurveyType;
+      isCustomized: boolean;
+      responseCount: number;
+      program: { id: string; title: string } | null;
+    }>;
+    totalMatching: number;
+  }> {
+    const q = (opts.q ?? '').trim();
+    const limit = Math.min(Math.max(opts.limit ?? 50, 1), 100);
+    const includeIds = [
+      ...new Set(
+        (opts.includeIds ?? [])
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      ),
+    ].slice(0, 3);
+
+    const select = {
+      id: true,
+      title: true,
+      type: true,
+      isCustomized: true,
+      program: { select: { id: true, title: true } },
+      _count: {
+        select: { responses: { where: { isDraft: false } } },
+      },
+    } as const;
+
+    const whereMatch = {
+      type: SurveyType.FEEDBACK,
+      ...(q
+        ? {
+            OR: [
+              { title: { contains: q, mode: 'insensitive' as const } },
+              {
+                program: {
+                  title: { contains: q, mode: 'insensitive' as const },
+                },
+              },
+            ],
+          }
+        : {}),
+    };
+
+    const [totalMatching, rows] = await Promise.all([
+      this.prisma.survey.count({ where: whereMatch }),
+      this.prisma.survey.findMany({
+        where: whereMatch,
+        select,
+        orderBy: [{ updatedAt: 'desc' }],
+        take: limit,
+      }),
+    ]);
+
+    const present = new Set(rows.map((r) => r.id));
+    const missingIds = includeIds.filter((id) => !present.has(id));
+    const pinned =
+      missingIds.length > 0
+        ? await this.prisma.survey.findMany({
+            where: {
+              id: { in: missingIds },
+              type: SurveyType.FEEDBACK,
+            },
+            select,
+          })
+        : [];
+
+    const mapRow = (r: (typeof rows)[number]) => ({
+      id: r.id,
+      title: r.title,
+      type: r.type,
+      isCustomized: r.isCustomized,
+      responseCount: r._count.responses,
+      program: r.program,
+    });
+
+    // Keep selected surveys first so the picker never "loses" a checked row.
+    const pinnedOrdered = includeIds
+      .map((id) => pinned.find((r) => r.id === id) ?? rows.find((r) => r.id === id))
+      .filter((r): r is (typeof rows)[number] => Boolean(r));
+    const rest = rows.filter((r) => !includeIds.includes(r.id));
+
+    return {
+      items: [...pinnedOrdered, ...rest].map(mapRow),
+      totalMatching,
+    };
+  }
+
+  /**
+   * SCRUM-291: side-by-side compare for 2–3 FEEDBACK surveys (completion / ease / NPS
+   * + shared rating/choice prompts when schemas align).
+   */
+  async compareSurveysForAdmin(rawIds: string[]): Promise<{
+    columns: Array<{
+      surveyId: string;
+      title: string;
+      type: SurveyType;
+      program: { id: string; title: string } | null;
+      responseCount: number;
+      completionRate: {
+        eligible: number;
+        completed: number;
+        rate: number;
+      } | null;
+      averageEase: number | null;
+      easeByStage: Array<{
+        stage: string;
+        average: number | null;
+        count: number;
+      }>;
+      nps: {
+        score: number | null;
+        promoters: number;
+        passives: number;
+        detractors: number;
+        totalRated: number;
+      } | null;
+      hasNativeSchema: boolean;
+      hasBetaInsights: boolean;
+    }>;
+    sharedQuestions: Array<{
+      prompt: string;
+      kind: 'rating' | 'choice';
+      values: Array<{
+        surveyId: string;
+        mean: number | null;
+        count: number;
+        topOption: string | null;
+        topPercentage: number | null;
+      }>;
+    }>;
+    warnings: string[];
+  }> {
+    const ids = [
+      ...new Set(
+        rawIds
+          .map((id) => id.trim())
+          .filter((id) => id.length > 0),
+      ),
+    ];
+    if (ids.length < 2 || ids.length > 3) {
+      throw new BadRequestException(
+        'Compare requires 2 or 3 distinct survey IDs.',
+      );
+    }
+
+    const warnings: string[] = [];
+    const packed = await Promise.all(
+      ids.map(async (id) => {
+        const result = await this.getResponseAnalyticsForAdmin(id, {
+          includeTextSamples: false,
+        });
+        return result;
+      }),
+    );
+
+    for (const row of packed) {
+      if (row.survey.type !== SurveyType.FEEDBACK) {
+        throw new BadRequestException(
+          `Compare only supports FEEDBACK surveys (${row.survey.title} is ${row.survey.type}).`,
+        );
+      }
+    }
+
+    const fingerprints = packed.map((row) =>
+      this.compareSchemaFingerprint(row.analytics.questions.map((q) => q.prompt)),
+    );
+    if (new Set(fingerprints).size > 1) {
+      warnings.push(
+        'Selected surveys do not share the same question set. Shared-question rows only include matching prompts.',
+      );
+    }
+    if (packed.some((row) => !row.analytics.hasNativeSchema)) {
+      warnings.push(
+        'One or more surveys are Jotform-sourced; per-question compare may be limited.',
+      );
+    }
+    if (packed.some((row) => !row.analytics.betaInsights)) {
+      warnings.push(
+        'Ease / NPS appear only when a survey schema declares HCP Beta scoring metadata.',
+      );
+    }
+
+    const columns = packed.map((row) => {
+      const beta = row.analytics.betaInsights;
+      const easeByStage = beta?.easeByStage ?? [];
+      const ratedEase = easeByStage.filter(
+        (s) => s.average != null && s.count > 0,
+      );
+      const averageEase =
+        ratedEase.length > 0
+          ? Math.round(
+              (ratedEase.reduce((sum, s) => sum + (s.average as number), 0) /
+                ratedEase.length) *
+                100,
+            ) / 100
+          : null;
+
+      return {
+        surveyId: row.survey.id,
+        title: row.survey.title,
+        type: row.survey.type,
+        program: row.survey.program,
+        responseCount: row.analytics.totals.totalResponses,
+        completionRate: row.analytics.totals.completionRate,
+        averageEase,
+        easeByStage: easeByStage.map((s) => ({
+          stage: s.stage,
+          average: s.average,
+          count: s.count,
+        })),
+        nps: beta?.nps
+          ? {
+              score: beta.nps.score,
+              promoters: beta.nps.promoters,
+              passives: beta.nps.passives,
+              detractors: beta.nps.detractors,
+              totalRated: beta.nps.totalRated,
+            }
+          : null,
+        hasNativeSchema: row.analytics.hasNativeSchema,
+        hasBetaInsights: Boolean(beta),
+      };
+    });
+
+    const promptMaps = packed.map((row) => {
+      const map = new Map<
+        string,
+        {
+          kind: 'rating' | 'choice';
+          mean: number | null;
+          count: number;
+          topOption: string | null;
+          topPercentage: number | null;
+        }
+      >();
+      for (const q of row.analytics.questions) {
+        const key = this.normalizeComparePrompt(q.prompt);
+        if (!key) continue;
+        if (q.kind === 'rating') {
+          map.set(key, {
+            kind: 'rating',
+            mean: q.mean,
+            count: q.count,
+            topOption: null,
+            topPercentage: null,
+          });
+        } else if (q.kind === 'choice') {
+          const top = [...q.options].sort((a, b) => b.count - a.count)[0];
+          map.set(key, {
+            kind: 'choice',
+            mean: null,
+            count: q.totalAnswered,
+            topOption: top?.label ?? null,
+            topPercentage: top?.percentage ?? null,
+          });
+        }
+      }
+      return map;
+    });
+
+    const sharedKeys = [...promptMaps[0].keys()].filter((key) =>
+      promptMaps.every(
+        (m) => m.has(key) && m.get(key)!.kind === promptMaps[0].get(key)!.kind,
+      ),
+    );
+
+    const sharedQuestions = sharedKeys.slice(0, 5).map((key) => {
+      const kind = promptMaps[0].get(key)!.kind;
+      const displayPrompt =
+        packed[0].analytics.questions.find(
+          (q) => this.normalizeComparePrompt(q.prompt) === key,
+        )?.prompt ?? key;
+      return {
+        prompt: displayPrompt,
+        kind,
+        values: packed.map((row, i) => {
+          const cell = promptMaps[i].get(key)!;
+          return {
+            surveyId: row.survey.id,
+            mean: cell.mean,
+            count: cell.count,
+            topOption: cell.topOption,
+            topPercentage: cell.topPercentage,
+          };
+        }),
+      };
+    });
+
+    return { columns, sharedQuestions, warnings };
+  }
+
+  private normalizeComparePrompt(prompt: string): string {
+    return prompt.trim().toLowerCase().replace(/\s+/g, ' ');
+  }
+
+  private compareSchemaFingerprint(prompts: string[]): string {
+    return prompts
+      .map((p) => this.normalizeComparePrompt(p))
+      .filter(Boolean)
+      .sort()
+      .join('|');
   }
 
   /**
@@ -997,7 +1626,9 @@ export class SurveysService {
         schemaVersion: true,
         updatedAt: true,
         program: { select: { id: true, title: true, startDate: true } },
-        _count: { select: { responses: true } },
+        _count: {
+          select: { responses: { where: { isDraft: false } } },
+        },
       },
       orderBy: [{ isCustomized: 'desc' }, { updatedAt: 'desc' }],
       take: 200,
@@ -1692,4 +2323,17 @@ function publicRespondent(
         specialty: null,
       }
     : null;
+}
+
+/** True when the native schema declares ease / NPS / comment scoring (HCP Beta). */
+function surveyHasBetaScoring(questions: unknown): boolean {
+  for (const q of listNativeSurveyQuestions(questions)) {
+    const scoring = q.scoring;
+    if (!scoring || typeof scoring !== 'object' || Array.isArray(scoring)) {
+      continue;
+    }
+    const kind = String((scoring as { kind?: unknown }).kind ?? '');
+    if (kind === 'ease' || kind === 'nps' || kind === 'comment') return true;
+  }
+  return false;
 }

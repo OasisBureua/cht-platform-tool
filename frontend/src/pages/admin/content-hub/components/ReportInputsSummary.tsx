@@ -160,7 +160,7 @@ export function ReportInputsSummary({
             {rows.map((row) => {
               const { Icon, className } = STATUS_ICON[row.status];
               const when = updated(row.fetchedAt);
-              const off = !selected.includes(row.source);
+              const off = !(row.sources ?? [row.source]).some((s) => selected.includes(s));
               return (
                 <li key={row.key} className="flex items-center gap-3 px-4 py-2.5 text-sm">
                   <Icon className={`h-4 w-4 shrink-0 ${className}`} aria-label={row.status} />
