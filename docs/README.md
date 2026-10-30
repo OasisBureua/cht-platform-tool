@@ -16,6 +16,7 @@ Operational docs for the CHT Platform. Start here:
 | [engineering/content-hub-report-api-contract.md](./engineering/content-hub-report-api-contract.md) | Campaign & report API contract |
 | [engineering/survey-response-analytics-api.md](./engineering/survey-response-analytics-api.md) | Survey response analytics API contract (admin charts) |
 | [runbooks/](./runbooks/) | Platform migration runbooks (Cognito, staging teardown, MediaHub) |
+| [runbooks/admin-rbac-team-notice.md](./runbooks/admin-rbac-team-notice.md) | Admin RBAC: read vs domain write (team notice) |
 | [reports/CHM-Platform-Roadmap-Plan.md](./reports/CHM-Platform-Roadmap-Plan.md) | Master roadmap (dev, Cognito, MediaHub) |
 | [compliance/](./compliance/) | SOC 2 runbooks (incident response, disaster recovery) |
 
