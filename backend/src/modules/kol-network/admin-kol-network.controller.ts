@@ -21,6 +21,8 @@ import {
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import type { AuthUser } from '../../auth/auth.service';
 import { UserRole } from '@prisma/client';
@@ -144,6 +146,8 @@ export class AdminKolNetworkController {
   }
 
   @Patch(':slug/visibility')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiOperation({
     summary: 'Toggle KOL visibility on public site and/or member app',
   })
@@ -217,6 +221,8 @@ export class AdminKolNetworkController {
   }
 
   @Patch(':slug')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiOperation({ summary: 'Edit KOL admin fields (proxies to Content Hub)' })
   @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
   async updateKol(
@@ -231,6 +237,8 @@ export class AdminKolNetworkController {
   }
 
   @Post(':slug/refresh')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiOperation({ summary: 'Enqueue an HCP intel refresh for this KOL' })
   @ApiParam({ name: 'slug', description: 'Content Hub KOL slug' })
   async refreshKol(@Param('slug') slug: string): Promise<KolRefreshResult> {
@@ -244,6 +252,8 @@ export class AdminKolNetworkController {
   }
 
   @Post(':slug/headshot/presign')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('content')
   @ApiOperation({
     summary: 'Get a presigned S3 PUT URL for KOL headshot upload',
   })

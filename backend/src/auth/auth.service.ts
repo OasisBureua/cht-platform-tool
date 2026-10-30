@@ -5,6 +5,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  ServiceUnavailableException,
   forwardRef,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +20,12 @@ import {
   hasAcceptedRequiredConsent,
 } from '../common/terms';
 import { isPlatformAdmin } from '../common/roles';
+import type { AdminCapability } from '../common/admin-capabilities';
+import {
+  ADMIN_CAPABILITIES,
+  CAPABILITY_TO_COGNITO_GROUP,
+  isAdminCapability,
+} from '../common/admin-capabilities';
 import { FeatureFlagsService } from '../feature-flags/feature-flags.service';
 
 const TERMS_CACHE_TTL_SECONDS = 300;
@@ -32,6 +39,8 @@ export class AuthUser {
   email: string;
   name: string;
   role: UserRole;
+  /** Domain write capabilities (payments, programs, …). Empty/undefined = read-only ADMIN. */
+  capabilities?: string[];
 }
 
 type CachedSession = {
@@ -40,6 +49,7 @@ type CachedSession = {
   email: string;
   name: string;
   role: UserRole;
+  capabilities?: string[];
   expiresAt: string;
   createdAt: string;
 };
@@ -116,6 +126,7 @@ export class AuthService {
     email: string;
     name: string;
     role: UserRole;
+    capabilities?: string[] | null;
   }): AuthUser {
     const authUser = new AuthUser();
     authUser.authId = data.authId;
@@ -123,6 +134,9 @@ export class AuthService {
     authUser.email = data.email;
     authUser.name = data.name;
     authUser.role = data.role;
+    authUser.capabilities = Array.isArray(data.capabilities)
+      ? [...data.capabilities]
+      : [];
     return authUser;
   }
 
@@ -142,6 +156,7 @@ export class AuthService {
       email: user.email,
       name: user.name,
       role: user.role,
+      capabilities: user.capabilities ?? [],
       expiresAt: expiresAt.toISOString(),
       createdAt: createdAt.toISOString(),
     };
@@ -340,16 +355,157 @@ export class AuthService {
     // Do NOT overwrite firstName/lastName for existing users - Settings PATCH is the source of truth.
     // OAuth metadata is only used when creating a new user.
 
-    const authUser = new AuthUser();
-    authUser.authId = user.authId;
-    authUser.userId = user.id;
-    authUser.email = user.email;
-    authUser.name =
-      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-      user.email;
-    authUser.role = user.role;
+    return this.toAuthUser({
+      authId: user.authId,
+      userId: user.id,
+      email: user.email,
+      name:
+        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+        user.email,
+      role: user.role,
+      capabilities: user.adminCapabilities ?? [],
+    });
+  }
 
-    return authUser;
+  /**
+   * Pull Cognito domain write groups into User.adminCapabilities and refresh
+   * in-memory AuthUser.capabilities. No-ops when Cognito is not configured
+   * (keeps existing DB caps). Invalidates session Redis cache so next request
+   * sees fresh caps.
+   */
+  async syncAdminCapabilitiesFromCognito(
+    userId: string,
+    email: string,
+    preferredUsername?: string | null,
+  ): Promise<AdminCapability[]> {
+    if (!this.cognitoService.isConfigured()) {
+      const row = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { adminCapabilities: true },
+      });
+      return (row?.adminCapabilities ?? []) as AdminCapability[];
+    }
+
+    const caps =
+      await this.cognitoService.resolveAdminCapabilitiesFromCognito(
+        email,
+        preferredUsername,
+      );
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { adminCapabilities: caps },
+    });
+    await this.invalidateAuthCache(userId);
+    return caps;
+  }
+
+  /**
+   * Super-admin: set domain write capabilities by syncing Cognito groups, then DB.
+   * Target must be ADMIN or SUPER_ADMIN. Desired list replaces current domain groups.
+   */
+  async setAdminCapabilities(
+    userId: string,
+    desiredRaw: string[],
+  ): Promise<{
+    id: string;
+    email: string;
+    role: UserRole;
+    adminCapabilities: AdminCapability[];
+  }> {
+    const desired = ADMIN_CAPABILITIES.filter((c) =>
+      desiredRaw.includes(c),
+    );
+    for (const raw of desiredRaw) {
+      if (!isAdminCapability(raw)) {
+        throw new BadRequestException(
+          `Invalid capability "${raw}". Allowed: ${ADMIN_CAPABILITIES.join(', ')}`,
+        );
+      }
+    }
+
+    const target = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminCapabilities: true,
+      },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (!isPlatformAdmin(target.role)) {
+      throw new BadRequestException(
+        'Domain write access can only be granted to ADMIN or SUPER_ADMIN users.',
+      );
+    }
+
+    const current = (target.adminCapabilities ?? []).filter(isAdminCapability);
+    const desiredSet = new Set(desired);
+    const currentSet = new Set(current);
+    const toAdd = desired.filter((c) => !currentSet.has(c));
+    const toRemove = current.filter((c) => !desiredSet.has(c));
+
+    if (this.cognitoService.isConfigured()) {
+      try {
+        for (const cap of toAdd) {
+          await this.cognitoService.addUserToGroupStrict(
+            target.email,
+            CAPABILITY_TO_COGNITO_GROUP[cap],
+          );
+        }
+        for (const cap of toRemove) {
+          await this.cognitoService.removeUserFromGroupStrict(
+            target.email,
+            CAPABILITY_TO_COGNITO_GROUP[cap],
+          );
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new ServiceUnavailableException(
+          `Could not update Cognito domain groups: ${msg}`,
+        );
+      }
+      // Re-read Cognito as source of truth after mutations.
+      const fromCognito =
+        await this.cognitoService.resolveAdminCapabilitiesFromCognito(
+          target.email,
+        );
+      const updated = await this.prisma.user.update({
+        where: { id: userId },
+        data: { adminCapabilities: fromCognito },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          adminCapabilities: true,
+        },
+      });
+      await this.invalidateAuthCache(userId);
+      return {
+        ...updated,
+        adminCapabilities: updated.adminCapabilities.filter(
+          isAdminCapability,
+        ) as AdminCapability[],
+      };
+    }
+
+    // Local / Cognito-less: persist DB only (dev).
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { adminCapabilities: desired },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminCapabilities: true,
+      },
+    });
+    await this.invalidateAuthCache(userId);
+    return {
+      ...updated,
+      adminCapabilities: desired,
+    };
   }
 
   /**
@@ -439,15 +595,16 @@ export class AuthService {
       where: { email: email.trim().toLowerCase() },
     });
     if (!user) return null;
-    const authUser = new AuthUser();
-    authUser.authId = user.authId;
-    authUser.userId = user.id;
-    authUser.email = user.email;
-    authUser.name =
-      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-      user.email;
-    authUser.role = user.role;
-    return authUser;
+    return this.toAuthUser({
+      authId: user.authId,
+      userId: user.id,
+      email: user.email,
+      name:
+        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+        user.email,
+      role: user.role,
+      capabilities: user.adminCapabilities ?? [],
+    });
   }
 
   /**
@@ -560,7 +717,7 @@ export class AuthService {
 
     const dbUser = await this.prisma.user.findUnique({
       where: { id: session.userId },
-      select: { role: true },
+      select: { role: true, adminCapabilities: true },
     });
 
     const role = dbUser?.role ?? session.role;
@@ -570,6 +727,7 @@ export class AuthService {
       email: session.email,
       name: session.name,
       role,
+      capabilities: dbUser?.adminCapabilities ?? [],
     });
 
     if (dbUser && dbUser.role !== session.role) {
@@ -661,6 +819,7 @@ export class AuthService {
     termsVersion: string | null;
     betaTermsAcceptedAt: Date | null;
     betaTermsVersion: string | null;
+    adminCapabilities: string[];
   } | null> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -678,6 +837,7 @@ export class AuthService {
         termsVersion: true,
         betaTermsAcceptedAt: true,
         betaTermsVersion: true,
+        adminCapabilities: true,
       },
     });
     return user;
@@ -843,15 +1003,16 @@ export class AuthService {
       where: { id: userId },
     });
     if (!user) return null;
-    const authUser = new AuthUser();
-    authUser.authId = user.authId;
-    authUser.userId = user.id;
-    authUser.email = user.email;
-    authUser.name =
-      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-      user.email;
-    authUser.role = user.role;
-    return authUser;
+    return this.toAuthUser({
+      authId: user.authId,
+      userId: user.id,
+      email: user.email,
+      name:
+        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+        user.email,
+      role: user.role,
+      capabilities: user.adminCapabilities ?? [],
+    });
   }
 
   /**

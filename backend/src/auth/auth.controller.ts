@@ -92,6 +92,8 @@ interface LoginSuccess {
   firstName?: string;
   lastName?: string;
   role: string;
+  /** Domain write capabilities synced from Cognito groups. */
+  capabilities?: string[];
   profileComplete?: boolean;
   profileMissingFields?: ProfileMissingField[];
   specialty?: string | null;
@@ -296,6 +298,19 @@ export class AuthController {
         ),
       );
 
+    try {
+      user.capabilities =
+        await this.authService.syncAdminCapabilitiesFromCognito(
+          user.userId,
+          user.email,
+          claims['cognito:username'] || claims.sub,
+        );
+    } catch (err) {
+      this.logger.warn(
+        `[Auth] capability sync on login failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
     const sessionToken = await this.authService.createSession(
       user,
       tokens.accessToken,
@@ -332,6 +347,7 @@ export class AuthController {
       lastName:
         dbUser?.lastName ?? profile?.lastName ?? claims.family_name ?? '',
       role: user.role,
+      capabilities: user.capabilities ?? [],
       profileComplete,
       profileMissingFields,
       specialty: dbUser?.specialty ?? null,
@@ -1641,6 +1657,7 @@ export class AuthController {
         firstName: string;
         lastName: string;
         role: string;
+        capabilities: string[];
         profileComplete: boolean;
         profileMissingFields: ProfileMissingField[];
         specialty: string | null;
@@ -1660,6 +1677,20 @@ export class AuthController {
     const user = req.user;
     if (!user?.userId) {
       return { authenticated: false };
+    }
+
+    // Refresh domain write caps from Cognito on each /me (SoT for write groups).
+    let capabilities = user.capabilities ?? [];
+    try {
+      capabilities = await this.authService.syncAdminCapabilitiesFromCognito(
+        user.userId,
+        user.email,
+      );
+      user.capabilities = capabilities;
+    } catch (err) {
+      this.logger.warn(
+        `[Auth] capability sync failed for ${user.email}: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     const dbUser = await this.authService.getUserById(user.userId);
@@ -1718,6 +1749,10 @@ export class AuthController {
       firstName,
       lastName,
       role: user.role,
+      capabilities:
+        capabilities.length > 0
+          ? capabilities
+          : (dbUser?.adminCapabilities ?? []),
       profileComplete,
       profileMissingFields,
       specialty: dbUser?.specialty ?? null,

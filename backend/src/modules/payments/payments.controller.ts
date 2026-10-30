@@ -25,6 +25,8 @@ import type { AuthUser } from '../../auth/auth.service';
 import { CheckUserGuard } from '../../auth/check-user.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { AdminOrDevGuard } from '../../auth/admin-or-dev.guard';
 import { PaymentsService } from './payments.service';
 import { CreatePayoutDto, PayoutResponseDto } from './dto/create-payout.dto';
@@ -93,7 +95,8 @@ export class PaymentsController {
    * Delete payments by userId and programId (admin/dev only). For cleaning up test entries.
    */
   @Delete('by-user-program')
-  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard, AdminCapabilityGuard)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary: 'Delete payments by userId and programId (admin/dev only)',
@@ -305,8 +308,9 @@ export class PaymentsController {
    * Release (pay now) or hold each payment. One failure does not stop the rest.
    */
   @Post('bulk')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Bulk release or hold payments (admin)' })
   async bulkPayments(
@@ -321,8 +325,9 @@ export class PaymentsController {
    * Retry a FAILED payment by resetting it to PENDING and re-attempting via Stripe Connect (admin only).
    */
   @Post(':paymentId/retry')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   async retryPayment(
     @Param('paymentId') paymentId: string,
     @CurrentUser() actor: AuthUser,
@@ -335,8 +340,9 @@ export class PaymentsController {
    * Hold a PENDING payout. Reason required. Pay now is blocked until release-hold.
    */
   @Post(':paymentId/hold')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Hold a pending payment (admin)' })
   async holdPayment(
@@ -352,8 +358,9 @@ export class PaymentsController {
    * Clear a hold and leave the payment PENDING.
    */
   @Post(':paymentId/release-hold')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Release a payment hold (admin)' })
   async releaseHold(
@@ -368,7 +375,8 @@ export class PaymentsController {
    * Delete a payment by ID (admin/dev only). For removing test entries.
    */
   @Delete(':paymentId')
-  @UseGuards(JwtAuthGuard, AdminOrDevGuard)
+  @UseGuards(JwtAuthGuard, AdminOrDevGuard, AdminCapabilityGuard)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Delete payment by ID (admin/dev only)' })
   @ApiResponse({ status: 200, description: 'Payment deleted' })
@@ -384,8 +392,9 @@ export class PaymentsController {
    * Pay a PENDING payment via Stripe Connect (admin only).
    */
   @Post(':paymentId/pay-now')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   async payNow(
     @Param('paymentId') paymentId: string,
     @CurrentUser() actor: AuthUser,
@@ -454,8 +463,9 @@ export class PaymentsController {
    * Queue a manual PENDING payment for admin pay-now flow.
    */
   @Post('manual')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   @ApiBearerAuth('session-token')
   @ApiOperation({ summary: 'Create manual pending payment (admin)' })
   async createManualPayment(
@@ -470,8 +480,9 @@ export class PaymentsController {
    * Create payout to user via Stripe Connect (admin only).
    */
   @Post('payout')
-  @UseGuards(JwtAuthGuard, RolesGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard, AdminCapabilityGuard)
   @Roles(UserRole.ADMIN)
+  @RequireAdminCapability('payments')
   async createPayout(
     @Body() dto: CreatePayoutDto,
     @CurrentUser() actor: AuthUser,

@@ -192,6 +192,13 @@ export interface CreateSurveyPayload {
   jotformFormId?: string;
 }
 
+export type AdminDomainCapability =
+  | 'payments'
+  | 'programs'
+  | 'surveys'
+  | 'reports'
+  | 'content';
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -205,6 +212,8 @@ export interface AdminUser {
   /** Organization / institution from profile */
   institution?: string | null;
   npiNumber?: string | null;
+  /** Domain write caps (Cognito groups); present when listed for admins. */
+  adminCapabilities?: string[];
   createdAt: string;
 }
 
@@ -2746,6 +2755,36 @@ export const adminApi = {
     role: 'HCP' | 'KOL' | 'ADMIN' | 'SUPER_ADMIN',
   ) => {
     const { data } = await apiClient.patch(`/admin/users/${userId}/role`, { role });
+    return data;
+  },
+
+  getUserAdminCapabilities: async (
+    userId: string,
+  ): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    capabilities: AdminDomainCapability[];
+  }> => {
+    const { data } = await apiClient.get(
+      `/admin/users/${encodeURIComponent(userId)}/admin-capabilities`,
+    );
+    return data;
+  },
+
+  setUserAdminCapabilities: async (
+    userId: string,
+    capabilities: AdminDomainCapability[],
+  ): Promise<{
+    id: string;
+    email: string;
+    role: string;
+    capabilities: AdminDomainCapability[];
+  }> => {
+    const { data } = await apiClient.put(
+      `/admin/users/${encodeURIComponent(userId)}/admin-capabilities`,
+      { capabilities },
+    );
     return data;
   },
 

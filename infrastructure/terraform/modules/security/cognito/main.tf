@@ -374,6 +374,38 @@ resource "aws_cognito_user_group" "admin" {
   description  = "CHT platform administrators"
 }
 
+# Domain write groups: ADMIN can read all admin areas; membership here unlocks
+# Create/Update/Delete for that domain. Synced into User.adminCapabilities on login.
+resource "aws_cognito_user_group" "admin_payments" {
+  name         = "cht-admin-payments"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admin write: payments (pay now, hold, release, queue)"
+}
+
+resource "aws_cognito_user_group" "admin_programs" {
+  name         = "cht-admin-programs"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admin write: programs, webinars, registrations, invites, email overrides, Zoom recordings"
+}
+
+resource "aws_cognito_user_group" "admin_surveys" {
+  name         = "cht-admin-surveys"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admin write: surveys and response mutations"
+}
+
+resource "aws_cognito_user_group" "admin_reports" {
+  name         = "cht-admin-reports"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admin write: report generate and report mutations"
+}
+
+resource "aws_cognito_user_group" "admin_content" {
+  name         = "cht-admin-content"
+  user_pool_id = aws_cognito_user_pool.main.id
+  description  = "Admin write: Content Hub, campaigns, KOL network"
+}
+
 # Future: add cht-kol and cht-industry groups here when needed, 
 # no pool migration required, just new aws_cognito_user_group resources.
 

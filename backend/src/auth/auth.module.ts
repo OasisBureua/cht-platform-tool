@@ -12,6 +12,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { OptionalJwtAuthGuard } from './optional-jwt-auth.guard';
 import { CognitoM2mAuthGuard } from './cognito-m2m-auth.guard';
 import { CognitoM2mTokenService } from './cognito-m2m-token.service';
+import { AdminCapabilityGuard } from './admin-capability.guard';
 import { NpiRegistryService } from './npi-registry.service';
 import { PrismaModule } from '../prisma/prisma.module';
 import { OutboundSyncModule } from '../modules/outbound-sync/outbound-sync.module';
@@ -36,6 +37,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
     OptionalJwtAuthGuard,
     CognitoM2mAuthGuard,
     CognitoM2mTokenService,
+    AdminCapabilityGuard,
     {
       provide: JwtStrategy,
       useFactory: (config: ConfigService, auth: AuthService) => {
@@ -62,6 +64,7 @@ import { FeatureFlagsModule } from '../feature-flags/feature-flags.module';
     CognitoM2mTokenService,
     CognitoService,
     NpiRegistryService,
+    AdminCapabilityGuard,
   ],
 })
 export class AuthModule {}
