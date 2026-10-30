@@ -31,6 +31,12 @@ import LoadingSpinner from '../../components/ui/LoadingSpinner';
 import { format } from 'date-fns';
 import { DollarSign, CheckCircle2, AlertCircle, Trash2, Clock, X, Loader2, RefreshCw, XCircle, Plus, Download, ChevronRight } from 'lucide-react';
 import { StripeMark } from '../../components/branding/StripeMark';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  adminCapabilityDeniedMessage,
+  guardAdminAction,
+  hasAdminCapability,
+} from '../../utils/admin-capabilities';
 
 function formatMoney(cents: number) {
   const n = Number.isFinite(cents) ? cents : 0;
@@ -251,6 +257,9 @@ function buildProgramTableRows(
 
 export default function AdminPayments() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canWritePayments = hasAdminCapability(user, 'payments');
+  const paymentsWriteDeniedTitle = adminCapabilityDeniedMessage('payments');
   const [deleteConfirmPaymentId, setDeleteConfirmPaymentId] = useState<string | null>(null);
   const [selectedPaymentIds, setSelectedPaymentIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState<'release' | 'hold' | null>(null);
@@ -1289,9 +1298,21 @@ export default function AdminPayments() {
                       checked ? [...current, p.id] : current.filter((id) => id !== p.id),
                     );
                   }}
-                  onPayNow={() => payNowMutation.mutate(p.id)}
-                  onReleaseHold={() => releaseHoldMutation.mutate(p.id)}
-                  onRequestDelete={() => setDeleteConfirmPaymentId(p.id)}
+                  onPayNow={() =>
+                    guardAdminAction(user, 'payments', () => payNowMutation.mutate(p.id))
+                  }
+                  onReleaseHold={() =>
+                    guardAdminAction(user, 'payments', () =>
+                      releaseHoldMutation.mutate(p.id),
+                    )
+                  }
+                  onRequestDelete={() =>
+                    guardAdminAction(user, 'payments', () =>
+                      setDeleteConfirmPaymentId(p.id),
+                    )
+                  }
+                  paymentsWriteAllowed={canWritePayments}
+                  paymentsWriteDeniedTitle={paymentsWriteDeniedTitle}
                   isPaying={payNowMutation.isPending && payNowMutation.variables === p.id}
                   isReleasingHold={
                     releaseHoldMutation.isPending && releaseHoldMutation.variables === p.id
@@ -2157,6 +2178,8 @@ function PendingRow({
   onPayNow,
   onReleaseHold,
   onRequestDelete,
+  paymentsWriteAllowed,
+  paymentsWriteDeniedTitle,
   isPaying,
   isReleasingHold,
   isDeleting,
@@ -2168,6 +2191,8 @@ function PendingRow({
   onPayNow: () => void;
   onReleaseHold: () => void;
   onRequestDelete: () => void;
+  paymentsWriteAllowed: boolean;
+  paymentsWriteDeniedTitle: string;
   isPaying: boolean;
   isReleasingHold: boolean;
   isDeleting: boolean;
@@ -2178,16 +2203,19 @@ function PendingRow({
     !!payment.user.stripeAccountId && payment.user.stripePayoutsEnabled !== false;
   const hasPayoutAccount = hasStripe;
   const hasW9 = payment.user.w9Submitted !== false;
-  const canPay = hasPayoutAccount && hasW9 && !isHeld;
-  const blockReason = isHeld
-    ? payment.holdReason?.trim()
-      ? `On hold: ${payment.holdReason.trim()}`
-      : 'On hold — release the hold before Pay now'
-    : !hasPayoutAccount
-      ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
-      : !hasW9
-        ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
-        : null;
+  const canPay =
+    paymentsWriteAllowed && hasPayoutAccount && hasW9 && !isHeld;
+  const blockReason = !paymentsWriteAllowed
+    ? paymentsWriteDeniedTitle
+    : isHeld
+      ? payment.holdReason?.trim()
+        ? `On hold: ${payment.holdReason.trim()}`
+        : 'On hold — release the hold before Pay now'
+      : !hasPayoutAccount
+        ? 'No Stripe payout account: HCP must complete ACH Connect onboarding'
+        : !hasW9
+          ? 'Tax details incomplete: HCP must finish Stripe onboarding tax info'
+          : null;
 
   const methodLabel =
     payment.user.preferredPaymentMethod === 'CHECK'
@@ -2244,8 +2272,12 @@ function PendingRow({
             <button
               type="button"
               onClick={onReleaseHold}
-              disabled={isReleasingHold}
-              title="Clear hold so Pay now can run"
+              disabled={!paymentsWriteAllowed || isReleasingHold}
+              title={
+                !paymentsWriteAllowed
+                  ? paymentsWriteDeniedTitle
+                  : 'Clear hold so Pay now can run'
+              }
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-warning/40 bg-warning/10 px-3 py-2 text-sm font-semibold text-warning hover:bg-warning/20 disabled:opacity-50"
             >
               {isReleasingHold ? 'Releasing…' : 'Release hold'}
@@ -2270,8 +2302,12 @@ function PendingRow({
           <button
             type="button"
             onClick={onRequestDelete}
-            disabled={isDeleting}
-            title="Delete (remove test entry)"
+            disabled={!paymentsWriteAllowed || isDeleting}
+            title={
+              !paymentsWriteAllowed
+                ? paymentsWriteDeniedTitle
+                : 'Delete (remove test entry)'
+            }
             className="inline-flex items-center justify-center rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
           >
             <Trash2 className="h-4 w-4" aria-hidden />

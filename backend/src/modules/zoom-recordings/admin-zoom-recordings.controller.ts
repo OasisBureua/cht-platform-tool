@@ -20,6 +20,8 @@ import { ProgramZoomSessionType, UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CurrentUser } from '../../auth/current-user.decorator';
 import { AuthUser } from '../../auth/auth.service';
 import { ZoomRecordingsCatalogService } from './zoom-recordings-catalog.service';
@@ -152,6 +154,8 @@ export class AdminZoomRecordingsController {
   }
 
   @Post('sessions/:sessionId/pull')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary:
       'Pull completed Zoom recording files for a catalog session into S3',
@@ -222,6 +226,8 @@ export class AdminZoomRecordingsController {
   }
 
   @Post('sessions/:sessionId/link')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary: 'Link a catalog session to an existing CHT Program',
   })
@@ -246,6 +252,8 @@ export class AdminZoomRecordingsController {
   }
 
   @Post('sync')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary:
       'Start a manual account-wide Zoom recordings sync (metadata only; files pulled separately)',
@@ -349,6 +357,8 @@ export class AdminZoomRecordingsController {
   }
 
   @Post('sessions/:sessionId/attendance/import')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary: 'Import Zoom Report API attendees for one catalog session',
   })
@@ -378,6 +388,8 @@ export class AdminZoomRecordingsController {
   }
 
   @Post('attendance/import')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary:
       'Start a manual 12-month Zoom attendee import for catalog sessions (Report API)',

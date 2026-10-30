@@ -4,6 +4,7 @@ import { adminApi, type AdminUser } from '../../api/admin';
 import { useAuth } from '../../contexts/AuthContext';
 import { Search, Trash2, X, Loader2 } from 'lucide-react';
 import { isSuperAdmin, type PlatformRole } from '../../utils/roles';
+import { AdminDomainAccessPanel } from '../../components/admin/AdminDomainAccessPanel';
 
 const ROLE_COLORS: Record<string, string> = {
   HCP: 'bg-blue-100 text-blue-800',
@@ -122,10 +123,12 @@ export default function AdminUsers() {
         <h1 className="text-2xl font-bold text-foreground">User Management</h1>
         <p className="text-sm text-muted-foreground mt-1">
           {actorIsSuper
-            ? 'Search and filter users, promote roles (Super Admin only), and delete accounts when needed.'
-            : 'Search and filter users. Only a Super Admin can promote roles or delete admin accounts.'}
+            ? 'Search and filter users, promote roles, grant domain write access, and delete accounts when needed.'
+            : 'Search and filter users. Only a Super Admin can promote roles, grant write domains, or delete admin accounts.'}
         </p>
       </div>
+
+      {actorIsSuper ? <AdminDomainAccessPanel /> : null}
 
       <div className="bg-card rounded-card border border-border p-6">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

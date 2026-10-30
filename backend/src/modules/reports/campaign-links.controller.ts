@@ -12,6 +12,8 @@ import { UserRole } from '@prisma/client';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../auth/roles.guard';
 import { Roles } from '../../auth/roles.decorator';
+import { AdminCapabilityGuard } from '../../auth/admin-capability.guard';
+import { RequireAdminCapability } from '../../auth/admin-capability.decorator';
 import { CampaignExportIngestService } from '../content-hub/campaign-export-ingest.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LinkCampaignDto } from './dto/link-campaign.dto';
@@ -64,6 +66,8 @@ export class CampaignLinksController {
   }
 
   @Patch('programs/:id')
+  @UseGuards(AdminCapabilityGuard)
+  @RequireAdminCapability('programs')
   @ApiOperation({
     summary:
       'Link or unlink a Program to a Hub campaign (triggers Hub export-ingest)',

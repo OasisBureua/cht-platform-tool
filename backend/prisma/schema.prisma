@@ -37,6 +37,9 @@ model User {
   // Role and status
   role            UserRole @default(HCP)
   status          UserStatus @default(ACTIVE)
+  /// Domain write capabilities synced from Cognito groups (e.g. payments, programs).
+  /// ADMIN can read all admin areas; membership here unlocks Create/Update/Delete.
+  adminCapabilities String[] @default([])
   
   // Payment status
   paymentEnabled   Boolean @default(false)
