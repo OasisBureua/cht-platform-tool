@@ -1,5 +1,7 @@
 # Admin domain Cognito groups (read vs write)
 
+**Team-facing summary:** [admin-rbac-team-notice.md](./admin-rbac-team-notice.md)
+
 ## Model
 
 | Actor | Admin GET / read UI | Create / Update / Delete |
