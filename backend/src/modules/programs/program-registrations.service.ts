@@ -2497,18 +2497,26 @@ export class ProgramRegistrationsService {
     if (reg.status !== ProgramRegistrationStatus.APPROVED) {
       throw new BadRequestException('Registration must be approved first.');
     }
-    if (
-      reg.postEventAttendanceStatus !==
-      PostEventAttendanceStatus.PENDING_VERIFICATION
-    ) {
+    const current = reg.postEventAttendanceStatus;
+    // Manual override: pending review, or flip DENIED ↔ VERIFIED. NOT_REQUIRED stays locked.
+    const overridable = new Set<PostEventAttendanceStatus>([
+      PostEventAttendanceStatus.PENDING_VERIFICATION,
+      PostEventAttendanceStatus.DENIED,
+      PostEventAttendanceStatus.VERIFIED,
+    ]);
+    if (!overridable.has(current)) {
       throw new BadRequestException(
-        'This registration is not waiting for attendance verification.',
+        'Attendance cannot be overridden for this registration (not required or unset).',
       );
     }
     const next =
       status === 'VERIFIED'
         ? PostEventAttendanceStatus.VERIFIED
         : PostEventAttendanceStatus.DENIED;
+
+    if (current === next) {
+      return reg;
+    }
 
     const updated = await this.prisma.programRegistration.update({
       where: { id: registrationId },

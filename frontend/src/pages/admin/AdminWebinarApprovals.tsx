@@ -13,6 +13,12 @@ import {
   registrationStatusClass,
   registrationStatusLabel,
 } from '../../utils/admin-survey-display';
+import {
+  adminCapabilityDeniedMessage,
+  guardAdminAction,
+  hasAdminCapability,
+} from '../../utils/admin-capabilities';
+import { useAuth } from '../../contexts/AuthContext';
 
 type AdminApprovalsTab = 'registrations' | 'attendance';
 
@@ -59,7 +65,10 @@ function hcpBadgeClass(specialty?: string | null): string {
 }
 
 export default function AdminWebinarApprovals() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
+  const canWritePrograms = hasAdminCapability(user, 'programs');
+  const programsWriteDeniedTitle = adminCapabilityDeniedMessage('programs');
   const [tab, setTab] = useState<AdminApprovalsTab>('registrations');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
   const [rejectModalIds, setRejectModalIds] = useState<string[] | null>(null);
@@ -286,7 +295,11 @@ export default function AdminWebinarApprovals() {
         onClose={() => {
           if (!rejectMut.isPending) setRejectModalIds(null);
         }}
-        onConfirm={(o) => rejectMut.mutate({ ids: rejectModalIds ?? [], ...o })}
+        onConfirm={(o) =>
+          guardAdminAction(user, 'programs', () =>
+            rejectMut.mutate({ ids: rejectModalIds ?? [], ...o }),
+          )
+        }
         isSubmitting={rejectMut.isPending}
         count={rejectModalIds?.length ?? 0}
       />
@@ -335,7 +348,8 @@ export default function AdminWebinarApprovals() {
         {tab === 'attendance' ? (
           <p className="mt-3 text-sm text-muted-foreground">
             Attendance is verified automatically after the live session when the learner&apos;s HCP account email
-            matches the email Zoom recorded. Status below is read-only.
+            matches the email Zoom recorded. Status below is read-only — manual Verify / Missed overrides live on
+            each program hub&apos;s Attendance tab (programs write access required).
           </p>
         ) : null}
 
@@ -408,16 +422,26 @@ export default function AdminWebinarApprovals() {
           <div className="ml-auto flex flex-wrap gap-2">
             <button
               type="button"
-              disabled={busy || selectedList.length === 0}
-              onClick={() => bulkMut.mutate({ ids: selectedList, status: 'APPROVED' })}
+              disabled={!canWritePrograms || busy || selectedList.length === 0}
+              title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+              onClick={() =>
+                guardAdminAction(user, 'programs', () =>
+                  bulkMut.mutate({ ids: selectedList, status: 'APPROVED' }),
+                )
+              }
               className="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-40"
             >
               Approve selected
             </button>
             <button
               type="button"
-              disabled={busy || selectedList.length === 0}
-              onClick={() => setRejectModalIds([...selectedList])}
+              disabled={!canWritePrograms || busy || selectedList.length === 0}
+              title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+              onClick={() =>
+                guardAdminAction(user, 'programs', () =>
+                  setRejectModalIds([...selectedList]),
+                )
+              }
               className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground disabled:opacity-40"
             >
               Reject selected
@@ -580,8 +604,11 @@ export default function AdminWebinarApprovals() {
                     <td className="py-3 px-4">
                       <button
                         type="button"
-                        disabled={busy || remaining <= 0}
-                        onClick={() => undoMut.mutate(r.id)}
+                        disabled={!canWritePrograms || busy || remaining <= 0}
+                        title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+                        onClick={() =>
+                          guardAdminAction(user, 'programs', () => undoMut.mutate(r.id))
+                        }
                         className="rounded-lg border border-amber-300 bg-card px-2 py-1 text-xs font-semibold text-amber-950 hover:bg-warning/10 disabled:opacity-40"
                       >
                         Undo approval
@@ -673,17 +700,27 @@ export default function AdminWebinarApprovals() {
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => approveMut.mutate({ id: r.id })}
+                      disabled={!canWritePrograms || busy}
+                      title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+                      onClick={() =>
+                        guardAdminAction(user, 'programs', () =>
+                          approveMut.mutate({ id: r.id }),
+                        )
+                      }
                       className="rounded-lg bg-green-700 px-2 py-1 text-xs font-semibold text-white disabled:opacity-40"
                     >
                       Approve
                     </button>
                     <button
                       type="button"
-                      disabled={busy}
-                      onClick={() => setRejectModalIds([r.id])}
-                      className="rounded-lg border border-border px-2 py-1 text-xs font-semibold"
+                      disabled={!canWritePrograms || busy}
+                      title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
+                      onClick={() =>
+                        guardAdminAction(user, 'programs', () =>
+                          setRejectModalIds([r.id]),
+                        )
+                      }
+                      className="rounded-lg border border-border px-2 py-1 text-xs font-semibold disabled:opacity-40"
                     >
                       Reject
                     </button>

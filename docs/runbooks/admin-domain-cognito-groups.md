@@ -30,10 +30,18 @@ User role promote/delete remains **SUPER_ADMIN** only.
 
 ### In the app (preferred)
 
+**Admins request access**
+
+1. Sign in as **Admin**.
+2. Open **Admin → Users**.
+3. Under **Request write access**, select domains and optionally add a note → **Send request**.
+
+**Super Admins approve or grant directly**
+
 1. Sign in as **Super Admin**.
 2. Open **Admin → Users**.
-3. Use the **Admin write access** panel (Super Admin only).
-4. Toggle domain checkboxes for each `ADMIN` user (payments, programs, surveys, reports, content).
+3. **Write access requests** — Approve / Deny pending requests (merges domains onto the Admin; does not remove existing ones).
+4. **Direct write grants** — toggle domain checkboxes for each `ADMIN` (immediate Cognito update).
 5. `SUPER_ADMIN` rows show all domains checked and disabled (always full write).
 
 The API updates Cognito groups and `User.adminCapabilities`. The target should refresh the app (or `/auth/me`) to pick up new caps in their session.

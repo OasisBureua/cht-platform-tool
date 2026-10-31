@@ -85,6 +85,8 @@ model User {
   analyticsEvents AnalyticsEvent[]
   companionConversations CompanionConversation[]
   betaTermsAcceptances BetaTermsAcceptance[]
+  capabilityAccessRequests AdminCapabilityAccessRequest[] @relation("CapabilityRequestRequester")
+  capabilityAccessReviews  AdminCapabilityAccessRequest[] @relation("CapabilityRequestReviewer")
 
   @@index([email])
   @@index([authId])
@@ -92,6 +94,34 @@ model User {
   @@index([totalEarnings])
   @@index([betaTermsAcceptedAt])
   @@map("User")
+}
+
+enum AdminCapabilityRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  CANCELLED
+}
+
+/// Admin requests domain write access; Super Admin reviews.
+model AdminCapabilityAccessRequest {
+  id           String                         @id @default(cuid())
+  requesterId  String
+  /// Requested domain keys: payments, programs, surveys, reports, content.
+  capabilities String[]
+  note         String?
+  status       AdminCapabilityRequestStatus   @default(PENDING)
+  reviewedById String?
+  reviewNote   String?
+  createdAt    DateTime                       @default(now())
+  reviewedAt   DateTime?
+
+  requester User  @relation("CapabilityRequestRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  reviewer  User? @relation("CapabilityRequestReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([requesterId, status])
+  @@map("AdminCapabilityAccessRequest")
 }
 
 /// Immutable audit row for each Beta Participant Terms acceptance (legal export).

@@ -1680,11 +1680,24 @@ export class AuthController {
     }
 
     // Refresh domain write caps from Cognito on each /me (SoT for write groups).
+    // Prefer access-token username so Google federated users resolve even when
+    // email-as-username AdminGetUser fails.
     let capabilities = user.capabilities ?? [];
     try {
+      let preferredUsername: string | null = null;
+      const sessionToken = getSessionTokenFromRequest(req);
+      if (sessionToken) {
+        const accessToken =
+          await this.authService.getSessionAccessToken(sessionToken);
+        if (accessToken) {
+          preferredUsername =
+            this.cognitoService.poolUsernameFromAccessToken(accessToken);
+        }
+      }
       capabilities = await this.authService.syncAdminCapabilitiesFromCognito(
         user.userId,
         user.email,
+        preferredUsername,
       );
       user.capabilities = capabilities;
     } catch (err) {

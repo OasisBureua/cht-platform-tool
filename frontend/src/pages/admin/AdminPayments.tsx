@@ -560,13 +560,12 @@ export default function AdminPayments() {
   const hasPending = filteredPending.length > 0;
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mx-auto max-w-6xl space-y-8 pb-16">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-2">
-          <h1 className="text-2xl md:text-3xl font-semibold text-foreground">Payments</h1>
-          <p className="text-sm text-muted-foreground">
-            Pipeline overview first, then open a program for its payment lists. Use{' '}
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Payments</h1>
+          <p className="max-w-2xl text-sm text-muted-foreground">
+            Honorarium pipeline overview, then drill into a program for pending / paid / failed lists. Use{' '}
             <strong>Pay now</strong> on a pending row to send through{' '}
             <StripeMark size="sm" className="translate-y-px" /> (ACH only).
           </p>
@@ -583,7 +582,7 @@ export default function AdminPayments() {
                 })
                 .finally(() => setExportingLedger(false));
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
           >
             {exportingLedger ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export CSV
@@ -605,7 +604,7 @@ export default function AdminPayments() {
                 })
                 .finally(() => setExportingPipeline(false));
             }}
-            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-semibold text-foreground hover:bg-muted disabled:opacity-60"
           >
             {exportingPipeline ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
             Export pipeline
@@ -613,7 +612,7 @@ export default function AdminPayments() {
           {showPaymentDetails ? (
             <a
               href="#pending-table"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
               <DollarSign className="h-4 w-4" />
               {hasPending ? 'Pay now' : 'View payments'}
@@ -621,7 +620,7 @@ export default function AdminPayments() {
           ) : (
             <a
               href="#program-summary"
-              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-700"
             >
               <DollarSign className="h-4 w-4" />
               Select a program
@@ -630,40 +629,49 @@ export default function AdminPayments() {
         </div>
       </header>
 
-      {/* Summary cards — all-time from program-summary (lists load only on drill-down) */}
-      <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-5">
-        <StatCard
-          label="Pending count"
-          value={String(summaryTotals.pendingCount)}
-          sub="Awaiting payout"
-        />
-        <StatCard
-          label="Pending total"
-          value={formatMoney(summaryTotals.pendingTotalCents)}
-          sub="All-time pending payment rows"
-        />
-        <StatCard
-          label="Paid"
-          value={String(summaryTotals.paidCount)}
-          sub="All-time paid payment rows"
-          variant="success"
-        />
-        <StatCard
-          label="Failed payments"
-          value={String(summaryTotals.failedCount)}
-          sub="Need admin retry"
-          variant={summaryTotals.failedCount > 0 ? 'danger' : 'default'}
-        />
-        <StatCard
-          label="Eligible, not submitted"
-          value={eligibleError ? '—' : String(eligibleNotSubmitted.length)}
-          sub={eligibleError ? 'Could not load eligible rows' : 'Survey done, no payment request yet'}
-        />
+      <section>
+        <div className="mb-3">
+          <h2 className="text-base font-semibold text-foreground">At a glance</h2>
+          <p className="text-sm text-muted-foreground">All-time payment row totals across programs.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <StatCard
+            label="Pending count"
+            value={String(summaryTotals.pendingCount)}
+            sub="Awaiting payout"
+          />
+          <StatCard
+            label="Pending total"
+            value={formatMoney(summaryTotals.pendingTotalCents)}
+            sub="All-time pending payment rows"
+          />
+          <StatCard
+            label="Paid"
+            value={String(summaryTotals.paidCount)}
+            sub="All-time paid payment rows"
+            variant="success"
+          />
+          <StatCard
+            label="Failed payments"
+            value={String(summaryTotals.failedCount)}
+            sub="Need admin retry"
+            variant={summaryTotals.failedCount > 0 ? 'danger' : 'default'}
+          />
+          <StatCard
+            label="Eligible, not submitted"
+            value={eligibleError ? '—' : String(eligibleNotSubmitted.length)}
+            sub={eligibleError ? 'Could not load eligible rows' : 'Survey done, no payment request yet'}
+          />
+        </div>
       </section>
 
-      <ManualPaymentForm />
-
-      <section className="rounded-card border border-border bg-card p-4">
+      <section className="rounded-card border border-border bg-card p-5 space-y-3">
+        <div>
+          <h2 className="text-base font-semibold text-foreground">Filters</h2>
+          <p className="text-sm text-muted-foreground">
+            Narrow the pipeline and program lists by learner or survey date.
+          </p>
+        </div>
         <form
           className="flex flex-wrap items-end gap-3"
           onSubmit={(event) => {
@@ -735,6 +743,8 @@ export default function AdminPayments() {
           {userFilter ? ' (user filtered)' : ''}
         </p>
       </section>
+
+      <ManualPaymentForm />
 
       <section id="honorarium-pipeline" className="rounded-card border border-border bg-card overflow-hidden">
         <div className="px-6 pt-5 pb-3 border-b border-border">

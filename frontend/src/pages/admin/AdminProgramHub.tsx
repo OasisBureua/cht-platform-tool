@@ -17,6 +17,7 @@ import { SurveyAnswersTable } from '../../components/admin/SurveyAnswersTable';
 import { ZoomRecordingFilesTable } from '../../components/admin/ZoomRecordingFilesTable';
 import { ProgramInvitationsPanel } from '../../components/admin/ProgramInvitationsPanel';
 import { ProgramEmailsPanel } from '../../components/admin/ProgramEmailsPanel';
+import { ProgramAttendancePanel } from '../../components/admin/ProgramAttendancePanel';
 import { downloadBlob, surveyResponsesDownloadFilename } from '../../utils/download-blob';
 import { getApiErrorMessage } from '../../api/client';
 import { useAuth } from '../../contexts/AuthContext';
@@ -26,13 +27,20 @@ import {
   hasAdminCapability,
 } from '../../utils/admin-capabilities';
 
-type WebinarHubTab = 'approvals' | 'enrolled' | 'surveys' | 'invitations' | 'emails';
+type WebinarHubTab =
+  | 'approvals'
+  | 'attendance'
+  | 'enrolled'
+  | 'surveys'
+  | 'invitations'
+  | 'emails';
 
 function parseHubTab(raw: string | null): WebinarHubTab {
   if (
     raw === 'surveys' ||
     raw === 'enrolled' ||
     raw === 'approvals' ||
+    raw === 'attendance' ||
     raw === 'invitations' ||
     raw === 'emails'
   ) {
@@ -40,6 +48,15 @@ function parseHubTab(raw: string | null): WebinarHubTab {
   }
   return 'approvals';
 }
+
+const HUB_TABS: Array<{ id: WebinarHubTab; label: string }> = [
+  { id: 'approvals', label: 'Approvals' },
+  { id: 'attendance', label: 'Attendance' },
+  { id: 'surveys', label: 'Surveys' },
+  { id: 'enrolled', label: 'Enrolled' },
+  { id: 'invitations', label: 'Invitations' },
+  { id: 'emails', label: 'Emails' },
+];
 
 export default function AdminProgramHub() {
   const { programId } = useParams<{ programId: string }>();
@@ -410,8 +427,16 @@ export default function AdminProgramHub() {
     (p.officeHoursSlots as Array<{ id: string; startsAt: Date | string; endsAt: Date | string; label: string | null }>) ||
     [];
 
+  const enrollmentCount = String(
+    (p._count as { enrollments?: number })?.enrollments ?? '—',
+  );
+  const registrationCount = String(
+    (p._count as { programRegistrations?: number })?.programRegistrations ?? '—',
+  );
+  const pendingCount = pendingRegs.length;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-10 pb-16">
+    <div className="mx-auto max-w-5xl space-y-8 pb-16">
       <RejectRegistrationModal
         open={rejectModalIds != null}
         onClose={() => {
@@ -436,7 +461,7 @@ export default function AdminProgramHub() {
         }))}
         initialSelectedEmails={emailPrefillEmails}
       />
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center gap-3">
         <Link
           to={zoomType === 'MEETING' ? '/admin/office-hours' : '/admin/programs'}
           className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground"
@@ -457,21 +482,41 @@ export default function AdminProgramHub() {
         </button>
       </div>
 
-      <header>
-        <h1 className="text-2xl font-semibold text-foreground">{title}</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Program hub: webinar intake Jotform (Live only), office-hours slots, registration queue, enrollments, extra
-          form links, and calendar invites. Post-event surveys are FEEDBACK-type surveys (learners complete them on the
-          Surveys tab after the session).
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            {zoomType === 'MEETING' ? 'Office hours' : 'Live webinar'}
+          </span>
+          {pendingCount > 0 ? (
+            <span className="rounded-full bg-warning/10 px-2.5 py-0.5 text-[11px] font-semibold text-warning">
+              {pendingCount} pending approval
+            </span>
+          ) : null}
+        </div>
+        <h1 className="text-2xl font-semibold text-foreground tracking-tight">{title}</h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
+          Settings, Zoom, registrations, attendance overrides, surveys, and learner communications for this
+          program.
         </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Enrollments: {String((p._count as { enrollments?: number })?.enrollments ?? '-')} · Registrations:{' '}
-          {String((p._count as { programRegistrations?: number })?.programRegistrations ?? '-')}
-        </p>
+        <dl className="flex flex-wrap gap-3 text-xs">
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <dt className="font-semibold uppercase tracking-wide text-muted-foreground">Registrations</dt>
+            <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{registrationCount}</dd>
+          </div>
+          <div className="rounded-lg border border-border bg-card px-3 py-2">
+            <dt className="font-semibold uppercase tracking-wide text-muted-foreground">Enrolled</dt>
+            <dd className="mt-0.5 text-sm font-semibold tabular-nums text-foreground">{enrollmentCount}</dd>
+          </div>
+        </dl>
       </header>
 
       <section className="rounded-card border border-border bg-card p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-foreground">Registration & forms</h2>
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">Registration settings</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Approval, public link, and host display for this session.
+          </p>
+        </div>
         <div className="grid gap-4 md:grid-cols-2">
           {zoomType === 'MEETING' ? (
             <div className="md:col-span-2 rounded-lg border border-gray-100 bg-muted px-4 py-3 text-sm text-muted-foreground">
@@ -925,62 +970,42 @@ export default function AdminProgramHub() {
       </section>
 
       {zoomType === 'WEBINAR' ? (
-        <section className="rounded-card border border-border bg-card p-6 space-y-4">
-          <div className="flex flex-wrap gap-2 border-b border-border pb-3">
-            <button
-              type="button"
-              onClick={() => setWebinarHubTab('approvals')}
-              className={[
-                'rounded-lg px-3 py-1.5 text-sm font-semibold',
-                webinarHubTab === 'approvals' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              Webinar approvals
-            </button>
-            <button
-              type="button"
-              onClick={() => setWebinarHubTab('surveys')}
-              className={[
-                'rounded-lg px-3 py-1.5 text-sm font-semibold',
-                webinarHubTab === 'surveys' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              Survey submissions
-            </button>
-            <button
-              type="button"
-              onClick={() => setWebinarHubTab('enrolled')}
-              className={[
-                'rounded-lg px-3 py-1.5 text-sm font-semibold',
-                webinarHubTab === 'enrolled' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              Who is enrolled
-            </button>
-            <button
-              type="button"
-              onClick={() => setWebinarHubTab('invitations')}
-              className={[
-                'rounded-lg px-3 py-1.5 text-sm font-semibold',
-                webinarHubTab === 'invitations' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              Invitations
-            </button>
-            <button
-              type="button"
-              onClick={() => setWebinarHubTab('emails')}
-              className={[
-                'rounded-lg px-3 py-1.5 text-sm font-semibold',
-                webinarHubTab === 'emails' ? 'bg-gray-900 text-white' : 'text-muted-foreground hover:bg-muted',
-              ].join(' ')}
-            >
-              Emails
-            </button>
+        <section className="rounded-card border border-border bg-card p-6 space-y-5">
+          <div>
+            <h2 className="text-lg font-semibold text-foreground">Learners &amp; communications</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Approvals, attendance overrides, surveys, enrollments, invites, and emails.
+            </p>
+          </div>
+          <div
+            className="flex flex-wrap gap-1.5 rounded-xl border border-border bg-muted/40 p-1.5"
+            role="tablist"
+            aria-label="Program hub sections"
+          >
+            {HUB_TABS.map((tab) => {
+              const selected = webinarHubTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={selected}
+                  onClick={() => setWebinarHubTab(tab.id)}
+                  className={[
+                    'rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors',
+                    selected
+                      ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                      : 'text-muted-foreground hover:bg-card/70 hover:text-foreground',
+                  ].join(' ')}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
           </div>
           {webinarHubTab === 'approvals' ? (
             <>
-              <h2 className="text-lg font-semibold text-foreground">Pending &amp; history</h2>
+              <h3 className="text-base font-semibold text-foreground">Pending &amp; history</h3>
               {rLoading ? (
                 <p className="text-sm text-muted-foreground">Loading…</p>
               ) : (
@@ -1072,6 +1097,7 @@ export default function AdminProgramHub() {
                           <th className="py-2 pr-4">Registration</th>
                           <th className="py-2 pr-4">Seen in Zoom</th>
                           <th className="py-2 pr-4">Attendance</th>
+                          <th className="py-2 pr-4 text-right">Quick actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
@@ -1190,10 +1216,26 @@ export default function AdminProgramHub() {
                                 </span>
                                 {att === 'PENDING_VERIFICATION' ? (
                                   <div className="text-[11px] text-muted-foreground">
-                                    Auto when HCP email matches Zoom
+                                    Auto when HCP email matches Zoom · use Attendance tab to override
                                   </div>
                                 ) : null}
                               </div>
+                            </td>
+                            <td className="py-2 pr-4 text-right">
+                              {r.status === 'APPROVED' &&
+                              (att === 'PENDING_VERIFICATION' ||
+                                att === 'DENIED' ||
+                                att === 'VERIFIED') ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setWebinarHubTab('attendance')}
+                                  className="text-[11px] font-semibold text-brand-700 hover:underline"
+                                >
+                                  Manage →
+                                </button>
+                              ) : (
+                                <span className="text-[11px] text-muted-foreground">—</span>
+                              )}
                             </td>
                           </tr>
                           );
@@ -1205,14 +1247,20 @@ export default function AdminProgramHub() {
                 </>
               )}
             </>
+          ) : webinarHubTab === 'attendance' ? (
+            <ProgramAttendancePanel
+              programId={programId!}
+              registrations={registrations}
+              loading={rLoading}
+            />
           ) : webinarHubTab === 'surveys' ? (
             <>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold text-foreground">Survey responses</h2>
+                  <h3 className="text-base font-semibold text-foreground">Survey responses</h3>
                   <p className="text-sm text-muted-foreground">
-                    Native intake and post-event responses per learner. Attendance is verified automatically when
-                    the HCP account email matches the email Zoom recorded.
+                    Intake and post-event answers. Use the Attendance tab to manually verify learners when Zoom
+                    email does not match.
                   </p>
                 </div>
                 <button
@@ -1660,6 +1708,14 @@ export default function AdminProgramHub() {
                 {registrations.length === 0 && <p className="text-sm text-muted-foreground py-4">No registrations yet.</p>}
               </div>
             )}
+          </section>
+
+          <section className="rounded-card border border-border bg-card p-6 space-y-4">
+            <ProgramAttendancePanel
+              programId={programId!}
+              registrations={registrations}
+              loading={rLoading}
+            />
           </section>
 
           <section className="rounded-card border border-border bg-card p-6 space-y-4">

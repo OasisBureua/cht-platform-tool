@@ -147,7 +147,9 @@ resource "aws_iam_role_policy" "backend_task" {
             "cognito-idp:AdminAddUserToGroup",
             "cognito-idp:AdminRemoveUserFromGroup",
             "cognito-idp:AdminListGroupsForUser",
-            "cognito-idp:AdminGetUser"
+            "cognito-idp:AdminGetUser",
+            "cognito-idp:ListUsers",
+            "cognito-idp:AdminDeleteUser"
           ]
           Resource = var.cognito_user_pool_arn
         }
