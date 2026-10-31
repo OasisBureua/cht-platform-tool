@@ -1244,6 +1244,127 @@ export class AdminController {
     };
   }
 
+  @Get('capability-access-requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary:
+      'List domain write access requests (own for Admin; all for Super Admin)',
+  })
+  async listCapabilityAccessRequests(
+    @CurrentUser() actor: AuthUser,
+    @Query('status') status?: string,
+  ) {
+    return this.authService.listCapabilityAccessRequests({
+      actorUserId: actor.userId,
+      actorRole: actor.role,
+      status,
+    });
+  }
+
+  @Post('capability-access-requests')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Request domain write access (Admin → Super Admin review)',
+  })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      required: ['capabilities'],
+      properties: {
+        capabilities: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['payments', 'programs', 'surveys', 'reports', 'content'],
+          },
+        },
+        note: { type: 'string', maxLength: 500 },
+      },
+    },
+  })
+  async createCapabilityAccessRequest(
+    @CurrentUser() actor: AuthUser,
+    @Body('capabilities') capabilities: string[],
+    @Body('note') note?: string,
+  ) {
+    if (!Array.isArray(capabilities)) {
+      throw new BadRequestException('capabilities must be an array of strings');
+    }
+    const created = await this.authService.createCapabilityAccessRequest(
+      actor.userId,
+      capabilities,
+      note,
+    );
+    this.logger.log(
+      `Admin ${actor.email} requested write domains [${(created.capabilities ?? []).join(',')}]: ${created.id}`,
+    );
+    return created;
+  }
+
+  @Post('capability-access-requests/:id/approve')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Approve a domain write access request (Super Admin)',
+  })
+  async approveCapabilityAccessRequest(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthUser,
+    @Body('reviewNote') reviewNote?: string,
+  ) {
+    const updated = await this.authService.reviewCapabilityAccessRequest(
+      id,
+      actor.userId,
+      'APPROVED',
+      reviewNote,
+    );
+    this.logger.log(
+      `Super admin ${actor.email} approved capability request ${id} for ${updated.requester.email}`,
+    );
+    return updated;
+  }
+
+  @Post('capability-access-requests/:id/deny')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({
+    summary: 'Deny a domain write access request (Super Admin)',
+  })
+  async denyCapabilityAccessRequest(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthUser,
+    @Body('reviewNote') reviewNote?: string,
+  ) {
+    const updated = await this.authService.reviewCapabilityAccessRequest(
+      id,
+      actor.userId,
+      'DENIED',
+      reviewNote,
+    );
+    this.logger.log(
+      `Super admin ${actor.email} denied capability request ${id} for ${updated.requester.email}`,
+    );
+    return updated;
+  }
+
+  @Post('capability-access-requests/:id/cancel')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(UserRole.ADMIN)
+  @ApiBearerAuth('session-token')
+  @ApiOperation({ summary: 'Cancel your own pending domain write request' })
+  async cancelCapabilityAccessRequest(
+    @Param('id') id: string,
+    @CurrentUser() actor: AuthUser,
+  ) {
+    return this.authService.cancelCapabilityAccessRequest(id, actor.userId);
+  }
+
   @Patch('users/:userId/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.SUPER_ADMIN)
@@ -2920,7 +3041,9 @@ export class AdminController {
   @ApiBearerAuth('session-token')
   @ApiOperation({
     summary:
-      'Verify or deny post-event attendance (unlocks survey when verified)',
+      'Verify or deny post-event attendance (manual override; unlocks survey when verified)',
+    description:
+      'Allowed when attendance is PENDING_VERIFICATION, DENIED, or VERIFIED (flip). NOT_REQUIRED cannot be overridden.',
   })
   async adminPatchPostEventAttendance(
     @Param('registrationId') registrationId: string,

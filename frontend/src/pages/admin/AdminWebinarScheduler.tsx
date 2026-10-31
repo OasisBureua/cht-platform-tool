@@ -14,6 +14,11 @@ import { SessionHeroImageField } from '../../components/admin/SessionHeroImageFi
 import ZoomWebinarSettingsFields, {
   DEFAULT_ZOOM_WEBINAR_SETTINGS,
 } from '../../components/admin/ZoomWebinarSettingsFields';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  adminCapabilityDeniedMessage,
+  hasAdminCapability,
+} from '../../utils/admin-capabilities';
 
 export type AdminWebinarSchedulerProps = {
   /** Pre-select session type (e.g. MEETING on /admin/office-hours-scheduler). */
@@ -28,6 +33,9 @@ export default function AdminWebinarScheduler({
 }: AdminWebinarSchedulerProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const canWritePrograms = hasAdminCapability(user, 'programs');
+  const programsWriteDeniedTitle = adminCapabilityDeniedMessage('programs');
 
   const [zoomSessionType, setZoomSessionType] = useState<ZoomSessionType>(defaultZoomSessionType);
   const [honorariumUsd, setHonorariumUsd] = useState('');

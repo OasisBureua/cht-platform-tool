@@ -109,21 +109,23 @@ export function AdminDomainAccessPanel() {
   }
 
   return (
-    <div className="bg-card rounded-card border border-border p-6">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Shield className="h-5 w-5 text-rose-700" aria-hidden />
-          <h2 className="text-lg font-semibold text-foreground">
-            Admin write access
-          </h2>
-          <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800">
-            Super Admin
-          </span>
+    <div className="rounded-card border border-border bg-card p-5 space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Shield className="h-5 w-5 text-rose-700" aria-hidden />
+            <h2 className="text-base font-semibold text-foreground">
+              Direct write grants
+            </h2>
+            <span className="rounded-full bg-rose-100 px-2.5 py-0.5 text-xs font-semibold text-rose-800">
+              Super Admin
+            </span>
+          </div>
+          <p className="text-sm text-muted-foreground max-w-2xl">
+            Toggle domains to grant Create / Update / Delete immediately (Cognito
+            groups). Prefer approving requests above when Admins ask.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground max-w-xl text-right">
-          All admins can read. Toggle domains to grant Create / Update / Delete
-          (Cognito groups). Super Admins always have full write.
-        </p>
       </div>
 
       {errorMsg ? (

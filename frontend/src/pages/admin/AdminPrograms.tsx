@@ -30,10 +30,19 @@ import {
   type LiveSessionSortKey,
   sortLiveSessions,
 } from '../../utils/live-session-list-sort';
+import { useAuth } from '../../contexts/AuthContext';
+import {
+  adminCapabilityDeniedMessage,
+  guardAdminAction,
+  hasAdminCapability,
+} from '../../utils/admin-capabilities';
 
 export default function AdminPrograms() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canWritePrograms = hasAdminCapability(user, 'programs');
+  const programsWriteDeniedTitle = adminCapabilityDeniedMessage('programs');
   const locationState = location.state as {
     surveysWarning?: string;
     jotformFormsWarning?: string;
@@ -165,20 +174,35 @@ export default function AdminPrograms() {
           {!isOfficeHours ? (
             <button
               type="button"
-              onClick={() => setSendInvitesOpen(true)}
-              disabled={items.length === 0}
+              onClick={() =>
+                guardAdminAction(user, 'programs', () => setSendInvitesOpen(true))
+              }
+              disabled={!canWritePrograms || items.length === 0}
+              title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground hover:bg-muted transition-colors disabled:opacity-40"
             >
               Send registration invites
             </button>
           ) : null}
-          <Link
-            to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
-            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
-          >
-            <Calendar className="h-4 w-4" />
-            {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
-          </Link>
+          {canWritePrograms ? (
+            <Link
+              to={isOfficeHours ? '/admin/office-hours-scheduler' : '/admin/webinar-scheduler'}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 transition-colors"
+            >
+              <Calendar className="h-4 w-4" />
+              {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title={programsWriteDeniedTitle}
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white opacity-40"
+            >
+              <Calendar className="h-4 w-4" />
+              {isOfficeHours ? 'Schedule Office Hours' : 'Schedule webinar'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -249,9 +273,12 @@ export default function AdminPrograms() {
                   type="button"
                   onClick={() => {
                     setDeleteError(null);
-                    deleteMutation.mutate(deleteConfirmId);
+                    guardAdminAction(user, 'programs', () =>
+                      deleteMutation.mutate(deleteConfirmId),
+                    );
                   }}
-                  disabled={deleteMutation.isPending}
+                  disabled={!canWritePrograms || deleteMutation.isPending}
+                  title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
                   className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
                 >
                   {deleteMutation.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -354,11 +381,17 @@ export default function AdminPrograms() {
                 <WebinarRow
                   key={w.id}
                   webinar={w}
-                  onEdit={() => setEditingId(w.id)}
-                  onDelete={() => {
-                    setDeleteError(null);
-                    setDeleteConfirmId(w.id);
-                  }}
+                  canWrite={canWritePrograms}
+                  writeDeniedTitle={programsWriteDeniedTitle}
+                  onEdit={() =>
+                    guardAdminAction(user, 'programs', () => setEditingId(w.id))
+                  }
+                  onDelete={() =>
+                    guardAdminAction(user, 'programs', () => {
+                      setDeleteError(null);
+                      setDeleteConfirmId(w.id);
+                    })
+                  }
                 />
               ))}
             </tbody>
@@ -373,10 +406,14 @@ export default function AdminPrograms() {
 
 function WebinarRow({
   webinar,
+  canWrite,
+  writeDeniedTitle,
   onEdit,
   onDelete,
 }: {
   webinar: AdminWebinar;
+  canWrite: boolean;
+  writeDeniedTitle: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -495,9 +532,14 @@ function WebinarRow({
               type="button"
               onClick={() => {
                 setImportError(null);
+                if (!canWrite) {
+                  window.alert(writeDeniedTitle);
+                  return;
+                }
                 importMutation.mutate();
               }}
-              disabled={!webinar.zoomMeetingId || importMutation.isPending}
+              disabled={!canWrite || !webinar.zoomMeetingId || importMutation.isPending}
+              title={!canWrite ? writeDeniedTitle : undefined}
               className="text-xs font-semibold text-brand-600 hover:underline disabled:opacity-50 inline-flex items-center gap-1"
             >
               {importMutation.isPending ? (
@@ -626,20 +668,26 @@ function WebinarRow({
                 Program hub
               </Link>
               <button
+                type="button"
+                disabled={!canWrite}
+                title={!canWrite ? writeDeniedTitle : undefined}
                 onClick={() => {
                   setMenuOpen(false);
                   onEdit();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:bg-muted disabled:opacity-40"
               >
                 <Pencil className="h-3.5 w-3.5" /> Edit
               </button>
               <button
+                type="button"
+                disabled={!canWrite}
+                title={!canWrite ? writeDeniedTitle : undefined}
                 onClick={() => {
                   setMenuOpen(false);
                   onDelete();
                 }}
-                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10"
+                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 disabled:opacity-40"
               >
                 <Trash2 className="h-3.5 w-3.5" /> Delete
               </button>
@@ -662,6 +710,9 @@ function EditWebinarModal({
   onClose: () => void;
   onSaved: (updatedId?: string) => void;
 }) {
+  const { user } = useAuth();
+  const canWritePrograms = hasAdminCapability(user, 'programs');
+  const programsWriteDeniedTitle = adminCapabilityDeniedMessage('programs');
   const [sessionKind, setSessionKind] = useState<ZoomSessionType>(
     webinar.zoomSessionType ?? 'WEBINAR',
   );
@@ -719,6 +770,10 @@ function EditWebinarModal({
   });
 
   const handleSave = () => {
+    if (!canWritePrograms) {
+      setError(programsWriteDeniedTitle);
+      return;
+    }
     if (!title.trim()) { setError('Title is required.'); return; }
 
     const durationNum = duration ? parseInt(duration, 10) : undefined;
@@ -1035,7 +1090,8 @@ function EditWebinarModal({
           </button>
           <button
             onClick={handleSave}
-            disabled={updateMutation.isPending}
+            disabled={!canWritePrograms || updateMutation.isPending}
+            title={!canWritePrograms ? programsWriteDeniedTitle : undefined}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50 inline-flex items-center gap-2"
           >
             {updateMutation.isPending ? (

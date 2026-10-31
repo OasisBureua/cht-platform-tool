@@ -199,6 +199,38 @@ export type AdminDomainCapability =
   | 'reports'
   | 'content';
 
+export type AdminCapabilityAccessRequestStatus =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'DENIED'
+  | 'CANCELLED';
+
+export interface AdminCapabilityAccessRequest {
+  id: string;
+  requesterId: string;
+  capabilities: string[];
+  note: string | null;
+  status: AdminCapabilityAccessRequestStatus;
+  reviewedById: string | null;
+  reviewNote: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+  requester: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+    adminCapabilities?: string[];
+  };
+  reviewer?: {
+    id: string;
+    email: string;
+    firstName: string;
+    lastName: string;
+  } | null;
+}
+
 export interface AdminUser {
   id: string;
   email: string;
@@ -2786,6 +2818,57 @@ export const adminApi = {
       { capabilities },
     );
     return data;
+  },
+
+  listCapabilityAccessRequests: async (opts?: {
+    status?: string;
+  }): Promise<AdminCapabilityAccessRequest[]> => {
+    const { data } = await apiClient.get('/admin/capability-access-requests', {
+      params: opts?.status ? { status: opts.status } : undefined,
+    });
+    return data as AdminCapabilityAccessRequest[];
+  },
+
+  createCapabilityAccessRequest: async (payload: {
+    capabilities: AdminDomainCapability[];
+    note?: string;
+  }): Promise<AdminCapabilityAccessRequest> => {
+    const { data } = await apiClient.post(
+      '/admin/capability-access-requests',
+      payload,
+    );
+    return data as AdminCapabilityAccessRequest;
+  },
+
+  approveCapabilityAccessRequest: async (
+    id: string,
+    reviewNote?: string,
+  ): Promise<AdminCapabilityAccessRequest> => {
+    const { data } = await apiClient.post(
+      `/admin/capability-access-requests/${encodeURIComponent(id)}/approve`,
+      reviewNote ? { reviewNote } : {},
+    );
+    return data as AdminCapabilityAccessRequest;
+  },
+
+  denyCapabilityAccessRequest: async (
+    id: string,
+    reviewNote?: string,
+  ): Promise<AdminCapabilityAccessRequest> => {
+    const { data } = await apiClient.post(
+      `/admin/capability-access-requests/${encodeURIComponent(id)}/deny`,
+      reviewNote ? { reviewNote } : {},
+    );
+    return data as AdminCapabilityAccessRequest;
+  },
+
+  cancelCapabilityAccessRequest: async (
+    id: string,
+  ): Promise<AdminCapabilityAccessRequest> => {
+    const { data } = await apiClient.post(
+      `/admin/capability-access-requests/${encodeURIComponent(id)}/cancel`,
+    );
+    return data as AdminCapabilityAccessRequest;
   },
 
   /** HCP/KOL for any admin; ADMIN/SUPER_ADMIN only for super admins (not self). */

@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Search, Trash2, X, Loader2 } from 'lucide-react';
 import { isSuperAdmin, type PlatformRole } from '../../utils/roles';
 import { AdminDomainAccessPanel } from '../../components/admin/AdminDomainAccessPanel';
+import { AdminCapabilityRequestPanel } from '../../components/admin/AdminCapabilityRequestPanel';
 
 const ROLE_COLORS: Record<string, string> = {
   HCP: 'bg-blue-100 text-blue-800',
@@ -36,12 +37,18 @@ export default function AdminUsers() {
   const queryClient = useQueryClient();
   const { user: currentUser } = useAuth();
   const actorIsSuper = isSuperAdmin(currentUser?.role);
-  const [pendingDeleteUser, setPendingDeleteUser] = useState<AdminUser | null>(null);
+  const actorIsAdmin =
+    (currentUser?.role ?? '').toUpperCase() === 'ADMIN' || actorIsSuper;
+  const [pendingDeleteUser, setPendingDeleteUser] = useState<AdminUser | null>(
+    null,
+  );
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<'' | PlatformRole>('');
   const [statusFilter, setStatusFilter] = useState('');
-  const [sortKey, setSortKey] = useState<'name' | 'email' | 'npi' | 'role' | 'status'>('name');
+  const [sortKey, setSortKey] = useState<
+    'name' | 'email' | 'npi' | 'role' | 'status'
+  >('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
@@ -118,27 +125,31 @@ export default function AdminUsers() {
   const hasActiveFilters = Boolean(debouncedSearch || roleFilter || statusFilter);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">User Management</h1>
-        <p className="text-sm text-muted-foreground mt-1">
+    <div className="mx-auto max-w-6xl space-y-8 pb-16">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          Users
+        </h1>
+        <p className="max-w-2xl text-sm text-muted-foreground">
           {actorIsSuper
-            ? 'Search and filter users, promote roles, grant domain write access, and delete accounts when needed.'
-            : 'Search and filter users. Only a Super Admin can promote roles, grant write domains, or delete admin accounts.'}
+            ? 'Search accounts, change roles, grant domain write access, and review access requests.'
+            : 'Search accounts. Request domain write access from a Super Admin when you need Create / Update / Delete.'}
         </p>
-      </div>
+      </header>
+
+      {actorIsAdmin ? <AdminCapabilityRequestPanel /> : null}
 
       {actorIsSuper ? <AdminDomainAccessPanel /> : null}
 
-      <div className="bg-card rounded-card border border-border p-6">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-muted-foreground" />
-            <h2 className="text-lg font-semibold text-foreground">All Users</h2>
-            <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-muted-foreground">
+      <section className="rounded-card border border-border bg-card p-5 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-foreground">Directory</h2>
+            <p className="text-sm text-muted-foreground">
               {users.length}
               {users.length >= 200 ? '+' : ''} shown
-            </span>
+              {hasActiveFilters ? ' · filtered' : ''}
+            </p>
           </div>
           {hasActiveFilters ? (
             <button
@@ -149,36 +160,40 @@ export default function AdminUsers() {
                 setRoleFilter('');
                 setStatusFilter('');
               }}
-              className="text-sm font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+              className="text-sm font-semibold text-brand-700 hover:underline"
             >
               Clear filters
             </button>
           ) : null}
         </div>
 
-        <div className="mb-4 flex flex-col gap-3">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or NPI..."
-            className="w-full max-w-md rounded-lg border border-border px-3 py-2 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
-          />
+        <div className="flex flex-col gap-3">
+          <label className="relative block max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, or NPI…"
+              className="h-10 w-full rounded-lg border border-border bg-card pl-9 pr-3 text-sm focus:border-gray-900 focus:outline-none focus:ring-1 focus:ring-gray-900"
+            />
+          </label>
 
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by role">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Filter by role"
+          >
             {ROLE_FILTERS.map((f) => {
               const active = roleFilter === f.value;
-              const count =
-                f.value === ''
-                  ? undefined
-                  : roleCounts[f.value];
+              const count = f.value === '' ? undefined : roleCounts[f.value];
               return (
                 <button
                   key={f.value || 'all'}
                   type="button"
                   onClick={() => setRoleFilter(f.value)}
                   className={[
-                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
                     active
                       ? 'border-gray-900 bg-gray-900 text-white'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
@@ -186,7 +201,11 @@ export default function AdminUsers() {
                 >
                   {f.label}
                   {typeof count === 'number' ? (
-                    <span className={active ? 'text-white/80' : 'text-muted-foreground'}>
+                    <span
+                      className={
+                        active ? 'text-white/80' : 'text-muted-foreground'
+                      }
+                    >
                       {count}
                     </span>
                   ) : null}
@@ -195,7 +214,11 @@ export default function AdminUsers() {
             })}
           </div>
 
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by status">
+          <div
+            className="flex flex-wrap items-center gap-2"
+            role="group"
+            aria-label="Filter by status"
+          >
             {STATUS_FILTERS.map((f) => {
               const active = statusFilter === f.value;
               return (
@@ -204,9 +227,9 @@ export default function AdminUsers() {
                   type="button"
                   onClick={() => setStatusFilter(f.value)}
                   className={[
-                    'inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                    'inline-flex items-center rounded-lg border px-3 py-1.5 text-xs font-semibold transition-colors',
                     active
-                      ? 'border-blue-700 bg-blue-700 text-white'
+                      ? 'border-brand-700 bg-brand-700 text-white'
                       : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
                   ].join(' ')}
                 >
@@ -218,22 +241,58 @@ export default function AdminUsers() {
         </div>
 
         {isLoading ? (
-          <div className="py-8 text-center text-muted-foreground">Loading users...</div>
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            Loading users…
+          </div>
         ) : sortedUsers.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground">
-            {hasActiveFilters ? 'No users match your filters.' : 'No users yet.'}
+          <div className="py-10 text-center text-sm text-muted-foreground">
+            {hasActiveFilters
+              ? 'No users match your filters.'
+              : 'No users yet.'}
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-border">
-              <thead>
+          <div className="overflow-x-auto rounded-xl border border-border">
+            <table className="min-w-full divide-y divide-border text-sm">
+              <thead className="bg-muted/40">
                 <tr>
-                  <SortableHeader label="Name" sortKey="name" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
-                  <SortableHeader label="Email" sortKey="email" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
-                  <SortableHeader label="NPI" sortKey="npi" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
-                  <SortableHeader label="Role" sortKey="role" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
-                  <SortableHeader label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onClick={toggleSort} />
-                  <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">Actions</th>
+                  <SortableHeader
+                    label="Name"
+                    sortKey="name"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={toggleSort}
+                  />
+                  <SortableHeader
+                    label="Email"
+                    sortKey="email"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={toggleSort}
+                  />
+                  <SortableHeader
+                    label="NPI"
+                    sortKey="npi"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={toggleSort}
+                  />
+                  <SortableHeader
+                    label="Role"
+                    sortKey="role"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={toggleSort}
+                  />
+                  <SortableHeader
+                    label="Status"
+                    sortKey="status"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onClick={toggleSort}
+                  />
+                  <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
@@ -242,10 +301,14 @@ export default function AdminUsers() {
                     key={user.id}
                     user={user}
                     actorIsSuper={actorIsSuper}
-                    onRoleChange={(role) => updateRole.mutate({ userId: user.id, role })}
+                    onRoleChange={(role) =>
+                      updateRole.mutate({ userId: user.id, role })
+                    }
                     isUpdating={updateRole.isPending}
                     onDeleteRequest={() => setPendingDeleteUser(user)}
-                    isDeleting={deleteUser.isPending && deleteUser.variables === user.id}
+                    isDeleting={
+                      deleteUser.isPending && deleteUser.variables === user.id
+                    }
                     isSelf={currentUser?.userId === user.id}
                   />
                 ))}
@@ -253,18 +316,20 @@ export default function AdminUsers() {
             </table>
           </div>
         )}
-      </div>
+      </section>
 
       {pendingDeleteUser && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-card bg-card p-6 shadow-card-hover space-y-4">
+          <div className="w-full max-w-md space-y-4 rounded-card bg-card p-6 shadow-card-hover">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 className="font-semibold text-foreground">Delete user?</h2>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="mt-1 text-sm text-muted-foreground">
                   Permanently delete{' '}
-                  <strong className="text-muted-foreground">{pendingDeleteUser.email}</strong>? This
-                  cannot be undone. Their enrollments and registrations will be removed.
+                  <strong className="text-foreground">
+                    {pendingDeleteUser.email}
+                  </strong>
+                  ? This cannot be undone.
                 </p>
               </div>
               <button
@@ -277,7 +342,7 @@ export default function AdminUsers() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex gap-3 justify-end">
+            <div className="flex justify-end gap-3">
               <button
                 type="button"
                 onClick={() => setPendingDeleteUser(null)}
@@ -290,9 +355,11 @@ export default function AdminUsers() {
                 type="button"
                 onClick={() => deleteUser.mutate(pendingDeleteUser.id)}
                 disabled={deleteUser.isPending}
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
+                className="inline-flex items-center gap-2 rounded-lg bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
               >
-                {deleteUser.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />}
+                {deleteUser.isPending && (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                )}
                 Delete user
               </button>
             </div>
@@ -318,14 +385,16 @@ function SortableHeader<K extends string>({
 }) {
   const isActive = activeKey === sortKey;
   return (
-    <th className="px-4 py-3 text-left text-xs font-medium text-muted-foreground uppercase">
+    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       <button
         type="button"
         onClick={() => onClick(sortKey)}
         className="inline-flex items-center gap-1 hover:text-foreground"
       >
         {label}
-        <span className="text-muted-foreground">{isActive ? (dir === 'asc' ? '↑' : '↓') : ''}</span>
+        <span className="text-muted-foreground">
+          {isActive ? (dir === 'asc' ? '↑' : '↓') : ''}
+        </span>
       </button>
     </th>
   );
@@ -348,15 +417,20 @@ function UserRow({
   isDeleting: boolean;
   isSelf: boolean;
 }) {
-  const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
-  const targetIsElevated = user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
+  const name =
+    [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+  const targetIsElevated =
+    user.role === 'ADMIN' || user.role === 'SUPER_ADMIN';
   const canDelete = !isSelf && (!targetIsElevated || actorIsSuper);
 
   return (
-    <tr>
-      <td className="px-4 py-3 text-sm font-medium text-foreground">{name}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
-      <td className="px-4 py-3 text-sm text-muted-foreground max-w-[8rem] truncate" title={user.npiNumber ?? undefined}>
+    <tr className="hover:bg-muted/30">
+      <td className="px-4 py-3 font-medium text-foreground">{name}</td>
+      <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
+      <td
+        className="max-w-[8rem] truncate px-4 py-3 text-muted-foreground"
+        title={user.npiNumber ?? undefined}
+      >
         {user.npiNumber || '—'}
       </td>
       <td className="px-4 py-3">
@@ -374,21 +448,25 @@ function UserRow({
             <option value="SUPER_ADMIN">Super Admin</option>
           </select>
         ) : (
-          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'}`}>
+          <span
+            className={`rounded-full px-2.5 py-1 text-xs font-semibold ${ROLE_COLORS[user.role] || 'bg-gray-100 text-gray-800'}`}
+          >
             {roleLabel(user.role)}
             {isSelf ? ' (you)' : ''}
           </span>
         )}
       </td>
       <td className="px-4 py-3">
-        <span className="text-xs font-medium text-muted-foreground">{user.status || '—'}</span>
+        <span className="text-xs font-medium text-muted-foreground">
+          {user.status || '—'}
+        </span>
       </td>
       <td className="px-4 py-3">
         {canDelete ? (
           <button
             type="button"
             disabled={isUpdating || isDeleting}
-            title="Permanently delete this user and related enrollments, registrations, and activity"
+            title="Permanently delete this user"
             onClick={() => onDeleteRequest()}
             className="inline-flex items-center justify-center rounded-lg border border-destructive/25 bg-destructive/10 p-2 text-destructive hover:bg-red-100 disabled:opacity-50"
             aria-label={`Delete user ${user.email}`}

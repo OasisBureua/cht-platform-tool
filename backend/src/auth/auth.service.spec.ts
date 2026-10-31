@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { CognitoService } from './cognito.service';
 import { PrismaService } from '../prisma/prisma.service';
@@ -26,6 +31,13 @@ type PrismaMock = {
   };
   betaTermsAcceptance: {
     create: jest.Mock;
+  };
+  adminCapabilityAccessRequest: {
+    updateMany: jest.Mock;
+    create: jest.Mock;
+    findMany: jest.Mock;
+    findUnique: jest.Mock;
+    update: jest.Mock;
   };
 };
 
@@ -69,6 +81,13 @@ describe('AuthService', () => {
       },
       betaTermsAcceptance: {
         create: jest.fn().mockResolvedValue({ id: 'beta-1' }),
+      },
+      adminCapabilityAccessRequest: {
+        updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+        create: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       },
     };
     cache = {
@@ -330,6 +349,219 @@ describe('AuthService', () => {
 
       expect(prisma.session.deleteMany).not.toHaveBeenCalled();
       expect(cache.del).toHaveBeenCalledWith('cht:session:tok-a');
+    });
+  });
+
+  describe('capability access requests', () => {
+    const adminRequester = {
+      id: 'admin-1',
+      email: 'admin@example.com',
+      firstName: 'Ada',
+      lastName: 'Admin',
+      role: UserRole.ADMIN,
+      adminCapabilities: ['payments'] as string[],
+    };
+
+    it('createCapabilityAccessRequest opens a pending request for missing domains', async () => {
+      prisma.user.findUnique.mockResolvedValue(adminRequester);
+      prisma.adminCapabilityAccessRequest.create.mockResolvedValue({
+        id: 'req-1',
+        requesterId: adminRequester.id,
+        capabilities: ['programs'],
+        status: 'PENDING',
+        note: 'Need programs',
+        requester: adminRequester,
+      });
+
+      const created = await service.createCapabilityAccessRequest(
+        adminRequester.id,
+        ['payments', 'programs'],
+        'Need programs',
+      );
+
+      expect(prisma.adminCapabilityAccessRequest.updateMany).toHaveBeenCalledWith({
+        where: { requesterId: adminRequester.id, status: 'PENDING' },
+        data: { status: 'CANCELLED', reviewedAt: expect.any(Date) },
+      });
+      expect(prisma.adminCapabilityAccessRequest.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            requesterId: adminRequester.id,
+            capabilities: ['programs'],
+            note: 'Need programs',
+            status: 'PENDING',
+          }),
+        }),
+      );
+      expect(created.id).toBe('req-1');
+    });
+
+    it('createCapabilityAccessRequest rejects domains the admin already has', async () => {
+      prisma.user.findUnique.mockResolvedValue(adminRequester);
+
+      await expect(
+        service.createCapabilityAccessRequest(adminRequester.id, ['payments']),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.adminCapabilityAccessRequest.create).not.toHaveBeenCalled();
+    });
+
+    it('createCapabilityAccessRequest rejects Super Admins', async () => {
+      prisma.user.findUnique.mockResolvedValue({
+        ...adminRequester,
+        role: UserRole.SUPER_ADMIN,
+      });
+
+      await expect(
+        service.createCapabilityAccessRequest(adminRequester.id, ['programs']),
+      ).rejects.toThrow(/Super Admins already have full domain write access/);
+    });
+
+    it('listCapabilityAccessRequests returns all for Super Admin and own for Admin', async () => {
+      prisma.adminCapabilityAccessRequest.findMany.mockResolvedValue([
+        { id: 'req-1' },
+      ]);
+
+      await service.listCapabilityAccessRequests({
+        actorUserId: 'super-1',
+        actorRole: UserRole.SUPER_ADMIN,
+        status: 'PENDING',
+      });
+      expect(prisma.adminCapabilityAccessRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { status: 'PENDING' },
+        }),
+      );
+
+      prisma.adminCapabilityAccessRequest.findMany.mockClear();
+      await service.listCapabilityAccessRequests({
+        actorUserId: adminRequester.id,
+        actorRole: UserRole.ADMIN,
+      });
+      expect(prisma.adminCapabilityAccessRequest.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { requesterId: adminRequester.id },
+        }),
+      );
+    });
+
+    it('reviewCapabilityAccessRequest APPROVED merges domains via setAdminCapabilities', async () => {
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        status: 'PENDING',
+        capabilities: ['programs', 'surveys'],
+        requesterId: adminRequester.id,
+        requester: adminRequester,
+      });
+      prisma.user.findUnique.mockResolvedValue(adminRequester);
+      prisma.user.update.mockResolvedValue({
+        ...adminRequester,
+        adminCapabilities: ['payments', 'programs', 'surveys'],
+      });
+      prisma.adminCapabilityAccessRequest.update.mockResolvedValue({
+        id: 'req-1',
+        status: 'APPROVED',
+        requester: {
+          ...adminRequester,
+          adminCapabilities: ['payments', 'programs', 'surveys'],
+        },
+      });
+
+      const updated = await service.reviewCapabilityAccessRequest(
+        'req-1',
+        'super-1',
+        'APPROVED',
+        'ok',
+      );
+
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: adminRequester.id },
+          data: {
+            adminCapabilities: ['payments', 'programs', 'surveys'],
+          },
+        }),
+      );
+      expect(prisma.adminCapabilityAccessRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: 'req-1' },
+          data: expect.objectContaining({
+            status: 'APPROVED',
+            reviewedById: 'super-1',
+            reviewNote: 'ok',
+          }),
+        }),
+      );
+      expect(updated.status).toBe('APPROVED');
+    });
+
+    it('reviewCapabilityAccessRequest DENIED does not change capabilities', async () => {
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        status: 'PENDING',
+        capabilities: ['programs'],
+        requesterId: adminRequester.id,
+        requester: adminRequester,
+      });
+      prisma.adminCapabilityAccessRequest.update.mockResolvedValue({
+        id: 'req-1',
+        status: 'DENIED',
+      });
+
+      await service.reviewCapabilityAccessRequest('req-1', 'super-1', 'DENIED');
+
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(prisma.adminCapabilityAccessRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'DENIED' }),
+        }),
+      );
+    });
+
+    it('reviewCapabilityAccessRequest rejects non-pending requests', async () => {
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        status: 'APPROVED',
+        capabilities: ['programs'],
+        requesterId: adminRequester.id,
+        requester: adminRequester,
+      });
+
+      await expect(
+        service.reviewCapabilityAccessRequest('req-1', 'super-1', 'APPROVED'),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('cancelCapabilityAccessRequest only allows the requester on PENDING', async () => {
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        requesterId: adminRequester.id,
+        status: 'PENDING',
+      });
+      prisma.adminCapabilityAccessRequest.update.mockResolvedValue({
+        id: 'req-1',
+        status: 'CANCELLED',
+      });
+
+      await service.cancelCapabilityAccessRequest('req-1', adminRequester.id);
+      expect(prisma.adminCapabilityAccessRequest.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'CANCELLED' }),
+        }),
+      );
+
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue({
+        id: 'req-1',
+        requesterId: 'other-admin',
+        status: 'PENDING',
+      });
+      await expect(
+        service.cancelCapabilityAccessRequest('req-1', adminRequester.id),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+
+      prisma.adminCapabilityAccessRequest.findUnique.mockResolvedValue(null);
+      await expect(
+        service.cancelCapabilityAccessRequest('missing', adminRequester.id),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });
