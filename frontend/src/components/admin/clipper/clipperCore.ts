@@ -14,6 +14,19 @@ export type Clip = {
   note?: string;
   /** Set when the clip came from the moment finder. */
   verdict?: Verdict;
+  /** Shown over the first seconds of the cut, then faded. Falls back to the title. */
+  openingTitle?: string;
+  /** Accepted AI suggestions: words to stress, numbers to call out, where to push in. */
+  look?: ClipLook;
+};
+
+export type ClipLook = {
+  /** Words in the captions to stress, lowercased. */
+  emphasis: string[];
+  /** Big on-screen numbers, at source times. `text` is always something said. */
+  callouts: { at: number; text: string; label?: string }[];
+  /** Source-time ranges to push in on. */
+  punchIns: { start: number; end: number }[];
 };
 
 export type Cue = {
@@ -703,4 +716,97 @@ export function slugify(s: string): string {
       .replace(/^-+|-+$/g, '')
       .slice(0, 60) || 'clip'
   );
+}
+
+/* ── caption files for a cut ───────────────────────────────────── */
+
+export type Range = { start: number; end: number };
+
+/**
+ * The transcript lines inside a cut, retimed to the output: the cut is
+ * the `ranges` played back to back (a single range, or the parts kept
+ * when pauses are cut), and `offset` is where the cut sits in a longer
+ * output such as a sizzle reel.
+ */
+export function cutCues(ranges: Range[], cues: Cue[], offset = 0): Cue[] {
+  const out: Cue[] = [];
+  let at = offset;
+  for (const r of ranges) {
+    for (const c of cues) {
+      if (c.end <= r.start || c.start >= r.end) continue;
+      const s = Math.max(c.start, r.start), e = Math.min(c.end, r.end);
+      if (e - s < 0.05) continue;
+      out.push({ start: at + (s - r.start), end: at + (e - r.start), text: c.text, speaker: c.speaker });
+    }
+    at += r.end - r.start;
+  }
+  return out;
+}
+
+function captionStamp(sec: number, sep: '.' | ','): string {
+  const ms = Math.max(0, Math.round(sec * 1000));
+  const h = Math.floor(ms / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
+  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
+  return `${pad(h)}:${pad(m)}:${pad(s)}${sep}${pad(ms % 1000, 3)}`;
+}
+
+/** SubRip, the caption file YouTube, LinkedIn and Meta all accept. Speakers stay out of the words. */
+export function cuesToSrt(cues: Cue[]): string {
+  return cues.map((c, i) => `${i + 1}\n${captionStamp(c.start, ',')} --> ${captionStamp(c.end, ',')}\n${c.text}\n`).join('\n');
+}
+
+/** WebVTT with Zoom's `Name: text` lines, so it loads back into the clipper. */
+export function cuesToVtt(cues: Cue[]): string {
+  return ['WEBVTT', '', ...cues.map((c, i) => `${i + 1}\n${captionStamp(c.start, '.')} --> ${captionStamp(c.end, '.')}\n${c.speaker ? `${c.speaker}: ` : ''}${c.text}\n`)].join('\n');
+}
+
+/* ── speaker focus ─────────────────────────────────────────────── */
+
+/** Speakers in the order they first talk. */
+export function speakersOf(cues: Cue[]): string[] {
+  return [...new Set(cues.map((c) => c.speaker).filter(Boolean) as string[])];
+}
+
+/**
+ * Where each speaker sits across the frame, 0 (left) to 1 (right): what
+ * was placed by hand, else spread evenly in the order they first talk,
+ * which is Zoom's gallery order for a two-up recording.
+ */
+export function speakerSpots(cues: Cue[], placed: Record<string, number>): Record<string, number> {
+  const all = speakersOf(cues);
+  const spots: Record<string, number> = {};
+  all.forEach((s, i) => {
+    spots[s] = placed[s] ?? (all.length === 1 ? 0.5 : (i + 0.5) / all.length);
+  });
+  return spots;
+}
+
+const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2);
+export const FOCUS_EASE = 0.45;
+
+/**
+ * Where the speaker crop points at time `t`. It holds on whoever spoke
+ * last through pauses, and when the talker changes it eases across over
+ * FOCUS_EASE seconds instead of cutting. A cut that opens on a speaker
+ * (`cutStart`) starts framed on them. A pure function of `t`, so the live
+ * preview and the render frame the same way.
+ */
+export function focusAt(cues: Cue[], spots: Record<string, number>, t: number, cutStart?: number): number {
+  let i = -1;
+  for (let k = 0; k < cues.length && cues[k].start <= t; k++) if (cues[k].speaker) i = k;
+  if (i < 0) {
+    const first = cues.find((c) => c.speaker)?.speaker;
+    return first ? spots[first] ?? 0.5 : 0.5;
+  }
+  const who = cues[i].speaker as string;
+  let runStart = i;
+  while (runStart > 0 && (!cues[runStart - 1].speaker || cues[runStart - 1].speaker === who)) runStart--;
+  let prev: string | undefined;
+  for (let k = runStart - 1; k >= 0; k--) if (cues[k].speaker) { prev = cues[k].speaker; break; }
+  const to = spots[who] ?? 0.5;
+  // a cut that opens on this speaker starts on them, not on whoever talked before it
+  if (!prev || (cutStart != null && cues[runStart].start <= cutStart + 0.05)) return to;
+  const from = spots[prev] ?? 0.5;
+  const p = Math.min(1, Math.max(0, (t - cues[runStart].start) / FOCUS_EASE));
+  return from + (to - from) * easeInOut(p);
 }

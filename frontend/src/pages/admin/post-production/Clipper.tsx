@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   ArrowUp,
   Check,
@@ -6,6 +7,9 @@ import {
   ChevronRight,
   Download,
   FileText,
+  Pencil,
+  Save,
+  Sparkles,
   Loader2,
   MessageSquare,
   Minimize2,
@@ -22,15 +26,19 @@ import {
   Undo2,
 } from 'lucide-react';
 import { adminApi } from '../../../api/admin';
+import { postProductionApi } from '../../../api/postProduction';
 import {
   ASSISTANT_HELP,
   clipsToCsv,
   clipsToEdl,
   clipsToJson,
+  cuesToVtt,
   formatTime,
   interpretRequest,
   parseCaptions,
   slugify,
+  speakersOf,
+  speakerSpots,
   tightenToSpeech,
   type Clip,
   type Cue,
@@ -40,7 +48,9 @@ import {
 import type { RenderMode } from '../../../components/admin/clipper/renderClip';
 import { ClipComposer } from '../../../components/admin/clipper/ClipComposer';
 import { ClipTimeline } from '../../../components/admin/clipper/ClipTimeline';
-import { pickTranscript, type Source } from '../../../components/admin/clipper/sources';
+import { pickTranscript, pickVideo, type Source } from '../../../components/admin/clipper/sources';
+import { SpeakerPlacer } from '../../../components/admin/clipper/SpeakerPlacer';
+import { logClipper, watchClipperErrors } from '../../../components/admin/clipper/clipperLog';
 import { useFilmstrip, useWaveform, type Thumb } from '../../../components/admin/clipper/useMediaPreview';
 import { DEFAULT_FORMAT, type CutFormat } from '../../../components/admin/clipper/socialCut';
 import { CutPreview, OutputPanel } from '../../../components/admin/clipper/OutputPanel';
@@ -61,6 +71,8 @@ import { CutPreview, OutputPanel } from '../../../components/admin/clipper/Outpu
  */
 
 type TranscriptState = 'none' | 'loading' | 'ready' | 'blocked' | 'error';
+/** Where a transcript written from the audio has got to. */
+type Generating = { step: 'audio' | 'upload' | 'transcribing'; progress?: number } | { step: 'failed'; message: string } | null;
 type Panel = 'direct' | 'clips' | 'transcript' | 'output';
 type Suggestion = ProposedClip & { verdict?: Verdict; quote?: string };
 type ChatMessage = { id: string; role: 'you' | 'assistant'; text: string; proposals?: Suggestion[]; before?: Clip[]; undone?: boolean };
@@ -92,6 +104,20 @@ const byStart = (a: Clip, b: Clip) => a.start - b.start;
 function storageKey(sourceKey: string) {
   return `chm-clipper:${sourceKey}`;
 }
+const correctedKey = (sourceKey: string) => `chm-clipper-transcript:${sourceKey}`;
+
+/** Corrections to a transcript that has no platform copy (a .vtt dropped in), kept in this browser. */
+function loadCorrected(sourceKey: string): Cue[] | null {
+  try {
+    const raw = window.localStorage.getItem(correctedKey(sourceKey));
+    const parsed = raw ? (JSON.parse(raw) as Cue[]) : null;
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+const sleep = (ms: number) => new Promise((r) => window.setTimeout(r, ms));
 
 function loadSaved(sourceKey: string): Clip[] {
   try {
@@ -139,6 +165,13 @@ export default function Clipper() {
   const [renderMode, setRenderMode] = useState<RenderMode>('fast');
   const [format, setFormat] = useState<CutFormat>(loadFormat);
   const [rendering, setRendering] = useState<Record<string, number | 'error'>>({});
+  const [placing, setPlacing] = useState<string | null>(null);
+  const [transcriptId, setTranscriptId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState<Generating>(null);
+  const [editing, setEditing] = useState<Cue[] | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const sourceRef = useRef<Source | null>(null);
+  const caps = useQuery({ queryKey: ['admin', 'post-production', 'capabilities'], queryFn: postProductionApi.capabilities, staleTime: 5 * 60_000, retry: false });
   const videoRef = useRef<HTMLVideoElement>(null);
   const loopRef = useRef<Clip | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -152,6 +185,12 @@ export default function Clipper() {
   useEffect(() => {
     live.current = { duration, cues, clips };
   }, [duration, cues, clips]);
+
+  useEffect(() => {
+    sourceRef.current = source;
+  }, [source]);
+
+  useEffect(() => watchClipperErrors('clipper'), []);
 
   useEffect(() => {
     try {
@@ -243,6 +282,35 @@ export default function Clipper() {
     [finishTranscript],
   );
 
+  /* transcripts written from the audio */
+  const pollTranscript = useCallback(
+    async (id: string, key: string) => {
+      for (let tries = 0; tries < 720; tries++) {
+        if (sourceRef.current?.key !== key) return;
+        try {
+          const t = await postProductionApi.getTranscript(id);
+          if (sourceRef.current?.key !== key) return;
+          if (t.status === 'COMPLETED') {
+            setGenerating(null);
+            finishTranscript(t.cues ?? [], t.cues?.length ? 'ready' : 'error');
+            return;
+          }
+          if (t.status === 'FAILED') {
+            setGenerating({ step: 'failed', message: t.error || 'The transcript failed.' });
+            finishTranscript([], 'none');
+            logClipper('transcribe-failed', t.error ?? 'failed', { id });
+            return;
+          }
+        } catch (err) {
+          logClipper('transcribe-poll', err, { id }, 'warn');
+        }
+        await sleep(5000);
+      }
+      setGenerating({ step: 'failed', message: 'Still not back after an hour. Try again later.' });
+    },
+    [finishTranscript],
+  );
+
   const openSource = useCallback(
     async (s: Source, captions: File | undefined, prompt: string) => {
       setSource(s);
@@ -255,9 +323,39 @@ export default function Clipper() {
       setTime(0);
       setLineSel(null);
       setTranscriptLink(null);
+      setTranscriptId(null);
+      setGenerating(null);
+      setEditing(null);
+      setPlacing(null);
       setPanel('direct');
       setChat([{ id: uid(), role: 'assistant', text: ASSISTANT_HELP }]);
       pending.current = { prompt: prompt || null, transcriptDone: false };
+      sourceRef.current = s;
+      if (!captions) {
+        // a transcript already written (and maybe corrected) on the platform comes first
+        try {
+          const saved = await postProductionApi.findTranscript(s.key);
+          if (saved?.status === 'COMPLETED' && saved.cues?.length) {
+            setTranscriptId(saved.id);
+            finishTranscript(saved.cues, 'ready');
+            return;
+          }
+          if (saved && (saved.status === 'QUEUED' || saved.status === 'IN_PROGRESS')) {
+            setTranscriptId(saved.id);
+            setTranscript('loading');
+            setGenerating({ step: 'transcribing' });
+            void pollTranscript(saved.id, s.key);
+            return;
+          }
+        } catch {
+          /* no platform transcripts here: carry on with the file's own */
+        }
+      }
+      const fixed = loadCorrected(s.key);
+      if (fixed) {
+        finishTranscript(fixed, 'ready');
+        return;
+      }
       if (captions) {
         setTranscript('loading');
         loadTranscriptText(await captions.text());
@@ -285,8 +383,54 @@ export default function Clipper() {
         finishTranscript([], 'none');
       }
     },
-    [loadTranscriptText, finishTranscript],
+    [loadTranscriptText, finishTranscript, pollTranscript],
   );
+
+  const generateTranscript = async () => {
+    const s = source;
+    if (!s) return;
+    try {
+      let started;
+      if (s.kind === 'local') {
+        setGenerating({ step: 'audio', progress: 0 });
+        const { extractAudio } = await import('../../../components/admin/clipper/renderClip');
+        const audio = await extractAudio(s.file, (progress) => setGenerating({ step: 'audio', progress }));
+        setGenerating({ step: 'upload' });
+        started = await postProductionApi.transcribeAudio(audio, { sourceKey: s.key, title: s.title, fileName: `${slugify(s.title)}.m4a` });
+      } else {
+        const video = pickVideo(s.files);
+        if (!video) throw new Error('This recording has no video in storage.');
+        setGenerating({ step: 'upload' });
+        started = await postProductionApi.transcribeZoom({ sessionId: s.session.id, fileId: video.id, sourceKey: s.key, title: s.title });
+      }
+      setTranscriptId(started.id);
+      setTranscript('loading');
+      setGenerating({ step: 'transcribing' });
+      await pollTranscript(started.id, s.key);
+    } catch (err) {
+      setGenerating({ step: 'failed', message: 'The transcript couldn’t be started. It’s been logged.' });
+      setTranscript((t) => (t === 'loading' ? 'none' : t));
+      logClipper('transcribe-start', err, { source: s.fileName, kind: s.kind });
+    }
+  };
+
+  /* correcting the transcript */
+  const saveCorrections = async () => {
+    if (!editing || !source) return;
+    const next = editing.map((c) => ({ ...c, text: c.text.trim() })).filter((c) => c.text);
+    setCues(next);
+    setEditing(null);
+    setSaveState('saving');
+    try {
+      if (transcriptId) await postProductionApi.saveTranscript(transcriptId, next);
+      else window.localStorage.setItem(correctedKey(source.key), JSON.stringify(next));
+      setSaveState('saved');
+    } catch (err) {
+      setSaveState('error');
+      logClipper('transcript-save', err, { transcriptId });
+    }
+  };
+  const renameSpeaker = (from: string, to: string) => setEditing((cs) => cs?.map((c) => (c.speaker === from ? { ...c, speaker: to } : c)) ?? cs);
 
   /* playback */
   const seek = useCallback((t: number) => {
@@ -426,8 +570,9 @@ export default function Clipper() {
         delete next[c.id];
         return next;
       });
-    } catch {
+    } catch (err) {
       setRendering((r) => ({ ...r, [c.id]: 'error' }));
+      logClipper('render-clip', err, { clip: c.title, mode: renderMode, source: source.fileName });
     }
   };
   const renderAll = async () => {
@@ -436,6 +581,9 @@ export default function Clipper() {
       await render(c);
     }
   };
+
+  const speakers = useMemo(() => speakersOf(cues).slice(0, 6), [cues]);
+  const spots = useMemo(() => speakerSpots(cues, format.positions), [cues, format.positions]);
 
   /* transcript */
   const activeCue = useMemo(() => cues.findIndex((c) => time >= c.start && time < c.end), [cues, time]);
@@ -761,8 +909,67 @@ export default function Clipper() {
 
           {panel === 'transcript' ? (
             <div className="flex min-h-0 flex-1 flex-col">
-              {transcript === 'ready' ? (
+              {transcript === 'ready' && editing ? (
                 <>
+                  <div className="space-y-2 border-b border-hairline p-3">
+                    <p className="text-xs text-muted2">Fix misheard words and drug names, and name the speakers. Captions, search and moments use your corrections.</p>
+                    {speakersOf(editing).map((sp) => (
+                      <label key={sp} className="flex items-center gap-2">
+                        <span className="meta w-20 shrink-0 truncate text-faint" title={sp}>
+                          {sp}
+                        </span>
+                        <input
+                          defaultValue={sp}
+                          onBlur={(e) => {
+                            const to = e.target.value.trim();
+                            if (to && to !== sp) renameSpeaker(sp, to);
+                          }}
+                          aria-label={`Rename ${sp}`}
+                          className="h-8 min-w-0 flex-1 rounded-[6px] bg-surface-2 px-2 text-xs text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
+                        />
+                      </label>
+                    ))}
+                  </div>
+                  <ol className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2">
+                    {editing.map((c, i) => (
+                      <li key={i} className="flex gap-2 px-1">
+                        <button type="button" onClick={() => seek(c.start)} className="meta w-12 shrink-0 pt-1.5 text-left tabular-nums text-anchor" aria-label={`Play from ${formatTime(c.start, 0)}`}>
+                          {formatTime(c.start, 0)}
+                        </button>
+                        <label className="min-w-0 flex-1">
+                          <span className="meta block text-faint">{c.speaker ?? 'No speaker'}</span>
+                          <textarea
+                            value={c.text}
+                            rows={Math.min(4, Math.ceil(c.text.length / 38))}
+                            onChange={(e) => setEditing((cs) => cs?.map((x, k) => (k === i ? { ...x, text: e.target.value } : x)) ?? cs)}
+                            className="w-full resize-none rounded-[6px] bg-surface-2 px-2 py-1 text-body-s text-text outline-none focus-visible:ring-2 focus-visible:ring-anchor/40"
+                          />
+                        </label>
+                      </li>
+                    ))}
+                  </ol>
+                  <div className="flex items-center gap-2 border-t border-hairline p-3">
+                    <button type="button" onClick={() => setEditing(null)} className="h-8 rounded-[6px] px-2.5 text-xs text-dim hover:bg-surface-2">
+                      Cancel
+                    </button>
+                    <button type="button" onClick={() => void saveCorrections()} className="ms-auto inline-flex h-8 items-center gap-1.5 rounded-[6px] bg-anchor px-3 text-xs font-medium text-ground">
+                      <Save className="size-3.5" aria-hidden /> Save corrections
+                    </button>
+                  </div>
+                </>
+              ) : transcript === 'ready' ? (
+                <>
+                  <div className="flex items-center gap-1.5 border-b border-hairline px-3 py-2">
+                    <span className="meta min-w-0 flex-1 truncate text-faint">
+                      {saveState === 'saving' ? 'Saving…' : saveState === 'saved' ? (transcriptId ? 'Corrections saved to the platform' : 'Corrections saved in this browser') : saveState === 'error' ? 'Couldn’t save corrections' : `${cues.length} lines`}
+                    </span>
+                    <button type="button" onClick={() => setEditing(cues.map((c) => ({ ...c })))} className="inline-flex h-7 items-center gap-1 rounded-[6px] bg-surface-2 px-2 text-xs text-dim hover:text-text">
+                      <Pencil className="size-3.5" aria-hidden /> Correct
+                    </button>
+                    <button type="button" onClick={() => downloadText(`${slugify(source.title)}.vtt`, cuesToVtt(cues), 'text/vtt')} className="inline-flex h-7 items-center gap-1 rounded-[6px] bg-surface-2 px-2 text-xs text-dim hover:text-text">
+                      <Download className="size-3.5" aria-hidden /> .vtt
+                    </button>
+                  </div>
                   <label className="relative block border-b border-hairline p-3">
                     <span className="sr-only">Search the transcript</span>
                     <Search className="pointer-events-none absolute start-6 top-1/2 size-4 -translate-y-1/2 text-faint" aria-hidden />
@@ -803,7 +1010,19 @@ export default function Clipper() {
                 </>
               ) : (
                 <div className="space-y-3 p-4 text-body-s text-muted2">
-                  {transcript === 'loading' ? (
+                  {generating && generating.step !== 'failed' ? (
+                    <div className="space-y-1">
+                      <p className="flex items-center gap-2 text-text">
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                        {generating.step === 'audio'
+                          ? `Pulling the audio out${generating.progress ? ` · ${Math.round(generating.progress * 100)}%` : ''}`
+                          : generating.step === 'upload'
+                            ? 'Sending the audio'
+                            : 'Writing the transcript from the audio'}
+                      </p>
+                      <p className="text-xs">An hour of audio takes about 5 to 10 minutes. You can keep clipping by time meanwhile; the transcript appears here when it’s done.</p>
+                    </div>
+                  ) : transcript === 'loading' ? (
                     <p className="flex items-center gap-2">
                       <Loader2 className="size-4 animate-spin" aria-hidden /> Loading the transcript
                     </p>
@@ -812,14 +1031,35 @@ export default function Clipper() {
                   ) : transcript === 'error' ? (
                     <p>That file had no captions I could read. Try the .vtt from Zoom.</p>
                   ) : (
-                    <p>No transcript for this recording. Add a .vtt or .srt to search what was said and clip from it.</p>
+                    <p>No transcript for this recording yet. Clipping by time works now; generate one from the audio or add a .vtt or .srt for moments, search, captions and speaker focus.</p>
                   )}
+                  {transcript !== 'loading' && !generating ? (
+                    caps.data?.transcription ? (
+                      <button type="button" onClick={() => void generateTranscript()} className="flex w-full items-center justify-between gap-3 rounded-[8px] bg-anchor/10 px-3 py-2.5 text-left ring-1 ring-inset ring-anchor/30">
+                        <span>
+                          <span className="block font-medium text-text">Generate from the audio</span>
+                          <span className="block text-xs">Speakers labelled, then correct anything misheard.</span>
+                        </span>
+                        <Sparkles className="size-4 shrink-0 text-anchor" aria-hidden />
+                      </button>
+                    ) : (
+                      <p className="text-xs">Writing transcripts from the audio isn’t switched on for this environment yet.</p>
+                    )
+                  ) : null}
+                  {generating?.step === 'failed' ? (
+                    <p className="text-xs text-dim">
+                      {generating.message}{' '}
+                      <button type="button" onClick={() => void generateTranscript()} className="text-anchor hover:underline">
+                        Try again
+                      </button>
+                    </p>
+                  ) : null}
                   {transcript === 'blocked' && transcriptLink ? (
                     <a href={transcriptLink} target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-[8px] bg-surface-2 px-3 font-medium text-anchor">
                       <Download className="size-4" aria-hidden /> Download transcript
                     </a>
                   ) : null}
-                  {transcript !== 'loading' ? (
+                  {transcript !== 'loading' && !generating ? (
                     <label className="flex cursor-pointer items-center justify-between gap-3 rounded-[8px] bg-surface-2 px-3 py-2.5">
                       <span className="text-dim">Add a transcript (.vtt or .srt)</span>
                       <span className="font-medium text-anchor">Choose</span>
@@ -850,6 +1090,12 @@ export default function Clipper() {
               selectedId={selectedId}
               source={source}
               colors={CLIP_COLORS}
+              videoRef={videoRef}
+              caps={caps.data}
+              placing={placing}
+              onPlace={setPlacing}
+              onUpdateClip={updateClip}
+              onSeek={seek}
             />
           ) : null}
         </aside>
@@ -857,7 +1103,7 @@ export default function Clipper() {
         {/* right: the picture, transport and timeline */}
         <div className="order-1 min-w-0 space-y-3 xl:order-2">
           <div className="flex flex-col gap-3 lg:flex-row">
-          <div className="min-w-0 flex-1 overflow-hidden rounded-card bg-black shadow-card">
+          <div className="relative min-w-0 flex-1 overflow-hidden rounded-card bg-black shadow-card">
             <video
               ref={videoRef}
               src={source.url}
@@ -877,8 +1123,20 @@ export default function Clipper() {
               onSeeked={() => setTime(videoRef.current?.currentTime ?? 0)}
               onClick={togglePlay}
             />
+            <SpeakerPlacer
+              videoRef={videoRef}
+              speakers={speakers}
+              spots={spots}
+              placing={placing}
+              showMarks={panel === 'output' && format.framing === 'speaker'}
+              onPlace={(sp, x) => {
+                setFormat((f) => ({ ...f, framing: 'speaker', positions: { ...f.positions, [sp]: x } }));
+                setPlacing(null);
+              }}
+              onCancel={() => setPlacing(null)}
+            />
           </div>
-          <CutPreview videoRef={videoRef} format={format} cues={cues} time={time} playing={playing} onOpen={() => setPanel('output')} />
+          <CutPreview videoRef={videoRef} format={format} cues={cues} clips={clips} selectedId={selectedId} time={time} playing={playing} onOpen={() => setPanel('output')} />
           </div>
 
           <div className="card flex flex-wrap items-center gap-2 p-2.5">

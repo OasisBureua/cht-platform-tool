@@ -140,6 +140,28 @@ resource "aws_iam_role_policy" "backend_task" {
           Resource = "${var.session_assets_bucket_arn}/zoom-recordings/*"
         }
       ] : [],
+      # Post-production clipper: transcripts from recording audio (Transcribe reads
+      # the media and writes its JSON under zoom-recordings/post-production/ with this
+      # role's S3 grants above) and AI looks from Claude on Bedrock (Mantle endpoint).
+      [
+        {
+          Effect = "Allow"
+          Action = [
+            "transcribe:StartTranscriptionJob",
+            "transcribe:GetTranscriptionJob"
+          ]
+          Resource = "*"
+        },
+        {
+          Effect = "Allow"
+          Action = [
+            "bedrock-mantle:CreateInference",
+            "bedrock:InvokeModel",
+            "bedrock:InvokeModelWithResponseStream"
+          ]
+          Resource = "*"
+        }
+      ],
       var.cognito_user_pool_arn != "" ? [
         {
           Effect = "Allow"

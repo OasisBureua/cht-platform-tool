@@ -15,7 +15,7 @@ const MOUNT = '/source';
 
 let loading: Promise<FFmpeg> | null = null;
 
-async function getFfmpeg(): Promise<FFmpeg> {
+export async function getFfmpeg(): Promise<FFmpeg> {
   if (!loading) {
     loading = (async () => {
       const [{ FFmpeg }, { toBlobURL }] = await Promise.all([import('@ffmpeg/ffmpeg'), import('@ffmpeg/util')]);
@@ -73,6 +73,39 @@ export async function renderClip(
     await ff.deleteFile(out);
     // Copy out of the wasm heap: a Blob can't take a view that may sit on a SharedArrayBuffer.
     return new Blob([new Uint8Array(data)], { type: outExt === 'webm' ? 'video/webm' : 'video/mp4' });
+  } finally {
+    ff.off('progress', onProg);
+    try {
+      await ff.unmount(MOUNT);
+    } catch {
+      /* not mounted */
+    }
+  }
+}
+
+/**
+ * Pulls a small mono audio track out of a video for transcription: 16 kHz
+ * AAC at 48 kbps is about 21 MB an hour, quick to upload, and all the
+ * speech engine needs.
+ */
+export async function extractAudio(file: File, onProgress?: (ratio: number) => void): Promise<Blob> {
+  const ff = await getFfmpeg();
+  const { FFFSType } = await import('@ffmpeg/ffmpeg');
+  const out = `audio-${Date.now()}.m4a`;
+  const onProg = ({ progress }: { progress: number }) => onProgress?.(Math.max(0, Math.min(1, progress)));
+  ff.on('progress', onProg);
+  try {
+    try {
+      await ff.createDir(MOUNT);
+    } catch {
+      /* already there */
+    }
+    await ff.mount(FFFSType.WORKERFS, { files: [file] }, MOUNT);
+    const code = await ff.exec(['-i', `${MOUNT}/${file.name}`, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'aac', '-b:a', '48k', out]);
+    if (code !== 0) throw new Error(`ffmpeg exited with code ${code}`);
+    const data = (await ff.readFile(out)) as Uint8Array;
+    await ff.deleteFile(out);
+    return new Blob([new Uint8Array(data)], { type: 'audio/mp4' });
   } finally {
     ff.off('progress', onProg);
     try {
