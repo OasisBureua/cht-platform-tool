@@ -94,7 +94,7 @@ describe('derivePostEventProgress', () => {
     });
     expect(p.steps.map((s) => s.state)).toEqual(['complete', 'complete', 'complete', 'current']);
     expect(p.active.key).toBe('done');
-    expect(p.active.helper).toBe('Payment requested. It is typically sent within 14 calendar days.');
+    expect(p.active.helper).toBe('Payment requested. It is typically sent within 30 calendar days.');
     expect(p.allComplete).toBe(false);
   });
 

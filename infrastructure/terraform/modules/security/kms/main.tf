@@ -56,10 +56,45 @@ resource "aws_kms_alias" "secrets" {
 }
 
 # KMS Key for SQS Queue Encryption
+# EventBridge must be allowed to GenerateDataKey/Decrypt or scheduled rules
+# targeting CMK-encrypted queues fail every invocation (FailedInvocations).
 resource "aws_kms_key" "sqs" {
   description             = "${local.prefix} SQS encryption key"
   deletion_window_in_days = var.deletion_window_in_days
   enable_key_rotation     = true
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "EnableIAMUserPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${var.aws_account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
+        Sid    = "AllowEventBridgeToEncryptForSqs"
+        Effect = "Allow"
+        Principal = {
+          Service = "events.amazonaws.com"
+        }
+        Action = [
+          "kms:Decrypt",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
+        Condition = {
+          StringEquals = {
+            "aws:SourceAccount" = var.aws_account_id
+          }
+        }
+      }
+    ]
+  })
 
   tags = {
     Name        = "${local.prefix}-sqs-key"
