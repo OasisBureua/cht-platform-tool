@@ -69,7 +69,7 @@ Labels already stamped on transfers / available in DB:
 - `PAID` with no `stripeTransferId`
 - Stripe transfer exists for metadata `paymentId` but no DB row (if Stripe cross-check enabled)
 - `FAILED` in period
-- `PENDING` older than **14 calendar days** (ops SLA — not expiry)
+- `PENDING` older than **30 calendar days** (ops SLA — not expiry)
 
 ### Quarterly extras
 
@@ -97,7 +97,7 @@ Labels already stamped on transfers / available in DB:
 - [ ] Confirm Google reCAPTCHA / Stripe are unrelated — recon never touches captcha.
 - [ ] Agree email recipients and S3 bucket with Andrew.
 - [ ] Manual invoke for last month before enabling schedule.
-- [ ] Document “PENDING > 14 days” as SLA alert for ops, not auto-cancel.
+- [ ] Document “PENDING > 30 days” as SLA alert for ops, not auto-cancel.
 
 ## Out of scope (near term)
 
