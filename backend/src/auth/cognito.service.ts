@@ -773,6 +773,19 @@ export class CognitoService {
   }
 
   /**
+   * Pool Username claim from an access token (`google_…`, email, etc.).
+   */
+  poolUsernameFromAccessToken(accessToken: string): string | null {
+    const decoded = jwt.decode(accessToken);
+    if (!decoded || typeof decoded === 'string') return null;
+    const username =
+      typeof (decoded as { username?: unknown }).username === 'string'
+        ? (decoded as { username: string }).username.trim()
+        : '';
+    return username || null;
+  }
+
+  /**
    * MFA status for the identity that owns this access token.
    * Prefers JWT `username` (e.g. `google_…`) so we do not confuse a native
    * email user with a federated user that shares the same email.
@@ -780,12 +793,7 @@ export class CognitoService {
   async isSoftwareTokenMfaEnabledFromAccessToken(
     accessToken: string,
   ): Promise<boolean> {
-    const decoded = jwt.decode(accessToken);
-    if (!decoded || typeof decoded === 'string') return false;
-    const username =
-      typeof (decoded as { username?: unknown }).username === 'string'
-        ? (decoded as { username: string }).username.trim()
-        : '';
+    const username = this.poolUsernameFromAccessToken(accessToken);
     if (!username) return false;
     return this.adminUserHasMfa(username);
   }
@@ -851,13 +859,13 @@ export class CognitoService {
   ): Promise<void> {
     if (!this.isConfigured()) return;
 
-    const preferred = preferredUsername?.trim();
-    const username =
-      (preferred && preferred.length > 0 ? preferred : null) ??
-      (await this.resolveUsername(email));
-    if (!username) {
+    const { usernames, lookupFailed } = await this.resolveUsernames(
+      email,
+      preferredUsername,
+    );
+    if (usernames.length === 0) {
       this.logger.warn(
-        `[Cognito] Skipping group sync: no pool username for ${email.trim().toLowerCase()}`,
+        `[Cognito] Skipping group sync: no pool username for ${email.trim().toLowerCase()}${lookupFailed ? ' (lookup failed)' : ''}`,
       );
       return;
     }
@@ -867,97 +875,126 @@ export class CognitoService {
     const addGroup = isAdminRole ? COGNITO_GROUP_ADMIN : COGNITO_GROUP_HCP;
     const removeGroup = isAdminRole ? COGNITO_GROUP_HCP : COGNITO_GROUP_ADMIN;
 
-    await this.addUserToGroup(username, addGroup);
-    await this.removeUserFromGroup(username, removeGroup);
-  }
-
-  /**
-   * List Cognito group names for a pool user (by email or preferred username).
-   */
-  async listGroupsForUser(
-    email: string,
-    preferredUsername?: string | null,
-  ): Promise<string[]> {
-    if (!this.isConfigured() || !this.userPoolId) return [];
-
-    const preferred = preferredUsername?.trim();
-    const username =
-      (preferred && preferred.length > 0 ? preferred : null) ??
-      (await this.resolveUsername(email));
-    if (!username) return [];
-
-    try {
-      const groups: string[] = [];
-      let nextToken: string | undefined;
-      do {
-        const out = await this.client.send(
-          new AdminListGroupsForUserCommand({
-            UserPoolId: this.userPoolId,
-            Username: username,
-            Limit: 60,
-            NextToken: nextToken,
-          }),
-          { abortSignal: this.cognitoAbortSignal() },
-        );
-        for (const g of out.Groups ?? []) {
-          if (g.GroupName) groups.push(g.GroupName);
-        }
-        nextToken = out.NextToken;
-      } while (nextToken);
-      return groups;
-    } catch (err) {
-      const msg = this.cognitoErrorMessage(err);
-      this.logger.warn(
-        `[Cognito] listGroupsForUser failed for ${email.trim().toLowerCase()}: ${msg}`,
-      );
-      return [];
+    // Dual native+Google identities share an email — update every pool user.
+    for (const username of usernames) {
+      await this.addUserToGroup(username, addGroup);
+      await this.removeUserFromGroup(username, removeGroup);
     }
   }
 
   /**
+   * List Cognito group names for pool user(s) matching email (and optional
+   * preferred username). Unions groups across native + federated identities.
+   * Returns null when lookup failed (do not treat as empty membership).
+   */
+  async listGroupsForUser(
+    email: string,
+    preferredUsername?: string | null,
+  ): Promise<string[] | null> {
+    if (!this.isConfigured() || !this.userPoolId) return [];
+
+    const { usernames, lookupFailed } = await this.resolveUsernames(
+      email,
+      preferredUsername,
+    );
+    if (usernames.length === 0) {
+      if (lookupFailed) return null;
+      return [];
+    }
+
+    const groupSet = new Set<string>();
+    let anySuccess = false;
+    let anyFailure = false;
+    for (const username of usernames) {
+      try {
+        let nextToken: string | undefined;
+        do {
+          const out = await this.client.send(
+            new AdminListGroupsForUserCommand({
+              UserPoolId: this.userPoolId,
+              Username: username,
+              Limit: 60,
+              NextToken: nextToken,
+            }),
+            { abortSignal: this.cognitoAbortSignal() },
+          );
+          for (const g of out.Groups ?? []) {
+            if (g.GroupName) groupSet.add(g.GroupName);
+          }
+          nextToken = out.NextToken;
+        } while (nextToken);
+        anySuccess = true;
+      } catch (err) {
+        anyFailure = true;
+        const msg = this.cognitoErrorMessage(err);
+        this.logger.warn(
+          `[Cognito] listGroupsForUser failed for ${email.trim().toLowerCase()} (${username}): ${msg}`,
+        );
+      }
+    }
+    if (!anySuccess && anyFailure) return null;
+    return [...groupSet];
+  }
+
+  /**
    * Derive admin domain write capabilities from Cognito group membership.
+   * Returns null when Cognito lookup failed — caller must not overwrite DB.
    */
   async resolveAdminCapabilitiesFromCognito(
     email: string,
     preferredUsername?: string | null,
-  ): Promise<AdminCapability[]> {
+  ): Promise<AdminCapability[] | null> {
     const groups = await this.listGroupsForUser(email, preferredUsername);
+    if (groups === null) return null;
     return capabilitiesFromCognitoGroups(groups);
   }
 
   /**
-   * Add a pool user to a Cognito group. Throws on unexpected Cognito errors
-   * (unlike syncGroupsForRole helpers which log-and-skip).
+   * Add every pool identity for this email to a Cognito group. Throws on
+   * unexpected Cognito errors (unlike syncGroupsForRole helpers which log-and-skip).
    */
   async addUserToGroupStrict(email: string, groupName: string): Promise<void> {
     if (!this.isConfigured() || !this.userPoolId) {
       throw new Error('Cognito is not configured');
     }
-    const username = await this.resolveUsername(email);
-    if (!username) {
-      throw new Error(`No Cognito user found for ${email.trim().toLowerCase()}`);
+    const { usernames, lookupFailed } = await this.resolveUsernames(email);
+    if (usernames.length === 0) {
+      throw new Error(
+        lookupFailed
+          ? `Could not look up Cognito user for ${email.trim().toLowerCase()} (ListUsers may be denied)`
+          : `No Cognito user found for ${email.trim().toLowerCase()}`,
+      );
     }
-    try {
-      await this.client.send(
-        new AdminAddUserToGroupCommand({
-          UserPoolId: this.userPoolId,
-          Username: username,
-          GroupName: groupName,
-        }),
-        { abortSignal: this.cognitoAbortSignal() },
+    const errors: string[] = [];
+    for (const username of usernames) {
+      try {
+        await this.client.send(
+          new AdminAddUserToGroupCommand({
+            UserPoolId: this.userPoolId,
+            Username: username,
+            GroupName: groupName,
+          }),
+          { abortSignal: this.cognitoAbortSignal() },
+        );
+        this.logger.log(`[Cognito] Added ${username} to ${groupName}`);
+      } catch (err) {
+        const msg = this.cognitoErrorMessage(err);
+        this.logger.error(
+          `[Cognito] Failed to add ${username} to ${groupName}: ${msg}`,
+        );
+        errors.push(`${username}: ${msg}`);
+      }
+    }
+    if (errors.length === usernames.length) {
+      throw new Error(
+        `Failed to add Cognito group ${groupName}: ${errors.join('; ')}`,
       );
-      this.logger.log(`[Cognito] Added ${username} to ${groupName}`);
-    } catch (err) {
-      const msg = this.cognitoErrorMessage(err);
-      this.logger.error(
-        `[Cognito] Failed to add ${username} to ${groupName}: ${msg}`,
-      );
-      throw new Error(`Failed to add Cognito group ${groupName}: ${msg}`);
     }
   }
 
   /**
-   * Remove a pool user from a Cognito group. Missing membership is OK.
+   * Remove every pool identity for this email from a Cognito group.
+   * Missing membership is OK.
    */
   async removeUserFromGroupStrict(
     email: string,
@@ -966,78 +1003,107 @@ export class CognitoService {
     if (!this.isConfigured() || !this.userPoolId) {
       throw new Error('Cognito is not configured');
     }
-    const username = await this.resolveUsername(email);
-    if (!username) {
-      throw new Error(`No Cognito user found for ${email.trim().toLowerCase()}`);
+    const { usernames, lookupFailed } = await this.resolveUsernames(email);
+    if (usernames.length === 0) {
+      throw new Error(
+        lookupFailed
+          ? `Could not look up Cognito user for ${email.trim().toLowerCase()} (ListUsers may be denied)`
+          : `No Cognito user found for ${email.trim().toLowerCase()}`,
+      );
     }
-    try {
-      await this.client.send(
-        new AdminRemoveUserFromGroupCommand({
-          UserPoolId: this.userPoolId,
-          Username: username,
-          GroupName: groupName,
-        }),
-        { abortSignal: this.cognitoAbortSignal() },
-      );
-      this.logger.log(`[Cognito] Removed ${username} from ${groupName}`);
-    } catch (err) {
-      const msg = this.cognitoErrorMessage(err);
-      if (
-        /UserNotFoundException|user does not exist|not a member|ResourceNotFoundException/i.test(
-          msg,
-        )
-      ) {
-        return;
+    const errors: string[] = [];
+    for (const username of usernames) {
+      try {
+        await this.client.send(
+          new AdminRemoveUserFromGroupCommand({
+            UserPoolId: this.userPoolId,
+            Username: username,
+            GroupName: groupName,
+          }),
+          { abortSignal: this.cognitoAbortSignal() },
+        );
+        this.logger.log(`[Cognito] Removed ${username} from ${groupName}`);
+      } catch (err) {
+        const msg = this.cognitoErrorMessage(err);
+        if (
+          /UserNotFoundException|user does not exist|not a member|ResourceNotFoundException/i.test(
+            msg,
+          )
+        ) {
+          continue;
+        }
+        this.logger.error(
+          `[Cognito] Failed to remove ${username} from ${groupName}: ${msg}`,
+        );
+        errors.push(`${username}: ${msg}`);
       }
-      this.logger.error(
-        `[Cognito] Failed to remove ${username} from ${groupName}: ${msg}`,
+    }
+    if (errors.length === usernames.length) {
+      throw new Error(
+        `Failed to remove Cognito group ${groupName}: ${errors.join('; ')}`,
       );
-      throw new Error(`Failed to remove Cognito group ${groupName}: ${msg}`);
     }
   }
 
   /**
-   * Permanently delete a Cognito user by email (native or federated).
+   * Permanently delete Cognito user(s) by email (native and/or federated).
    * No-ops when Cognito is not configured or the user is already gone.
    */
   async adminDeleteUserByEmail(email: string): Promise<boolean> {
     if (!this.userPoolId) return false;
-    const username = await this.resolveUsername(email);
-    if (!username) {
+    const { usernames, lookupFailed } = await this.resolveUsernames(email);
+    if (usernames.length === 0) {
       this.logger.warn(
-        `[Cognito] adminDeleteUserByEmail: no pool user for ${email.trim().toLowerCase()}`,
+        `[Cognito] adminDeleteUserByEmail: no pool user for ${email.trim().toLowerCase()}${lookupFailed ? ' (lookup failed)' : ''}`,
       );
       return false;
     }
-    try {
-      await this.client.send(
-        new AdminDeleteUserCommand({
-          UserPoolId: this.userPoolId,
-          Username: username,
-        }),
-        { abortSignal: this.cognitoAbortSignal() },
-      );
-      this.logger.log(`[Cognito] Deleted pool user ${username}`);
-      return true;
-    } catch (err) {
-      const msg = this.cognitoErrorMessage(err);
-      if (/UserNotFoundException|user does not exist/i.test(msg)) {
-        return false;
+    let deleted = false;
+    for (const username of usernames) {
+      try {
+        await this.client.send(
+          new AdminDeleteUserCommand({
+            UserPoolId: this.userPoolId,
+            Username: username,
+          }),
+          { abortSignal: this.cognitoAbortSignal() },
+        );
+        this.logger.log(`[Cognito] Deleted pool user ${username}`);
+        deleted = true;
+      } catch (err) {
+        const msg = this.cognitoErrorMessage(err);
+        if (/UserNotFoundException|user does not exist/i.test(msg)) {
+          continue;
+        }
+        this.logger.error(
+          `[Cognito] Failed to delete pool user ${username}: ${msg}`,
+        );
+        throw err;
       }
-      this.logger.error(
-        `[Cognito] Failed to delete pool user ${username}: ${msg}`,
-      );
-      throw err;
     }
+    return deleted;
   }
 
   /**
-   * Resolve pool Username. Native users often match email; Google/federated users
-   * use `Google_<id>`: look them up via ListUsers email filter.
+   * Resolve every pool Username for an email (native email-as-username and/or
+   * federated `Google_<id>` / `SignInWithApple_<id>` via ListUsers).
+   * Prefer `preferredUsername` from the ID token when present so Google logins
+   * work even if ListUsers is temporarily unavailable.
    */
-  async resolveUsername(email: string): Promise<string | null> {
+  async resolveUsernames(
+    email: string,
+    preferredUsername?: string | null,
+  ): Promise<{ usernames: string[]; lookupFailed: boolean }> {
     const normalized = email.trim().toLowerCase();
-    if (!normalized.includes('@')) return null;
+    const found = new Set<string>();
+    let lookupFailed = false;
+
+    const preferred = preferredUsername?.trim();
+    if (preferred) found.add(preferred);
+
+    if (!normalized.includes('@')) {
+      return { usernames: [...found], lookupFailed: false };
+    }
 
     try {
       const response = await this.client.send(
@@ -1047,7 +1113,8 @@ export class CognitoService {
         }),
         { abortSignal: this.cognitoAbortSignal() },
       );
-      return response.Username ?? normalized;
+      const u = response.Username ?? normalized;
+      if (u) found.add(u);
     } catch (err) {
       const name = err instanceof Error ? err.name : '';
       const msg = err instanceof Error ? err.message : String(err);
@@ -1055,8 +1122,9 @@ export class CognitoService {
         !/UserNotFoundException/i.test(name) &&
         !/user does not exist/i.test(msg)
       ) {
+        lookupFailed = true;
         this.logger.warn(
-          `[Cognito] resolveUsername AdminGetUser failed for ${normalized}: ${name || msg}`,
+          `[Cognito] resolveUsernames AdminGetUser failed for ${normalized}: ${name || msg}`,
         );
       }
     }
@@ -1066,24 +1134,41 @@ export class CognitoService {
         new ListUsersCommand({
           UserPoolId: this.userPoolId,
           Filter: `email = "${normalized.replace(/"/g, '')}"`,
-          Limit: 5,
+          Limit: 10,
         }),
         { abortSignal: this.cognitoAbortSignal() },
       );
-      const match = listed.Users?.find((u) => u.Username)?.Username;
-      if (match) return match;
-      this.logger.warn(
-        `[Cognito] Cannot sync groups: ${normalized} not found in pool`,
-      );
-      return null;
+      for (const u of listed.Users ?? []) {
+        if (u.Username) found.add(u.Username);
+      }
+      if (found.size === 0) {
+        this.logger.warn(
+          `[Cognito] No pool users for email ${normalized}`,
+        );
+      } else if (found.size > 1) {
+        this.logger.debug(
+          `[Cognito] ${found.size} pool identities for ${normalized}: ${[...found].join(', ')}`,
+        );
+      }
     } catch (err) {
+      lookupFailed = true;
       const name = err instanceof Error ? err.name : '';
       const msg = err instanceof Error ? err.message : String(err);
       this.logger.warn(
-        `[Cognito] resolveUsername ListUsers failed for ${normalized}: ${name || msg}`,
+        `[Cognito] resolveUsernames ListUsers failed for ${normalized}: ${name || msg}`,
       );
-      return null;
     }
+
+    return { usernames: [...found], lookupFailed };
+  }
+
+  /**
+   * Resolve a single pool Username (first match). Prefer resolveUsernames when
+   * granting groups so native + Google identities both get updated.
+   */
+  async resolveUsername(email: string): Promise<string | null> {
+    const { usernames } = await this.resolveUsernames(email);
+    return usernames[0] ?? null;
   }
 
   private cognitoErrorMessage(err: unknown): string {

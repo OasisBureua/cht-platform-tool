@@ -361,3 +361,142 @@ describe('CognitoService password login challenges', () => {
     });
   });
 });
+
+describe('CognitoService resolveUsernames / domain groups', () => {
+  const region = 'us-east-1';
+  const userPoolId = 'us-east-1_TestPool';
+  const clientId = 'test-client-id';
+
+  let service: CognitoService;
+  let send: jest.Mock;
+
+  beforeEach(() => {
+    const config = {
+      get: (key: string) => {
+        const map: Record<string, string> = {
+          'cognito.userPoolId': userPoolId,
+          'cognito.clientId': clientId,
+          'cognito.region': region,
+          'aws.region': region,
+        };
+        return map[key];
+      },
+    } as unknown as ConfigService;
+
+    service = new CognitoService(config);
+    send = jest.fn();
+    (service as unknown as { client: { send: jest.Mock } }).client = { send };
+  });
+
+  it('resolveUsernames finds Google-only users via ListUsers', async () => {
+    send
+      .mockRejectedValueOnce(
+        Object.assign(new Error('User does not exist.'), {
+          name: 'UserNotFoundException',
+        }),
+      )
+      .mockResolvedValueOnce({
+        Users: [{ Username: 'Google_12345' }],
+      });
+
+    await expect(
+      service.resolveUsernames('livestreams@communityhealth.media'),
+    ).resolves.toEqual({
+      usernames: ['Google_12345'],
+      lookupFailed: false,
+    });
+  });
+
+  it('resolveUsernames returns both native and Google identities', async () => {
+    send
+      .mockResolvedValueOnce({ Username: 'seth@example.com' })
+      .mockResolvedValueOnce({
+        Users: [
+          { Username: 'seth@example.com' },
+          { Username: 'Google_999' },
+        ],
+      });
+
+    const result = await service.resolveUsernames('seth@example.com');
+    expect(result.lookupFailed).toBe(false);
+    expect(result.usernames.sort()).toEqual(
+      ['Google_999', 'seth@example.com'].sort(),
+    );
+  });
+
+  it('resolveUsernames keeps preferredUsername when ListUsers is denied', async () => {
+    send
+      .mockRejectedValueOnce(
+        Object.assign(new Error('User does not exist.'), {
+          name: 'UserNotFoundException',
+        }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error('not authorized to perform ListUsers'), {
+          name: 'AccessDeniedException',
+        }),
+      );
+
+    await expect(
+      service.resolveUsernames('byron@example.com', 'Google_byron'),
+    ).resolves.toEqual({
+      usernames: ['Google_byron'],
+      lookupFailed: true,
+    });
+  });
+
+  it('addUserToGroupStrict adds the group on every identity for the email', async () => {
+    send
+      .mockRejectedValueOnce(
+        Object.assign(new Error('User does not exist.'), {
+          name: 'UserNotFoundException',
+        }),
+      )
+      .mockResolvedValueOnce({
+        Users: [
+          { Username: 'native@example.com' },
+          { Username: 'Google_abc' },
+        ],
+      })
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({});
+
+    await service.addUserToGroupStrict(
+      'native@example.com',
+      'cht-admin-programs',
+    );
+
+    const addCalls = send.mock.calls.filter(
+      (c) => c[0]?.constructor?.name === 'AdminAddUserToGroupCommand',
+    );
+    // Fallback: inspect input when constructor name is minified away
+    if (addCalls.length === 0) {
+      const usernames = send.mock.calls
+        .map((c) => c[0]?.input?.Username)
+        .filter(Boolean);
+      expect(usernames).toEqual(
+        expect.arrayContaining(['native@example.com', 'Google_abc']),
+      );
+    } else {
+      expect(addCalls).toHaveLength(2);
+    }
+  });
+
+  it('resolveAdminCapabilitiesFromCognito returns null when lookup fails with no usernames', async () => {
+    send
+      .mockRejectedValueOnce(
+        Object.assign(new Error('User does not exist.'), {
+          name: 'UserNotFoundException',
+        }),
+      )
+      .mockRejectedValueOnce(
+        Object.assign(new Error('not authorized'), {
+          name: 'AccessDeniedException',
+        }),
+      );
+
+    await expect(
+      service.resolveAdminCapabilitiesFromCognito('ghost@example.com'),
+    ).resolves.toBeNull();
+  });
+});

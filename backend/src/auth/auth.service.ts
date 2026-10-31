@@ -19,7 +19,7 @@ import {
   CURRENT_BETA_TERMS_VERSION,
   hasAcceptedRequiredConsent,
 } from '../common/terms';
-import { isPlatformAdmin } from '../common/roles';
+import { isPlatformAdmin, isSuperAdmin } from '../common/roles';
 import type { AdminCapability } from '../common/admin-capabilities';
 import {
   ADMIN_CAPABILITIES,
@@ -378,12 +378,16 @@ export class AuthService {
     email: string,
     preferredUsername?: string | null,
   ): Promise<AdminCapability[]> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { adminCapabilities: true },
+    });
+    const existing = (row?.adminCapabilities ?? []).filter(
+      isAdminCapability,
+    ) as AdminCapability[];
+
     if (!this.cognitoService.isConfigured()) {
-      const row = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { adminCapabilities: true },
-      });
-      return (row?.adminCapabilities ?? []) as AdminCapability[];
+      return existing;
     }
 
     const caps =
@@ -391,6 +395,15 @@ export class AuthService {
         email,
         preferredUsername,
       );
+
+    // Lookup failed (e.g. ListUsers denied, Google-only user not found) —
+    // keep DB caps. Never write [] from a failed Cognito read.
+    if (caps === null) {
+      this.logger.warn(
+        `[Auth] Keeping existing adminCapabilities for ${email.trim().toLowerCase()} (Cognito lookup failed)`,
+      );
+      return existing;
+    }
 
     await this.prisma.user.update({
       where: { id: userId },
@@ -471,9 +484,15 @@ export class AuthService {
         await this.cognitoService.resolveAdminCapabilitiesFromCognito(
           target.email,
         );
+      const nextCaps = fromCognito ?? desired;
+      if (fromCognito === null) {
+        this.logger.warn(
+          `[Auth] Cognito re-read failed after grant for ${target.email}; persisting desired caps ${desired.join(',')}`,
+        );
+      }
       const updated = await this.prisma.user.update({
         where: { id: userId },
-        data: { adminCapabilities: fromCognito },
+        data: { adminCapabilities: nextCaps },
         select: {
           id: true,
           email: true,
@@ -506,6 +525,284 @@ export class AuthService {
       ...updated,
       adminCapabilities: desired,
     };
+  }
+
+  /**
+   * ADMIN (or SUPER_ADMIN requesting for themselves): open/replace a pending
+   * domain write access request. Capabilities must be a non-empty subset of
+   * domains the requester does not already have.
+   */
+  async createCapabilityAccessRequest(
+    requesterId: string,
+    capabilitiesRaw: string[],
+    note?: string | null,
+  ) {
+    const requester = await this.prisma.user.findUnique({
+      where: { id: requesterId },
+      select: {
+        id: true,
+        email: true,
+        role: true,
+        adminCapabilities: true,
+      },
+    });
+    if (!requester) throw new NotFoundException('User not found');
+    if (!isPlatformAdmin(requester.role)) {
+      throw new BadRequestException(
+        'Only ADMIN or SUPER_ADMIN can request domain write access.',
+      );
+    }
+    if (requester.role === UserRole.SUPER_ADMIN) {
+      throw new BadRequestException(
+        'Super Admins already have full domain write access.',
+      );
+    }
+
+    const requested = ADMIN_CAPABILITIES.filter((c) =>
+      capabilitiesRaw.includes(c),
+    );
+    for (const raw of capabilitiesRaw) {
+      if (!isAdminCapability(raw)) {
+        throw new BadRequestException(
+          `Invalid capability "${raw}". Allowed: ${ADMIN_CAPABILITIES.join(', ')}`,
+        );
+      }
+    }
+    if (requested.length === 0) {
+      throw new BadRequestException('Select at least one domain to request.');
+    }
+
+    const current = new Set(
+      (requester.adminCapabilities ?? []).filter(isAdminCapability),
+    );
+    const needed = requested.filter((c) => !current.has(c));
+    if (needed.length === 0) {
+      throw new BadRequestException(
+        'You already have write access for every domain you selected.',
+      );
+    }
+
+    const trimmedNote = note?.trim() ? note.trim().slice(0, 500) : null;
+
+    await this.prisma.adminCapabilityAccessRequest.updateMany({
+      where: { requesterId, status: 'PENDING' },
+      data: { status: 'CANCELLED', reviewedAt: new Date() },
+    });
+
+    return this.prisma.adminCapabilityAccessRequest.create({
+      data: {
+        requesterId,
+        capabilities: needed,
+        note: trimmedNote,
+        status: 'PENDING',
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+    });
+  }
+
+  async listCapabilityAccessRequests(opts: {
+    actorUserId: string;
+    actorRole: UserRole | string;
+    status?: string;
+  }) {
+    const statusFilter =
+      opts.status &&
+      ['PENDING', 'APPROVED', 'DENIED', 'CANCELLED'].includes(
+        opts.status.toUpperCase(),
+      )
+        ? (opts.status.toUpperCase() as
+            | 'PENDING'
+            | 'APPROVED'
+            | 'DENIED'
+            | 'CANCELLED')
+        : undefined;
+
+    if (isSuperAdmin(opts.actorRole)) {
+      return this.prisma.adminCapabilityAccessRequest.findMany({
+        where: statusFilter ? { status: statusFilter } : undefined,
+        orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
+        take: 200,
+        include: {
+          requester: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              adminCapabilities: true,
+            },
+          },
+          reviewer: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+    }
+
+    return this.prisma.adminCapabilityAccessRequest.findMany({
+      where: {
+        requesterId: opts.actorUserId,
+        ...(statusFilter ? { status: statusFilter } : {}),
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            adminCapabilities: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async reviewCapabilityAccessRequest(
+    requestId: string,
+    reviewerId: string,
+    decision: 'APPROVED' | 'DENIED',
+    reviewNote?: string | null,
+  ) {
+    const req = await this.prisma.adminCapabilityAccessRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+            role: true,
+            adminCapabilities: true,
+          },
+        },
+      },
+    });
+    if (!req) throw new NotFoundException('Request not found');
+    if (req.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Request is already ${req.status.toLowerCase()}.`,
+      );
+    }
+
+    const note = reviewNote?.trim() ? reviewNote.trim().slice(0, 500) : null;
+
+    if (decision === 'DENIED') {
+      return this.prisma.adminCapabilityAccessRequest.update({
+        where: { id: requestId },
+        data: {
+          status: 'DENIED',
+          reviewedById: reviewerId,
+          reviewNote: note,
+          reviewedAt: new Date(),
+        },
+        include: {
+          requester: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+            },
+          },
+          reviewer: {
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          },
+        },
+      });
+    }
+
+    const current = (req.requester.adminCapabilities ?? []).filter(
+      isAdminCapability,
+    );
+    const requested = req.capabilities.filter(isAdminCapability);
+    const merged = ADMIN_CAPABILITIES.filter(
+      (c) => current.includes(c) || requested.includes(c),
+    );
+
+    await this.setAdminCapabilities(req.requesterId, merged);
+
+    return this.prisma.adminCapabilityAccessRequest.update({
+      where: { id: requestId },
+      data: {
+        status: 'APPROVED',
+        reviewedById: reviewerId,
+        reviewNote: note,
+        reviewedAt: new Date(),
+      },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            adminCapabilities: true,
+          },
+        },
+        reviewer: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        },
+      },
+    });
+  }
+
+  async cancelCapabilityAccessRequest(requestId: string, requesterId: string) {
+    const req = await this.prisma.adminCapabilityAccessRequest.findUnique({
+      where: { id: requestId },
+      select: { id: true, requesterId: true, status: true },
+    });
+    if (!req) throw new NotFoundException('Request not found');
+    if (req.requesterId !== requesterId) {
+      throw new ForbiddenException('You can only cancel your own requests.');
+    }
+    if (req.status !== 'PENDING') {
+      throw new BadRequestException(
+        `Request is already ${req.status.toLowerCase()}.`,
+      );
+    }
+    return this.prisma.adminCapabilityAccessRequest.update({
+      where: { id: requestId },
+      data: { status: 'CANCELLED', reviewedAt: new Date() },
+    });
   }
 
   /**
